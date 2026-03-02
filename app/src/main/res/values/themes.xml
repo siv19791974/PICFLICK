@@ -1,5 +1,30 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
-    <style name="Theme.PICFLICK" parent="android:Theme.Material.Light.NoActionBar" />
+    <!-- Application theme - transparent status bar -->
+    <style name="Theme.PICFLICK" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowTranslucentStatus">true</item>
+        <item name="android:windowDrawsSystemBarBackgrounds">true</item>
+    </style>
+
+    <!-- Splash Screen Theme -->
+    <style name="Theme.PICFLICK.Starting" parent="Theme.SplashScreen">
+        <!-- Window background -->
+        <item name="windowSplashScreenBackground">#D7ECFF</item>
+
+        <!-- Animated icon - using your logo (double size via drawable) -->
+        <item name="windowSplashScreenAnimatedIcon">@drawable/splash_logo</item>
+
+        <!-- Animation duration (max 1000ms) -->
+        <item name="windowSplashScreenAnimationDuration">300</item>
+
+        <!-- Icon background color (optional) -->
+        <item name="windowSplashScreenIconBackgroundColor">#D7ECFF</item>
+
+        <!-- The theme to switch to after splash screen -->
+        <item name="postSplashScreenTheme">@style/Theme.PICFLICK</item>
+    </style>
+
 </resources>
