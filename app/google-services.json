@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "830332240569",
+    "project_id": "picflick-4793175b",
+    "storage_bucket": "picflick-4793175b.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:830332240569:android:250a2708021e2467abd168",
+        "android_client_info": {
+          "package_name": "com.example.picflick"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "830332240569-pv8piuimckecgbve65h8vgln79aq015g.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.picflick",
+            "certificate_hash": "087f4ce53e143cad4945133212c3dfa2eedc2205"
+          }
+        },
+        {
+          "client_id": "830332240569-pko9aotmkb9qn86ao98ml20drrihe4l4.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDqqPDIAYplc_S4Z_30AVI2QR-p09Gd4eA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "830332240569-pko9aotmkb9qn86ao98ml20drrihe4l4.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
