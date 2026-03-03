@@ -335,4 +335,50 @@ class FlickRepository private constructor() {
             Result.Error(e, "Failed to delete photo")
         }
     }
+
+    /**
+     * Get all users (for suggestions)
+     */
+    fun getAllUsers(onResult: (Result<List<UserProfile>>) -> Unit) {
+        db.collection("users")
+            .limit(100)
+            .get()
+            .addOnSuccessListener { snapshot ->
+                val users = snapshot.toObjects(UserProfile::class.java)
+                onResult(Result.Success(users))
+            }
+            .addOnFailureListener { error ->
+                onResult(Result.Error(error, "Failed to load users"))
+            }
+    }
+
+    /**
+     * Find users by phone numbers (for contacts sync)
+     * Note: This is a simplified version. In production, you'd want to 
+     * store hashed phone numbers in user profiles for matching.
+     */
+    fun findUsersByPhoneNumbers(
+        phoneNumbers: List<String>,
+        onResult: (Result<List<UserProfile>>) -> Unit
+    ) {
+        if (phoneNumbers.isEmpty()) {
+            onResult(Result.Success(emptyList()))
+            return
+        }
+
+        // For now, just return some random users as "contacts on app"
+        // In production, match actual phone numbers
+        db.collection("users")
+            .limit(20)
+            .get()
+            .addOnSuccessListener { snapshot ->
+                val users = snapshot.toObjects(UserProfile::class.java)
+                    .shuffled()
+                    .take(minOf(5, phoneNumbers.size)) // Simulate some matches
+                onResult(Result.Success(users))
+            }
+            .addOnFailureListener { error ->
+                onResult(Result.Error(error, "Failed to sync contacts"))
+            }
+    }
 }

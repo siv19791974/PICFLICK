@@ -7,6 +7,9 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.CAMERA" />
     
+    <!-- Contacts permission for friend suggestions -->
+    <uses-permission android:name="android.permission.READ_CONTACTS" />
+    
     <!-- Hardware features -->
     <uses-feature android:name="android.hardware.camera" android:required="false" />
     
