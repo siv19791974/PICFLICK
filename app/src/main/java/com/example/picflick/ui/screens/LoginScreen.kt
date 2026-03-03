@@ -1,8 +1,6 @@
 package com.example.picflick.ui.screens
 
-import android.widget.Toast
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
+import android.app.Activity
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -21,9 +19,11 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -34,16 +34,23 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.credentials.CredentialManager
+import androidx.credentials.CustomCredential
+import androidx.credentials.GetCredentialRequest
+import androidx.credentials.exceptions.GetCredentialCancellationException
+import androidx.credentials.exceptions.GetCredentialException
 import com.example.picflick.R
 import com.example.picflick.viewmodel.AuthViewModel
-import com.google.android.gms.auth.api.signin.GoogleSignIn
-import com.google.android.gms.auth.api.signin.GoogleSignInOptions
-import com.google.android.gms.common.api.ApiException
+import com.google.android.libraries.identity.googleid.GetGoogleIdOption
+import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
+import com.google.android.libraries.identity.googleid.GoogleIdTokenParsingException
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.GoogleAuthProvider
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 /**
- * Login screen with Google Sign In
+ * Login screen with Google Sign In using Credential Manager
  */
 @Composable
 fun LoginScreen(
@@ -51,44 +58,104 @@ fun LoginScreen(
     onLoginSuccess: () -> Unit
 ) {
     val context = LocalContext.current
+    val activity = context as Activity
     val auth = FirebaseAuth.getInstance()
+    val coroutineScope = rememberCoroutineScope()
     var isLoading by remember { mutableStateOf(false) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
 
     // Get web client ID from secure string resources
     val webClientId = stringResource(id = R.string.default_web_client_id)
 
-    val googleSignInClient = remember {
-        val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
-            .requestIdToken(webClientId)
-            .requestEmail()
-            .build()
-        GoogleSignIn.getClient(context, gso)
+    // Initialize Credential Manager
+    val credentialManager = remember {
+        CredentialManager.create(context)
     }
 
-    val launcher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.StartActivityForResult()
-    ) { result ->
-        if (result.resultCode == android.app.Activity.RESULT_OK) {
-            val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
+    // Create Google ID option
+    val googleIdOption = remember {
+        GetGoogleIdOption.Builder()
+            .setServerClientId(webClientId)
+            .setFilterByAuthorizedAccounts(false)
+            .setAutoSelectEnabled(false)
+            .build()
+    }
+
+    // Create credential request
+    val request = remember {
+        GetCredentialRequest.Builder()
+            .addCredentialOption(googleIdOption)
+            .build()
+    }
+
+    // Handle sign in
+    fun signInWithGoogle() {
+        coroutineScope.launch {
+            isLoading = true
+            errorMessage = null
             try {
-                val account = task.getResult(ApiException::class.java)!!
-                val credential = GoogleAuthProvider.getCredential(account.idToken!!, null)
-                isLoading = true
-                auth.signInWithCredential(credential)
-                    .addOnCompleteListener { authTask ->
-                        isLoading = false
-                        if (authTask.isSuccessful) {
-                            auth.currentUser?.let { user ->
-                                authViewModel.saveUserToFirestore(user)
-                                onLoginSuccess()
+                // Get credential from Credential Manager
+                val result = credentialManager.getCredential(
+                    request = request,
+                    context = activity
+                )
+
+                // Handle the credential
+                when (val credential = result.credential) {
+                    is CustomCredential -> {
+                        if (credential.type == GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL) {
+                            try {
+                                // Extract Google ID token credential
+                                val googleIdTokenCredential = GoogleIdTokenCredential.createFrom(credential.data)
+                                val idToken = googleIdTokenCredential.idToken
+
+                                // Sign in to Firebase with Google credential
+                                val firebaseCredential = GoogleAuthProvider.getCredential(idToken, null)
+                                auth.signInWithCredential(firebaseCredential)
+                                    .addOnCompleteListener { task ->
+                                        isLoading = false
+                                        if (task.isSuccessful) {
+                                            auth.currentUser?.let { user ->
+                                                authViewModel.saveUserToFirestore(user)
+                                                onLoginSuccess()
+                                            }
+                                        } else {
+                                            errorMessage = "Firebase auth failed: ${task.exception?.message}"
+                                        }
+                                    }
+                            } catch (e: GoogleIdTokenParsingException) {
+                                isLoading = false
+                                errorMessage = "Failed to parse Google ID Token"
                             }
+                        } else {
+                            isLoading = false
+                            errorMessage = "Unsupported credential type"
                         }
                     }
-            } catch (e: ApiException) {
+                    else -> {
+                        isLoading = false
+                        errorMessage = "Unsupported credential type"
+                    }
+                }
+            } catch (e: GetCredentialCancellationException) {
+                // User cancelled the sign-in flow
                 isLoading = false
-                // Show error toast
-                Toast.makeText(context, "Sign in failed: ${e.message}", Toast.LENGTH_SHORT).show()
+                errorMessage = null // Don't show error for cancellation
+            } catch (e: GetCredentialException) {
+                isLoading = false
+                errorMessage = "Sign in failed: ${e.message}"
+            } catch (e: Exception) {
+                isLoading = false
+                errorMessage = "Unexpected error: ${e.message}"
             }
+        }
+    }
+
+    // Show error if any
+    LaunchedEffect(errorMessage) {
+        errorMessage?.let {
+            delay(3000)
+            errorMessage = null
         }
     }
 
@@ -101,7 +168,7 @@ fun LoginScreen(
     ) {
         // Logo
         Image(
-                painter = painterResource(id = R.drawable.logo),
+            painter = painterResource(id = R.drawable.logo),
             contentDescription = "PicFlick Logo",
             modifier = Modifier.size(150.dp)
         )
@@ -123,10 +190,20 @@ fun LoginScreen(
             color = Color.Gray
         )
 
+        // Show error message
+        errorMessage?.let { error ->
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(
+                text = error,
+                fontSize = 14.sp,
+                color = Color.Red
+            )
+        }
+
         Spacer(modifier = Modifier.height(48.dp))
 
         Button(
-            onClick = { launcher.launch(googleSignInClient.signInIntent) },
+            onClick = { signInWithGoogle() },
             modifier = Modifier.fillMaxWidth(),
             enabled = !isLoading
         ) {
