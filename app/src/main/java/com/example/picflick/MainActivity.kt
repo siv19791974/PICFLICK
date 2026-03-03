@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Notifications
+import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -117,6 +118,20 @@ fun MainScreen(
                         .background(Color.Black)  // BLACK banner for test
                         .padding(top = 32.dp, bottom = 12.dp)
                 ) {
+                    // Settings wheel on LEFT
+                    IconButton(
+                        onClick = { /* TODO: Settings */ },
+                        modifier = Modifier
+                            .align(Alignment.CenterStart)
+                            .padding(top = 4.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.Settings,
+                            contentDescription = "Settings",
+                            tint = Color.LightGray
+                        )
+                    }
+                    
                     // Notifications bell on right - LOWER to match logo, LIGHT GREY for contrast
                     IconButton(
                         onClick = { /* TODO: notifications */ },
@@ -251,6 +266,7 @@ private fun AuthenticatedContent(
             is Screen.MyPhotos -> MyPhotosScreen(
                 viewModel = profileViewModel,
                 userId = userProfile.uid,
+                currentUser = userProfile,
                 onBack = { onScreenChange(Screen.Home) }
             )
 

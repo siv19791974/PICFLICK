@@ -12,12 +12,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.MailOutline
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -30,12 +27,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import com.example.picflick.data.UserProfile
-import com.example.picflick.ui.components.LogoImage
-import com.example.picflick.ui.theme.PicFlickBackground
-import com.example.picflick.ui.theme.PicFlickBannerBackground
 
 /**
- * Profile screen showing user information with analytics
+ * Modern Profile screen with enhanced UI
  */
 @Composable
 fun ProfileScreen(
@@ -56,36 +50,40 @@ fun ProfileScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(PicFlickBackground)
+            .background(Color.Black)
             .verticalScroll(rememberScrollState()),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         // NO BANNER - banner is now in MainActivity's Scaffold topBar!
 
-        // Profile Photo - CLICKABLE to change
+        Spacer(modifier = Modifier.height(24.dp))
+
+        // Profile Photo with better styling
         Box(
             modifier = Modifier
-                .padding(top = 16.dp),
-            contentAlignment = Alignment.BottomEnd
+                .size(150.dp)
+                .clip(CircleShape)
+                .background(Color.DarkGray.copy(alpha = 0.3f))
+                .border(3.dp, Color.White.copy(alpha = 0.8f), CircleShape)
+                .clickable { imagePicker.launch("image/*") },
+            contentAlignment = Alignment.Center
         ) {
             AsyncImage(
                 model = userProfile.photoUrl,
                 contentDescription = "Profile photo",
-                modifier = Modifier
-                    .size(140.dp)
-                    .clip(CircleShape)
-                    .border(4.dp, MaterialTheme.colorScheme.primary, CircleShape)
-                    .clickable { imagePicker.launch("image/*") },
+                modifier = Modifier.fillMaxSize(),
                 error = painterResource(id = android.R.drawable.ic_menu_myplaces),
                 contentScale = androidx.compose.ui.layout.ContentScale.Crop
             )
 
-            // Edit icon overlay
+            // Edit icon overlay - positioned at bottom right
             Box(
                 modifier = Modifier
-                    .size(40.dp)
+                    .align(Alignment.BottomEnd)
+                    .offset((-8).dp, (-8).dp)
+                    .size(44.dp)
                     .background(MaterialTheme.colorScheme.primary, CircleShape)
-                    .border(2.dp, Color.White, CircleShape)
+                    .border(3.dp, Color.Black, CircleShape)
                     .clickable { imagePicker.launch("image/*") },
                 contentAlignment = Alignment.Center
             ) {
@@ -93,113 +91,124 @@ fun ProfileScreen(
                     imageVector = Icons.Default.Edit,
                     contentDescription = "Change Photo",
                     tint = Color.White,
-                    modifier = Modifier.size(20.dp)
+                    modifier = Modifier.size(22.dp)
                 )
             }
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(20.dp))
 
-        // Name & Email
+        // Name & Email with better typography
         Text(
             text = userProfile.displayName,
-            fontSize = 26.sp,
+            fontSize = 28.sp,
             fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onBackground
+            color = Color.White
         )
         Text(
             text = userProfile.email,
             fontSize = 14.sp,
-            color = Color.Gray
+            color = Color.Gray,
+            modifier = Modifier.padding(top = 4.dp)
         )
 
+        // Bio
         if (userProfile.bio.isNotEmpty()) {
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(12.dp))
             Text(
                 text = userProfile.bio,
                 fontSize = 14.sp,
-                color = Color.Gray,
+                color = Color.LightGray,
                 modifier = Modifier.padding(horizontal = 32.dp)
             )
         }
 
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(32.dp))
 
-        // ANALYTICS CARD - Clean design
-        Card(
+        // MODERN STATS GRID - Horizontal layout like Instagram
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp),
+            horizontalArrangement = Arrangement.SpaceEvenly
+        ) {
+            ModernStatItem(
+                value = photoCount.toString(),
+                label = "Posts"
+            )
+            ModernStatItem(
+                value = formatNumber(userProfile.totalLikes),
+                label = "Likes"
+            )
+            ModernStatItem(
+                value = userProfile.followers.size.toString(),
+                label = "Followers"
+            )
+            ModernStatItem(
+                value = userProfile.following.size.toString(),
+                label = "Following"
+            )
+        }
+
+        Spacer(modifier = Modifier.height(32.dp))
+
+        // Action Buttons Row - Modern style
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp),
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = PicFlickBannerBackground
-            ),
-            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(20.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                // Stats Grid
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceEvenly
-                ) {
-                    StatItem(
-                        value = photoCount.toString(),
-                        label = "Photos"
-                    )
-                    StatItem(
-                        value = userProfile.totalLikes.toString(),
-                        label = "Likes"
-                    )
-                    StatItem(
-                        value = userProfile.totalViews.toString(),
-                        label = "Views"
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(20.dp))
-
-                HorizontalDivider(
-                    modifier = Modifier.padding(horizontal = 32.dp),
-                    color = Color.Gray.copy(alpha = 0.3f)
+            // Edit Profile Button
+            OutlinedButton(
+                onClick = { /* TODO: Edit profile */ },
+                modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.outlinedButtonColors(
+                    contentColor = Color.White
+                ),
+                border = ButtonDefaults.outlinedButtonBorder.copy(
+                    width = 1.dp,
+                    brush = androidx.compose.ui.graphics.SolidColor(Color.White.copy(alpha = 0.5f))
                 )
+            ) {
+                Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Edit Profile")
+            }
 
-                Spacer(modifier = Modifier.height(20.dp))
-
-                // Social Stats
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceEvenly
-                ) {
-                    StatItem(
-                        value = userProfile.followers.size.toString(),
-                        label = "Followers"
-                    )
-                    StatItem(
-                        value = userProfile.following.size.toString(),
-                        label = "Following"
-                    )
-                }
+            // Sign Out Button
+            OutlinedButton(
+                onClick = onSignOut,
+                modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.outlinedButtonColors(
+                    contentColor = Color.Red.copy(alpha = 0.8f)
+                ),
+                border = ButtonDefaults.outlinedButtonBorder.copy(
+                    width = 1.dp,
+                    brush = androidx.compose.ui.graphics.SolidColor(Color.Red.copy(alpha = 0.5f))
+                )
+            ) {
+                Icon(Icons.AutoMirrored.Filled.ExitToApp, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Sign Out")
             }
         }
 
         Spacer(modifier = Modifier.height(32.dp))
 
-        // MY PHOTOS SECTION
+        // MY PHOTOS SECTION - Enhanced Card
         Card(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp)
                 .clickable { onMyPhotosClick() },
-            shape = RoundedCornerShape(16.dp),
+            shape = RoundedCornerShape(20.dp),
             colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surface
+                containerColor = Color.DarkGray.copy(alpha = 0.3f)
             ),
-            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
         ) {
             Row(
                 modifier = Modifier
@@ -211,27 +220,38 @@ fun ProfileScreen(
                 Row(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Edit,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(28.dp)
-                    )
+                    Box(
+                        modifier = Modifier
+                            .size(48.dp)
+                            .background(
+                                MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
+                                CircleShape
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Edit,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
                     Spacer(modifier = Modifier.width(16.dp))
                     Column {
                         Text(
                             text = "My Photos",
                             fontSize = 18.sp,
-                            fontWeight = FontWeight.Bold
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
                         )
                         Text(
-                            text = "$photoCount photos uploaded",
+                            text = "$photoCount ${if (photoCount == 1) "photo" else "photos"} uploaded",
                             fontSize = 14.sp,
                             color = Color.Gray
                         )
                     }
                 }
-                
+
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.ArrowForward,
                     contentDescription = "View",
@@ -241,63 +261,97 @@ fun ProfileScreen(
             }
         }
 
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(16.dp))
 
-        // Action Buttons
+        // About & Contact Links - Modern cards
         Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceEvenly
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            OutlinedButton(
-                onClick = { /* TODO: Edit profile */ },
-                shape = RoundedCornerShape(20.dp)
-            ) {
-                Text("Edit Profile")
-            }
-
-            Button(
-                onClick = onSignOut,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Color.Red.copy(alpha = 0.8f)
+            // About Card
+            Card(
+                modifier = Modifier
+                    .weight(1f)
+                    .clickable { /* TODO: Navigate to About */ },
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = Color.DarkGray.copy(alpha = 0.3f)
                 ),
-                shape = RoundedCornerShape(20.dp)
+                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
             ) {
-                Icon(Icons.AutoMirrored.Filled.ExitToApp, contentDescription = null)
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("Sign Out")
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Icon(
+                        Icons.Default.Info,
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        "About",
+                        color = Color.White,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
             }
-        }
 
-        Spacer(modifier = Modifier.height(24.dp))
-
-        // About & Contact Links
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceEvenly
-        ) {
-            TextButton(
-                onClick = { /* TODO: Navigate to About */ }
+            // Contact Card
+            Card(
+                modifier = Modifier
+                    .weight(1f)
+                    .clickable { /* TODO: Navigate to Contact */ },
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = Color.DarkGray.copy(alpha = 0.3f)
+                ),
+                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
             ) {
-                Icon(Icons.Default.Info, contentDescription = null)
-                Spacer(modifier = Modifier.width(4.dp))
-                Text("About")
-            }
-
-            TextButton(
-                onClick = { /* TODO: Navigate to Contact */ }
-            ) {
-                Icon(Icons.Default.MailOutline, contentDescription = null)
-                Spacer(modifier = Modifier.width(4.dp))
-                Text("Contact")
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Icon(
+                        Icons.Default.MailOutline,
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        "Contact",
+                        color = Color.White,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
             }
         }
 
         Spacer(modifier = Modifier.height(32.dp))
+
+        // App Version at bottom
+        Text(
+            text = "PicFlick v1.0",
+            fontSize = 12.sp,
+            color = Color.Gray.copy(alpha = 0.5f)
+        )
+
+        Spacer(modifier = Modifier.height(24.dp))
     }
 }
 
 @Composable
-private fun StatItem(
+private fun ModernStatItem(
     value: String,
     label: String
 ) {
@@ -306,16 +360,24 @@ private fun StatItem(
     ) {
         Text(
             text = value,
-            fontSize = 24.sp,
+            fontSize = 22.sp,
             fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.primary
+            color = Color.White
         )
         Spacer(modifier = Modifier.height(4.dp))
         Text(
             text = label,
-            fontSize = 12.sp,
+            fontSize = 13.sp,
             color = Color.Gray,
             fontWeight = FontWeight.Medium
         )
+    }
+}
+
+private fun formatNumber(number: Int): String {
+    return when {
+        number >= 1000000 -> "${number / 1000000}M"
+        number >= 1000 -> "${number / 1000}K"
+        else -> number.toString()
     }
 }
