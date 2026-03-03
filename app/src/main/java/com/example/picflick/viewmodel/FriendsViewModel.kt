@@ -21,6 +21,9 @@ class FriendsViewModel : ViewModel() {
     var searchResults = mutableStateListOf<UserProfile>()
         private set
 
+    var followingUsers = mutableStateListOf<UserProfile>()
+        private set
+
     var isLoading by mutableStateOf(false)
         private set
 
@@ -29,6 +32,36 @@ class FriendsViewModel : ViewModel() {
 
     var searchQuery by mutableStateOf("")
         private set
+
+    /**
+     * Load users that the current user is following
+     */
+    fun loadFollowingUsers(followingIds: List<String>) {
+        if (followingIds.isEmpty()) {
+            followingUsers.clear()
+            return
+        }
+
+        isLoading = true
+        followingUsers.clear()
+
+        // Load each user's profile
+        followingIds.forEach { userId ->
+            repository.getUserProfile(userId) { result ->
+                when (result) {
+                    is Result.Success -> {
+                        followingUsers.add(result.data)
+                    }
+                    is Result.Error -> {
+                        // Silently skip users that can't be loaded
+                    }
+                    is Result.Loading -> { }
+                }
+            }
+        }
+
+        isLoading = false
+    }
 
     /**
      * Search for users by display name

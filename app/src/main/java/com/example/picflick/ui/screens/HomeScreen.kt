@@ -12,6 +12,7 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.MailOutline
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -78,7 +79,21 @@ fun HomeScreen(
     ) { success ->
         if (success && tempCameraUri != null) {
             showUploadDialog = false
-            Toast.makeText(context, "Photo captured! Upload coming soon...", Toast.LENGTH_SHORT).show()
+            viewModel.uploadFlick(
+                userId = userProfile.uid,
+                userDisplayName = userProfile.displayName,
+                userPhotoUrl = userProfile.photoUrl,
+                imageUri = tempCameraUri!!,
+                context = context,
+                caption = "",
+                onComplete = { success ->
+                    if (success) {
+                        Toast.makeText(context, "Photo uploaded!", Toast.LENGTH_SHORT).show()
+                    } else {
+                        Toast.makeText(context, "Upload failed", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            )
         }
     }
 
@@ -88,7 +103,21 @@ fun HomeScreen(
     ) { uri ->
         uri?.let {
             showUploadDialog = false
-            Toast.makeText(context, "Photo selected! Upload coming soon...", Toast.LENGTH_SHORT).show()
+            viewModel.uploadFlick(
+                userId = userProfile.uid,
+                userDisplayName = userProfile.displayName,
+                userPhotoUrl = userProfile.photoUrl,
+                imageUri = it,
+                context = context,
+                caption = "",
+                onComplete = { success ->
+                    if (success) {
+                        Toast.makeText(context, "Photo uploaded!", Toast.LENGTH_SHORT).show()
+                    } else {
+                        Toast.makeText(context, "Upload failed", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            )
         }
     }
 
@@ -401,7 +430,7 @@ private fun FlickCard(
             .padding(2.dp)
             .clickable { },
         colors = CardDefaults.cardColors(
-            containerColor = Color.Transparent // REMOVE GREY BACKGROUND
+            containerColor = Color.Transparent
         )
     ) {
         Column {
@@ -413,22 +442,39 @@ private fun FlickCard(
                     .aspectRatio(1f),
                 contentScale = ContentScale.Crop
             )
-            Row(modifier = Modifier.padding(4.dp)) {
+            Row(
+                modifier = Modifier.padding(4.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Like button
                 IconButton(
                     onClick = onLikeClick,
-                    modifier = Modifier.size(32.dp)
+                    modifier = Modifier.size(28.dp)
                 ) {
                     Icon(
                         imageVector = if (flick.likes.contains(userId)) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
                         contentDescription = if (flick.likes.contains(userId)) "Unlike" else "Like",
                         tint = if (flick.likes.contains(userId)) Color.Red else Color.Gray,
-                        modifier = Modifier.size(20.dp)
+                        modifier = Modifier.size(18.dp)
                     )
                 }
                 Text(
                     text = "${flick.likes.size}",
-                    modifier = Modifier.align(Alignment.CenterVertically),
-                    fontSize = 12.sp
+                    fontSize = 11.sp,
+                    modifier = Modifier.padding(end = 8.dp)
+                )
+                
+                // Comment icon and count
+                Icon(
+                    imageVector = Icons.Outlined.MailOutline,
+                    contentDescription = "Comments",
+                    tint = Color.Gray,
+                    modifier = Modifier.size(16.dp)
+                )
+                Text(
+                    text = "${flick.commentCount}",
+                    fontSize = 11.sp,
+                    modifier = Modifier.padding(start = 2.dp)
                 )
             }
         }
