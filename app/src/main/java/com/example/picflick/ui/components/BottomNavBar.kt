@@ -7,11 +7,11 @@ import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import com.example.picflick.ui.theme.PicFlickBannerBackground
 
 /**
- * Bottom navigation bar for main app navigation - GREY
+ * Bottom navigation bar for main app navigation - BLACK with contrasting icons
  */
 @Composable
 fun BottomNavBar(
@@ -21,18 +21,20 @@ fun BottomNavBar(
 ) {
     NavigationBar(
         modifier = Modifier.fillMaxWidth(),
-        containerColor = PicFlickBannerBackground,  // GREY background
-        tonalElevation = 3.dp
+        containerColor = Color.Black,  // BLACK background
+        contentColor = Color.LightGray,  // Light grey for unselected
+        tonalElevation = 0.dp
     ) {
         // Home
         NavigationBarItem(
             icon = {
                 Icon(
                     if (currentRoute == "home") Icons.Filled.Home else Icons.Outlined.Home,
-                    contentDescription = "Home"
+                    contentDescription = "Home",
+                    tint = if (currentRoute == "home") Color.White else Color.LightGray  // White when selected
                 )
             },
-            label = { Text("Home") },
+            label = { Text("Home", color = if (currentRoute == "home") Color.White else Color.LightGray) },
             selected = currentRoute == "home",
             onClick = { onNavigate("home") }
         )
@@ -42,10 +44,11 @@ fun BottomNavBar(
             icon = {
                 Icon(
                     if (currentRoute == "chats") Icons.Filled.MailOutline else Icons.Outlined.MailOutline,
-                    contentDescription = "Messages"
+                    contentDescription = "Messages",
+                    tint = if (currentRoute == "chats") Color.White else Color.LightGray
                 )
             },
-            label = { Text("Messages") },
+            label = { Text("Messages", color = if (currentRoute == "chats") Color.White else Color.LightGray) },
             selected = currentRoute == "chats",
             onClick = { onNavigate("chats") }
         )
@@ -56,12 +59,12 @@ fun BottomNavBar(
                 FloatingActionButton(
                     onClick = { onNavigate("upload") },
                     modifier = Modifier.size(40.dp),
-                    containerColor = MaterialTheme.colorScheme.primary
+                    containerColor = Color.DarkGray  // Dark grey for contrast
                 ) {
                     Icon(
                         Icons.Filled.Add,
                         contentDescription = "Upload",
-                        tint = MaterialTheme.colorScheme.onPrimary
+                        tint = Color.White
                     )
                 }
             },
@@ -75,10 +78,11 @@ fun BottomNavBar(
             icon = {
                 Icon(
                     if (currentRoute == "friends") Icons.Filled.Share else Icons.Outlined.Share,
-                    contentDescription = "Friends"
+                    contentDescription = "Friends",
+                    tint = if (currentRoute == "friends") Color.White else Color.LightGray
                 )
             },
-            label = { Text("Friends") },
+            label = { Text("Friends", color = if (currentRoute == "friends") Color.White else Color.LightGray) },
             selected = currentRoute == "friends",
             onClick = { onNavigate("friends") }
         )
@@ -88,10 +92,11 @@ fun BottomNavBar(
             icon = {
                 Icon(
                     if (currentRoute == "profile") Icons.Filled.Person else Icons.Outlined.Person,
-                    contentDescription = "Profile"
+                    contentDescription = "Profile",
+                    tint = if (currentRoute == "profile") Color.White else Color.LightGray
                 )
             },
-            label = { Text("Profile") },
+            label = { Text("Profile", color = if (currentRoute == "profile") Color.White else Color.LightGray) },
             selected = currentRoute == "profile",
             onClick = { onNavigate("profile") }
         )

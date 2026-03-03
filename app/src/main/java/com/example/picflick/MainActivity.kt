@@ -23,6 +23,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
@@ -113,18 +114,20 @@ fun MainScreen(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(PicFlickBannerBackground)
-                        .padding(top = 32.dp, bottom = 12.dp)  // INCREASED: was 26/8, now 32/12
+                        .background(Color.Black)  // BLACK banner for test
+                        .padding(top = 32.dp, bottom = 12.dp)
                 ) {
-                    // Notifications bell on right
+                    // Notifications bell on right - LOWER to match logo, LIGHT GREY for contrast
                     IconButton(
                         onClick = { /* TODO: notifications */ },
-                        modifier = Modifier.align(Alignment.CenterEnd)
+                        modifier = Modifier
+                            .align(Alignment.CenterEnd)
+                            .padding(top = 4.dp)  // Match logo's lower position
                     ) {
                         Icon(
                             imageVector = Icons.Outlined.Notifications,
                             contentDescription = "Notifications",
-                            tint = MaterialTheme.colorScheme.onSurface
+                            tint = Color.LightGray  // Light grey for contrast on black
                         )
                     }
                     
