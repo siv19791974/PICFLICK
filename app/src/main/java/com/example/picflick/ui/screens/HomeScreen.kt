@@ -1,5 +1,6 @@
 package com.example.picflick.ui.screens
 
+import android.content.Intent
 import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -213,13 +214,32 @@ fun HomeScreen(
         }
     }
 
-    // Full-screen photo viewer dialog
+    // Full-screen photo viewer with comments
     selectedFlick?.let { flick ->
-        FullScreenPhotoDialog(
+        FullScreenPhotoViewer(
             flick = flick,
-            userId = userProfile.uid,
+            currentUser = userProfile,
             onDismiss = { selectedFlick = null },
-            onLikeClick = { viewModel.toggleLike(flick, userProfile.uid) }
+            onLikeClick = {
+                viewModel.toggleLike(flick, userProfile.uid)
+                // Update local copy for UI
+                selectedFlick = flick.copy(
+                    likes = if (flick.likes.contains(userProfile.uid)) {
+                        flick.likes - userProfile.uid
+                    } else {
+                        flick.likes + userProfile.uid
+                    }
+                )
+            },
+            onShareClick = {
+                val shareIntent = Intent().apply {
+                    action = Intent.ACTION_SEND
+                    type = "text/plain"
+                    putExtra(Intent.EXTRA_TEXT, "Check out this photo on PicFlick: ${flick.imageUrl}")
+                }
+                context.startActivity(Intent.createChooser(shareIntent, "Share Photo"))
+            },
+            canDelete = flick.userId == userProfile.uid
         )
     }
 }
@@ -314,7 +334,7 @@ private fun FlickGrid(
     LazyVerticalGrid(
         columns = GridCells.Fixed(3),
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(4.dp)
+        contentPadding = PaddingValues(1.dp)
     ) {
         items(flicks) { flick ->
             FlickCard(
@@ -336,60 +356,23 @@ private fun FlickCard(
 ) {
     Card(
         modifier = Modifier
-            .padding(4.dp)
+            .padding(2.dp)
             .clickable { onPhotoClick() },
-        shape = RoundedCornerShape(12.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        shape = RoundedCornerShape(8.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
         colors = CardDefaults.cardColors(
             containerColor = Color.Transparent
         )
     ) {
-        Column {
-            AsyncImage(
-                model = flick.imageUrl,
-                contentDescription = null,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .aspectRatio(1f)
-                    .clip(RoundedCornerShape(12.dp)),
-                contentScale = ContentScale.Crop
-            )
-            Row(
-                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                // Like button
-                IconButton(
-                    onClick = onLikeClick,
-                    modifier = Modifier.size(32.dp)
-                ) {
-                    Icon(
-                        imageVector = if (flick.likes.contains(userId)) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                        contentDescription = if (flick.likes.contains(userId)) "Unlike" else "Like",
-                        tint = if (flick.likes.contains(userId)) Color.Red else MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
-                Text(
-                    text = "${flick.likes.size}",
-                    style = MaterialTheme.typography.labelSmall,
-                    modifier = Modifier.padding(end = 12.dp)
-                )
-
-                // Comment icon and count
-                Icon(
-                    imageVector = Icons.Outlined.MailOutline,
-                    contentDescription = "Comments",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(18.dp)
-                )
-                Text(
-                    text = "${flick.commentCount}",
-                    style = MaterialTheme.typography.labelSmall,
-                    modifier = Modifier.padding(start = 4.dp)
-                )
-            }
-        }
+        AsyncImage(
+            model = flick.imageUrl,
+            contentDescription = null,
+            modifier = Modifier
+                .fillMaxWidth()
+                .aspectRatio(1f)
+                .clip(RoundedCornerShape(8.dp)),
+            contentScale = ContentScale.Crop
+        )
     }
 }
 
@@ -406,101 +389,3 @@ private fun EmptyState() {
     }
 }
 
-/**
- * Full-screen photo viewer dialog
- */
-@Composable
-private fun FullScreenPhotoDialog(
-    flick: Flick,
-    userId: String,
-    onDismiss: () -> Unit,
-    onLikeClick: () -> Unit
-) {
-    Dialog(
-        onDismissRequest = onDismiss,
-        properties = DialogProperties(
-            usePlatformDefaultWidth = false,
-            dismissOnBackPress = true,
-            dismissOnClickOutside = true
-        )
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Color.Black)
-        ) {
-            // Photo
-            AsyncImage(
-                model = flick.imageUrl,
-                contentDescription = null,
-                modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Fit
-            )
-
-            // Close button
-            IconButton(
-                onClick = onDismiss,
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(16.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Close,
-                    contentDescription = "Close",
-                    tint = Color.White,
-                    modifier = Modifier.size(32.dp)
-                )
-            }
-
-            // Bottom info bar
-            Column(
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .fillMaxWidth()
-                    .background(Color.Black.copy(alpha = 0.7f))
-                    .padding(16.dp)
-            ) {
-                // Description if available
-                if (flick.description.isNotEmpty()) {
-                    Text(
-                        text = flick.description,
-                        color = Color.White,
-                        style = MaterialTheme.typography.bodyLarge
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                }
-
-                // Like and comment row
-                Row(
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    IconButton(onClick = onLikeClick) {
-                        Icon(
-                            imageVector = if (flick.likes.contains(userId)) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                            contentDescription = "Like",
-                            tint = if (flick.likes.contains(userId)) Color.Red else Color.White,
-                            modifier = Modifier.size(28.dp)
-                        )
-                    }
-                    Text(
-                        text = "${flick.likes.size} likes",
-                        color = Color.White,
-                        modifier = Modifier.padding(end = 16.dp)
-                    )
-
-                    Icon(
-                        imageVector = Icons.Outlined.MailOutline,
-                        contentDescription = "Comments",
-                        tint = Color.White,
-                        modifier = Modifier.size(24.dp)
-                    )
-                    Text(
-                        text = "${flick.commentCount} comments",
-                        color = Color.White,
-                        modifier = Modifier.padding(start = 4.dp)
-                    )
-                }
-            }
-        }
-    }
-}
