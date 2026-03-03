@@ -42,7 +42,7 @@ fun NotificationsScreen(
                 imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                 contentDescription = "Go back",
                 modifier = Modifier
-                    .size(24.dp)
+                    .size(36.dp)
                     .align(Alignment.CenterStart)
                     .padding(start = 16.dp)
                     .clickable { onBack() },

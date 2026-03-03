@@ -98,19 +98,23 @@ class FlickRepository private constructor() {
      * Get flicks for a specific user
      */
     fun getUserFlicks(userId: String, onResult: (Result<List<Flick>>) -> Unit) {
+        if (userId.isEmpty()) {
+            onResult(Result.Error(Exception("User ID is empty"), "User not logged in"))
+            return
+        }
+        
         db.collection("flicks")
             .whereEqualTo("userId", userId)
-            .orderBy("timestamp", Query.Direction.DESCENDING)
-            .addSnapshotListener { snapshot, error ->
-                if (error != null) {
-                    onResult(Result.Error(error, "Failed to load user photos"))
-                    return@addSnapshotListener
-                }
-
-                if (snapshot != null) {
-                    val flicks = snapshot.toObjects(Flick::class.java)
-                    onResult(Result.Success(flicks))
-                }
+            .get()  // Simple query without ordering (no index needed)
+            .addOnSuccessListener { snapshot ->
+                val flicks = snapshot.toObjects(Flick::class.java)
+                    .sortedByDescending { it.timestamp }  // Sort in memory
+                android.util.Log.d("FlickRepository", "Loaded ${flicks.size} photos for user $userId")
+                onResult(Result.Success(flicks))
+            }
+            .addOnFailureListener { error ->
+                android.util.Log.e("FlickRepository", "Error loading user photos: ${error.message}")
+                onResult(Result.Error(error, "Failed to load user photos: ${error.message}"))
             }
     }
 

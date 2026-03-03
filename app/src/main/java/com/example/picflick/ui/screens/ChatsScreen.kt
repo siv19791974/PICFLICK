@@ -23,7 +23,8 @@ import com.example.picflick.ui.theme.PicFlickBannerBackground
 @Composable
 fun ChatsScreen(
     userProfile: UserProfile,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    onNavigateHome: () -> Unit = onBack
 ) {
     Column(
         modifier = Modifier
@@ -42,16 +43,18 @@ fun ChatsScreen(
                 imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                 contentDescription = "Go back",
                 modifier = Modifier
-                    .size(24.dp)
+                    .size(36.dp)
                     .align(Alignment.CenterStart)
                     .padding(start = 16.dp)
                     .clickable { onBack() },
                 tint = MaterialTheme.colorScheme.onSurface
             )
             
-            // Logo centered
+            // Logo centered - CLICKABLE to go home
             LogoImage(
-                modifier = Modifier.align(Alignment.Center)
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .clickable { onNavigateHome() }
             )
         }
         
