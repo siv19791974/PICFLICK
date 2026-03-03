@@ -10,9 +10,10 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
-import androidx.compose.material.icons.outlined.MailOutline
+import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -29,29 +30,21 @@ import androidx.core.content.FileProvider
 import coil3.compose.AsyncImage
 import com.example.picflick.data.Flick
 import com.example.picflick.data.UserProfile
+import com.example.picflick.ui.components.BottomNavBar
 import com.example.picflick.ui.components.ErrorMessage
 import com.example.picflick.ui.components.FullScreenLoading
 import com.example.picflick.ui.components.LogoImage
+import com.example.picflick.ui.components.PhotoGridShimmer
 import com.example.picflick.ui.theme.PicFlickBackground
 import com.example.picflick.ui.theme.PicFlickBannerBackground
 import com.example.picflick.viewmodel.HomeViewModel
+import com.google.accompanist.swiperefresh.SwipeRefresh
+import com.google.accompanist.swiperefresh.SwipeRefreshIndicator
+import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
 import java.io.File
 
 /**
- * Menu items for the hamburger navigation
- */
-private val menuItems = listOf(
-    "Home" to "home",
-    "My Photos" to "my_photos",
-    "Find Friends" to "find_friends",
-    "Messages" to "chats",
-    "Notifications" to "notifications",
-    "About" to "about",
-    "Contact Us" to "contact"
-)
-
-/**
- * Home screen with photo grid and upload functionality
+ * Home screen with photo grid and bottom navigation
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -64,9 +57,10 @@ fun HomeScreen(
     val context = LocalContext.current
     var showUploadDialog by remember { mutableStateOf(false) }
     var tempCameraUri by remember { mutableStateOf<Uri?>(null) }
-    var menuExpanded by remember { mutableStateOf(false) } // Hamburger menu state
-    var selectedFlick by remember { mutableStateOf<Flick?>(null) } // For full-screen photo view
-    var profileMenuExpanded by remember { mutableStateOf(false) }
+    var selectedFlick by remember { mutableStateOf<Flick?>(null) }
+    
+    // Swipe refresh state
+    val swipeRefreshState = rememberSwipeRefreshState(isRefreshing = viewModel.isLoading)
 
     // Load data
     LaunchedEffect(Unit) {
@@ -121,220 +115,64 @@ fun HomeScreen(
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
+        topBar = {
+            // Clean logo header with notifications
+            CenterAlignedTopAppBar(
+                title = { LogoImage(modifier = Modifier.height(50.dp)) },
+                actions = {
+                    // Notifications bell
+                    IconButton(onClick = { onNavigate("notifications") }) {
+                        Icon(
+                            imageVector = Icons.Outlined.Notifications,
+                            contentDescription = "Notifications",
+                            tint = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                },
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                    containerColor = PicFlickBannerBackground
+                )
+            )
+        },
+        bottomBar = {
+            BottomNavBar(
+                currentRoute = "home",
+                onNavigate = { route ->
+                    if (route == "upload") {
+                        showUploadDialog = true
+                    } else {
+                        onNavigate(route)
+                    }
+                }
+            )
+        },
         floatingActionButton = {
-            Column(
-                horizontalAlignment = Alignment.End
-            ) {
-                // Mini FABs that appear when main FAB is clicked
-                if (showUploadDialog) {
-                    // Gallery option
-                    SmallFloatingActionButton(
-                        onClick = { galleryLauncher.launch("image/*") },
-                        modifier = Modifier.padding(bottom = 8.dp),
-                        containerColor = MaterialTheme.colorScheme.secondary
-                    ) {
-                        Text("Gallery", fontSize = 12.sp)
-                    }
-
-                    // Camera option
-                    SmallFloatingActionButton(
-                        onClick = {
-                            val photoFile = File(
-                                context.cacheDir,
-                                "photo_${System.currentTimeMillis()}.jpg"
-                            )
-                            tempCameraUri = FileProvider.getUriForFile(
-                                context,
-                                "${context.packageName}.fileprovider",
-                                photoFile
-                            )
-                            cameraLauncher.launch(tempCameraUri!!)
-                        },
-                        modifier = Modifier.padding(bottom = 8.dp),
-                        containerColor = MaterialTheme.colorScheme.secondary
-                    ) {
-                        Text("Camera", fontSize = 12.sp)
-                    }
-                }
-
-                // Main FAB
-                FloatingActionButton(
-                    onClick = { showUploadDialog = !showUploadDialog }
-                ) {
-                    Icon(
-                        if (showUploadDialog) Icons.Default.Close else Icons.Default.Add,
-                        if (showUploadDialog) "Close" else "Upload"
-                    )
-                }
-            }
+            // Hidden FAB - replaced by bottom nav center button
         }
     ) { padding ->
-        Column(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
+                .padding(padding)
                 .background(PicFlickBackground)
         ) {
-            // Logo banner at VERY TOP (with space from notification bar)
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(PicFlickBannerBackground)
-                    .padding(top = 36.dp, bottom = 8.dp)
+            // SwipeRefresh wrapper
+            SwipeRefresh(
+                state = swipeRefreshState,
+                onRefresh = { viewModel.loadFlicks() },
+                indicator = { state, trigger ->
+                    SwipeRefreshIndicator(
+                        state = state,
+                        refreshTriggerDistance = trigger,
+                        backgroundColor = MaterialTheme.colorScheme.surface,
+                        contentColor = MaterialTheme.colorScheme.primary
+                    )
+                },
+                modifier = Modifier.fillMaxSize()
             ) {
-                LogoImage(
-                    modifier = Modifier.align(Alignment.Center)
-                )
-            }
-
-            // MENU BANNER - Same grey, with hamburger, friends, and profile
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(PicFlickBannerBackground)
-                    .padding(horizontal = 8.dp, vertical = 8.dp)
-            ) {
-                // LEFT: Hamburger menu
-                IconButton(
-                    onClick = { menuExpanded = true },
-                    modifier = Modifier.align(Alignment.CenterStart)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Menu,
-                        contentDescription = "Menu",
-                        tint = MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier.size(32.dp)
-                    )
-                }
-
-                // CENTER: My Friends icon (custom two people)
-                IconButton(
-                    onClick = { onNavigate("friends") },
-                    modifier = Modifier.align(Alignment.Center)
-                ) {
-                    Box(
-                        modifier = Modifier.size(32.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        // Two overlapping person icons for "friends" look
-                        Icon(
-                            imageVector = Icons.Default.Person,
-                            contentDescription = "My Friends",
-                            tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
-                            modifier = Modifier
-                                .size(24.dp)
-                                .offset(x = (-4).dp, y = 2.dp)
-                        )
-                        Icon(
-                            imageVector = Icons.Default.Person,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onSurface,
-                            modifier = Modifier
-                                .size(26.dp)
-                                .offset(x = 4.dp, y = (-2).dp)
-                        )
-                    }
-                }
-
-                // RIGHT: Profile picture (or default icon)
-                IconButton(
-                    onClick = { profileMenuExpanded = true },
-                    modifier = Modifier.align(Alignment.CenterEnd)
-                ) {
-                    if (userProfile.photoUrl.isNotEmpty()) {
-                        // Show actual profile photo
-                        AsyncImage(
-                            model = userProfile.photoUrl,
-                            contentDescription = "My Profile",
-                            modifier = Modifier
-                                .size(36.dp)
-                                .clip(androidx.compose.foundation.shape.CircleShape),
-                            contentScale = ContentScale.Crop
-                        )
-                    } else {
-                        // Default icon
-                        Icon(
-                            imageVector = Icons.Default.AccountCircle,
-                            contentDescription = "My Profile",
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(32.dp)
-                        )
-                    }
-                }
-
-                // Main Dropdown menu (from hamburger)
-                DropdownMenu(
-                    expanded = menuExpanded,
-                    onDismissRequest = { menuExpanded = false }
-                ) {
-                    menuItems.forEach { (label, route) ->
-                        DropdownMenuItem(
-                            text = {
-                                Text(
-                                    text = label,
-                                    fontSize = 14.sp
-                                )
-                            },
-                            onClick = {
-                                menuExpanded = false
-                                onNavigate(route)
-                            }
-                        )
-                    }
-                }
-
-                // Profile Dropdown menu (from profile icon)
-                DropdownMenu(
-                    expanded = profileMenuExpanded,
-                    onDismissRequest = { profileMenuExpanded = false },
-                    modifier = Modifier.align(Alignment.TopEnd)
-                ) {
-                    // My Profile option
-                    DropdownMenuItem(
-                        text = {
-                            Text(
-                                text = "My Profile",
-                                fontSize = 14.sp
-                            )
-                        },
-                        onClick = {
-                            profileMenuExpanded = false
-                            onNavigate("profile")
-                        }
-                    )
-                    // Sign Out option
-                    DropdownMenuItem(
-                        text = {
-                            Text(
-                                text = "Sign Out",
-                                fontSize = 14.sp
-                            )
-                        },
-                        onClick = {
-                            profileMenuExpanded = false
-                            onSignOut()
-                        }
-                    )
-                }
-            }
-
-            // Content BELOW menu - HAS PADDING
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding)
-            ) {
-                // Dismiss mini FABs when clicking outside
-                if (showUploadDialog) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .clickable { showUploadDialog = false }
-                    )
-                }
-
                 // Content
                 when {
-                    viewModel.isLoading -> FullScreenLoading()
+                    viewModel.isLoading && viewModel.flicks.isEmpty() -> PhotoGridShimmer()
                     viewModel.errorMessage != null -> ErrorMessage(
                         message = viewModel.errorMessage ?: "Unknown error",
                         onRetry = { viewModel.loadFlicks() }
@@ -347,6 +185,30 @@ fun HomeScreen(
                         onPhotoClick = { flick -> selectedFlick = flick }
                     )
                 }
+            }
+
+            // Upload mini FABs overlay
+            if (showUploadDialog) {
+                UploadOverlay(
+                    onDismiss = { showUploadDialog = false },
+                    onCameraClick = {
+                        val photoFile = File(
+                            context.cacheDir,
+                            "photo_${System.currentTimeMillis()}.jpg"
+                        )
+                        tempCameraUri = FileProvider.getUriForFile(
+                            context,
+                            "${context.packageName}.fileprovider",
+                            photoFile
+                        )
+                        cameraLauncher.launch(tempCameraUri!!)
+                        showUploadDialog = false
+                    },
+                    onGalleryClick = {
+                        galleryLauncher.launch("image/*")
+                        showUploadDialog = false
+                    }
+                )
             }
         }
     }
@@ -363,6 +225,86 @@ fun HomeScreen(
 }
 
 @Composable
+private fun UploadOverlay(
+    onDismiss: () -> Unit,
+    onCameraClick: () -> Unit,
+    onGalleryClick: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black.copy(alpha = 0.6f))
+            .clickable { onDismiss() }
+    ) {
+        Column(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = 100.dp)
+                .background(
+                    MaterialTheme.colorScheme.surface,
+                    RoundedCornerShape(16.dp)
+                )
+                .padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                text = "Upload Photo",
+                style = MaterialTheme.typography.titleLarge,
+                modifier = Modifier.padding(bottom = 16.dp)
+            )
+            
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(32.dp)
+            ) {
+                // Camera option
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.clickable { onCameraClick() }
+                ) {
+                    FloatingActionButton(
+                        onClick = onCameraClick,
+                        containerColor = MaterialTheme.colorScheme.primary
+                    ) {
+                        Icon(
+                            Icons.Default.Add,
+                            contentDescription = "Camera",
+                            tint = MaterialTheme.colorScheme.onPrimary
+                        )
+                    }
+                    Text(
+                        text = "Camera",
+                        modifier = Modifier.padding(top = 8.dp),
+                        style = MaterialTheme.typography.labelMedium
+                    )
+                }
+                
+                // Gallery option
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.clickable { onGalleryClick() }
+                ) {
+                    FloatingActionButton(
+                        onClick = onGalleryClick,
+                        containerColor = MaterialTheme.colorScheme.secondary
+                    ) {
+                        Icon(
+                            Icons.Default.Menu,
+                            contentDescription = "Gallery",
+                            tint = MaterialTheme.colorScheme.onSecondary
+                        )
+                    }
+                    Text(
+                        text = "Gallery",
+                        modifier = Modifier.padding(top = 8.dp),
+                        style = MaterialTheme.typography.labelMedium
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
 private fun FlickGrid(
     flicks: List<Flick>,
     userProfile: UserProfile,
@@ -371,7 +313,8 @@ private fun FlickGrid(
 ) {
     LazyVerticalGrid(
         columns = GridCells.Fixed(3),
-        modifier = Modifier.fillMaxSize()
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(4.dp)
     ) {
         items(flicks) { flick ->
             FlickCard(
@@ -393,8 +336,10 @@ private fun FlickCard(
 ) {
     Card(
         modifier = Modifier
-            .padding(2.dp)
+            .padding(4.dp)
             .clickable { onPhotoClick() },
+        shape = RoundedCornerShape(12.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         colors = CardDefaults.cardColors(
             containerColor = Color.Transparent
         )
@@ -405,42 +350,43 @@ private fun FlickCard(
                 contentDescription = null,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .aspectRatio(1f),
+                    .aspectRatio(1f)
+                    .clip(RoundedCornerShape(12.dp)),
                 contentScale = ContentScale.Crop
             )
             Row(
-                modifier = Modifier.padding(4.dp),
+                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 // Like button
                 IconButton(
                     onClick = onLikeClick,
-                    modifier = Modifier.size(28.dp)
+                    modifier = Modifier.size(32.dp)
                 ) {
                     Icon(
                         imageVector = if (flick.likes.contains(userId)) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
                         contentDescription = if (flick.likes.contains(userId)) "Unlike" else "Like",
-                        tint = if (flick.likes.contains(userId)) Color.Red else Color.Gray,
-                        modifier = Modifier.size(18.dp)
+                        tint = if (flick.likes.contains(userId)) Color.Red else MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(20.dp)
                     )
                 }
                 Text(
                     text = "${flick.likes.size}",
-                    fontSize = 11.sp,
-                    modifier = Modifier.padding(end = 8.dp)
+                    style = MaterialTheme.typography.labelSmall,
+                    modifier = Modifier.padding(end = 12.dp)
                 )
 
                 // Comment icon and count
                 Icon(
                     imageVector = Icons.Outlined.MailOutline,
                     contentDescription = "Comments",
-                    tint = Color.Gray,
-                    modifier = Modifier.size(16.dp)
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(18.dp)
                 )
                 Text(
                     text = "${flick.commentCount}",
-                    fontSize = 11.sp,
-                    modifier = Modifier.padding(start = 2.dp)
+                    style = MaterialTheme.typography.labelSmall,
+                    modifier = Modifier.padding(start = 4.dp)
                 )
             }
         }

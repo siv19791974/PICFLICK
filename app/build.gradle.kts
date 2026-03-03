@@ -81,6 +81,9 @@ dependencies {
     // Coil for image loading
     implementation(libs.coil.compose)
     implementation(libs.coil.network.okhttp)
+    
+    // Accompanist for pull-to-refresh
+    implementation(libs.accompanist.swiperefresh)
 
     // Testing
     testImplementation(libs.junit)

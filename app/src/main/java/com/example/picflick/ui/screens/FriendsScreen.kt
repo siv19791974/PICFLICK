@@ -7,9 +7,11 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -21,10 +23,14 @@ import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.example.picflick.R
 import com.example.picflick.data.UserProfile
+import com.example.picflick.ui.components.ListItemShimmer
 import com.example.picflick.ui.components.LogoImage
 import com.example.picflick.ui.theme.PicFlickBackground
 import com.example.picflick.ui.theme.PicFlickBannerBackground
 import com.example.picflick.viewmodel.FriendsViewModel
+import com.google.accompanist.swiperefresh.SwipeRefresh
+import com.google.accompanist.swiperefresh.SwipeRefreshIndicator
+import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
 
 /**
  * Screen showing list of friends the user is following
@@ -33,12 +39,16 @@ import com.example.picflick.viewmodel.FriendsViewModel
 fun FriendsScreen(
     userProfile: UserProfile,
     viewModel: FriendsViewModel,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    onFindFriendsClick: () -> Unit = {}
 ) {
     // Load following users
     LaunchedEffect(userProfile.following) {
         viewModel.loadFollowingUsers(userProfile.following)
     }
+
+    // Swipe refresh state
+    val swipeRefreshState = rememberSwipeRefreshState(isRefreshing = viewModel.isLoading)
 
     Column(
         modifier = Modifier
@@ -70,20 +80,52 @@ fun FriendsScreen(
             )
         }
 
-        when {
-            viewModel.isLoading -> {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    CircularProgressIndicator()
+        // Find Friends button
+        Button(
+            onClick = onFindFriendsClick,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            shape = RoundedCornerShape(12.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Default.Search,
+                contentDescription = null,
+                modifier = Modifier.size(20.dp)
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text("Find Friends")
+        }
+
+        // SwipeRefresh content
+        SwipeRefresh(
+            state = swipeRefreshState,
+            onRefresh = { viewModel.loadFollowingUsers(userProfile.following) },
+            indicator = { state, trigger ->
+                SwipeRefreshIndicator(
+                    state = state,
+                    refreshTriggerDistance = trigger,
+                    backgroundColor = MaterialTheme.colorScheme.surface,
+                    contentColor = MaterialTheme.colorScheme.primary
+                )
+            },
+            modifier = Modifier.fillMaxSize()
+        ) {
+            when {
+                viewModel.isLoading && viewModel.followingUsers.isEmpty() -> {
+                    // Show 5 shimmer items
+                    Column {
+                        repeat(5) {
+                            ListItemShimmer()
+                        }
+                    }
                 }
-            }
-            viewModel.followingUsers.isEmpty() -> EmptyFriendsState()
-            else -> {
-                LazyColumn {
-                    items(viewModel.followingUsers) { friend ->
-                        FriendListItem(friend = friend)
+                viewModel.followingUsers.isEmpty() -> EmptyFriendsState()
+                else -> {
+                    LazyColumn {
+                        items(viewModel.followingUsers) { friend ->
+                            FriendListItem(friend = friend)
+                        }
                     }
                 }
             }

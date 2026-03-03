@@ -168,6 +168,7 @@ private fun AuthenticatedContent(
                 photoCount = profileViewModel.photoCount,
                 onBack = { onScreenChange(Screen.Home) },
                 onSignOut = onSignOut,
+                onMyPhotosClick = { onScreenChange(Screen.MyPhotos) },
                 onPhotoSelected = onProfilePhotoSelected
             )
 
@@ -180,7 +181,8 @@ private fun AuthenticatedContent(
             is Screen.Friends -> FriendsScreen(
                 userProfile = userProfile,
                 viewModel = friendsViewModel,
-                onBack = { onScreenChange(Screen.Home) }
+                onBack = { onScreenChange(Screen.Home) },
+                onFindFriendsClick = { onScreenChange(Screen.FindFriends) }
             )
 
             is Screen.Chats -> ChatsScreen(

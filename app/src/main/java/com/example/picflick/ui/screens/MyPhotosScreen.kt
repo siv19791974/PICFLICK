@@ -18,6 +18,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
@@ -26,9 +28,13 @@ import com.example.picflick.data.Flick
 import com.example.picflick.ui.components.ErrorMessage
 import com.example.picflick.ui.components.FullScreenLoading
 import com.example.picflick.ui.components.LogoImage
+import com.example.picflick.ui.components.PhotoGridShimmer
 import com.example.picflick.ui.theme.PicFlickBackground
 import com.example.picflick.ui.theme.PicFlickBannerBackground
 import com.example.picflick.viewmodel.ProfileViewModel
+import com.google.accompanist.swiperefresh.SwipeRefresh
+import com.google.accompanist.swiperefresh.SwipeRefreshIndicator
+import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
 
 /**
  * Screen showing current user's photos
@@ -45,6 +51,9 @@ fun MyPhotosScreen(
     }
 
     var selectedPhoto by remember { mutableStateOf<Flick?>(null) }
+    
+    // Swipe refresh state
+    val swipeRefreshState = rememberSwipeRefreshState(isRefreshing = viewModel.isLoading)
 
     Column(
         modifier = Modifier
@@ -78,17 +87,32 @@ fun MyPhotosScreen(
             )
         }
 
-        when {
-            viewModel.isLoading -> FullScreenLoading()
-            viewModel.errorMessage != null -> ErrorMessage(
-                message = viewModel.errorMessage ?: "Unknown error",
-                onRetry = { viewModel.loadUserPhotos(userId) }
-            )
-            viewModel.photos.isEmpty() -> EmptyMyPhotosState()
-            else -> PhotoGrid(
-                photos = viewModel.photos,
-                onPhotoClick = { photo -> selectedPhoto = photo }
-            )
+        // SwipeRefresh content
+        SwipeRefresh(
+            state = swipeRefreshState,
+            onRefresh = { viewModel.loadUserPhotos(userId) },
+            indicator = { state, trigger ->
+                SwipeRefreshIndicator(
+                    state = state,
+                    refreshTriggerDistance = trigger,
+                    backgroundColor = MaterialTheme.colorScheme.surface,
+                    contentColor = MaterialTheme.colorScheme.primary
+                )
+            },
+            modifier = Modifier.fillMaxSize()
+        ) {
+            when {
+                viewModel.isLoading && viewModel.photos.isEmpty() -> PhotoGridShimmer()
+                viewModel.errorMessage != null -> ErrorMessage(
+                    message = viewModel.errorMessage ?: "Unknown error",
+                    onRetry = { viewModel.loadUserPhotos(userId) }
+                )
+                viewModel.photos.isEmpty() -> EmptyMyPhotosState()
+                else -> PhotoGrid(
+                    photos = viewModel.photos,
+                    onPhotoClick = { photo -> selectedPhoto = photo }
+                )
+            }
         }
     }
 

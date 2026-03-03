@@ -13,8 +13,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.MailOutline
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -40,6 +43,7 @@ fun ProfileScreen(
     photoCount: Int,
     onBack: () -> Unit,
     onSignOut: () -> Unit,
+    onMyPhotosClick: () -> Unit = {},
     onPhotoSelected: (Uri) -> Unit = {}
 ) {
     // Image picker launcher
@@ -208,6 +212,60 @@ fun ProfileScreen(
 
         Spacer(modifier = Modifier.height(32.dp))
 
+        // MY PHOTOS SECTION
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp)
+                .clickable { onMyPhotosClick() },
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surface
+            ),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(20.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Edit,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(28.dp)
+                    )
+                    Spacer(modifier = Modifier.width(16.dp))
+                    Column {
+                        Text(
+                            text = "My Photos",
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = "$photoCount photos uploaded",
+                            fontSize = 14.sp,
+                            color = Color.Gray
+                        )
+                    }
+                }
+                
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                    contentDescription = "View",
+                    modifier = Modifier.size(24.dp),
+                    tint = MaterialTheme.colorScheme.primary
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
         // Action Buttons
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -230,6 +288,30 @@ fun ProfileScreen(
                 Icon(Icons.AutoMirrored.Filled.ExitToApp, contentDescription = null)
                 Spacer(modifier = Modifier.width(8.dp))
                 Text("Sign Out")
+            }
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        // About & Contact Links
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceEvenly
+        ) {
+            TextButton(
+                onClick = { /* TODO: Navigate to About */ }
+            ) {
+                Icon(Icons.Default.Info, contentDescription = null)
+                Spacer(modifier = Modifier.width(4.dp))
+                Text("About")
+            }
+
+            TextButton(
+                onClick = { /* TODO: Navigate to Contact */ }
+            ) {
+                Icon(Icons.Default.MailOutline, contentDescription = null)
+                Spacer(modifier = Modifier.width(4.dp))
+                Text("Contact")
             }
         }
 
