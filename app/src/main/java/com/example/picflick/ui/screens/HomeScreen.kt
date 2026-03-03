@@ -17,6 +17,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -38,6 +39,19 @@ import com.example.picflick.viewmodel.HomeViewModel
 import java.io.File
 
 /**
+ * Menu items for the hamburger navigation
+ */
+private val menuItems = listOf(
+    "Home" to "home",
+    "My Photos" to "my_photos",
+    "Find Friends" to "find_friends",
+    "Messages" to "chats",
+    "Notifications" to "notifications",
+    "About" to "about",
+    "Contact Us" to "contact"
+)
+
+/**
  * Home screen with photo grid and upload functionality
  */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -51,6 +65,7 @@ fun HomeScreen(
     val context = LocalContext.current
     var showUploadDialog by remember { mutableStateOf(false) }
     var tempCameraUri by remember { mutableStateOf<Uri?>(null) }
+    var menuExpanded by remember { mutableStateOf(false) } // Hamburger menu state
 
     // Load data
     LaunchedEffect(Unit) {
@@ -171,19 +186,161 @@ fun HomeScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Top
         ) {
-            // Logo in light grey banner - lower on screen
-            Spacer(modifier = Modifier.height(48.dp)) // Push down from top
+            // Logo banner - extends to top of screen
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .background(PicFlickBannerBackground)
-                    .padding(vertical = 8.dp),
+                    .padding(top = 36.dp, bottom = 8.dp), // Logo slightly higher
                 contentAlignment = Alignment.Center
             ) {
                 LogoImage()
             }
             
-            // Content BELOW logo - HAS PADDING
+            // MENU BANNER - Same grey, with hamburger, friends, and profile
+            var profileMenuExpanded by remember { mutableStateOf(false) }
+            
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(PicFlickBannerBackground)
+                    .padding(vertical = 8.dp)
+            ) {
+                // LEFT: Hamburger menu icon
+                IconButton(
+                    onClick = { menuExpanded = true },
+                    modifier = Modifier
+                        .size(48.dp)
+                        .align(Alignment.CenterStart)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Menu,
+                        contentDescription = "Menu",
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(32.dp)
+                    )
+                }
+                
+                // CENTER: My Friends icon (custom two people)
+                IconButton(
+                    onClick = { onNavigate("friends") },
+                    modifier = Modifier
+                        .size(48.dp)
+                        .align(Alignment.Center)
+                ) {
+                    // Custom friends icon - two person icons
+                    Box(
+                        modifier = Modifier.size(32.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        // Background person (slightly offset)
+                        Icon(
+                            imageVector = Icons.Default.Person,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f),
+                            modifier = Modifier
+                                .size(20.dp)
+                                .offset(x = (-4).dp, y = (-2).dp)
+                        )
+                        // Foreground person
+                        Icon(
+                            imageVector = Icons.Default.Person,
+                            contentDescription = "My Friends",
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier
+                                .size(22.dp)
+                                .offset(x = 4.dp, y = 2.dp)
+                        )
+                    }
+                }
+                
+                // RIGHT: Profile picture (or default icon)
+                IconButton(
+                    onClick = { profileMenuExpanded = true },
+                    modifier = Modifier
+                        .size(48.dp)
+                        .align(Alignment.CenterEnd)
+                        .padding(end = 8.dp)
+                ) {
+                    if (userProfile.photoUrl.isNotEmpty()) {
+                        // Show actual profile picture (CIRCULAR)
+                        AsyncImage(
+                            model = userProfile.photoUrl,
+                            contentDescription = "My Profile",
+                            modifier = Modifier
+                                .size(36.dp)
+                                .clip(androidx.compose.foundation.shape.CircleShape) // CIRCLE CLIP
+                                .background(Color.White, androidx.compose.foundation.shape.CircleShape),
+                            contentScale = ContentScale.Crop
+                        )
+                    } else {
+                        // Default icon
+                        Icon(
+                            imageVector = Icons.Default.AccountCircle,
+                            contentDescription = "My Profile",
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(32.dp)
+                        )
+                    }
+                }
+                
+                // Main Dropdown menu (from hamburger)
+                DropdownMenu(
+                    expanded = menuExpanded,
+                    onDismissRequest = { menuExpanded = false }
+                ) {
+                    menuItems.forEach { (label, route) ->
+                        DropdownMenuItem(
+                            text = { 
+                                Text(
+                                    text = label,
+                                    fontSize = 14.sp
+                                )
+                            },
+                            onClick = {
+                                menuExpanded = false
+                                onNavigate(route)
+                            }
+                        )
+                    }
+                }
+                
+                // Profile Dropdown menu (from profile icon)
+                DropdownMenu(
+                    expanded = profileMenuExpanded,
+                    onDismissRequest = { profileMenuExpanded = false },
+                    modifier = Modifier.align(Alignment.TopEnd)
+                ) {
+                    // My Profile option
+                    DropdownMenuItem(
+                        text = { 
+                            Text(
+                                text = "My Profile",
+                                fontSize = 14.sp
+                            )
+                        },
+                        onClick = {
+                            profileMenuExpanded = false
+                            onNavigate("profile")
+                        }
+                    )
+                    // Sign Out option
+                    DropdownMenuItem(
+                        text = { 
+                            Text(
+                                text = "Sign Out",
+                                fontSize = 14.sp
+                            )
+                        },
+                        onClick = {
+                            profileMenuExpanded = false
+                            onSignOut()
+                        }
+                    )
+                }
+            }
+            
+            // Content BELOW menu - HAS PADDING
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -246,7 +403,10 @@ private fun FlickCard(
     Card(
         modifier = Modifier
             .padding(2.dp)
-            .clickable { }
+            .clickable { },
+        colors = CardDefaults.cardColors(
+            containerColor = Color.Transparent // REMOVE GREY BACKGROUND
+        )
     ) {
         Column {
             AsyncImage(

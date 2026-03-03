@@ -1,6 +1,7 @@
 package com.example.picflick.ui.screens
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -21,7 +22,10 @@ import coil3.compose.AsyncImage
 import com.example.picflick.R
 import com.example.picflick.data.UserProfile
 import com.example.picflick.ui.components.FullScreenLoading
+import com.example.picflick.ui.components.LogoImage
 import com.example.picflick.ui.components.TopBarWithBackButton
+import com.example.picflick.ui.theme.PicFlickBackground
+import com.example.picflick.ui.theme.PicFlickBannerBackground
 import com.example.picflick.viewmodel.FriendsViewModel
 
 /**
@@ -45,8 +49,20 @@ fun FindFriendsScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .background(PicFlickBackground)
                 .padding(padding)
         ) {
+            // Logo banner at top
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(PicFlickBannerBackground)
+                    .padding(top = 36.dp, bottom = 8.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                LogoImage()
+            }
+            
             // Search field
             OutlinedTextField(
                 value = viewModel.searchQuery,

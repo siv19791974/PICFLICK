@@ -10,5 +10,7 @@ data class UserProfile(
     val photoUrl: String = "",
     val bio: String = "",
     val followers: List<String> = emptyList(),
-    val following: List<String> = emptyList()
+    val following: List<String> = emptyList(),
+    val totalLikes: Int = 0,
+    val totalViews: Int = 0
 )

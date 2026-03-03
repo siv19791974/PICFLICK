@@ -1,5 +1,6 @@
 package com.example.picflick.ui.screens
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -11,7 +12,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.example.picflick.data.UserProfile
+import com.example.picflick.ui.components.LogoImage
 import com.example.picflick.ui.components.TopBarWithBackButton
+import com.example.picflick.ui.theme.PicFlickBackground
+import com.example.picflick.ui.theme.PicFlickBannerBackground
 
 /**
  * Screen showing list of friends the user is following
@@ -33,8 +37,20 @@ fun FriendsScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .background(PicFlickBackground)
                 .padding(padding)
         ) {
+            // Logo banner at top
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(PicFlickBannerBackground)
+                    .padding(top = 36.dp, bottom = 8.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                LogoImage()
+            }
+            
             if (userProfile.following.isEmpty()) {
                 EmptyFriendsState()
             } else {

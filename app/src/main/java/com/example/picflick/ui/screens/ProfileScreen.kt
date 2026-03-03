@@ -1,14 +1,21 @@
 package com.example.picflick.ui.screens
 
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -18,12 +25,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
-import com.example.picflick.R
 import com.example.picflick.data.UserProfile
+import com.example.picflick.ui.components.LogoImage
 import com.example.picflick.ui.components.TopBarWithBackButton
+import com.example.picflick.ui.theme.PicFlickBackground
+import com.example.picflick.ui.theme.PicFlickBannerBackground
 
 /**
- * Profile screen showing user information
+ * Profile screen showing user information with analytics
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -31,12 +40,20 @@ fun ProfileScreen(
     userProfile: UserProfile,
     photoCount: Int,
     onBack: () -> Unit,
-    onSignOut: () -> Unit
+    onSignOut: () -> Unit,
+    onPhotoSelected: (Uri) -> Unit = {}
 ) {
+    // Image picker launcher
+    val imagePicker = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        uri?.let { onPhotoSelected(it) }
+    }
+
     Scaffold(
         topBar = {
             TopBarWithBackButton(
-                title = "Profile",
+                title = "", // NO TITLE as requested
                 onBackClick = onBack
             )
         }
@@ -44,28 +61,66 @@ fun ProfileScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .background(PicFlickBackground)
                 .padding(padding)
                 .verticalScroll(rememberScrollState()),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Spacer(modifier = Modifier.height(32.dp))
-
-            AsyncImage(
-                model = userProfile.photoUrl,
-                contentDescription = "Profile photo",
+            // Logo banner at top
+            Box(
                 modifier = Modifier
-                    .size(120.dp)
-                    .clip(CircleShape)
-                    .border(3.dp, Color.Blue, CircleShape),
-                error = painterResource(id = android.R.drawable.ic_menu_myplaces)
-            )
+                    .fillMaxWidth()
+                    .background(PicFlickBannerBackground)
+                    .padding(top = 36.dp, bottom = 8.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                LogoImage()
+            }
+            
+            // Profile Photo - CLICKABLE to change
+            Box(
+                modifier = Modifier
+                    .padding(top = 16.dp),
+                contentAlignment = Alignment.BottomEnd
+            ) {
+                AsyncImage(
+                    model = userProfile.photoUrl,
+                    contentDescription = "Profile photo",
+                    modifier = Modifier
+                        .size(140.dp)
+                        .clip(CircleShape)
+                        .border(4.dp, MaterialTheme.colorScheme.primary, CircleShape)
+                        .clickable { imagePicker.launch("image/*") },
+                    error = painterResource(id = android.R.drawable.ic_menu_myplaces),
+                    contentScale = androidx.compose.ui.layout.ContentScale.Crop
+                )
+
+                // Edit icon overlay
+                Box(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .background(MaterialTheme.colorScheme.primary, CircleShape)
+                        .border(2.dp, Color.White, CircleShape)
+                        .clickable { imagePicker.launch("image/*") },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Edit,
+                        contentDescription = "Change Photo",
+                        tint = Color.White,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+            }
 
             Spacer(modifier = Modifier.height(16.dp))
 
+            // Name & Email
             Text(
                 text = userProfile.displayName,
-                fontSize = 24.sp,
-                fontWeight = FontWeight.Bold
+                fontSize = 26.sp,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onBackground
             )
             Text(
                 text = userProfile.email,
@@ -73,51 +128,132 @@ fun ProfileScreen(
                 color = Color.Gray
             )
 
+            if (userProfile.bio.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = userProfile.bio,
+                    fontSize = 14.sp,
+                    color = Color.Gray,
+                    modifier = Modifier.padding(horizontal = 32.dp)
+                )
+            }
+
             Spacer(modifier = Modifier.height(24.dp))
 
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly
+            // ANALYTICS CARD - Clean design
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = PicFlickBannerBackground
+                ),
+                elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
             ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(
-                        text = photoCount.toString(),
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.Bold
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(20.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    // Stats Grid
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceEvenly
+                    ) {
+                        StatItem(
+                            value = photoCount.toString(),
+                            label = "Photos"
+                        )
+                        StatItem(
+                            value = userProfile.totalLikes.toString(),
+                            label = "Likes"
+                        )
+                        StatItem(
+                            value = userProfile.totalViews.toString(),
+                            label = "Views"
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(20.dp))
+
+                    HorizontalDivider(
+                        modifier = Modifier.padding(horizontal = 32.dp),
+                        color = Color.Gray.copy(alpha = 0.3f)
                     )
-                    Text("Photos")
-                }
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(
-                        text = userProfile.followers.size.toString(),
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text("Followers")
-                }
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(
-                        text = userProfile.following.size.toString(),
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text("Following")
+
+                    Spacer(modifier = Modifier.height(20.dp))
+
+                    // Social Stats
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceEvenly
+                    ) {
+                        StatItem(
+                            value = userProfile.followers.size.toString(),
+                            label = "Followers"
+                        )
+                        StatItem(
+                            value = userProfile.following.size.toString(),
+                            label = "Following"
+                        )
+                    }
                 }
             }
 
             Spacer(modifier = Modifier.height(32.dp))
 
-            Button(onClick = { /* TODO: Edit profile */ }) {
-                Text("Edit Profile")
+            // Action Buttons
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly
+            ) {
+                OutlinedButton(
+                    onClick = { /* TODO: Edit profile */ },
+                    shape = RoundedCornerShape(20.dp)
+                ) {
+                    Text("Edit Profile")
+                }
+
+                Button(
+                    onClick = onSignOut,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color.Red.copy(alpha = 0.8f)
+                    ),
+                    shape = RoundedCornerShape(20.dp)
+                ) {
+                    Icon(Icons.AutoMirrored.Filled.ExitToApp, contentDescription = null)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Sign Out")
+                }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
-
-            OutlinedButton(onClick = onSignOut) {
-                Icon(Icons.AutoMirrored.Filled.ExitToApp, contentDescription = null)
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("Sign Out")
-            }
+            Spacer(modifier = Modifier.height(32.dp))
         }
+    }
+}
+
+@Composable
+private fun StatItem(
+    value: String,
+    label: String
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(
+            text = value,
+            fontSize = 24.sp,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.primary
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            text = label,
+            fontSize = 12.sp,
+            color = Color.Gray,
+            fontWeight = FontWeight.Medium
+        )
     }
 }

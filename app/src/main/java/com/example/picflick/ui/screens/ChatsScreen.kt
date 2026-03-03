@@ -1,5 +1,6 @@
 package com.example.picflick.ui.screens
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
@@ -10,7 +11,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.picflick.data.UserProfile
+import com.example.picflick.ui.components.LogoImage
 import com.example.picflick.ui.components.TopBarWithBackButton
+import com.example.picflick.ui.theme.PicFlickBackground
+import com.example.picflick.ui.theme.PicFlickBannerBackground
 
 /**
  * Chats/Messages screen
@@ -29,25 +33,42 @@ fun ChatsScreen(
             )
         }
     ) { padding ->
-        Box(
+        Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding),
-            contentAlignment = Alignment.Center
+                .background(PicFlickBackground)
+                .padding(padding)
         ) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.Send,
-                    contentDescription = null,
-                    modifier = Modifier.size(64.dp),
-                    tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
-                )
-                Spacer(modifier = Modifier.height(16.dp))
-                Text(
-                    text = "Messages coming soon!",
-                    fontSize = 18.sp,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-                )
+            // Logo banner at top
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(PicFlickBannerBackground)
+                    .padding(top = 36.dp, bottom = 8.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                LogoImage()
+            }
+            
+            // Content
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.Send,
+                        contentDescription = null,
+                        modifier = Modifier.size(64.dp),
+                        tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        text = "Messages coming soon!",
+                        fontSize = 18.sp,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                    )
+                }
             }
         }
     }

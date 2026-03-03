@@ -1,5 +1,6 @@
 package com.example.picflick.ui.screens
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -14,7 +15,10 @@ import coil3.compose.AsyncImage
 import com.example.picflick.data.Flick
 import com.example.picflick.ui.components.ErrorMessage
 import com.example.picflick.ui.components.FullScreenLoading
+import com.example.picflick.ui.components.LogoImage
 import com.example.picflick.ui.components.TopBarWithBackButton
+import com.example.picflick.ui.theme.PicFlickBackground
+import com.example.picflick.ui.theme.PicFlickBannerBackground
 import com.example.picflick.viewmodel.ProfileViewModel
 
 /**
@@ -40,7 +44,23 @@ fun MyPhotosScreen(
             )
         }
     ) { padding ->
-        Column(modifier = Modifier.fillMaxSize().padding(padding)) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(PicFlickBackground)
+                .padding(padding)
+        ) {
+            // Logo banner at top
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(PicFlickBannerBackground)
+                    .padding(top = 36.dp, bottom = 8.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                LogoImage()
+            }
+            
             when {
                 viewModel.isLoading -> FullScreenLoading()
                 viewModel.errorMessage != null -> ErrorMessage(
