@@ -1,0 +1,55 @@
+package com.example.picflick.ui.components
+
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.unit.dp
+import com.example.picflick.R
+
+/**
+ * Reusable logo component with proper cropping to remove transparent padding
+ */
+@Composable
+fun LogoImage(
+    modifier: Modifier = Modifier
+) {
+    Image(
+        painter = painterResource(id = R.drawable.logo),
+        contentDescription = "PicFlick Logo",
+        modifier = modifier
+            .fillMaxWidth()
+            .height(50.dp),
+        contentScale = ContentScale.Fit
+    )
+}
+
+/**
+ * Small logo for headers/toolbars
+ */
+@Composable
+fun SmallLogoImage(modifier: Modifier = Modifier) {
+    LogoImage(modifier = modifier)
+}
+
+/**
+ * Medium logo for normal screens
+ */
+@Composable
+fun MediumLogoImage(modifier: Modifier = Modifier) {
+    LogoImage(modifier = modifier)
+}
+
+/**
+ * Large logo for splash/about screens
+ */
+@Composable
+fun LargeLogoImage(modifier: Modifier = Modifier) {
+    LogoImage(modifier = modifier)
+}

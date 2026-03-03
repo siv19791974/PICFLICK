@@ -1,0 +1,94 @@
+package com.example.picflick.viewmodel
+
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.example.picflick.data.Result
+import com.example.picflick.data.UserProfile
+import com.example.picflick.repository.FlickRepository
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.FirebaseUser
+import kotlinx.coroutines.launch
+
+/**
+ * ViewModel for the main screen and authentication state
+ */
+class AuthViewModel : ViewModel() {
+
+    private val repository = FlickRepository.getInstance()
+    private val auth = FirebaseAuth.getInstance()
+
+    var currentUser by mutableStateOf<FirebaseUser?>(auth.currentUser)
+        private set
+
+    var userProfile by mutableStateOf<UserProfile?>(null)
+        private set
+
+    var isLoading by mutableStateOf(false)
+        private set
+
+    var errorMessage by mutableStateOf<String?>(null)
+        private set
+
+    init {
+        // Listen for auth state changes
+        auth.addAuthStateListener { firebaseAuth ->
+            currentUser = firebaseAuth.currentUser
+            currentUser?.let { loadUserProfile(it.uid) }
+        }
+    }
+
+    /**
+     * Load user profile from Firestore
+     */
+    private fun loadUserProfile(uid: String) {
+        isLoading = true
+        repository.getUserProfile(uid) { result ->
+            when (result) {
+                is Result.Success -> {
+                    userProfile = result.data
+                    isLoading = false
+                    errorMessage = null
+                }
+                is Result.Error -> {
+                    errorMessage = result.message
+                    isLoading = false
+                }
+                is Result.Loading -> { /* Do nothing */ }
+            }
+        }
+    }
+
+    /**
+     * Save user to Firestore after successful sign in
+     */
+    fun saveUserToFirestore(user: FirebaseUser) {
+        viewModelScope.launch {
+            val profile = UserProfile(
+                uid = user.uid,
+                email = user.email ?: "",
+                displayName = user.displayName ?: "",
+                photoUrl = user.photoUrl?.toString() ?: ""
+            )
+            repository.saveUserProfile(profile)
+        }
+    }
+
+    /**
+     * Sign out the current user
+     */
+    fun signOut() {
+        auth.signOut()
+        userProfile = null
+        currentUser = null
+    }
+
+    /**
+     * Clear any error message
+     */
+    fun clearError() {
+        errorMessage = null
+    }
+}
