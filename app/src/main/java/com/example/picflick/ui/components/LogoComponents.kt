@@ -22,7 +22,7 @@ fun LogoImage(
         contentDescription = "PicFlick Logo",
         modifier = modifier
             .fillMaxWidth()
-            .height(50.dp),
+            .height(40.dp),  // REDUCED from 50dp to 40dp
         contentScale = ContentScale.Fit
     )
 }

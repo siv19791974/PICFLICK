@@ -14,4 +14,4 @@ val Pink80 = Color(0xFFEFB8C8)
 
 // PicFlick App Colors
 val PicFlickBackground = Color(0xFFD7ECFF)
-val PicFlickBannerBackground = Color(0xFFE0E0E0)
+val PicFlickBannerBackground = Color(0xFFBDBDBD)  // Darker grey for banners

@@ -8,9 +8,10 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.example.picflick.ui.theme.PicFlickBannerBackground
 
 /**
- * Bottom navigation bar for main app navigation
+ * Bottom navigation bar for main app navigation - GREY
  */
 @Composable
 fun BottomNavBar(
@@ -20,6 +21,7 @@ fun BottomNavBar(
 ) {
     NavigationBar(
         modifier = Modifier.fillMaxWidth(),
+        containerColor = PicFlickBannerBackground,  // GREY background
         tonalElevation = 3.dp
     ) {
         // Home

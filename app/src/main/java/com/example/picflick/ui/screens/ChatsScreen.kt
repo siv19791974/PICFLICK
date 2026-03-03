@@ -26,39 +26,13 @@ fun ChatsScreen(
     onBack: () -> Unit,
     onNavigateHome: () -> Unit = onBack
 ) {
+    // NO BANNER - banner is now in MainActivity's Scaffold topBar!
     Column(
         modifier = Modifier
             .fillMaxSize()
             .background(PicFlickBackground)
     ) {
-        // Logo banner at top with back button inside
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(PicFlickBannerBackground)
-                .padding(top = 36.dp, bottom = 8.dp)
-        ) {
-            // Back button on the left
-            Icon(
-                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                contentDescription = "Go back",
-                modifier = Modifier
-                    .size(36.dp)
-                    .align(Alignment.CenterStart)
-                    .padding(start = 16.dp)
-                    .clickable { onBack() },
-                tint = MaterialTheme.colorScheme.onSurface
-            )
-            
-            // Logo centered - CLICKABLE to go home
-            LogoImage(
-                modifier = Modifier
-                    .align(Alignment.Center)
-                    .clickable { onNavigateHome() }
-            )
-        }
-        
-        // Content
+        // Content only - banner is in MainActivity
         Box(
             modifier = Modifier.fillMaxSize(),
             contentAlignment = Alignment.Center

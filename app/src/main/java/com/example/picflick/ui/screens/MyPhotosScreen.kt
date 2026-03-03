@@ -29,7 +29,6 @@ import com.example.picflick.ui.components.ErrorMessage
 import com.example.picflick.ui.components.FullScreenLoading
 import com.example.picflick.ui.components.LogoImage
 import com.example.picflick.ui.components.PhotoGridShimmer
-import com.example.picflick.ui.theme.PicFlickBackground
 import com.example.picflick.ui.theme.PicFlickBannerBackground
 import com.example.picflick.viewmodel.ProfileViewModel
 import com.google.accompanist.swiperefresh.SwipeRefresh
@@ -58,32 +57,23 @@ fun MyPhotosScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(PicFlickBackground)
+            .background(Color.Black)
     ) {
-        // Logo banner at top with back button inside
-        Box(
+        // NO BANNER - banner is now in MainActivity's Scaffold topBar!
+        // Simple back button only
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(PicFlickBannerBackground)
-                .padding(top = 36.dp, bottom = 8.dp)
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            // Back button on the left
             Icon(
                 imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                 contentDescription = "Go back",
                 modifier = Modifier
                     .size(36.dp)
-                    .align(Alignment.CenterStart)
-                    .padding(start = 16.dp)
                     .clickable { onBack() },
-                tint = MaterialTheme.colorScheme.onSurface
-            )
-
-            // Logo centered - CLICKABLE to go home
-            LogoImage(
-                modifier = Modifier
-                    .align(Alignment.Center)
-                    .clickable { onBack() }
+                tint = Color.White
             )
         }
 
