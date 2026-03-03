@@ -263,6 +263,21 @@ class FlickRepository private constructor() {
     }
 
     /**
+     * Update flick description/caption
+     */
+    suspend fun updateFlickDescription(flickId: String, description: String): Result<Unit> {
+        return try {
+            db.collection("flicks").document(flickId)
+                .update("description", description)
+                .await()
+            
+            Result.Success(Unit)
+        } catch (e: Exception) {
+            Result.Error(e, "Failed to update caption")
+        }
+    }
+
+    /**
      * Add a comment to a flick
      */
     suspend fun addComment(comment: Comment): Result<Unit> {
@@ -307,22 +322,17 @@ class FlickRepository private constructor() {
     }
 
     /**
-     * Delete a comment
+     * Delete a flick
      */
-    suspend fun deleteComment(comment: Comment): Result<Unit> {
+    suspend fun deleteFlick(flickId: String): Result<Unit> {
         return try {
-            db.collection("comments").document(comment.id)
+            db.collection("flicks").document(flickId)
                 .delete()
-                .await()
-            
-            // Decrement comment count on the flick
-            db.collection("flicks").document(comment.flickId)
-                .update("commentCount", FieldValue.increment(-1))
                 .await()
             
             Result.Success(Unit)
         } catch (e: Exception) {
-            Result.Error(e, "Failed to delete comment")
+            Result.Error(e, "Failed to delete photo")
         }
     }
 }

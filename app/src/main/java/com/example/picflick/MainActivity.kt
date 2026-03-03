@@ -61,16 +61,16 @@ class MainActivity : ComponentActivity() {
 /**
  * Sealed class for type-safe navigation
  */
-sealed class Screen(val route: String) {
-    data object Home : Screen("home")
-    data object Profile : Screen("profile")
-    data object MyPhotos : Screen("my_photos")
-    data object Friends : Screen("friends")
-    data object Chats : Screen("chats")
-    data object FindFriends : Screen("find_friends")
-    data object About : Screen("about")
-    data object Contact : Screen("contact")
-    data object Notifications : Screen("notifications")
+sealed class Screen {
+    data object Home : Screen()
+    data object Profile : Screen()
+    data object MyPhotos : Screen()
+    data object Friends : Screen()
+    data object Chats : Screen()
+    data object FindFriends : Screen()
+    data object About : Screen()
+    data object Contact : Screen()
+    data object Notifications : Screen()
 }
 
 /**
