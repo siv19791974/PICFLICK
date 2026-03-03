@@ -73,8 +73,10 @@ dependencies {
     implementation(libs.firebase.storage)
     implementation(libs.firebase.messaging)
 
-    // Google Sign In
-    implementation(libs.google.play.services.auth)
+    // Credential Manager (Modern Google Sign In)
+    implementation(libs.androidx.credentials)
+    implementation(libs.androidx.credentials.play.services)
+    implementation(libs.googleid)
 
     // Coil for image loading
     implementation(libs.coil.compose)

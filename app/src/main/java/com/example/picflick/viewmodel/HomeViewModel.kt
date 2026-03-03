@@ -8,7 +8,6 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import com.example.picflick.data.Flick
 import com.example.picflick.data.Result
-import com.example.picflick.data.UserProfile
 import com.example.picflick.repository.FlickRepository
 
 /**
