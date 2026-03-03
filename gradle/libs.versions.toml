@@ -18,6 +18,7 @@ mockk = "1.13.12"
 coroutinesTest = "1.8.1"
 credentials = "1.5.0"
 googleid = "1.1.1"
+accompanist = "0.36.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -68,6 +69,9 @@ kotlinx-coroutines-android = { group = "org.jetbrains.kotlinx", name = "kotlinx-
 
 # Navigation
 androidx-navigation-compose = { group = "androidx.navigation", name = "navigation-compose", version = "2.8.5" }
+
+# Accompanist
+accompanist-swiperefresh = { group = "com.google.accompanist", name = "accompanist-swiperefresh", version.ref = "accompanist" }
 
 # Unit Testing
 mockk = { group = "io.mockk", name = "mockk", version.ref = "mockk" }
