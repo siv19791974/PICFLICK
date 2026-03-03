@@ -1,83 +1,62 @@
 package com.example.picflick.ui.screens
 
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import com.example.picflick.R
 import com.example.picflick.ui.components.LogoImage
-import com.example.picflick.ui.components.TopBarWithBackButton
 import com.example.picflick.ui.theme.PicFlickBackground
 import com.example.picflick.ui.theme.PicFlickBannerBackground
 
 /**
  * About screen with app information
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AboutScreen(
     onBack: () -> Unit
 ) {
-    Scaffold(
-        topBar = {
-            TopBarWithBackButton(
-                title = "About",
-                onBackClick = onBack
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(PicFlickBackground)
+    ) {
+        // Logo banner at top with back button inside
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(PicFlickBannerBackground)
+                .padding(top = 36.dp, bottom = 8.dp)
+        ) {
+            // Back button on the left
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                contentDescription = "Go back",
+                modifier = Modifier
+                    .size(24.dp)
+                    .align(Alignment.CenterStart)
+                    .padding(start = 16.dp)
+                    .clickable { onBack() },
+                tint = MaterialTheme.colorScheme.onSurface
+            )
+            
+            // Logo centered
+            LogoImage(
+                modifier = Modifier.align(Alignment.Center)
             )
         }
-    ) { padding ->
+        
+        // Content
         Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(PicFlickBackground)
-                .padding(padding)
-                .verticalScroll(rememberScrollState()),
+            modifier = Modifier.fillMaxSize(),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Logo banner at top
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(PicFlickBannerBackground)
-                    .padding(top = 36.dp, bottom = 8.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                LogoImage()
-            }
-            
-            Spacer(modifier = Modifier.height(32.dp))
-            Image(
-                painter = painterResource(id = R.drawable.logo),
-                contentDescription = "PicFlick Logo",
-                modifier = Modifier.size(120.dp)
-            )
-            Spacer(modifier = Modifier.height(24.dp))
-            Text(
-                text = "PicFlick",
-                fontSize = 32.sp,
-                fontWeight = FontWeight.Bold
-            )
-            Text(
-                text = "Version 1.0",
-                fontSize = 16.sp,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-            )
-            Spacer(modifier = Modifier.height(32.dp))
-            Text(
-                text = "A photo sharing app for friends and family.",
-                modifier = Modifier.padding(horizontal = 32.dp),
-                textAlign = TextAlign.Center
-            )
+            // ... rest of content
         }
     }
 }

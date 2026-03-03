@@ -1,5 +1,6 @@
 package com.example.picflick.repository
 
+import com.example.picflick.data.Comment
 import com.example.picflick.data.Flick
 import com.example.picflick.data.Result
 import com.example.picflick.data.UserProfile
@@ -254,6 +255,70 @@ class FlickRepository private constructor() {
             Result.Success(Unit)
         } catch (e: Exception) {
             Result.Error(e, "Failed to create flick")
+        }
+    }
+
+    /**
+     * Add a comment to a flick
+     */
+    suspend fun addComment(comment: Comment): Result<Unit> {
+        return try {
+            val commentWithId = if (comment.id.isEmpty()) {
+                comment.copy(id = db.collection("comments").document().id)
+            } else {
+                comment
+            }
+            
+            db.collection("comments").document(commentWithId.id)
+                .set(commentWithId)
+                .await()
+            
+            // Increment comment count on the flick
+            db.collection("flicks").document(comment.flickId)
+                .update("commentCount", FieldValue.increment(1))
+                .await()
+            
+            Result.Success(Unit)
+        } catch (e: Exception) {
+            Result.Error(e, "Failed to add comment")
+        }
+    }
+
+    /**
+     * Get comments for a flick with real-time updates
+     */
+    fun getComments(flickId: String, onResult: (Result<List<Comment>>) -> Unit) {
+        db.collection("comments")
+            .whereEqualTo("flickId", flickId)
+            .orderBy("timestamp", Query.Direction.DESCENDING)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    onResult(Result.Error(error, "Failed to load comments"))
+                    return@addSnapshotListener
+                }
+                
+                val comments = snapshot?.toObjects(Comment::class.java) ?: emptyList()
+                onResult(Result.Success(comments))
+            }
+    }
+
+    /**
+     * Delete a comment
+     */
+    suspend fun deleteComment(comment: Comment): Result<Unit> {
+        return try {
+            db.collection("comments").document(comment.id)
+                .delete()
+                .await()
+            
+            // Decrement comment count on the flick
+            db.collection("flicks").document(comment.flickId)
+                .update("commentCount", FieldValue.increment(-1))
+                .await()
+            
+            Result.Success(Unit)
+        } catch (e: Exception) {
+            Result.Error(e, "Failed to delete comment")
         }
     }
 }

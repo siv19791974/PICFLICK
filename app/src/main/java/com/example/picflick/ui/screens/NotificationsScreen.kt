@@ -1,8 +1,10 @@
 package com.example.picflick.ui.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -12,63 +14,65 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.picflick.data.UserProfile
 import com.example.picflick.ui.components.LogoImage
-import com.example.picflick.ui.components.TopBarWithBackButton
 import com.example.picflick.ui.theme.PicFlickBackground
 import com.example.picflick.ui.theme.PicFlickBannerBackground
 
 /**
  * Notifications screen
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NotificationsScreen(
     userProfile: UserProfile,
     onBack: () -> Unit
 ) {
-    Scaffold(
-        topBar = {
-            TopBarWithBackButton(
-                title = "Notifications",
-                onBackClick = onBack
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(PicFlickBackground)
+    ) {
+        // Logo banner at top with back button inside
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(PicFlickBannerBackground)
+                .padding(top = 36.dp, bottom = 8.dp)
+        ) {
+            // Back button on the left
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                contentDescription = "Go back",
+                modifier = Modifier
+                    .size(24.dp)
+                    .align(Alignment.CenterStart)
+                    .padding(start = 16.dp)
+                    .clickable { onBack() },
+                tint = MaterialTheme.colorScheme.onSurface
+            )
+            
+            // Logo centered
+            LogoImage(
+                modifier = Modifier.align(Alignment.Center)
             )
         }
-    ) { padding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(PicFlickBackground)
-                .padding(padding)
+        
+        // Content
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
         ) {
-            // Logo banner at top
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(PicFlickBannerBackground)
-                    .padding(top = 36.dp, bottom = 8.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                LogoImage()
-            }
-            
-            // Content
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Icon(
-                        imageVector = Icons.Default.Notifications,
-                        contentDescription = null,
-                        modifier = Modifier.size(64.dp),
-                        tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Text(
-                        text = "No notifications yet",
-                        fontSize = 18.sp,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-                    )
-                }
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Icon(
+                    imageVector = Icons.Default.Notifications,
+                    contentDescription = null,
+                    modifier = Modifier.size(64.dp),
+                    tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(
+                    text = "No notifications yet",
+                    fontSize = 18.sp,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                )
             }
         }
     }

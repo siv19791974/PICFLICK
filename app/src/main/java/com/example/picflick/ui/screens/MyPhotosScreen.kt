@@ -1,10 +1,13 @@
 package com.example.picflick.ui.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -16,7 +19,6 @@ import com.example.picflick.data.Flick
 import com.example.picflick.ui.components.ErrorMessage
 import com.example.picflick.ui.components.FullScreenLoading
 import com.example.picflick.ui.components.LogoImage
-import com.example.picflick.ui.components.TopBarWithBackButton
 import com.example.picflick.ui.theme.PicFlickBackground
 import com.example.picflick.ui.theme.PicFlickBannerBackground
 import com.example.picflick.viewmodel.ProfileViewModel
@@ -24,7 +26,6 @@ import com.example.picflick.viewmodel.ProfileViewModel
 /**
  * Screen showing current user's photos
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MyPhotosScreen(
     viewModel: ProfileViewModel,
@@ -36,40 +37,44 @@ fun MyPhotosScreen(
         viewModel.loadUserPhotos(userId)
     }
 
-    Scaffold(
-        topBar = {
-            TopBarWithBackButton(
-                title = "My Photos",
-                onBackClick = onBack
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(PicFlickBackground)
+    ) {
+        // Logo banner at top with back button inside
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(PicFlickBannerBackground)
+                .padding(top = 36.dp, bottom = 8.dp)
+        ) {
+            // Back button on the left
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                contentDescription = "Go back",
+                modifier = Modifier
+                    .size(24.dp)
+                    .align(Alignment.CenterStart)
+                    .padding(start = 16.dp)
+                    .clickable { onBack() },
+                tint = MaterialTheme.colorScheme.onSurface
+            )
+            
+            // Logo centered
+            LogoImage(
+                modifier = Modifier.align(Alignment.Center)
             )
         }
-    ) { padding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(PicFlickBackground)
-                .padding(padding)
-        ) {
-            // Logo banner at top
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(PicFlickBannerBackground)
-                    .padding(top = 36.dp, bottom = 8.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                LogoImage()
-            }
-            
-            when {
-                viewModel.isLoading -> FullScreenLoading()
-                viewModel.errorMessage != null -> ErrorMessage(
-                    message = viewModel.errorMessage ?: "Unknown error",
-                    onRetry = { viewModel.loadUserPhotos(userId) }
-                )
-                viewModel.photos.isEmpty() -> EmptyMyPhotosState()
-                else -> PhotoGrid(photos = viewModel.photos)
-            }
+        
+        when {
+            viewModel.isLoading -> FullScreenLoading()
+            viewModel.errorMessage != null -> ErrorMessage(
+                message = viewModel.errorMessage ?: "Unknown error",
+                onRetry = { viewModel.loadUserPhotos(userId) }
+            )
+            viewModel.photos.isEmpty() -> EmptyMyPhotosState()
+            else -> PhotoGrid(photos = viewModel.photos)
         }
     }
 }

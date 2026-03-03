@@ -12,6 +12,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.*
@@ -27,14 +28,12 @@ import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import com.example.picflick.data.UserProfile
 import com.example.picflick.ui.components.LogoImage
-import com.example.picflick.ui.components.TopBarWithBackButton
 import com.example.picflick.ui.theme.PicFlickBackground
 import com.example.picflick.ui.theme.PicFlickBannerBackground
 
 /**
  * Profile screen showing user information with analytics
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProfileScreen(
     userProfile: UserProfile,
@@ -50,187 +49,191 @@ fun ProfileScreen(
         uri?.let { onPhotoSelected(it) }
     }
 
-    Scaffold(
-        topBar = {
-            TopBarWithBackButton(
-                title = "", // NO TITLE as requested
-                onBackClick = onBack
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(PicFlickBackground)
+            .verticalScroll(rememberScrollState()),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        // Logo banner at top with back button inside
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(PicFlickBannerBackground)
+                .padding(top = 36.dp, bottom = 8.dp)
+        ) {
+            // Back button on the left
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                contentDescription = "Go back",
+                modifier = Modifier
+                    .size(24.dp)
+                    .align(Alignment.CenterStart)
+                    .padding(start = 16.dp)
+                    .clickable { onBack() },
+                tint = MaterialTheme.colorScheme.onSurface
+            )
+            
+            // Logo centered
+            LogoImage(
+                modifier = Modifier.align(Alignment.Center)
             )
         }
-    ) { padding ->
-        Column(
+        
+        // Profile Photo - CLICKABLE to change
+        Box(
             modifier = Modifier
-                .fillMaxSize()
-                .background(PicFlickBackground)
-                .padding(padding)
-                .verticalScroll(rememberScrollState()),
-            horizontalAlignment = Alignment.CenterHorizontally
+                .padding(top = 16.dp),
+            contentAlignment = Alignment.BottomEnd
         ) {
-            // Logo banner at top
+            AsyncImage(
+                model = userProfile.photoUrl,
+                contentDescription = "Profile photo",
+                modifier = Modifier
+                    .size(140.dp)
+                    .clip(CircleShape)
+                    .border(4.dp, MaterialTheme.colorScheme.primary, CircleShape)
+                    .clickable { imagePicker.launch("image/*") },
+                error = painterResource(id = android.R.drawable.ic_menu_myplaces),
+                contentScale = androidx.compose.ui.layout.ContentScale.Crop
+            )
+
+            // Edit icon overlay
             Box(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .background(PicFlickBannerBackground)
-                    .padding(top = 36.dp, bottom = 8.dp),
+                    .size(40.dp)
+                    .background(MaterialTheme.colorScheme.primary, CircleShape)
+                    .border(2.dp, Color.White, CircleShape)
+                    .clickable { imagePicker.launch("image/*") },
                 contentAlignment = Alignment.Center
             ) {
-                LogoImage()
-            }
-            
-            // Profile Photo - CLICKABLE to change
-            Box(
-                modifier = Modifier
-                    .padding(top = 16.dp),
-                contentAlignment = Alignment.BottomEnd
-            ) {
-                AsyncImage(
-                    model = userProfile.photoUrl,
-                    contentDescription = "Profile photo",
-                    modifier = Modifier
-                        .size(140.dp)
-                        .clip(CircleShape)
-                        .border(4.dp, MaterialTheme.colorScheme.primary, CircleShape)
-                        .clickable { imagePicker.launch("image/*") },
-                    error = painterResource(id = android.R.drawable.ic_menu_myplaces),
-                    contentScale = androidx.compose.ui.layout.ContentScale.Crop
+                Icon(
+                    imageVector = Icons.Default.Edit,
+                    contentDescription = "Change Photo",
+                    tint = Color.White,
+                    modifier = Modifier.size(20.dp)
                 )
-
-                // Edit icon overlay
-                Box(
-                    modifier = Modifier
-                        .size(40.dp)
-                        .background(MaterialTheme.colorScheme.primary, CircleShape)
-                        .border(2.dp, Color.White, CircleShape)
-                        .clickable { imagePicker.launch("image/*") },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Edit,
-                        contentDescription = "Change Photo",
-                        tint = Color.White,
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
             }
+        }
 
-            Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(16.dp))
 
-            // Name & Email
+        // Name & Email
+        Text(
+            text = userProfile.displayName,
+            fontSize = 26.sp,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onBackground
+        )
+        Text(
+            text = userProfile.email,
+            fontSize = 14.sp,
+            color = Color.Gray
+        )
+
+        if (userProfile.bio.isNotEmpty()) {
+            Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = userProfile.displayName,
-                fontSize = 26.sp,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onBackground
-            )
-            Text(
-                text = userProfile.email,
+                text = userProfile.bio,
                 fontSize = 14.sp,
-                color = Color.Gray
+                color = Color.Gray,
+                modifier = Modifier.padding(horizontal = 32.dp)
             )
+        }
 
-            if (userProfile.bio.isNotEmpty()) {
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = userProfile.bio,
-                    fontSize = 14.sp,
-                    color = Color.Gray,
-                    modifier = Modifier.padding(horizontal = 32.dp)
-                )
-            }
+        Spacer(modifier = Modifier.height(24.dp))
 
-            Spacer(modifier = Modifier.height(24.dp))
-
-            // ANALYTICS CARD - Clean design
-            Card(
+        // ANALYTICS CARD - Clean design
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp),
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = PicFlickBannerBackground
+            ),
+            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+        ) {
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp),
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = PicFlickBannerBackground
-                ),
-                elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                    .padding(20.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(20.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
+                // Stats Grid
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceEvenly
                 ) {
-                    // Stats Grid
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceEvenly
-                    ) {
-                        StatItem(
-                            value = photoCount.toString(),
-                            label = "Photos"
-                        )
-                        StatItem(
-                            value = userProfile.totalLikes.toString(),
-                            label = "Likes"
-                        )
-                        StatItem(
-                            value = userProfile.totalViews.toString(),
-                            label = "Views"
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(20.dp))
-
-                    HorizontalDivider(
-                        modifier = Modifier.padding(horizontal = 32.dp),
-                        color = Color.Gray.copy(alpha = 0.3f)
+                    StatItem(
+                        value = photoCount.toString(),
+                        label = "Photos"
                     )
+                    StatItem(
+                        value = userProfile.totalLikes.toString(),
+                        label = "Likes"
+                    )
+                    StatItem(
+                        value = userProfile.totalViews.toString(),
+                        label = "Views"
+                    )
+                }
 
-                    Spacer(modifier = Modifier.height(20.dp))
+                Spacer(modifier = Modifier.height(20.dp))
 
-                    // Social Stats
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceEvenly
-                    ) {
-                        StatItem(
-                            value = userProfile.followers.size.toString(),
-                            label = "Followers"
-                        )
-                        StatItem(
-                            value = userProfile.following.size.toString(),
-                            label = "Following"
-                        )
-                    }
+                HorizontalDivider(
+                    modifier = Modifier.padding(horizontal = 32.dp),
+                    color = Color.Gray.copy(alpha = 0.3f)
+                )
+
+                Spacer(modifier = Modifier.height(20.dp))
+
+                // Social Stats
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceEvenly
+                ) {
+                    StatItem(
+                        value = userProfile.followers.size.toString(),
+                        label = "Followers"
+                    )
+                    StatItem(
+                        value = userProfile.following.size.toString(),
+                        label = "Following"
+                    )
                 }
             }
-
-            Spacer(modifier = Modifier.height(32.dp))
-
-            // Action Buttons
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly
-            ) {
-                OutlinedButton(
-                    onClick = { /* TODO: Edit profile */ },
-                    shape = RoundedCornerShape(20.dp)
-                ) {
-                    Text("Edit Profile")
-                }
-
-                Button(
-                    onClick = onSignOut,
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color.Red.copy(alpha = 0.8f)
-                    ),
-                    shape = RoundedCornerShape(20.dp)
-                ) {
-                    Icon(Icons.AutoMirrored.Filled.ExitToApp, contentDescription = null)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Sign Out")
-                }
-            }
-
-            Spacer(modifier = Modifier.height(32.dp))
         }
+
+        Spacer(modifier = Modifier.height(32.dp))
+
+        // Action Buttons
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceEvenly
+        ) {
+            OutlinedButton(
+                onClick = { /* TODO: Edit profile */ },
+                shape = RoundedCornerShape(20.dp)
+            ) {
+                Text("Edit Profile")
+            }
+
+            Button(
+                onClick = onSignOut,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color.Red.copy(alpha = 0.8f)
+                ),
+                shape = RoundedCornerShape(20.dp)
+            ) {
+                Icon(Icons.AutoMirrored.Filled.ExitToApp, contentDescription = null)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Sign Out")
+            }
+        }
+
+        Spacer(modifier = Modifier.height(32.dp))
     }
 }
 

@@ -35,34 +35,36 @@ fun TopBarWithBackButton(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 8.dp, vertical = 12.dp),
+            .padding(horizontal = 8.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Large clickable back button
+        // Smaller clickable back button
         Box(
             modifier = Modifier
-                .size(72.dp)
+                .size(40.dp)
                 .clickable { onBackClick() },
             contentAlignment = Alignment.Center
         ) {
             Icon(
                 imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                 contentDescription = "Go back",
-                modifier = Modifier.size(56.dp),
+                modifier = Modifier.size(24.dp),
                 tint = MaterialTheme.colorScheme.onSurface
             )
         }
 
-        Spacer(modifier = Modifier.weight(1f))
+        if (title.isNotEmpty()) {
+            Spacer(modifier = Modifier.weight(1f))
 
-        Text(
-            text = title,
-            fontSize = 28.sp,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(end = 72.dp)
-        )
+            Text(
+                text = title,
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(end = 40.dp)
+            )
 
-        Spacer(modifier = Modifier.weight(1f))
+            Spacer(modifier = Modifier.weight(1f))
+        }
     }
 }
 

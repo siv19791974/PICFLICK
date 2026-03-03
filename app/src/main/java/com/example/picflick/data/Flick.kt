@@ -10,5 +10,6 @@ data class Flick(
     val imageUrl: String = "",
     val description: String = "",
     val timestamp: Long = 0,
-    val likes: List<String> = emptyList()
+    val likes: List<String> = emptyList(),
+    val commentCount: Int = 0
 )

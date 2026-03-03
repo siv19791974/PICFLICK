@@ -179,6 +179,7 @@ private fun AuthenticatedContent(
 
             is Screen.Friends -> FriendsScreen(
                 userProfile = userProfile,
+                viewModel = friendsViewModel,
                 onBack = { onScreenChange(Screen.Home) }
             )
 

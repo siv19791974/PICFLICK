@@ -1,61 +1,138 @@
 package com.example.picflick.ui.screens
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
+import coil3.compose.AsyncImage
+import com.example.picflick.R
 import com.example.picflick.data.UserProfile
 import com.example.picflick.ui.components.LogoImage
-import com.example.picflick.ui.components.TopBarWithBackButton
 import com.example.picflick.ui.theme.PicFlickBackground
 import com.example.picflick.ui.theme.PicFlickBannerBackground
+import com.example.picflick.viewmodel.FriendsViewModel
 
 /**
  * Screen showing list of friends the user is following
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FriendsScreen(
     userProfile: UserProfile,
+    viewModel: FriendsViewModel,
     onBack: () -> Unit
 ) {
-    Scaffold(
-        topBar = {
-            TopBarWithBackButton(
-                title = "Friends",
-                onBackClick = onBack
+    // Load following users
+    LaunchedEffect(userProfile.following) {
+        viewModel.loadFollowingUsers(userProfile.following)
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(PicFlickBackground)
+    ) {
+        // Logo banner at top with back button inside
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(PicFlickBannerBackground)
+                .padding(top = 36.dp, bottom = 8.dp)
+        ) {
+            // Back button on the left
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                contentDescription = "Go back",
+                modifier = Modifier
+                    .size(24.dp)
+                    .align(Alignment.CenterStart)
+                    .padding(start = 16.dp)
+                    .clickable { onBack() },
+                tint = MaterialTheme.colorScheme.onSurface
+            )
+            
+            // Logo centered
+            LogoImage(
+                modifier = Modifier.align(Alignment.Center)
             )
         }
-    ) { padding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(PicFlickBackground)
-                .padding(padding)
-        ) {
-            // Logo banner at top
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(PicFlickBannerBackground)
-                    .padding(top = 36.dp, bottom = 8.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                LogoImage()
+
+        when {
+            viewModel.isLoading -> {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator()
+                }
             }
-            
-            if (userProfile.following.isEmpty()) {
-                EmptyFriendsState()
+            viewModel.followingUsers.isEmpty() -> EmptyFriendsState()
+            else -> {
+                LazyColumn {
+                    items(viewModel.followingUsers) { friend ->
+                        FriendListItem(friend = friend)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun FriendListItem(friend: UserProfile) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 4.dp)
+    ) {
+        Row(
+            modifier = Modifier.padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Profile photo
+            if (friend.photoUrl.isNotEmpty()) {
+                AsyncImage(
+                    model = friend.photoUrl,
+                    contentDescription = null,
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clip(CircleShape),
+                    contentScale = ContentScale.Crop,
+                    error = painterResource(id = android.R.drawable.ic_menu_myplaces)
+                )
             } else {
-                FriendsList(
-                    followingCount = userProfile.following.size
+                Icon(
+                    imageVector = Icons.Default.Person,
+                    contentDescription = null,
+                    modifier = Modifier.size(48.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.width(12.dp))
+
+            // User info
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = friend.displayName,
+                    style = MaterialTheme.typography.titleMedium
+                )
+                Text(
+                    text = "${friend.followers.size} followers",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                 )
             }
         }
@@ -83,14 +160,4 @@ private fun EmptyFriendsState() {
             )
         }
     }
-}
-
-@Composable
-private fun FriendsList(followingCount: Int) {
-    Text(
-        text = "Following $followingCount users",
-        modifier = Modifier.padding(16.dp),
-        style = MaterialTheme.typography.titleMedium
-    )
-    // TODO: Load and display actual user details for following list
 }
