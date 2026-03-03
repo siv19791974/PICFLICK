@@ -1,6 +1,7 @@
 package com.example.picflick
 
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -15,6 +16,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.picflick.data.UserProfile
@@ -85,11 +87,13 @@ fun MainScreen(
     var currentScreen by remember { mutableStateOf<Screen>(Screen.Home) }
     val currentUser = authViewModel.currentUser
     val userProfile = authViewModel.userProfile
+    val context = LocalContext.current // Get context for Toast
 
-    Scaffold(modifier = Modifier.fillMaxSize()) { _ ->
+    Scaffold(modifier = Modifier.fillMaxSize()) { padding ->
         Surface(
             modifier = Modifier
-                .fillMaxSize(),
+                .fillMaxSize()
+                .padding(padding),
             color = PicFlickBackground
         ) {
             if (currentUser == null) {
@@ -109,7 +113,11 @@ fun MainScreen(
                     homeViewModel = homeViewModel,
                     profileViewModel = profileViewModel,
                     friendsViewModel = friendsViewModel,
-                    onSignOut = { authViewModel.signOut() }
+                    onSignOut = { authViewModel.signOut() },
+                    onProfilePhotoSelected = { uri ->
+                        // TODO: Upload to Firebase Storage and update profile
+                        Toast.makeText(context, "Photo selected: $uri\nUpload coming soon!", Toast.LENGTH_SHORT).show()
+                    }
                 )
             }
         }
@@ -127,7 +135,8 @@ private fun AuthenticatedContent(
     homeViewModel: HomeViewModel,
     profileViewModel: ProfileViewModel,
     friendsViewModel: FriendsViewModel,
-    onSignOut: () -> Unit
+    onSignOut: () -> Unit,
+    onProfilePhotoSelected: (android.net.Uri) -> Unit = {}
 ) {
     Crossfade(
         targetState = currentScreen,
@@ -159,7 +168,8 @@ private fun AuthenticatedContent(
                 userProfile = userProfile,
                 photoCount = profileViewModel.photoCount,
                 onBack = { onScreenChange(Screen.Home) },
-                onSignOut = onSignOut
+                onSignOut = onSignOut,
+                onPhotoSelected = onProfilePhotoSelected
             )
 
             is Screen.MyPhotos -> MyPhotosScreen(

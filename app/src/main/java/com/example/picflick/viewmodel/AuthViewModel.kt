@@ -77,6 +77,19 @@ class AuthViewModel : ViewModel() {
     }
 
     /**
+     * Update user profile photo URL
+     */
+    fun updateProfilePhoto(photoUrl: String) {
+        viewModelScope.launch {
+            userProfile?.let { profile ->
+                val updatedProfile = profile.copy(photoUrl = photoUrl)
+                repository.saveUserProfile(updatedProfile)
+                userProfile = updatedProfile
+            }
+        }
+    }
+
+    /**
      * Sign out the current user
      */
     fun signOut() {
