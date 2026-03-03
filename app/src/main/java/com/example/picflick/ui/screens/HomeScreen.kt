@@ -57,6 +57,7 @@ fun HomeScreen(
     var showUploadDialog by remember { mutableStateOf(false) }
     var tempCameraUri by remember { mutableStateOf<Uri?>(null) }
     var selectedFlick by remember { mutableStateOf<Flick?>(null) }
+    var selectedFlickIndex by remember { mutableIntStateOf(0) }
     
     // Swipe refresh state
     val swipeRefreshState = rememberSwipeRefreshState(isRefreshing = viewModel.isLoading)
@@ -136,7 +137,10 @@ fun HomeScreen(
                     flicks = viewModel.flicks,
                     userProfile = userProfile,
                     onLikeClick = { flick -> viewModel.toggleLike(flick, userProfile.uid) },
-                    onPhotoClick = { flick -> selectedFlick = flick }
+                    onPhotoClick = { flick -> 
+                        selectedFlick = flick
+                        selectedFlickIndex = viewModel.flicks.indexOf(flick)
+                    }
                 )
             }
 
@@ -191,7 +195,13 @@ fun HomeScreen(
                 }
                 context.startActivity(Intent.createChooser(shareIntent, "Share Photo"))
             },
-            canDelete = flick.userId == userProfile.uid
+            canDelete = flick.userId == userProfile.uid,
+            allPhotos = viewModel.flicks,
+            currentIndex = selectedFlickIndex,
+            onNavigateToPhoto = { index ->
+                selectedFlickIndex = index
+                selectedFlick = viewModel.flicks.getOrNull(index)
+            }
         )
     }
 }
@@ -315,19 +325,20 @@ private fun FlickCard(
         modifier = Modifier
             .padding(2.dp)
             .clickable { onPhotoClick() },
-        shape = RoundedCornerShape(8.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+        shape = RoundedCornerShape(12.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         colors = CardDefaults.cardColors(
-            containerColor = Color.Transparent
+            containerColor = Color.DarkGray.copy(alpha = 0.3f)
         )
     ) {
+        // CLEAN thumbnail - no overlay, just the photo
         AsyncImage(
             model = flick.imageUrl,
             contentDescription = null,
             modifier = Modifier
                 .fillMaxWidth()
                 .aspectRatio(1f)
-                .clip(RoundedCornerShape(8.dp)),
+                .clip(RoundedCornerShape(12.dp)),
             contentScale = ContentScale.Crop
         )
     }

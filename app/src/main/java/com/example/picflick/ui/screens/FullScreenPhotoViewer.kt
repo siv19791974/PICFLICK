@@ -1,27 +1,33 @@
 package com.example.picflick.ui.screens
 
+import androidx.compose.animation.*
+import androidx.compose.animation.core.*
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.*
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.FavoriteBorder
-import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.MailOutline
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import coil3.compose.AsyncImage
@@ -29,9 +35,10 @@ import com.example.picflick.data.Comment
 import com.example.picflick.data.Flick
 import com.example.picflick.data.UserProfile
 import com.example.picflick.repository.FlickRepository
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import kotlinx.coroutines.launch
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun FullScreenPhotoViewer(
     flick: Flick,
@@ -41,7 +48,10 @@ fun FullScreenPhotoViewer(
     onShareClick: () -> Unit = {},
     onDeleteClick: () -> Unit = {},
     canDelete: Boolean = false,
-    onCaptionUpdated: (String) -> Unit = {}
+    onCaptionUpdated: (String) -> Unit = {},
+    allPhotos: List<Flick> = emptyList(),
+    currentIndex: Int = 0,
+    onNavigateToPhoto: (Int) -> Unit = {}
 ) {
     val repository = remember { FlickRepository.getInstance() }
     val coroutineScope = rememberCoroutineScope()
@@ -54,9 +64,30 @@ fun FullScreenPhotoViewer(
     var editCaptionText by remember { mutableStateOf(flick.description) }
     var currentDescription by remember { mutableStateOf(flick.description) }
     
-    // Load comments
-    LaunchedEffect(flick.id) {
-        repository.getComments(flick.id) { result ->
+    // UI visibility toggle
+    var uiVisible by remember { mutableStateOf(true) }
+    
+    // Scale for zoom
+    var scale by remember { mutableFloatStateOf(1f) }
+    var offset by remember { mutableStateOf(Offset.Zero) }
+    
+    // Pager for horizontal swiping
+    val pagerState = rememberPagerState(
+        initialPage = currentIndex,
+        pageCount = { allPhotos.size.coerceAtLeast(1) }
+    )
+    
+    // Current flick based on pager
+    val currentFlick = if (allPhotos.isNotEmpty() && pagerState.currentPage in allPhotos.indices) {
+        allPhotos[pagerState.currentPage]
+    } else flick
+    
+    val isLiked = currentFlick.likes.contains(currentUser.uid)
+    
+    // Load comments when flick changes
+    LaunchedEffect(currentFlick.id) {
+        isLoadingComments = true
+        repository.getComments(currentFlick.id) { result ->
             when (result) {
                 is com.example.picflick.data.Result.Success -> {
                     comments = result.data
@@ -65,6 +96,19 @@ fun FullScreenPhotoViewer(
                 else -> isLoadingComments = false
             }
         }
+    }
+    
+    // Handle page changes
+    LaunchedEffect(pagerState.currentPage) {
+        if (allPhotos.isNotEmpty()) {
+            onNavigateToPhoto(pagerState.currentPage)
+        }
+    }
+    
+    // Reset zoom when photo changes
+    LaunchedEffect(pagerState.currentPage) {
+        scale = 1f
+        offset = Offset.Zero
     }
     
     // Edit caption dialog
@@ -84,7 +128,7 @@ fun FullScreenPhotoViewer(
                 TextButton(
                     onClick = {
                         coroutineScope.launch {
-                            repository.updateFlickDescription(flick.id, editCaptionText)
+                            repository.updateFlickDescription(currentFlick.id, editCaptionText)
                             currentDescription = editCaptionText
                             onCaptionUpdated(editCaptionText)
                             showEditCaption = false
@@ -131,215 +175,353 @@ fun FullScreenPhotoViewer(
         properties = DialogProperties(
             usePlatformDefaultWidth = false,
             dismissOnBackPress = true,
-            dismissOnClickOutside = true
+            dismissOnClickOutside = false,
+            decorFitsSystemWindows = false
         )
     ) {
         Surface(
             modifier = Modifier.fillMaxSize(),
             color = Color.Black
         ) {
-            Column(modifier = Modifier.fillMaxSize()) {
-                // Top bar with actions
-                TopAppBar(
-                    title = { Text("") },
-                    navigationIcon = {
-                        IconButton(onClick = onDismiss) {
-                            Icon(
-                                Icons.Default.Close,
-                                contentDescription = "Close",
-                                tint = Color.White
+            Box(modifier = Modifier.fillMaxSize()) {
+                
+                // OUTER GESTURE HANDLER - Smart pinch vs swipe detection
+                // Uses detectTransformGestures but allows swipe to pass through when not zooming
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .pointerInput(Unit) {
+                            detectTransformGestures(
+                                onGesture = { _, pan, zoom, _ ->
+                                    // Only process if this is a real pinch (zoom != 1) or already zoomed
+                                    if (zoom != 1f || scale > 1f) {
+                                        scale = (scale * zoom).coerceIn(1f, 5f)
+                                        offset += pan
+                                    }
+                                    // If zoom == 1 and scale == 1, gesture passes through to HorizontalPager
+                                }
                             )
                         }
-                    },
-                    actions = {
-                        // Share button
-                        IconButton(onClick = onShareClick) {
-                            Icon(
-                                Icons.Default.Share,
-                                contentDescription = "Share",
-                                tint = Color.White
-                            )
-                        }
-                        // Delete button (only for owner)
-                        if (canDelete) {
-                            IconButton(onClick = onDeleteClick) {
-                                Icon(
-                                    Icons.Default.Delete,
-                                    contentDescription = "Delete",
-                                    tint = Color.Red
-                                )
-                            }
-                        }
-                    },
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = Color.Transparent
-                    )
-                )
-                
-                // Photo
-                AsyncImage(
-                    model = flick.imageUrl,
-                    contentDescription = null,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f),
-                    contentScale = ContentScale.Fit
-                )
-                
-                // Bottom info panel
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(Color.Black.copy(alpha = 0.9f))
                 ) {
-                    // Caption
-                    if (flick.description.isNotEmpty()) {
-                        Text(
-                            text = flick.description,
-                            color = Color.White,
-                            style = MaterialTheme.typography.bodyLarge,
-                            modifier = Modifier.padding(16.dp)
-                        )
-                    }
-                    
-                    // Action buttons row
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 8.dp),
-                        horizontalArrangement = Arrangement.SpaceEvenly
-                    ) {
-                        // Like
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            IconButton(onClick = onLikeClick) {
-                                Icon(
-                                    imageVector = if (flick.likes.contains(currentUser.uid)) 
-                                        Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                                    contentDescription = "Like",
-                                    tint = if (flick.likes.contains(currentUser.uid)) 
-                                        Color.Red else Color.White,
-                                    modifier = Modifier.size(28.dp)
-                                )
-                            }
-                            Text(
-                                text = "${flick.likes.size} likes",
-                                color = Color.White,
-                                style = MaterialTheme.typography.labelSmall
-                            )
-                        }
+                    // HORIZONTAL PAGER
+                    HorizontalPager(
+                        state = pagerState,
+                        modifier = Modifier.fillMaxSize(),
+                        pageSpacing = 0.dp,
+                        userScrollEnabled = scale <= 1.01f  // Disable swipe when zoomed
+                    ) { page ->
+                        val pageFlick = if (allPhotos.isNotEmpty() && page in allPhotos.indices) {
+                            allPhotos[page]
+                        } else flick
                         
-                        // Comments count
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Icon(
-                                imageVector = Icons.Outlined.MailOutline,
-                                contentDescription = "Comments",
-                                tint = Color.White,
-                                modifier = Modifier.size(28.dp)
-                            )
-                            Text(
-                                text = "${flick.commentCount} comments",
-                                color = Color.White,
-                                style = MaterialTheme.typography.labelSmall
-                            )
-                        }
-                    }
-                    
-                    HorizontalDivider(color = Color.Gray.copy(alpha = 0.3f))
-                    
-                    // Comments section
-                    Text(
-                        text = "Comments",
-                        color = Color.White,
-                        style = MaterialTheme.typography.titleMedium,
-                        modifier = Modifier.padding(16.dp)
-                    )
-                    
-                    // Comments list
-                    LazyColumn(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .heightIn(max = 200.dp)
-                    ) {
-                        if (isLoadingComments) {
-                            item {
-                                CircularProgressIndicator(
-                                    modifier = Modifier
-                                        .padding(16.dp)
-                                        .align(Alignment.CenterHorizontally)
-                                )
-                            }
-                        } else if (comments.isEmpty()) {
-                            item {
-                                Text(
-                                    text = "No comments yet. Be the first!",
-                                    color = Color.Gray,
-                                    modifier = Modifier.padding(16.dp)
-                                )
-                            }
-                        } else {
-                            items(comments) { comment ->
-                                CommentItem(comment = comment)
-                            }
-                        }
-                    }
-                    
-                    // Add comment input
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        // User avatar
-                        AsyncImage(
-                            model = currentUser.photoUrl,
-                            contentDescription = null,
+                        val isCurrentPage = pagerState.currentPage == page
+                        
+                        // PHOTO BOX with tap detection
+                        Box(
                             modifier = Modifier
-                                .size(36.dp)
-                                .clip(CircleShape),
-                            contentScale = ContentScale.Crop
-                        )
-                        
-                        Spacer(modifier = Modifier.width(12.dp))
-                        
-                        // Text input
-                        TextField(
-                            value = newCommentText,
-                            onValueChange = { newCommentText = it },
-                            placeholder = { Text("Add a comment...", color = Color.Gray) },
-                            modifier = Modifier.weight(1f),
-                            colors = TextFieldDefaults.colors(
-                                focusedContainerColor = Color.Transparent,
-                                unfocusedContainerColor = Color.Transparent,
-                                focusedTextColor = Color.White,
-                                unfocusedTextColor = Color.White
+                                .fillMaxSize()
+                                .combinedClickable(
+                                    indication = null,
+                                    interactionSource = remember { MutableInteractionSource() },
+                                    onClick = {
+                                        if (isCurrentPage) uiVisible = !uiVisible
+                                    },
+                                    onDoubleClick = {
+                                        if (isCurrentPage) {
+                                            // Double tap to zoom
+                                            scale = if (scale > 1.5f) 1f else 2.5f
+                                            if (scale == 1f) offset = Offset.Zero
+                                        }
+                                    }
+                                ),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            AsyncImage(
+                                model = pageFlick.imageUrl,
+                                contentDescription = null,
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .graphicsLayer {
+                                        if (isCurrentPage) {
+                                            scaleX = scale
+                                            scaleY = scale
+                                            translationX = offset.x
+                                            translationY = offset.y
+                                        }
+                                    },
+                                contentScale = ContentScale.Fit
                             )
-                        )
+                        }
+                    }
+                }
+                
+                // REMOVED: Transparent overlay that was blocking swipes
+                // clickable() on the Box above handles taps without blocking HorizontalPager
+                
+                // UI OVERLAY - Animated visibility
+                AnimatedVisibility(
+                    visible = uiVisible,
+                    enter = fadeIn(),
+                    exit = fadeOut()
+                ) {
+                    Box(modifier = Modifier.fillMaxSize()) {
                         
-                        // Send button
-                        IconButton(
-                            onClick = {
-                                if (newCommentText.isNotBlank()) {
-                                    coroutineScope.launch {
-                                        val comment = Comment(
-                                            flickId = flick.id,
-                                            userId = currentUser.uid,
-                                            userName = currentUser.displayName,
-                                            userPhotoUrl = currentUser.photoUrl,
-                                            text = newCommentText.trim()
+                        // TOP BAR - Semi-transparent black
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(Color.Black.copy(alpha = 0.7f))
+                                .padding(16.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            // Close button
+                            IconButton(
+                                onClick = onDismiss,
+                                modifier = Modifier.size(40.dp)
+                            ) {
+                                Icon(
+                                    Icons.Default.Close,
+                                    contentDescription = "Close",
+                                    tint = Color.White,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            }
+                            
+                            // Photo counter
+                            if (allPhotos.isNotEmpty()) {
+                                Text(
+                                    text = "${pagerState.currentPage + 1} / ${allPhotos.size}",
+                                    color = Color.White,
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Medium
+                                )
+                            }
+                            
+                            // Actions
+                            Row {
+                                if (canDelete) {
+                                    IconButton(
+                                        onClick = { showEditCaption = true },
+                                        modifier = Modifier.size(40.dp)
+                                    ) {
+                                        Icon(
+                                            Icons.Default.Edit,
+                                            contentDescription = "Edit",
+                                            tint = Color.White,
+                                            modifier = Modifier.size(20.dp)
                                         )
-                                        repository.addComment(comment)
-                                        newCommentText = ""
+                                    }
+                                }
+                                
+                                IconButton(
+                                    onClick = onShareClick,
+                                    modifier = Modifier.size(40.dp)
+                                ) {
+                                    Icon(
+                                        Icons.Default.Share,
+                                        contentDescription = "Share",
+                                        tint = Color.White,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
+                                
+                                if (canDelete) {
+                                    IconButton(
+                                        onClick = { showDeleteConfirmation = true },
+                                        modifier = Modifier.size(40.dp)
+                                    ) {
+                                        Icon(
+                                            Icons.Default.Delete,
+                                            contentDescription = "Delete",
+                                            tint = Color.Red,
+                                            modifier = Modifier.size(20.dp)
+                                        )
                                     }
                                 }
                             }
-                        ) {
-                            Icon(
-                                Icons.AutoMirrored.Filled.Send,
-                                contentDescription = "Send",
-                                tint = MaterialTheme.colorScheme.primary
-                            )
                         }
+                        
+                        // BOTTOM INFO PANEL
+                        Column(
+                            modifier = Modifier
+                                .align(Alignment.BottomCenter)
+                                .fillMaxWidth()
+                                .background(Color.Black.copy(alpha = 0.7f))
+                                .padding(16.dp)
+                        ) {
+                            // Caption
+                            if (currentDescription.isNotEmpty()) {
+                                Text(
+                                    text = currentDescription,
+                                    color = Color.White,
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    modifier = Modifier.padding(bottom = 12.dp)
+                                )
+                            }
+                            
+                            // Action buttons
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.Start,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                // Like
+                                IconButton(onClick = onLikeClick) {
+                                    Icon(
+                                        imageVector = if (isLiked) 
+                                            Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                                        contentDescription = "Like",
+                                        tint = if (isLiked) Color.Red else Color.White,
+                                        modifier = Modifier.size(28.dp)
+                                    )
+                                }
+                                Text(
+                                    text = "${currentFlick.likes.size}",
+                                    color = Color.White,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.padding(end = 16.dp)
+                                )
+                                
+                                // Comments
+                                Icon(
+                                    imageVector = Icons.Outlined.MailOutline,
+                                    contentDescription = "Comments",
+                                    tint = Color.White,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                                Text(
+                                    text = "${currentFlick.commentCount}",
+                                    color = Color.White,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.padding(start = 4.dp, end = 16.dp)
+                                )
+                            }
+                            
+                            HorizontalDivider(
+                                color = Color.White.copy(alpha = 0.2f),
+                                modifier = Modifier.padding(vertical = 12.dp)
+                            )
+                            
+                            // Comments section
+                            Text(
+                                text = "Comments",
+                                color = Color.White,
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(bottom = 8.dp)
+                            )
+                            
+                            // Comment list
+                            if (isLoadingComments) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(20.dp),
+                                    color = Color.White,
+                                    strokeWidth = 2.dp
+                                )
+                            } else if (comments.isEmpty()) {
+                                Text(
+                                    text = "No comments yet. Be the first!",
+                                    color = Color.Gray,
+                                    fontSize = 12.sp,
+                                    modifier = Modifier.padding(vertical = 8.dp)
+                                )
+                            } else {
+                                comments.take(3).forEach { comment ->
+                                    CompactCommentItem(comment = comment)
+                                }
+                            }
+                            
+                            // Add comment
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(top = 12.dp)
+                                    .background(
+                                        Color.DarkGray.copy(alpha = 0.5f),
+                                        RoundedCornerShape(20.dp)
+                                    )
+                                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                AsyncImage(
+                                    model = currentUser.photoUrl,
+                                    contentDescription = null,
+                                    modifier = Modifier
+                                        .size(28.dp)
+                                        .clip(CircleShape),
+                                    contentScale = ContentScale.Crop
+                                )
+                                
+                                Spacer(modifier = Modifier.width(8.dp))
+                                
+                                TextField(
+                                    value = newCommentText,
+                                    onValueChange = { newCommentText = it },
+                                    placeholder = { Text("Add a comment...", color = Color.Gray, fontSize = 12.sp) },
+                                    modifier = Modifier.weight(1f),
+                                    colors = TextFieldDefaults.colors(
+                                        focusedContainerColor = Color.Transparent,
+                                        unfocusedContainerColor = Color.Transparent,
+                                        focusedTextColor = Color.White,
+                                        unfocusedTextColor = Color.White,
+                                        focusedIndicatorColor = Color.Transparent,
+                                        unfocusedIndicatorColor = Color.Transparent
+                                    ),
+                                    textStyle = MaterialTheme.typography.bodySmall
+                                )
+                                
+                                IconButton(
+                                    onClick = {
+                                        if (newCommentText.isNotBlank()) {
+                                            coroutineScope.launch {
+                                                val comment = Comment(
+                                                    flickId = currentFlick.id,
+                                                    userId = currentUser.uid,
+                                                    userName = currentUser.displayName,
+                                                    userPhotoUrl = currentUser.photoUrl,
+                                                    text = newCommentText.trim()
+                                                )
+                                                repository.addComment(comment)
+                                                comments = comments + comment
+                                                newCommentText = ""
+                                            }
+                                        }
+                                    },
+                                    enabled = newCommentText.isNotBlank(),
+                                    modifier = Modifier.size(32.dp)
+                                ) {
+                                    Icon(
+                                        Icons.AutoMirrored.Filled.Send,
+                                        contentDescription = "Send",
+                                        tint = if (newCommentText.isNotBlank()) 
+                                            MaterialTheme.colorScheme.primary else Color.Gray,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                // SWIPE UP TO DISMISS hint (when UI hidden)
+                AnimatedVisibility(
+                    visible = !uiVisible,
+                    modifier = Modifier.align(Alignment.TopCenter),
+                    enter = fadeIn(),
+                    exit = fadeOut()
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .padding(top = 60.dp)
+                            .background(Color.Black.copy(alpha = 0.5f), RoundedCornerShape(12.dp))
+                            .padding(horizontal = 16.dp, vertical = 8.dp)
+                    ) {
+                        Text(
+                            text = "Tap to show controls",
+                            color = Color.White,
+                            fontSize = 12.sp
+                        )
                     }
                 }
             }
@@ -348,38 +530,36 @@ fun FullScreenPhotoViewer(
 }
 
 @Composable
-private fun CommentItem(comment: Comment) {
+private fun CompactCommentItem(comment: Comment) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.Top
+            .padding(vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        // Avatar
         AsyncImage(
             model = comment.userPhotoUrl,
             contentDescription = null,
             modifier = Modifier
-                .size(32.dp)
+                .size(24.dp)
                 .clip(CircleShape),
             contentScale = ContentScale.Crop
         )
         
-        Spacer(modifier = Modifier.width(12.dp))
+        Spacer(modifier = Modifier.width(8.dp))
         
-        Column {
-            // Username
+        Row {
             Text(
                 text = comment.userName,
                 color = Color.White,
                 fontWeight = FontWeight.Bold,
-                style = MaterialTheme.typography.labelMedium
+                fontSize = 12.sp
             )
-            // Comment text
+            Spacer(modifier = Modifier.width(4.dp))
             Text(
                 text = comment.text,
                 color = Color.White.copy(alpha = 0.9f),
-                style = MaterialTheme.typography.bodySmall
+                fontSize = 12.sp
             )
         }
     }
