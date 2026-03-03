@@ -4,9 +4,16 @@ import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.animation.Crossfade
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Notifications
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
@@ -14,11 +21,15 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.picflick.data.UserProfile
+import com.example.picflick.ui.components.BottomNavBar
+import com.example.picflick.ui.components.LogoImage
 import com.example.picflick.ui.screens.AboutScreen
 import com.example.picflick.ui.screens.ChatsScreen
 import com.example.picflick.ui.screens.ContactScreen
@@ -30,6 +41,8 @@ import com.example.picflick.ui.screens.MyPhotosScreen
 import com.example.picflick.ui.screens.NotificationsScreen
 import com.example.picflick.ui.screens.ProfileScreen
 import com.example.picflick.ui.theme.PicFlickBackground
+import com.example.picflick.ui.theme.PicFlickBannerBackground
+import com.example.picflick.ui.theme.PicFlickBannerBackground
 import com.example.picflick.ui.theme.PicFlickTheme
 import com.example.picflick.viewmodel.AuthViewModel
 import com.example.picflick.viewmodel.FriendsViewModel
@@ -87,13 +100,72 @@ fun MainScreen(
     val currentUser = authViewModel.currentUser
     val userProfile = authViewModel.userProfile
     val context = LocalContext.current // Get context for Toast
+    var showUploadDialog by remember { mutableStateOf(false) }
 
-    Scaffold(modifier = Modifier.fillMaxSize()) { padding ->
-        Surface(
+    // Outer Scaffold with bottom navigation for all screens
+    Scaffold(
+        modifier = Modifier.fillMaxSize(),
+        containerColor = PicFlickBannerBackground,
+        contentColor = PicFlickBannerBackground,
+        topBar = {
+            // SHARED logo banner - never moves when switching screens!
+            if (currentUser != null && userProfile != null) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(PicFlickBannerBackground)
+                        .padding(top = 32.dp, bottom = 12.dp)  // INCREASED: was 26/8, now 32/12
+                ) {
+                    // Notifications bell on right
+                    IconButton(
+                        onClick = { /* TODO: notifications */ },
+                        modifier = Modifier.align(Alignment.CenterEnd)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.Notifications,
+                            contentDescription = "Notifications",
+                            tint = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                    
+                    // Logo centered - slightly lower with offset
+                    LogoImage(
+                        modifier = Modifier
+                            .align(Alignment.Center)
+                            .padding(top = 4.dp)  // Bring logo slightly lower
+                    )
+                }
+            }
+        },
+        bottomBar = {
+            // Only show bottom nav when authenticated
+            if (currentUser != null && userProfile != null) {
+                BottomNavBar(
+                    currentRoute = when (currentScreen) {
+                        is Screen.Home -> "home"
+                        is Screen.Chats -> "chats"
+                        is Screen.Friends -> "friends"
+                        is Screen.Profile -> "profile"
+                        else -> "home"
+                    },
+                    onNavigate = { route ->
+                        when (route) {
+                            "home" -> currentScreen = Screen.Home
+                            "chats" -> currentScreen = Screen.Chats
+                            "upload" -> showUploadDialog = true
+                            "friends" -> currentScreen = Screen.Friends
+                            "profile" -> currentScreen = Screen.Profile
+                        }
+                    }
+                )
+            }
+        }
+    ) { padding ->
+        // Content area - each screen handles its own background
+        Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding),
-            color = PicFlickBackground
+                .padding(padding)
         ) {
             if (currentUser == null) {
                 // Not authenticated - show login
@@ -116,7 +188,9 @@ fun MainScreen(
                     onProfilePhotoSelected = { uri ->
                         // TODO: Upload to Firebase Storage and update profile
                         Toast.makeText(context, "Photo selected: $uri\nUpload coming soon!", Toast.LENGTH_SHORT).show()
-                    }
+                    },
+                    showUploadDialog = showUploadDialog,
+                    onDismissUpload = { showUploadDialog = false }
                 )
             }
         }
@@ -135,14 +209,13 @@ private fun AuthenticatedContent(
     profileViewModel: ProfileViewModel,
     friendsViewModel: FriendsViewModel,
     onSignOut: () -> Unit,
-    onProfilePhotoSelected: (android.net.Uri) -> Unit = {}
+    onProfilePhotoSelected: (android.net.Uri) -> Unit = {},
+    showUploadDialog: Boolean = false,
+    onDismissUpload: () -> Unit = {}
 ) {
-    Crossfade(
-        targetState = currentScreen,
-        label = "screen_transition"
-    ) { screen ->
-        when (screen) {
-            is Screen.Home -> HomeScreen(
+    // Direct screen switching - NO animation (fixes banner position shift)
+    when (currentScreen) {
+        is Screen.Home -> HomeScreen(
                 userProfile = userProfile,
                 viewModel = homeViewModel,
                 onNavigate = { route ->
@@ -208,6 +281,5 @@ private fun AuthenticatedContent(
                 userProfile = userProfile,
                 onBack = { onScreenChange(Screen.Home) }
             )
-        }
     }
 }

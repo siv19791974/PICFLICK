@@ -31,9 +31,7 @@ import androidx.core.content.FileProvider
 import coil3.compose.AsyncImage
 import com.example.picflick.data.Flick
 import com.example.picflick.data.UserProfile
-import com.example.picflick.ui.components.BottomNavBar
 import com.example.picflick.ui.components.ErrorMessage
-import com.example.picflick.ui.components.FullScreenLoading
 import com.example.picflick.ui.components.LogoImage
 import com.example.picflick.ui.components.PhotoGridShimmer
 import com.example.picflick.ui.theme.PicFlickBackground
@@ -114,78 +112,32 @@ fun HomeScreen(
         }
     }
 
-    Scaffold(
-        modifier = Modifier.fillMaxSize(),
-        topBar = {
-            // Clean logo header with notifications
-            CenterAlignedTopAppBar(
-                title = { LogoImage(modifier = Modifier.height(50.dp)) },
-                actions = {
-                    // Notifications bell
-                    IconButton(onClick = { onNavigate("notifications") }) {
-                        Icon(
-                            imageVector = Icons.Outlined.Notifications,
-                            contentDescription = "Notifications",
-                            tint = MaterialTheme.colorScheme.onSurface
-                        )
-                    }
-                },
-                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                    containerColor = PicFlickBannerBackground
-                )
-            )
-        },
-        bottomBar = {
-            BottomNavBar(
-                currentRoute = "home",
-                onNavigate = { route ->
-                    if (route == "upload") {
-                        showUploadDialog = true
-                    } else {
-                        onNavigate(route)
-                    }
-                }
-            )
-        },
-        floatingActionButton = {
-            // Hidden FAB - replaced by bottom nav center button
-        }
-    ) { padding ->
+    // Column WITHOUT verticalScroll (because LazyVerticalGrid has its own scroll)
+    // NO BANNER HERE - banner is now in MainActivity's Scaffold topBar!
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(PicFlickBackground),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        // Content directly - banner is in MainActivity
         Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .background(PicFlickBackground)
+            modifier = Modifier.fillMaxSize()
         ) {
-            // SwipeRefresh wrapper
-            SwipeRefresh(
-                state = swipeRefreshState,
-                onRefresh = { viewModel.loadFlicks() },
-                indicator = { state, trigger ->
-                    SwipeRefreshIndicator(
-                        state = state,
-                        refreshTriggerDistance = trigger,
-                        backgroundColor = MaterialTheme.colorScheme.surface,
-                        contentColor = MaterialTheme.colorScheme.primary
-                    )
-                },
-                modifier = Modifier.fillMaxSize()
-            ) {
-                // Content
-                when {
-                    viewModel.isLoading && viewModel.flicks.isEmpty() -> PhotoGridShimmer()
-                    viewModel.errorMessage != null -> ErrorMessage(
-                        message = viewModel.errorMessage ?: "Unknown error",
-                        onRetry = { viewModel.loadFlicks() }
-                    )
-                    viewModel.flicks.isEmpty() -> EmptyState()
-                    else -> FlickGrid(
-                        flicks = viewModel.flicks,
-                        userProfile = userProfile,
-                        onLikeClick = { flick -> viewModel.toggleLike(flick, userProfile.uid) },
-                        onPhotoClick = { flick -> selectedFlick = flick }
-                    )
-                }
+            // Direct content - no SwipeRefresh wrapper for testing
+            when {
+                viewModel.isLoading && viewModel.flicks.isEmpty() -> PhotoGridShimmer()
+                viewModel.errorMessage != null -> ErrorMessage(
+                    message = viewModel.errorMessage ?: "Unknown error",
+                    onRetry = { viewModel.loadFlicks() }
+                )
+                viewModel.flicks.isEmpty() -> EmptyState()
+                else -> FlickGrid(
+                    flicks = viewModel.flicks,
+                    userProfile = userProfile,
+                    onLikeClick = { flick -> viewModel.toggleLike(flick, userProfile.uid) },
+                    onPhotoClick = { flick -> selectedFlick = flick }
+                )
             }
 
             // Upload mini FABs overlay
@@ -334,7 +286,12 @@ private fun FlickGrid(
     LazyVerticalGrid(
         columns = GridCells.Fixed(3),
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(1.dp)
+        contentPadding = PaddingValues(
+            start = 1.dp,
+            end = 1.dp,
+            top = 1.dp,
+            bottom = 80.dp  // Padding for bottom nav
+        )
     ) {
         items(flicks) { flick ->
             FlickCard(
