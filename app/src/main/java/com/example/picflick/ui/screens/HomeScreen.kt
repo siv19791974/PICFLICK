@@ -435,30 +435,92 @@ private fun FlickGrid(
     BoxWithConstraints(
         modifier = Modifier.fillMaxSize()
     ) {
-        // Calculate height for 4 rows with tiny gap at bottom for light blue BG
-        val rowHeight = this.maxHeight / 4.1f
+        val totalWidth = this.maxWidth
+        val baseCellSize = (totalWidth - 4.dp) / 3 // Size of 1x1 cell
         
-        LazyVerticalGrid(
-            columns = GridCells.Fixed(3),
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(
-                start = 1.dp,
-                end = 1.dp,
-                top = 4.dp,  // Slight top gap to match bottom
-                bottom = 0.dp
-            ),
-            userScrollEnabled = true // Enable scrolling for pull-to-refresh
+        // Calculate dynamic positions with varied sizes
+        val positionedItems = remember(flicks) {
+            calculateDynamicGridPositions(flicks.size)
+        }
+        
+        val totalRows = positionedItems.maxOfOrNull { it.row + it.rowSpan } ?: 1
+        val gridHeight = baseCellSize * totalRows + (2.dp * (totalRows - 1))
+        
+        // Manual grid layout with varied sizes
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(gridHeight),
+            verticalArrangement = Arrangement.spacedBy(2.dp)
         ) {
-            // Show all items (scrollable)
-            items(flicks, key = { it.id }) { flick ->
-                FlickCard(
-                    flick = flick,
-                    userId = userProfile.uid,
-                    onLikeClick = { onLikeClick(flick) },
-                    onPhotoClick = { onPhotoClick(flick) },
-                    onLongPress = { onLongPress(flick) },
-                    rowHeight = rowHeight
-                )
+            val rows = positionedItems.groupBy { it.row }.toSortedMap()
+            
+            rows.forEach { (rowIndex, itemsInRow) ->
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(2.dp)
+                ) {
+                    itemsInRow.forEach { positionedItem ->
+                        val flick = flicks[positionedItem.index]
+                        val width = baseCellSize * positionedItem.colSpan + 
+                                   (2.dp * (positionedItem.colSpan - 1))
+                        val height = baseCellSize * positionedItem.rowSpan +
+                                    (2.dp * (positionedItem.rowSpan - 1))
+                        
+                        Box(
+                            modifier = Modifier
+                                .width(width)
+                                .height(height)
+                                .clickable { onPhotoClick(flick) }
+                        ) {
+                            AsyncImage(
+                                model = flick.imageUrl,
+                                contentDescription = null,
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Crop
+                            )
+                            
+                            // Username overlay at bottom for larger items
+                            if (positionedItem.colSpan >= 2 || positionedItem.rowSpan >= 2) {
+                                Box(
+                                    modifier = Modifier
+                                        .align(Alignment.BottomStart)
+                                        .fillMaxWidth()
+                                        .background(Color.Black.copy(alpha = 0.5f))
+                                        .padding(horizontal = 4.dp, vertical = 2.dp)
+                                ) {
+                                    Text(
+                                        text = flick.userName,
+                                        color = Color.White,
+                                        fontSize = 10.sp,
+                                        style = MaterialTheme.typography.labelSmall.copy(
+                                            fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold
+                                        ),
+                                        maxLines = 1
+                                    )
+                                }
+                            }
+                            
+                            // Reaction overlay
+                            val userReaction = flick.getUserReaction(userProfile.uid)
+                            userReaction?.let { reaction ->
+                                Box(
+                                    modifier = Modifier
+                                        .align(Alignment.TopEnd)
+                                        .padding(2.dp)
+                                        .size(16.dp)
+                                        .background(Color.Black.copy(alpha = 0.4f), CircleShape),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = reaction.toEmoji(),
+                                        fontSize = 10.sp
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
     }
@@ -542,6 +604,110 @@ private fun FlickCard(
             }
         }
     }
+}
+
+// Grid position data class
+internal data class GridPosition(
+    val index: Int,
+    val row: Int,
+    val column: Int,
+    val rowSpan: Int,
+    val colSpan: Int
+)
+
+/**
+ * Calculate dynamic grid positions with varied sizes
+ * Randomly places 2x1, 1x2, and 2x2 items among 1x1 items
+ */
+private fun calculateDynamicGridPositions(count: Int): List<GridPosition> {
+    val positions = mutableListOf<GridPosition>()
+    val random = java.util.Random()
+    
+    // Track occupied cells: occupied[row][col] = true/false
+    val occupied = mutableMapOf<Pair<Int, Int>, Boolean>()
+    
+    fun isOccupied(row: Int, col: Int): Boolean {
+        return occupied.getOrDefault(row to col, false)
+    }
+    
+    fun markOccupied(row: Int, col: Int, rows: Int, cols: Int) {
+        for (r in row until row + rows) {
+            for (c in col until col + cols) {
+                occupied[r to c] = true
+            }
+        }
+    }
+    
+    fun canPlace(row: Int, col: Int, rows: Int, cols: Int): Boolean {
+        if (col + cols > 3) return false // Exceeds grid width
+        for (r in row until row + rows) {
+            for (c in col until col + cols) {
+                if (isOccupied(r, c)) return false
+            }
+        }
+        return true
+    }
+    
+    var currentRow = 0
+    var currentCol = 0
+    var photoIndex = 0
+    
+    while (photoIndex < count) {
+        // Decide size for this photo (mostly 1x1, occasionally larger)
+        val sizeRoll = random.nextFloat()
+        
+        val (rowSpan, colSpan) = when {
+            // 5% chance for 2x2 (needs 2x2 space)
+            sizeRoll < 0.05f && canPlace(currentRow, currentCol, 2, 2) -> 2 to 2
+            // 15% chance for 2x1 wide (needs 2 cols)
+            sizeRoll < 0.20f && canPlace(currentRow, currentCol, 1, 2) -> 1 to 2
+            // 10% chance for 1x2 tall (needs 2 rows)
+            sizeRoll < 0.30f && canPlace(currentRow, currentCol, 2, 1) -> 2 to 1
+            // Default 1x1
+            else -> 1 to 1
+        }
+        
+        // If we can't place the desired size, try 1x1
+        val finalRowSpan: Int
+        val finalColSpan: Int
+        
+        if (canPlace(currentRow, currentCol, rowSpan, colSpan)) {
+            finalRowSpan = rowSpan
+            finalColSpan = colSpan
+        } else if (canPlace(currentRow, currentCol, 1, 1)) {
+            finalRowSpan = 1
+            finalColSpan = 1
+        } else {
+            // Can't place here, move to next cell
+            currentCol++
+            if (currentCol >= 3) {
+                currentCol = 0
+                currentRow++
+            }
+            continue
+        }
+        
+        // Place the item
+        positions.add(GridPosition(
+            index = photoIndex,
+            row = currentRow,
+            column = currentCol,
+            rowSpan = finalRowSpan,
+            colSpan = finalColSpan
+        ))
+        
+        markOccupied(currentRow, currentCol, finalRowSpan, finalColSpan)
+        photoIndex++
+        
+        // Move to next position
+        currentCol += finalColSpan
+        if (currentCol >= 3) {
+            currentCol = 0
+            currentRow++
+        }
+    }
+    
+    return positions
 }
 
 @Composable
