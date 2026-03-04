@@ -4,6 +4,9 @@ import android.content.Intent
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -12,6 +15,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.pullrefresh.PullRefreshIndicator
@@ -25,19 +29,24 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.core.content.FileProvider
 import coil3.compose.AsyncImage
 import com.example.picflick.data.Flick
+import com.example.picflick.data.ReactionType
 import com.example.picflick.data.UserProfile
+import com.example.picflick.data.toEmoji
 import com.example.picflick.ui.components.AnimatedReactionPicker
 import com.example.picflick.ui.components.ErrorMessage
 import com.example.picflick.ui.components.PhotoGridShimmer
 import com.example.picflick.ui.theme.PicFlickBackground
 import com.example.picflick.viewmodel.HomeViewModel
 import java.io.File
+import kotlinx.coroutines.delay
 
 /**
  * Home screen with photo grid and bottom navigation
@@ -60,6 +69,9 @@ fun HomeScreen(
     // Reaction picker state
     var showReactionPicker by remember { mutableStateOf(false) }
     var flickForReaction by remember { mutableStateOf<Flick?>(null) }
+    
+    // Flying reaction animation state
+    var flyingReaction by remember { mutableStateOf<Pair<ReactionType, Int>?>(null) }
 
     // Load data
     LaunchedEffect(userProfile.uid) {
@@ -223,6 +235,10 @@ fun HomeScreen(
                 context.startActivity(Intent.createChooser(shareIntent, "Share Photo"))
             },
             canDelete = flick.userId == userProfile.uid,
+            onDeleteClick = {
+                // Refresh the list after deletion
+                viewModel.loadFlicks(userProfile.uid)
+            },
             allPhotos = viewModel.flicks,
             currentIndex = selectedFlickIndex,
             onNavigateToPhoto = { index ->
@@ -240,6 +256,11 @@ fun HomeScreen(
                 flickForReaction = null
             },
             onReactionSelected = { reactionType ->
+                // Trigger flying animation
+                val index = viewModel.flicks.indexOfFirst { it.id == flickForReaction?.id }
+                if (index != -1) {
+                    flyingReaction = reactionType to index
+                }
                 // Handle reaction via ViewModel
                 viewModel.toggleReaction(
                     flickForReaction!!,
@@ -252,6 +273,15 @@ fun HomeScreen(
                 flickForReaction = null
             },
             currentReaction = flickForReaction?.getUserReaction(userProfile.uid)
+        )
+    }
+
+    // Flying reaction animation overlay
+    flyingReaction?.let { (reaction, targetIndex) ->
+        FlyingReactionAnimation(
+            reaction = reaction,
+            targetIndex = targetIndex,
+            onAnimationEnd = { flyingReaction = null }
         )
     }
 }
@@ -420,7 +450,7 @@ private fun FlickGrid(
             userScrollEnabled = true // Enable scrolling for pull-to-refresh
         ) {
             // Show all items (scrollable)
-            items(flicks) { flick ->
+            items(flicks, key = { it.id }) { flick ->
                 FlickCard(
                     flick = flick,
                     userId = userProfile.uid,
@@ -444,6 +474,8 @@ private fun FlickCard(
     onLongPress: () -> Unit,
     rowHeight: androidx.compose.ui.unit.Dp
 ) {
+    val userReaction = flick.getUserReaction(userId)
+    
     Card(
         modifier = Modifier
             .padding(1.dp) // Smaller padding
@@ -458,13 +490,57 @@ private fun FlickCard(
             containerColor = Color.Transparent // Transparent background
         )
     ) {
-        // CLEAN thumbnail - no overlay, no rounded corners
-        AsyncImage(
-            model = flick.imageUrl,
-            contentDescription = null,
-            modifier = Modifier.fillMaxSize(), // Fill the exact height
-            contentScale = ContentScale.Crop
-        )
+        Box(modifier = Modifier.fillMaxSize()) {
+            // Photo
+            AsyncImage(
+                model = flick.imageUrl,
+                contentDescription = null,
+                modifier = Modifier.fillMaxSize(), // Fill the exact height
+                contentScale = ContentScale.Crop
+            )
+            
+            // Tiny reaction overlay (top right) - shows if user has reacted
+            userReaction?.let { reaction ->
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(2.dp)
+                        .size(16.dp)
+                        .background(
+                            color = Color.Black.copy(alpha = 0.4f),
+                            shape = CircleShape
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = reaction.toEmoji(),
+                        fontSize = 10.sp
+                    )
+                }
+            }
+            
+            // Username overlay at bottom
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .fillMaxWidth()
+                    .background(
+                        color = Color.Black.copy(alpha = 0.5f)
+                    )
+                    .padding(horizontal = 4.dp, vertical = 2.dp),
+                contentAlignment = Alignment.CenterStart
+            ) {
+                Text(
+                    text = flick.userName,
+                    color = Color.White,
+                    fontSize = 10.sp,
+                    style = MaterialTheme.typography.labelSmall.copy(
+                        fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold
+                    ),
+                    maxLines = 1
+                )
+            }
+        }
     }
 }
 
@@ -481,3 +557,83 @@ private fun EmptyState() {
     }
 }
 
+/**
+ * Flying reaction animation - animates emoji from center to target photo
+ */
+@Composable
+private fun FlyingReactionAnimation(
+    reaction: ReactionType,
+    targetIndex: Int,
+    onAnimationEnd: () -> Unit
+) {
+    val emoji = reaction.toEmoji()
+    
+    // Calculate target position (3-column grid)
+    val column = targetIndex % 3
+    val row = targetIndex / 3
+    
+    // Screen-relative positions (estimates for 3-column grid)
+    val targetX = when (column) {
+        0 -> -0.25f
+        1 -> 0f
+        2 -> 0.25f
+        else -> 0f
+    }
+    val targetY = when (row) {
+        0 -> -0.15f
+        1 -> 0.05f
+        2 -> 0.25f
+        3 -> 0.45f
+        else -> 0f
+    }
+    
+    var animationStarted by remember { mutableStateOf(false) }
+    
+    val offsetX by animateFloatAsState(
+        targetValue = if (animationStarted) targetX else 0f,
+        animationSpec = tween(durationMillis = 600, easing = FastOutSlowInEasing),
+        label = "fly_x"
+    )
+    
+    val offsetY by animateFloatAsState(
+        targetValue = if (animationStarted) targetY else 0f,
+        animationSpec = tween(durationMillis = 600, easing = FastOutSlowInEasing),
+        finishedListener = { onAnimationEnd() },
+        label = "fly_y"
+    )
+    
+    val scale by animateFloatAsState(
+        targetValue = if (animationStarted) 0.5f else 2f,
+        animationSpec = tween(durationMillis = 600, easing = FastOutSlowInEasing),
+        label = "fly_scale"
+    )
+    
+    val alpha by animateFloatAsState(
+        targetValue = if (animationStarted) 0f else 1f,
+        animationSpec = tween(durationMillis = 600),
+        label = "fly_alpha"
+    )
+    
+    LaunchedEffect(Unit) {
+        delay(50)
+        animationStarted = true
+    }
+    
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = emoji,
+            fontSize = 48.sp,
+            modifier = Modifier
+                .graphicsLayer {
+                    translationX = offsetX * size.width
+                    translationY = offsetY * size.height
+                    scaleX = scale
+                    scaleY = scale
+                    this.alpha = alpha
+                }
+        )
+    }
+}

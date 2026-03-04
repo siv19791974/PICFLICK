@@ -7,6 +7,7 @@ data class Flick(
     val id: String = "",
     val userId: String = "",
     val userName: String = "",
+    val userPhotoUrl: String = "", // User's profile picture URL
     val imageUrl: String = "",
     val description: String = "",
     val timestamp: Long = 0,
