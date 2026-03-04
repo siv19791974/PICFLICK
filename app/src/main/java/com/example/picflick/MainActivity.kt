@@ -354,6 +354,7 @@ fun MainScreen(
                     notificationViewModel = notificationViewModel,
                     chatViewModel = chatViewModel,
                     uploadViewModel = uploadViewModel,
+                    authViewModel = authViewModel,
                     selectedChatSession = selectedChatSession,
                     selectedOtherUserId = selectedOtherUserId,
                     onSetSelectedChat = { session, userId ->
@@ -385,6 +386,7 @@ private fun AuthenticatedContent(
     notificationViewModel: NotificationViewModel,
     chatViewModel: ChatViewModel,
     uploadViewModel: UploadViewModel,
+    authViewModel: AuthViewModel,
     selectedChatSession: com.example.picflick.data.ChatSession?,
     selectedOtherUserId: String,
     onSetSelectedChat: (com.example.picflick.data.ChatSession, String) -> Unit,
@@ -419,9 +421,14 @@ private fun AuthenticatedContent(
             is Screen.Profile -> ProfileScreen(
                 userProfile = userProfile,
                 photoCount = profileViewModel.photoCount,
+                totalReactions = profileViewModel.totalReactions,
+                currentStreak = profileViewModel.currentStreak,
                 onBack = { onScreenChange(Screen.Home) },
                 onMyPhotosClick = { onScreenChange(Screen.MyPhotos) },
-                onPhotoSelected = onPhotoSelected
+                onPhotoSelected = onPhotoSelected,
+                onBioUpdated = { newBio ->
+                    authViewModel.updateBio(newBio)
+                },
             )
 
             is Screen.MyPhotos -> MyPhotosScreen(

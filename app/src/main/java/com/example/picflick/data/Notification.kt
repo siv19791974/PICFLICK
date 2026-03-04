@@ -29,5 +29,7 @@ enum class NotificationType {
     MESSAGE,        // Someone sent you a message
     PHOTO_ADDED,    // Someone you follow added a photo
     MENTION,        // Someone mentioned you in comment
+    STREAK_REMINDER,// Reminder to maintain streak
+    ACHIEVEMENT,    // Achievement unlocked
     SYSTEM          // System announcements
 }

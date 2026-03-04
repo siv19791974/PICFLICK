@@ -718,6 +718,7 @@ fun FullScreenPhotoViewer(
                                                     currentFlick.id, 
                                                     currentUser.uid, 
                                                     currentUser.displayName, 
+                                                    currentUser.photoUrl,
                                                     newCommentText.trim()
                                                 )
                                                 comments = comments + comment

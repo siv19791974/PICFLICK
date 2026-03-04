@@ -109,6 +109,28 @@ class AuthViewModel : ViewModel() {
     }
 
     /**
+     * Update user bio
+     */
+    fun updateBio(newBio: String) {
+        viewModelScope.launch {
+            userProfile?.let { profile ->
+                val updatedProfile = profile.copy(bio = newBio)
+                repository.saveUserProfile(profile.uid, updatedProfile) { result ->
+                    when (result) {
+                        is Result.Success -> {
+                            userProfile = updatedProfile
+                        }
+                        is Result.Error -> {
+                            errorMessage = result.message
+                        }
+                        is Result.Loading -> { }
+                    }
+                }
+            }
+        }
+    }
+
+    /**
      * Sign out the current user
      */
     fun signOut() {

@@ -35,15 +35,56 @@ import com.example.picflick.data.UserProfile
 fun ProfileScreen(
     userProfile: UserProfile,
     photoCount: Int,
+    totalReactions: Int,
+    currentStreak: Int,
     onBack: () -> Unit,
     onMyPhotosClick: () -> Unit = {},
-    onPhotoSelected: (Uri) -> Unit = {}
+    onPhotoSelected: (Uri) -> Unit = {},
+    onBioUpdated: (String) -> Unit = {}
 ) {
     // Image picker launcher
     val imagePicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
         uri?.let { onPhotoSelected(it) }
+    }
+    
+    // Bio edit dialog state
+    var showBioDialog by remember { mutableStateOf(false) }
+    var bioText by remember { mutableStateOf(userProfile.bio) }
+    
+    // Bio edit dialog
+    if (showBioDialog) {
+        AlertDialog(
+            onDismissRequest = { showBioDialog = false },
+            title = { Text("Edit Bio") },
+            text = {
+                OutlinedTextField(
+                    value = bioText,
+                    onValueChange = { bioText = it },
+                    label = { Text("Bio") },
+                    placeholder = { Text("Tell people about yourself...") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = false,
+                    maxLines = 3
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        onBioUpdated(bioText.trim())
+                        showBioDialog = false
+                    }
+                ) {
+                    Text("Save")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showBioDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
     }
 
     Column(
@@ -97,28 +138,27 @@ fun ProfileScreen(
 
         Spacer(modifier = Modifier.height(20.dp))
 
-        // Name & Email with better typography
+        // Name with better typography
         Text(
             text = userProfile.displayName,
             fontSize = 28.sp,
             fontWeight = FontWeight.Bold,
             color = Color.White
         )
-        Text(
-            text = userProfile.email,
-            fontSize = 14.sp,
-            color = Color.Gray,
-            modifier = Modifier.padding(top = 4.dp)
-        )
 
-        // Bio
+        // Bio - clickable to edit, light blue color
         if (userProfile.bio.isNotEmpty()) {
             Spacer(modifier = Modifier.height(12.dp))
             Text(
                 text = userProfile.bio,
                 fontSize = 14.sp,
-                color = Color.LightGray,
-                modifier = Modifier.padding(horizontal = 32.dp)
+                color = Color(0xFF87CEEB), // Light blue
+                modifier = Modifier
+                    .padding(horizontal = 32.dp)
+                    .clickable { 
+                        bioText = userProfile.bio
+                        showBioDialog = true 
+                    }
             )
         }
 
@@ -128,20 +168,23 @@ fun ProfileScreen(
         if (userProfile.bio.isEmpty()) {
             Text(
                 text = "✏️ Add a bio to tell people about yourself",
-                color = Color(0xFF00D09C),
+                color = Color(0xFF87CEEB), // Light blue
                 fontSize = 14.sp,
                 modifier = Modifier
-                    .clickable { /* Goes to Settings > Edit Profile */ }
+                    .clickable { 
+                        bioText = ""
+                        showBioDialog = true 
+                    }
                     .padding(horizontal = 24.dp)
             )
             Spacer(modifier = Modifier.height(16.dp))
         }
 
-        // MODERN STATS GRID - Horizontal layout like Instagram
+        // MODERN STATS GRID - Horizontal layout like Instagram (5 items)
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 24.dp),
+                .padding(horizontal = 16.dp),
             horizontalArrangement = Arrangement.SpaceEvenly
         ) {
             ModernStatItem(
@@ -149,8 +192,8 @@ fun ProfileScreen(
                 label = "Posts"
             )
             ModernStatItem(
-                value = formatNumber(userProfile.totalLikes),
-                label = "Likes"
+                value = formatNumber(totalReactions),
+                label = "Reactions"
             )
             ModernStatItem(
                 value = userProfile.followers.size.toString(),
@@ -160,48 +203,10 @@ fun ProfileScreen(
                 value = userProfile.following.size.toString(),
                 label = "Following"
             )
-        }
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        // FRIEND PREVIEW - Show first 5 friends
-        if (userProfile.following.isNotEmpty()) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Text(
-                    text = "Following ${userProfile.following.size} people",
-                    color = Color.Gray,
-                    fontSize = 14.sp
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                // Friend avatars row would go here - simplified for now
-            }
-            Spacer(modifier = Modifier.height(24.dp))
-        }
-
-        // ACHIEVEMENT BADGES
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally)
-        ) {
-            if (photoCount > 0) {
-                BadgeItem(emoji = "📸", label = "Photographer")
-            }
-            if (userProfile.totalLikes >= 10) {
-                BadgeItem(emoji = "❤️", label = "Liked")
-            }
-            if (userProfile.following.size >= 5) {
-                BadgeItem(emoji = "👥", label = "Socialite")
-            }
-            if (photoCount >= 5) {
-                BadgeItem(emoji = "🔥", label = "Active")
-            }
+            ModernStatItem(
+                value = if (currentStreak > 0) "${currentStreak}d" else "-",
+                label = "Streak"
+            )
         }
 
         Spacer(modifier = Modifier.height(32.dp))
@@ -270,15 +275,6 @@ fun ProfileScreen(
         }
 
         Spacer(modifier = Modifier.height(32.dp))
-
-        // App Version at bottom
-        Text(
-            text = "PicFlick v1.0",
-            fontSize = 12.sp,
-            color = Color.Gray.copy(alpha = 0.5f)
-        )
-
-        Spacer(modifier = Modifier.height(24.dp))
     }
 }
 
@@ -301,33 +297,6 @@ private fun ModernStatItem(
             text = label,
             fontSize = 13.sp,
             color = Color.Gray,
-            fontWeight = FontWeight.Medium
-        )
-    }
-}
-
-@Composable
-private fun BadgeItem(emoji: String, label: String) {
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier.padding(horizontal = 4.dp)
-    ) {
-        Box(
-            modifier = Modifier
-                .size(56.dp)
-                .background(Color(0xFF2C2C2E), CircleShape),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                text = emoji,
-                fontSize = 28.sp
-            )
-        }
-        Spacer(modifier = Modifier.height(4.dp))
-        Text(
-            text = label,
-            color = Color.Gray,
-            fontSize = 11.sp,
             fontWeight = FontWeight.Medium
         )
     }
