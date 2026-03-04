@@ -204,7 +204,7 @@ fun ProfileScreen(
                 label = "Following"
             )
             ModernStatItem(
-                value = if (currentStreak > 0) "${currentStreak}d" else "-",
+                value = currentStreak.toString(),
                 label = "Streak"
             )
         }
