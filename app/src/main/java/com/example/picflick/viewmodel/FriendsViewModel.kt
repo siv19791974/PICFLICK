@@ -218,7 +218,7 @@ class FriendsViewModel : ViewModel() {
      */
     fun followUser(currentUserId: String, targetUser: UserProfile, currentUser: UserProfile) {
         viewModelScope.launch {
-            val result = repository.followUser(currentUserId, targetUser.uid)
+            val result = repository.followUser(currentUserId, targetUser.uid, currentUser.displayName)
             when (result) {
                 is Result.Success -> {
                     // Update local state to reflect the follow

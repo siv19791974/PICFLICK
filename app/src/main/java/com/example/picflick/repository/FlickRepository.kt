@@ -71,6 +71,19 @@ class FlickRepository private constructor() {
             // Create notifications for friends
             val updatedFlick = flick.copy(id = flickId)
             createPhotoNotifications(updatedFlick, userPhotoUrl)
+            
+            // Create notifications for tagged friends
+            if (flick.taggedFriends.isNotEmpty()) {
+                flick.taggedFriends.forEach { taggedUserId ->
+                    createTagNotification(
+                        flickId = flickId,
+                        photoOwnerId = flick.userId,
+                        photoOwnerName = flick.userName,
+                        photoOwnerPhotoUrl = userPhotoUrl,
+                        taggedUserId = taggedUserId
+                    )
+                }
+            }
 
             Result.Success(Unit)
         } catch (e: Exception) {
@@ -425,9 +438,9 @@ class FlickRepository private constructor() {
     }
 
     /**
-     * Follow a user - suspend version for ViewModel
+     * Follow a user - suspend version for ViewModel with achievement check
      */
-    suspend fun followUser(currentUserId: String, targetUserId: String): Result<Unit> {
+    suspend fun followUser(currentUserId: String, targetUserId: String, userName: String? = null): Result<Unit> {
         return try {
             val batch = db.batch()
 
@@ -440,12 +453,13 @@ class FlickRepository private constructor() {
             batch.update(targetUserRef, "followers", FieldValue.arrayUnion(currentUserId))
 
             batch.commit().await()
+            
             Result.Success(Unit)
         } catch (e: Exception) {
             Result.Error(e, "Failed to follow user")
         }
     }
-
+    
     /**
      * Unfollow a user - suspend version for ViewModel
      */
@@ -795,6 +809,171 @@ class FlickRepository private constructor() {
     }
 
     /**
+     * Create notification for comment on a photo
+     */
+    private fun createCommentNotification(
+        flickId: String,
+        commenterId: String,
+        commenterName: String,
+        commenterPhotoUrl: String,
+        commentText: String
+    ) {
+        db.collection("flicks").document(flickId).get()
+            .addOnSuccessListener { flickDoc ->
+                val ownerId = flickDoc.getString("userId")
+                val flickImageUrl = flickDoc.getString("imageUrl")
+                
+                // Don't notify if user comments on their own photo
+                if (ownerId != null && ownerId != commenterId) {
+                    val truncatedComment = if (commentText.length > 50) 
+                        commentText.take(50) + "..." 
+                    else 
+                        commentText
+                    
+                    val notification = hashMapOf(
+                        "id" to UUID.randomUUID().toString(),
+                        "userId" to ownerId,
+                        "senderId" to commenterId,
+                        "senderName" to commenterName,
+                        "senderPhotoUrl" to commenterPhotoUrl,
+                        "type" to "COMMENT",
+                        "title" to "$commenterName commented on your photo",
+                        "message" to truncatedComment,
+                        "flickId" to flickId,
+                        "flickImageUrl" to flickImageUrl,
+                        "isRead" to false,
+                        "timestamp" to System.currentTimeMillis()
+                    )
+
+                    db.collection("notifications").add(notification)
+                }
+            }
+    }
+
+    /**
+     * Create streak reminder notification
+     */
+    suspend fun createStreakReminderNotification(userId: String, userName: String, currentStreak: Int): Result<Unit> {
+        return try {
+            val motivationalMessages = listOf(
+                "Don't break your $currentStreak-day streak! Share a photo today 🔥",
+                "Your $currentStreak-day streak is at risk! Post now to keep it alive ⚡",
+                "Keep the flame burning! $currentStreak days and counting 🔥",
+                "One photo away from day ${currentStreak + 1}! Don't stop now 🚀"
+            )
+            
+            val randomMessage = motivationalMessages.random()
+            
+            val notification = hashMapOf(
+                "id" to UUID.randomUUID().toString(),
+                "userId" to userId,
+                "senderId" to "system",
+                "senderName" to "PicFlick",
+                "senderPhotoUrl" to "",
+                "type" to "STREAK_REMINDER",
+                "title" to "🔥 Streak Alert!",
+                "message" to randomMessage,
+                "isRead" to false,
+                "timestamp" to System.currentTimeMillis(),
+                "streakCount" to currentStreak
+            )
+
+            db.collection("notifications").add(notification).await()
+            Result.Success(Unit)
+        } catch (e: Exception) {
+            Result.Error(e, "Failed to create streak reminder")
+        }
+    }
+
+    /**
+     * Create notification when user is tagged in a photo
+     */
+    private fun createTagNotification(
+        flickId: String,
+        photoOwnerId: String,
+        photoOwnerName: String,
+        photoOwnerPhotoUrl: String,
+        taggedUserId: String
+    ) {
+        db.collection("flicks").document(flickId).get()
+            .addOnSuccessListener { flickDoc ->
+                val flickImageUrl = flickDoc.getString("imageUrl")
+                
+                val notification = hashMapOf(
+                    "id" to UUID.randomUUID().toString(),
+                    "userId" to taggedUserId,
+                    "senderId" to photoOwnerId,
+                    "senderName" to photoOwnerName,
+                    "senderPhotoUrl" to photoOwnerPhotoUrl,
+                    "type" to "MENTION",
+                    "title" to "$photoOwnerName tagged you in a photo",
+                    "message" to "Check out the photo you're in!",
+                    "flickId" to flickId,
+                    "flickImageUrl" to flickImageUrl,
+                    "isRead" to false,
+                    "timestamp" to System.currentTimeMillis()
+                )
+
+                db.collection("notifications").add(notification)
+            }
+    }
+
+    /**
+     * Create achievement unlocked notification for photographer (1st photo)
+     */
+    suspend fun createFirstPhotoAchievement(userId: String, userName: String): Result<Unit> {
+        return try {
+            val notification = hashMapOf(
+                "id" to UUID.randomUUID().toString(),
+                "userId" to userId,
+                "senderId" to "system",
+                "senderName" to "PicFlick",
+                "senderPhotoUrl" to "",
+                "type" to "ACHIEVEMENT",
+                "title" to "🏆 Achievement Unlocked!",
+                "message" to "Congratulations $userName! You earned the 📸 Photographer achievement for uploading your first photo!",
+                "isRead" to false,
+                "timestamp" to System.currentTimeMillis(),
+                "achievementType" to "PHOTOGRAPHER",
+                "emoji" to "📸"
+            )
+
+            db.collection("notifications").add(notification).await()
+            Result.Success(Unit)
+        } catch (e: Exception) {
+            Result.Error(e, "Failed to create achievement notification")
+        }
+    }
+
+    /**
+     * Create achievement unlocked notification for active user (5+ photos)
+     */
+    suspend fun createActiveUserAchievement(userId: String, userName: String, photoCount: Int): Result<Unit> {
+        return try {
+            val notification = hashMapOf(
+                "id" to UUID.randomUUID().toString(),
+                "userId" to userId,
+                "senderId" to "system",
+                "senderName" to "PicFlick",
+                "senderPhotoUrl" to "",
+                "type" to "ACHIEVEMENT",
+                "title" to "🏆 Achievement Unlocked!",
+                "message" to "Keep it up $userName! You earned the 🔥 Active achievement for uploading $photoCount photos!",
+                "isRead" to false,
+                "timestamp" to System.currentTimeMillis(),
+                "achievementType" to "ACTIVE",
+                "emoji" to "🔥",
+                "photoCount" to photoCount
+            )
+
+            db.collection("notifications").add(notification).await()
+            Result.Success(Unit)
+        } catch (e: Exception) {
+            Result.Error(e, "Failed to create achievement notification")
+        }
+    }
+
+    /**
      * Get notifications for a user
      */
     fun getNotifications(userId: String, onResult: (Result<List<Map<String, Any>>>) -> Unit) {
@@ -826,15 +1005,22 @@ class FlickRepository private constructor() {
     }
 
     /**
-     * Add a comment to a flick
+     * Add a comment to a flick and notify the owner
      */
-    suspend fun addComment(flickId: String, userId: String, userName: String, text: String): Result<Unit> {
+    suspend fun addComment(
+        flickId: String,
+        userId: String,
+        userName: String,
+        userPhotoUrl: String,
+        text: String
+    ): Result<Unit> {
         return try {
             val comment = Comment(
                 id = UUID.randomUUID().toString(),
                 flickId = flickId,
                 userId = userId,
                 userName = userName,
+                userPhotoUrl = userPhotoUrl,
                 text = text,
                 timestamp = System.currentTimeMillis()
             )
@@ -846,6 +1032,9 @@ class FlickRepository private constructor() {
             db.collection("flicks").document(flickId)
                 .update("commentCount", FieldValue.increment(1))
                 .await()
+
+            // Create notification for photo owner (if not the commenter)
+            createCommentNotification(flickId, userId, userName, userPhotoUrl, text)
 
             Result.Success(Unit)
         } catch (e: Exception) {

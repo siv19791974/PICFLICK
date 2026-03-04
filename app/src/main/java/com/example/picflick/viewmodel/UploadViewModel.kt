@@ -11,6 +11,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.picflick.data.Flick
 import com.example.picflick.data.PhotoFilter
 import com.example.picflick.data.UserProfile
+import com.example.picflick.repository.FlickRepository
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.storage.FirebaseStorage
 import kotlinx.coroutines.launch
@@ -25,6 +26,7 @@ class UploadViewModel : ViewModel() {
 
     private val storage = FirebaseStorage.getInstance()
     private val firestore = FirebaseFirestore.getInstance()
+    private val flickRepository = FlickRepository.getInstance()
 
     var isUploading by mutableStateOf(false)
         private set
@@ -136,12 +138,51 @@ class UploadViewModel : ViewModel() {
                 dailyUploadCount++
 
                 uploadSuccess = true
+                
+                // Check for photo upload achievements
+                checkPhotoAchievements(userProfile)
 
             } catch (e: Exception) {
                 uploadError = e.message ?: "Upload failed"
             } finally {
                 isUploading = false
             }
+        }
+    }
+    
+    /**
+     * Check and trigger photo upload achievements
+     */
+    private suspend fun checkPhotoAchievements(userProfile: UserProfile) {
+        try {
+            // Get total photo count for user
+            val photoCountSnapshot = firestore.collection("flicks")
+                .whereEqualTo("userId", userProfile.uid)
+                .get()
+                .await()
+            
+            val totalPhotos = photoCountSnapshot.size()
+            
+            // First photo achievement
+            if (totalPhotos == 1) {
+                flickRepository.createFirstPhotoAchievement(
+                    userProfile.uid,
+                    userProfile.displayName
+                )
+            }
+            
+            // Active user achievement (5+ photos)
+            if (totalPhotos == 5) {
+                flickRepository.createActiveUserAchievement(
+                    userProfile.uid,
+                    userProfile.displayName,
+                    totalPhotos
+                )
+            }
+            
+        } catch (e: Exception) {
+            // Silently fail - don't block upload success
+            e.printStackTrace()
         }
     }
 
