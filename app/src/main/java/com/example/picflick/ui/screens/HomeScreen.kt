@@ -444,7 +444,7 @@ private fun FlickGrid(
         }
         
         val totalRows = positionedItems.maxOfOrNull { it.row + it.rowSpan } ?: 1
-        val gridHeight = baseCellSize * totalRows + (2.dp * (totalRows - 1))
+        val gridHeight = baseCellSize * totalRows
         
         // ABSOLUTE POSITIONING grid - places items at exact coordinates
         Box(
@@ -455,11 +455,11 @@ private fun FlickGrid(
             positionedItems.forEach { item ->
                 val flick = flicks[item.index]
                 
-                // Calculate exact position
-                val xOffset = item.column * baseCellSize.value + (item.column * 2) // +2.dp spacing
-                val yOffset = item.row * baseCellSize.value + (item.row * 2)
-                val width = item.colSpan * baseCellSize.value + ((item.colSpan - 1) * 2)
-                val height = item.rowSpan * baseCellSize.value + ((item.rowSpan - 1) * 2)
+                // Calculate exact position - ZERO SPACING
+                val xOffset = item.column * baseCellSize.value
+                val yOffset = item.row * baseCellSize.value
+                val width = item.colSpan * baseCellSize.value
+                val height = item.rowSpan * baseCellSize.value
                 
                 Box(
                     modifier = Modifier

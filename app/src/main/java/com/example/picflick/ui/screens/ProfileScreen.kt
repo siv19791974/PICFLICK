@@ -243,7 +243,7 @@ fun ProfileScreen(
                 
                 val totalRows = positionedItems.maxOfOrNull { it.row + it.rowSpan } ?: 1
                 val baseWidth = (maxWidth - 4.dp) / 3
-                val gridHeight = baseWidth * totalRows + (2.dp * (totalRows - 1))
+                val gridHeight = baseWidth * totalRows
                 
                 // ABSOLUTE POSITIONING - places items at exact coordinates
                 Box(
@@ -254,11 +254,11 @@ fun ProfileScreen(
                     positionedItems.forEach { item ->
                         val flick = photos[item.index]
                         
-                        // Calculate exact position
-                        val xOffset = item.column * baseWidth.value + (item.column * 2)
-                        val yOffset = item.row * baseWidth.value + (item.row * 2)
-                        val width = item.colSpan * baseWidth.value + ((item.colSpan - 1) * 2)
-                        val height = item.rowSpan * baseWidth.value + ((item.rowSpan - 1) * 2)
+                        // Calculate exact position - ZERO SPACING
+                        val xOffset = item.column * baseWidth.value
+                        val yOffset = item.row * baseWidth.value
+                        val width = item.colSpan * baseWidth.value
+                        val height = item.rowSpan * baseWidth.value
                         
                         Box(
                             modifier = Modifier
