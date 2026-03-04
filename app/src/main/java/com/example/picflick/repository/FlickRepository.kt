@@ -1,12 +1,6 @@
 package com.example.picflick.repository
 
-import com.example.picflick.data.Comment
-import com.example.picflick.data.Flick
-import com.example.picflick.data.ReactionType
-import com.example.picflick.data.Result
-import com.example.picflick.data.UserProfile
-import com.example.picflick.data.toEmoji
-import com.example.picflick.data.toDisplayName
+import com.example.picflick.data.*
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
@@ -31,7 +25,6 @@ class FlickRepository private constructor() {
 
     // Cache for user profile
     private val _currentUserProfile = MutableStateFlow<UserProfile?>(null)
-    val currentUserProfile: Flow<UserProfile?> = _currentUserProfile.asStateFlow()
 
     companion object {
         @Volatile
@@ -45,71 +38,41 @@ class FlickRepository private constructor() {
     }
 
     /**
-     * Get user profile by ID with real-time updates
+     * Upload flick image to Firebase Storage
      */
-    fun getUserProfile(uid: String, onResult: (Result<UserProfile>) -> Unit) {
-        db.collection("users").document(uid)
-            .addSnapshotListener { snapshot, error ->
-                if (error != null) {
-                    onResult(Result.Error(error, "Failed to load profile"))
-                    return@addSnapshotListener
-                }
-                
-                if (snapshot != null && snapshot.exists()) {
-                    val profile = snapshot.toObject(UserProfile::class.java)
-                    _currentUserProfile.value = profile
-                    onResult(Result.Success(profile!!))
-                } else {
-                    onResult(Result.Error(Exception("Profile not found"), "User profile not found"))
-                }
-            }
+    suspend fun uploadFlickImage(userId: String, imageBytes: ByteArray): Result<String> {
+        return try {
+            val filename = "photos/${userId}/${UUID.randomUUID()}.jpg"
+            val storageRef = storage.reference.child(filename)
+
+            storageRef.putBytes(imageBytes).await()
+            val downloadUrl = storageRef.downloadUrl.await()
+
+            Result.Success(downloadUrl.toString())
+        } catch (e: Exception) {
+            Result.Error(e, "Failed to upload image")
+        }
     }
 
     /**
-     * Save or update user profile
+     * Create a new flick and notify friends
      */
-    suspend fun saveUserProfile(profile: UserProfile): Result<Unit> {
+    suspend fun createFlick(flick: Flick, userPhotoUrl: String): Result<Unit> {
         return try {
-            db.collection("users").document(profile.uid)
-                .set(profile, SetOptions.merge())
-                .await()
+            // Add to Firestore
+            val docRef = db.collection("flicks").add(flick).await()
+            val flickId = docRef.id
+
+            // Update with ID
+            docRef.update("id", flickId).await()
+
+            // Create notifications for friends
+            val updatedFlick = flick.copy(id = flickId)
+            createPhotoNotifications(updatedFlick, userPhotoUrl)
+
             Result.Success(Unit)
         } catch (e: Exception) {
-            Result.Error(e, "Failed to save profile")
-        }
-    }
-
-    /**
-     * Check if two users are friends (mutual following)
-     */
-    suspend fun areFriends(userId1: String, userId2: String): Boolean {
-        return try {
-            val user1Doc = db.collection("users").document(userId1).get().await()
-            val user2Doc = db.collection("users").document(userId2).get().await()
-            
-            val user1Following = user1Doc.get("following") as? List<String> ?: emptyList()
-            val user2Following = user2Doc.get("following") as? List<String> ?: emptyList()
-            
-            // Friends = both follow each other
-            user1Following.contains(userId2) && user2Following.contains(userId1)
-        } catch (e: Exception) {
-            false
-        }
-    }
-    
-    /**
-     * Get user's friends list (mutual followers)
-     */
-    suspend fun getFriendsList(userId: String): List<String> {
-        return try {
-            val userDoc = db.collection("users").document(userId).get().await()
-            val following = userDoc.get("following") as? List<String> ?: emptyList()
-            val followers = userDoc.get("followers") as? List<String> ?: emptyList()
-            
-            // Friends = intersection of following and followers
-            following.intersect(followers.toSet()).toList()
-        } catch (e: Exception) {
-            emptyList()
+            Result.Error(e, "Failed to create flick")
         }
     }
 
@@ -121,61 +84,79 @@ class FlickRepository private constructor() {
         GlobalScope.launch {
             try {
                 // Get friends list
-                val friends = getFriendsList(userId)
-                
-                // Use a map to collect all flicks by ID (avoids duplicates)
-                val allFlicks = mutableMapOf<String, Flick>()
-                
-                // Query 1: User's own photos (always show these)
-                db.collection("flicks")
+                val userDoc = db.collection("users").document(userId).get().await()
+                val userProfile = userDoc.toObject(UserProfile::class.java)
+                val friends = userProfile?.following ?: emptyList()
+
+                // Query user's own photos (simple query - no composite index needed)
+                val ownFlicksSnapshot = db.collection("flicks")
                     .whereEqualTo("userId", userId)
-                    .addSnapshotListener { snapshot, error ->
-                        if (error == null && snapshot != null) {
-                            snapshot.toObjects(Flick::class.java).forEach { flick ->
-                                allFlicks[flick.id] = flick
-                            }
-                        }
-                        
-                        // Try to return results after each update
-                        returnMergedResults(allFlicks, onResult)
+                    .limit(50)
+                    .get()
+                    .await()
+
+                val ownFlicks = ownFlicksSnapshot.toObjects(Flick::class.java)
+
+                // Query friends' photos (simplified to avoid composite index)
+                val friendsFlicks = if (friends.isNotEmpty()) {
+                    friends.chunked(10).flatMap { friendBatch ->
+                        // Query without orderBy to avoid composite index requirement
+                        val batchSnapshot = db.collection("flicks")
+                            .whereIn("userId", friendBatch)
+                            .whereEqualTo("privacy", "friends")
+                            .limit(50)
+                            .get()
+                            .await()
+                        batchSnapshot.toObjects(Flick::class.java)
                     }
-                
-                // Query 2: Friends' photos (batch them to avoid whereIn limit)
-                if (friends.isNotEmpty()) {
-                    // Firestore whereIn has 10-item limit, so batch if needed
-                    val friendBatches = friends.chunked(10)
-                    
-                    friendBatches.forEach { batch ->
-                        db.collection("flicks")
-                            .whereIn("userId", batch)
-                            .addSnapshotListener { snapshot, error ->
-                                if (error == null && snapshot != null) {
-                                    snapshot.toObjects(Flick::class.java).forEach { flick ->
-                                        allFlicks[flick.id] = flick
-                                    }
-                                }
-                                
-                                returnMergedResults(allFlicks, onResult)
-                            }
-                    }
+                } else {
+                    emptyList()
                 }
-                
+
+                // Merge and sort in memory (client-side sorting)
+                val allFlicks = (ownFlicks + friendsFlicks)
+                    .distinctBy { it.id }
+                    .sortedByDescending { it.timestamp }
+                    .take(50)
+
+                onResult(Result.Success(allFlicks))
             } catch (e: Exception) {
-                onResult(Result.Error(e, "Failed to load photos"))
+                e.printStackTrace() // Log the error for debugging
+                onResult(Result.Error(e, "Failed to load photos: ${e.message}"))
             }
         }
     }
-    
-    private fun returnMergedResults(
-        allFlicks: MutableMap<String, Flick>,
-        onResult: (Result<List<Flick>>) -> Unit
-    ) {
-        // Sort by timestamp descending and return
-        val sortedFlicks = allFlicks.values
-            .sortedByDescending { it.timestamp }
-            .take(50)
-        
-        onResult(Result.Success(sortedFlicks))
+
+    /**
+     * Get explore flicks (trending/popular for discovery)
+     * Gets photos with most reactions from last 7 days
+     */
+    fun getExploreFlicks(onResult: (Result<List<Flick>>) -> Unit) {
+        GlobalScope.launch {
+            try {
+                // Get photos from last 7 days (query without orderBy to avoid composite index)
+                val weekAgo = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -7) }.timeInMillis
+
+                val flicksSnapshot = db.collection("flicks")
+                    .whereGreaterThan("timestamp", weekAgo)
+                    .limit(100)
+                    .get()
+                    .await()
+
+                val flicks = flicksSnapshot.toObjects(Flick::class.java)
+
+                // Sort by timestamp first, then by reaction count (trending algorithm)
+                val trendingFlicks = flicks
+                    .sortedByDescending { it.timestamp } // Sort in memory
+                    .sortedByDescending { it.getTotalReactions() + (it.commentCount * 2) }
+                    .take(50)
+
+                onResult(Result.Success(trendingFlicks))
+            } catch (e: Exception) {
+                e.printStackTrace()
+                onResult(Result.Error(e, "Failed to load explore photos: ${e.message}"))
+            }
+        }
     }
 
     /**
@@ -187,7 +168,7 @@ class FlickRepository private constructor() {
             .limit(50)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
-                    onResult(Result.Error(error, "Failed to load photos"))
+                    onResult(Result.Error(Exception(error.message), "Failed to load photos"))
                     return@addSnapshotListener
                 }
 
@@ -202,460 +183,175 @@ class FlickRepository private constructor() {
      * Get flicks for a specific user
      */
     fun getUserFlicks(userId: String, onResult: (Result<List<Flick>>) -> Unit) {
-        if (userId.isEmpty()) {
-            onResult(Result.Error(Exception("User ID is empty"), "User not logged in"))
-            return
-        }
-        
         db.collection("flicks")
             .whereEqualTo("userId", userId)
-            .get()  // Simple query without ordering (no index needed)
-            .addOnSuccessListener { snapshot ->
-                val flicks = snapshot.toObjects(Flick::class.java)
-                    .sortedByDescending { it.timestamp }  // Sort in memory
-                android.util.Log.d("FlickRepository", "Loaded ${flicks.size} photos for user $userId")
-                onResult(Result.Success(flicks))
-            }
-            .addOnFailureListener { error ->
-                android.util.Log.e("FlickRepository", "Error loading user photos: ${error.message}")
-                onResult(Result.Error(error, "Failed to load user photos: ${error.message}"))
+            .limit(50)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    onResult(Result.Error(Exception(error.message), "Failed to load user photos"))
+                    return@addSnapshotListener
+                }
+
+                if (snapshot != null) {
+                    val flicks = snapshot.toObjects(Flick::class.java)
+                        .sortedByDescending { it.timestamp } // Sort in memory
+                    onResult(Result.Success(flicks))
+                }
             }
     }
 
     /**
-     * Get daily upload count for a user
+     * Toggle like on a flick
      */
-    fun getDailyUploadCount(userId: String, onResult: (Result<Int>) -> Unit) {
-        val startOfDay = Calendar.getInstance().apply {
-            set(Calendar.HOUR_OF_DAY, 0)
-            set(Calendar.MINUTE, 0)
-            set(Calendar.SECOND, 0)
-            set(Calendar.MILLISECOND, 0)
-        }.timeInMillis
+    fun toggleLike(flickId: String, userId: String, onResult: (Result<Unit>) -> Unit) {
+        db.collection("flicks").document(flickId).get()
+            .addOnSuccessListener { doc ->
+                val flick = doc.toObject(Flick::class.java)
+                if (flick == null) {
+                    onResult(Result.Error(Exception("Photo not found"), "Photo not found"))
+                    return@addOnSuccessListener
+                }
 
-        db.collection("flicks")
-            .whereEqualTo("userId", userId)
-            .whereGreaterThan("timestamp", startOfDay)
-            .get()
-            .addOnSuccessListener { snap ->
-                onResult(Result.Success(snap.size()))
+                val currentLikes = flick.reactions.filter { it.value == ReactionType.LIKE.name }.keys.toMutableSet()
+                val hasLiked = currentLikes.contains(userId)
+
+                if (hasLiked) {
+                    // Remove like
+                    db.collection("flicks").document(flickId)
+                        .update("reactions.${userId}", FieldValue.delete())
+                        .addOnSuccessListener { onResult(Result.Success(Unit)) }
+                        .addOnFailureListener { e -> onResult(Result.Error(e, "Failed to unlike")) }
+                } else {
+                    // Add like
+                    db.collection("flicks").document(flickId)
+                        .update("reactions.${userId}", ReactionType.LIKE.name)
+                        .addOnSuccessListener {
+                            // Create notification for photo owner
+                            if (flick.userId != userId) {
+                                createReactionNotification(
+                                    flickId = flickId,
+                                    ownerId = flick.userId,
+                                    reactorId = userId,
+                                    reactorName = "Someone", // Get actual name from user profile
+                                    reactorPhotoUrl = "",
+                                    reactionType = ReactionType.LIKE
+                                )
+                            }
+                            onResult(Result.Success(Unit))
+                        }
+                        .addOnFailureListener { e -> onResult(Result.Error(e, "Failed to like")) }
+                }
             }
-            .addOnFailureListener { error ->
-                onResult(Result.Error(error, "Failed to check upload limit"))
-            }
+            .addOnFailureListener { e -> onResult(Result.Error(e, "Failed to get photo")) }
     }
 
     /**
-     * Toggle like on a flick and create notification
-     */
-    fun toggleLike(
-        flickId: String, 
-        userId: String, 
-        userName: String,
-        userPhotoUrl: String,
-        isLiked: Boolean, 
-        onResult: (Result<Unit>) -> Unit
-    ) {
-        // DEPRECATED: Use toggleReaction instead
-        // This now maps to LIKE reaction for backward compatibility
-        val reactionType = if (isLiked) null else com.example.picflick.data.ReactionType.LIKE
-        toggleReaction(flickId, userId, userName, userPhotoUrl, reactionType, onResult)
-    }
-    
-    /**
-     * Toggle or update a reaction on a flick
-     * @param reactionType null = remove reaction
+     * Toggle reaction on a flick
      */
     fun toggleReaction(
         flickId: String,
         userId: String,
         userName: String,
         userPhotoUrl: String,
-        reactionType: com.example.picflick.data.ReactionType?,
+        reactionType: ReactionType?,
         onResult: (Result<Unit>) -> Unit
     ) {
-        // Get current flick data first
         db.collection("flicks").document(flickId).get()
-            .addOnSuccessListener { flickDoc ->
-                val ownerId = flickDoc.getString("userId") ?: ""
-                val currentReactions = flickDoc.get("reactions") as? Map<String, String> ?: emptyMap()
-                
-                // Check if user already has a reaction
-                val userCurrentReaction = currentReactions[userId]
-                
-                // Prepare update
-                val newReactions = currentReactions.toMutableMap()
-                
-                when {
-                    // Remove reaction if same type clicked (toggle off)
-                    reactionType != null && userCurrentReaction == reactionType.name -> {
-                        newReactions.remove(userId)
-                    }
-                    // Add or update reaction
-                    reactionType != null -> {
-                        newReactions[userId] = reactionType.name
-                    }
-                    // Remove reaction if null passed
-                    else -> {
-                        newReactions.remove(userId)
-                    }
+            .addOnSuccessListener { doc ->
+                val flick = doc.toObject(Flick::class.java)
+                if (flick == null) {
+                    onResult(Result.Error(Exception("Photo not found"), "Photo not found"))
+                    return@addOnSuccessListener
                 }
-                
-                // Update Firestore
-                db.collection("flicks").document(flickId)
-                    .update("reactions", newReactions)
-                    .addOnSuccessListener {
-                        // Create notification if adding a new reaction (not removing)
-                        if (reactionType != null && userCurrentReaction != reactionType.name && ownerId != userId) {
-                            createReactionNotification(
-                                flickId = flickId,
-                                ownerId = ownerId,
-                                reactorId = userId,
-                                reactorName = userName,
-                                reactorPhotoUrl = userPhotoUrl,
-                                reactionType = reactionType
-                            )
+
+                val currentReaction = flick.reactions[userId]
+
+                if (currentReaction == reactionType?.name) {
+                    // Remove reaction (same reaction clicked)
+                    db.collection("flicks").document(flickId)
+                        .update("reactions.${userId}", FieldValue.delete())
+                        .addOnSuccessListener { onResult(Result.Success(Unit)) }
+                        .addOnFailureListener { e -> onResult(Result.Error(e, "Failed to remove reaction")) }
+                } else {
+                    // Add/update reaction
+                    val updateValue = reactionType?.name ?: FieldValue.delete()
+                    db.collection("flicks").document(flickId)
+                        .update("reactions.${userId}", updateValue)
+                        .addOnSuccessListener {
+                            // Create notification for photo owner
+                            if (reactionType != null && flick.userId != userId) {
+                                createReactionNotification(
+                                    flickId = flickId,
+                                    ownerId = flick.userId,
+                                    reactorId = userId,
+                                    reactorName = userName,
+                                    reactorPhotoUrl = userPhotoUrl,
+                                    reactionType = reactionType
+                                )
+                            }
+                            onResult(Result.Success(Unit))
                         }
-                        onResult(Result.Success(Unit))
-                    }
-                    .addOnFailureListener { error ->
-                        onResult(Result.Error(error, "Failed to update reaction"))
-                    }
-            }
-            .addOnFailureListener { error ->
-                onResult(Result.Error(error, "Failed to get flick data"))
-            }
-    }
-    
-    /**
-     * Create notification when someone reacts to a photo
-     */
-    private fun createReactionNotification(
-        flickId: String,
-        ownerId: String,
-        reactorId: String,
-        reactorName: String,
-        reactorPhotoUrl: String,
-        reactionType: ReactionType
-    ) {
-        db.collection("flicks").document(flickId).get()
-            .addOnSuccessListener { flickDoc ->
-                val flickImageUrl = flickDoc.getString("imageUrl")
-                
-                val emoji = reactionType.toEmoji()
-                val displayName = reactionType.toDisplayName()
-                
-                val notification = hashMapOf(
-                    "id" to db.collection("notifications").document().id,
-                    "userId" to ownerId,
-                    "senderId" to reactorId,
-                    "senderName" to reactorName,
-                    "senderPhotoUrl" to reactorPhotoUrl,
-                    "type" to "REACTION",
-                    "title" to "$reactorName reacted $emoji to your photo",
-                    "message" to "$displayName reaction",
-                    "flickId" to flickId,
-                    "flickImageUrl" to flickImageUrl,
-                    "reactionType" to reactionType.name,
-                    "isRead" to false,
-                    "timestamp" to System.currentTimeMillis()
-                )
-                
-                db.collection("notifications").document(notification["id"] as String)
-                    .set(notification)
-            }
-    }
-    
-    /**
-     * Create notification when someone likes a photo (deprecated - use createReactionNotification)
-     */
-    private fun createLikeNotification(
-        flickId: String, 
-        likerId: String,
-        likerName: String,
-        likerPhotoUrl: String
-    ) {
-        // Map to REACTION notification with LIKE type
-        createReactionNotification(
-            flickId = flickId,
-            ownerId = "", // Will be fetched inside
-            reactorId = likerId,
-            reactorName = likerName,
-            reactorPhotoUrl = likerPhotoUrl,
-            reactionType = com.example.picflick.data.ReactionType.LIKE
-        )
-    }
-
-    /**
-     * Search users by display name
-     */
-    fun searchUsers(query: String, currentUserId: String, onResult: (Result<List<UserProfile>>) -> Unit) {
-        if (query.isBlank()) {
-            onResult(Result.Success(emptyList()))
-            return
-        }
-
-        db.collection("users")
-            .orderBy("displayName")
-            .startAt(query)
-            .endAt(query + "\uf8ff")
-            .limit(20)
-            .get()
-            .addOnSuccessListener { snapshot ->
-                val users = snapshot.toObjects(UserProfile::class.java)
-                    .filter { it.uid != currentUserId }
-                onResult(Result.Success(users))
-            }
-            .addOnFailureListener { error ->
-                onResult(Result.Error(error, "Failed to search users"))
-            }
-    }
-
-    /**
-     * Follow a user
-     */
-    suspend fun followUser(currentUserId: String, targetUserId: String): Result<Unit> {
-        return try {
-            db.collection("users").document(currentUserId)
-                .update("following", FieldValue.arrayUnion(targetUserId))
-                .await()
-            
-            db.collection("users").document(targetUserId)
-                .update("followers", FieldValue.arrayUnion(currentUserId))
-                .await()
-            
-            Result.Success(Unit)
-        } catch (e: Exception) {
-            Result.Error(e, "Failed to follow user")
-        }
-    }
-
-    /**
-     * Unfollow a user
-     */
-    suspend fun unfollowUser(currentUserId: String, targetUserId: String): Result<Unit> {
-        return try {
-            db.collection("users").document(currentUserId)
-                .update("following", FieldValue.arrayRemove(targetUserId))
-                .await()
-            
-            db.collection("users").document(targetUserId)
-                .update("followers", FieldValue.arrayRemove(currentUserId))
-                .await()
-            
-            Result.Success(Unit)
-        } catch (e: Exception) {
-            Result.Error(e, "Failed to unfollow user")
-        }
-    }
-
-    /**
-     * Upload a flick image
-     */
-    suspend fun uploadFlickImage(userId: String, imageBytes: ByteArray): Result<String> {
-        return try {
-            val filename = "flicks/${userId}/${UUID.randomUUID()}.jpg"
-            val ref = storage.reference.child(filename)
-            
-            ref.putBytes(imageBytes).await()
-            val downloadUrl = ref.downloadUrl.await().toString()
-            
-            Result.Success(downloadUrl)
-        } catch (e: Exception) {
-            Result.Error(e, "Failed to upload image")
-        }
-    }
-
-    /**
-     * Create a new flick and notify followers (friends)
-     */
-    suspend fun createFlick(flick: Flick, userPhotoUrl: String = ""): Result<Unit> {
-        return try {
-            val flickWithId = if (flick.id.isEmpty()) {
-                flick.copy(id = db.collection("flicks").document().id)
-            } else {
-                flick
-            }
-            
-            db.collection("flicks").document(flickWithId.id)
-                .set(flickWithId)
-                .await()
-            
-            // Notify followers (friends) about new photo
-            if (flick.privacy == "friends") {
-                createPhotoAddedNotifications(flickWithId, userPhotoUrl)
-            }
-            
-            Result.Success(Unit)
-        } catch (e: Exception) {
-            Result.Error(e, "Failed to create flick")
-        }
-    }
-    
-    /**
-     * Create notifications for followers when a new photo is added
-     */
-    private suspend fun createPhotoAddedNotifications(flick: Flick, userPhotoUrl: String) {
-        try {
-            // Get user's followers
-            val userDoc = db.collection("users").document(flick.userId).get().await()
-            val followers = userDoc.get("followers") as? List<String> ?: emptyList()
-            val following = userDoc.get("following") as? List<String> ?: emptyList()
-            
-            // Only notify friends (mutual followers)
-            val friends = followers.intersect(following.toSet())
-            
-            friends.forEach { friendId ->
-                val notification = hashMapOf(
-                    "id" to db.collection("notifications").document().id,
-                    "userId" to friendId,
-                    "senderId" to flick.userId,
-                    "senderName" to flick.userName,
-                    "senderPhotoUrl" to userPhotoUrl,
-                    "type" to "PHOTO_ADDED",
-                    "title" to "${flick.userName} added a new photo",
-                    "message" to if (flick.description.isNotBlank()) flick.description else "Check it out!",
-                    "flickId" to flick.id,
-                    "flickImageUrl" to flick.imageUrl,
-                    "isRead" to false,
-                    "timestamp" to System.currentTimeMillis()
-                )
-                
-                db.collection("notifications").document(notification["id"] as String)
-                    .set(notification)
-                    .await()
-            }
-        } catch (e: Exception) {
-            // Silently fail - don't block photo upload if notifications fail
-            e.printStackTrace()
-        }
-    }
-
-    /**
-     * Update flick description/caption
-     */
-    suspend fun updateFlickDescription(flickId: String, description: String): Result<Unit> {
-        return try {
-            db.collection("flicks").document(flickId)
-                .update("description", description)
-                .await()
-            
-            Result.Success(Unit)
-        } catch (e: Exception) {
-            Result.Error(e, "Failed to update caption")
-        }
-    }
-
-    /**
-     * Add a comment and create notification
-     */
-    suspend fun addComment(
-        comment: Comment,
-        commenterName: String,
-        commenterPhotoUrl: String
-    ): Result<Unit> {
-        return try {
-            val commentWithId = if (comment.id.isEmpty()) {
-                comment.copy(id = db.collection("comments").document().id)
-            } else {
-                comment
-            }
-
-            db.collection("comments").document(commentWithId.id)
-                .set(commentWithId)
-                .await()
-
-            // Increment comment count on the flick
-            db.collection("flicks").document(comment.flickId)
-                .update("commentCount", FieldValue.increment(1))
-                .await()
-            
-            // Create notification for flick owner
-            createCommentNotification(comment, commenterName, commenterPhotoUrl)
-
-            Result.Success(Unit)
-        } catch (e: Exception) {
-            Result.Error(e, "Failed to add comment")
-        }
-    }
-    
-    /**
-     * Create notification when someone comments on a photo
-     */
-    private suspend fun createCommentNotification(
-        comment: Comment,
-        commenterName: String,
-        commenterPhotoUrl: String
-    ) {
-        try {
-            // Get flick owner
-            val flickDoc = db.collection("flicks").document(comment.flickId).get().await()
-            val ownerId = flickDoc.getString("userId") ?: return
-            val flickImageUrl = flickDoc.getString("imageUrl")
-            
-            // Don't notify if user comments on their own photo
-            if (ownerId == comment.userId) return
-            
-            val notification = hashMapOf(
-                "id" to db.collection("notifications").document().id,
-                "userId" to ownerId,
-                "senderId" to comment.userId,
-                "senderName" to commenterName,
-                "senderPhotoUrl" to commenterPhotoUrl,
-                "type" to "COMMENT",
-                "title" to "$commenterName commented on your photo",
-                "message" to comment.text,
-                "flickId" to comment.flickId,
-                "flickImageUrl" to flickImageUrl,
-                "isRead" to false,
-                "timestamp" to System.currentTimeMillis()
-            )
-            
-            db.collection("notifications").document(notification["id"] as String)
-                .set(notification)
-                .await()
-        } catch (e: Exception) {
-            // Silently fail - don't block comment if notification fails
-            e.printStackTrace()
-        }
-    }
-
-    /**
-     * Get comments for a flick with real-time updates
-     */
-    fun getComments(flickId: String, onResult: (Result<List<Comment>>) -> Unit) {
-        db.collection("comments")
-            .whereEqualTo("flickId", flickId)
-            .orderBy("timestamp", Query.Direction.DESCENDING)
-            .addSnapshotListener { snapshot, error ->
-                if (error != null) {
-                    onResult(Result.Error(error, "Failed to load comments"))
-                    return@addSnapshotListener
+                        .addOnFailureListener { e -> onResult(Result.Error(e, "Failed to add reaction")) }
                 }
-                
-                val comments = snapshot?.toObjects(Comment::class.java) ?: emptyList()
-                onResult(Result.Success(comments))
             }
+            .addOnFailureListener { e -> onResult(Result.Error(e, "Failed to get photo")) }
     }
 
     /**
      * Delete a flick
      */
-    suspend fun deleteFlick(flickId: String): Result<Unit> {
-        return try {
-            db.collection("flicks").document(flickId)
-                .delete()
-                .await()
-            
-            Result.Success(Unit)
-        } catch (e: Exception) {
-            Result.Error(e, "Failed to delete photo")
-        }
+    fun deleteFlick(flickId: String, onResult: (Result<Unit>) -> Unit) {
+        db.collection("flicks").document(flickId).delete()
+            .addOnSuccessListener { onResult(Result.Success(Unit)) }
+            .addOnFailureListener { e -> onResult(Result.Error(e, "Failed to delete photo")) }
     }
 
     /**
-     * Get all users (for suggestions)
+     * Get user profile
      */
+    fun getUserProfile(userId: String, onResult: (Result<UserProfile>) -> Unit) {
+        db.collection("users").document(userId).get()
+            .addOnSuccessListener { doc ->
+                val profile = doc.toObject(UserProfile::class.java)
+                if (profile != null) {
+                    _currentUserProfile.value = profile
+                    onResult(Result.Success(profile))
+                } else {
+                    onResult(Result.Error(Exception("Profile not found"), "Profile not found"))
+                }
+            }
+            .addOnFailureListener { e -> onResult(Result.Error(e, "Failed to load profile")) }
+    }
+
+    /**
+     * Save user profile
+     */
+    fun saveUserProfile(userId: String, profile: UserProfile, onResult: (Result<Unit>) -> Unit) {
+        db.collection("users").document(userId).set(profile)
+            .addOnSuccessListener { onResult(Result.Success(Unit)) }
+            .addOnFailureListener { e -> onResult(Result.Error(e, "Failed to save profile")) }
+    }
+
+    /**
+     * Check if two users are friends (mutual followers)
+     */
+    suspend fun areFriends(userId1: String, userId2: String): Boolean {
+        return try {
+            val user1Doc = db.collection("users").document(userId1).get().await()
+            val user2Doc = db.collection("users").document(userId2).get().await()
+            
+            val user1Profile = user1Doc.toObject(UserProfile::class.java)
+            val user2Profile = user2Doc.toObject(UserProfile::class.java)
+            
+            val user1Following = user1Profile?.following ?: emptyList()
+            val user2Following = user2Profile?.following ?: emptyList()
+            
+            // Mutual follow = friends
+            userId2 in user1Following && userId1 in user2Following
+        } catch (e: Exception) {
+            false // Return false on error to be safe
+        }
+    }
     fun getAllUsers(onResult: (Result<List<UserProfile>>) -> Unit) {
         db.collection("users")
             .limit(100)
@@ -664,96 +360,357 @@ class FlickRepository private constructor() {
                 val users = snapshot.toObjects(UserProfile::class.java)
                 onResult(Result.Success(users))
             }
-            .addOnFailureListener { error ->
-                onResult(Result.Error(error, "Failed to load users"))
+            .addOnFailureListener { e ->
+                onResult(Result.Error(e, "Failed to get users"))
             }
     }
 
     /**
-     * Find users by phone numbers (for contacts sync)
-     * Note: This is a simplified version. In production, you'd want to 
-     * store hashed phone numbers in user profiles for matching.
+     * Find users by phone numbers (for contact sync)
      */
-    fun findUsersByPhoneNumbers(
-        phoneNumbers: List<String>,
-        onResult: (Result<List<UserProfile>>) -> Unit
-    ) {
+    fun findUsersByPhoneNumbers(phoneNumbers: List<String>, onResult: (Result<List<UserProfile>>) -> Unit) {
         if (phoneNumbers.isEmpty()) {
             onResult(Result.Success(emptyList()))
             return
         }
 
-        // For now, just return some random users as "contacts on app"
-        // In production, match actual phone numbers
-        db.collection("users")
-            .limit(20)
-            .get()
-            .addOnSuccessListener { snapshot ->
-                val users = snapshot.toObjects(UserProfile::class.java)
-                    .shuffled()
-                    .take(minOf(5, phoneNumbers.size)) // Simulate some matches
-                onResult(Result.Success(users))
-            }
-            .addOnFailureListener { error ->
-                onResult(Result.Error(error, "Failed to sync contacts"))
-            }
-    }
+        // Query users with matching phone numbers
+        // Since Firestore doesn't support direct array contains for multiple values efficiently,
+        // we'll query in batches
+        val batches = phoneNumbers.chunked(10)
+        val foundUsers = mutableListOf<UserProfile>()
+        var completedBatches = 0
 
-    // ==================== NOTIFICATION METHODS ====================
-
-    /**
-     * Create a notification for a user
-     */
-    suspend fun createNotification(notification: com.example.picflick.data.Notification): Result<Unit> {
-        return try {
-            val notificationId = UUID.randomUUID().toString()
-            val notificationWithId = notification.copy(id = notificationId)
-            
-            db.collection("notifications")
-                .document(notificationId)
-                .set(notificationWithId)
-                .await()
-            
-            Result.Success(Unit)
-        } catch (e: Exception) {
-            Result.Error(e, "Failed to create notification")
+        batches.forEach { batch ->
+            db.collection("users")
+                .whereIn("phoneNumber", batch)
+                .get()
+                .addOnSuccessListener { snapshot ->
+                    foundUsers.addAll(snapshot.toObjects(UserProfile::class.java))
+                    completedBatches++
+                    if (completedBatches == batches.size) {
+                        onResult(Result.Success(foundUsers))
+                    }
+                }
+                .addOnFailureListener { e ->
+                    completedBatches++
+                    if (completedBatches == batches.size) {
+                        onResult(Result.Success(foundUsers)) // Return what we found
+                    }
+                }
         }
     }
 
     /**
-     * Listen to notifications for a user in real-time
+     * Search users by name or email
+     */
+    fun searchUsers(query: String, currentUserId: String, onResult: (Result<List<UserProfile>>) -> Unit) {
+        val searchLower = query.lowercase()
+
+        db.collection("users")
+            .orderBy("displayName")
+            .startAt(searchLower)
+            .endAt(searchLower + "\uf8ff")
+            .limit(20)
+            .get()
+            .addOnSuccessListener { snapshot ->
+                val users = snapshot.toObjects(UserProfile::class.java)
+                // Filter out current user
+                val filteredUsers = users.filter { it.uid != currentUserId }
+                onResult(Result.Success(filteredUsers))
+            }
+            .addOnFailureListener { e -> onResult(Result.Error(e, "Failed to search users")) }
+    }
+
+    /**
+     * Follow a user - suspend version for ViewModel
+     */
+    suspend fun followUser(currentUserId: String, targetUserId: String): Result<Unit> {
+        return try {
+            val batch = db.batch()
+
+            // Add to current user's following
+            val currentUserRef = db.collection("users").document(currentUserId)
+            batch.update(currentUserRef, "following", FieldValue.arrayUnion(targetUserId))
+
+            // Add to target user's followers
+            val targetUserRef = db.collection("users").document(targetUserId)
+            batch.update(targetUserRef, "followers", FieldValue.arrayUnion(currentUserId))
+
+            batch.commit().await()
+            Result.Success(Unit)
+        } catch (e: Exception) {
+            Result.Error(e, "Failed to follow user")
+        }
+    }
+
+    /**
+     * Unfollow a user - suspend version for ViewModel
+     */
+    suspend fun unfollowUser(currentUserId: String, targetUserId: String): Result<Unit> {
+        return try {
+            val batch = db.batch()
+
+            // Remove from current user's following
+            val currentUserRef = db.collection("users").document(currentUserId)
+            batch.update(currentUserRef, "following", FieldValue.arrayRemove(targetUserId))
+
+            // Remove from target user's followers
+            val targetUserRef = db.collection("users").document(targetUserId)
+            batch.update(targetUserRef, "followers", FieldValue.arrayRemove(currentUserId))
+
+            batch.commit().await()
+            Result.Success(Unit)
+        } catch (e: Exception) {
+            Result.Error(e, "Failed to unfollow user")
+        }
+    }
+
+    /**
+     * Get suggested users (not followed yet)
+     */
+    fun getSuggestedUsers(userId: String, onResult: (Result<List<UserProfile>>) -> Unit) {
+        // First get current user's following list
+        db.collection("users").document(userId).get()
+            .addOnSuccessListener { userDoc ->
+                val userProfile = userDoc.toObject(UserProfile::class.java)
+                val following = userProfile?.following ?: emptyList()
+
+                // Get users not in following list
+                db.collection("users")
+                    .limit(20)
+                    .get()
+                    .addOnSuccessListener { snapshot ->
+                        val allUsers = snapshot.toObjects(UserProfile::class.java)
+                        val suggestions = allUsers
+                            .filter { it.uid != userId && it.uid !in following }
+                            .take(10)
+                        onResult(Result.Success(suggestions))
+                    }
+                    .addOnFailureListener { e -> onResult(Result.Error(e, "Failed to get suggestions")) }
+            }
+            .addOnFailureListener { e -> onResult(Result.Error(e, "Failed to get user profile")) }
+    }
+
+    /**
+     * Follow a user
+     */
+    fun followUser(currentUserId: String, targetUserId: String, onResult: (Result<Unit>) -> Unit) {
+        val batch = db.batch()
+
+        // Add to current user's following
+        val currentUserRef = db.collection("users").document(currentUserId)
+        batch.update(currentUserRef, "following", FieldValue.arrayUnion(targetUserId))
+
+        // Add to target user's followers
+        val targetUserRef = db.collection("users").document(targetUserId)
+        batch.update(targetUserRef, "followers", FieldValue.arrayUnion(currentUserId))
+
+        batch.commit()
+            .addOnSuccessListener { onResult(Result.Success(Unit)) }
+            .addOnFailureListener { e -> onResult(Result.Error(e, "Failed to follow user")) }
+    }
+
+    /**
+     * Unfollow a user
+     */
+    fun unfollowUser(currentUserId: String, targetUserId: String, onResult: (Result<Unit>) -> Unit) {
+        val batch = db.batch()
+
+        // Remove from current user's following
+        val currentUserRef = db.collection("users").document(currentUserId)
+        batch.update(currentUserRef, "following", FieldValue.arrayRemove(targetUserId))
+
+        // Remove from target user's followers
+        val targetUserRef = db.collection("users").document(targetUserId)
+        batch.update(targetUserRef, "followers", FieldValue.arrayRemove(currentUserId))
+
+        batch.commit()
+            .addOnSuccessListener { onResult(Result.Success(Unit)) }
+            .addOnFailureListener { e -> onResult(Result.Error(e, "Failed to unfollow user")) }
+    }
+
+    /**
+     * Get following users
+     */
+    fun getFollowingUsers(userId: String, onResult: (Result<List<UserProfile>>) -> Unit) {
+        db.collection("users").document(userId).get()
+            .addOnSuccessListener { doc ->
+                val userProfile = doc.toObject(UserProfile::class.java)
+                val followingIds = userProfile?.following ?: emptyList()
+
+                if (followingIds.isEmpty()) {
+                    onResult(Result.Success(emptyList()))
+                    return@addOnSuccessListener
+                }
+
+                // Get following user profiles
+                val profiles = mutableListOf<UserProfile>()
+                var completed = 0
+
+                followingIds.forEach { id ->
+                    db.collection("users").document(id).get()
+                        .addOnSuccessListener { userDoc ->
+                            val profile = userDoc.toObject(UserProfile::class.java)
+                            if (profile != null) {
+                                profiles.add(profile)
+                            }
+                            completed++
+                            if (completed == followingIds.size) {
+                                onResult(Result.Success(profiles))
+                            }
+                        }
+                        .addOnFailureListener { e ->
+                            completed++
+                            if (completed == followingIds.size) {
+                                onResult(Result.Success(profiles))
+                            }
+                        }
+                }
+            }
+            .addOnFailureListener { e -> onResult(Result.Error(e, "Failed to get following")) }
+    }
+
+    /**
+     * Get followers
+     */
+    fun getFollowers(userId: String, onResult: (Result<List<UserProfile>>) -> Unit) {
+        db.collection("users").document(userId).get()
+            .addOnSuccessListener { doc ->
+                val userProfile = doc.toObject(UserProfile::class.java)
+                val followerIds = userProfile?.followers ?: emptyList()
+
+                if (followerIds.isEmpty()) {
+                    onResult(Result.Success(emptyList()))
+                    return@addOnSuccessListener
+                }
+
+                // Get follower profiles
+                val profiles = mutableListOf<UserProfile>()
+                var completed = 0
+
+                followerIds.forEach { id ->
+                    db.collection("users").document(id).get()
+                        .addOnSuccessListener { userDoc ->
+                            val profile = userDoc.toObject(UserProfile::class.java)
+                            if (profile != null) {
+                                profiles.add(profile)
+                            }
+                            completed++
+                            if (completed == followerIds.size) {
+                                onResult(Result.Success(profiles))
+                            }
+                        }
+                        .addOnFailureListener { e ->
+                            completed++
+                            if (completed == followerIds.size) {
+                                onResult(Result.Success(profiles))
+                            }
+                        }
+                }
+            }
+            .addOnFailureListener { e -> onResult(Result.Error(e, "Failed to get followers")) }
+    }
+
+    /**
+     * Get daily upload count for a user
+     */
+    fun getDailyUploadCount(userId: String, onResult: (Result<Int>) -> Unit) {
+        GlobalScope.launch {
+            try {
+                // Get start of today
+                val calendar = Calendar.getInstance().apply {
+                    set(Calendar.HOUR_OF_DAY, 0)
+                    set(Calendar.MINUTE, 0)
+                    set(Calendar.SECOND, 0)
+                    set(Calendar.MILLISECOND, 0)
+                }
+                val startOfDay = calendar.timeInMillis
+
+                // Count flicks uploaded today
+                val snapshot = db.collection("flicks")
+                    .whereEqualTo("userId", userId)
+                    .whereGreaterThanOrEqualTo("timestamp", startOfDay)
+                    .get()
+                    .await()
+
+                onResult(Result.Success(snapshot.size()))
+            } catch (e: Exception) {
+                onResult(Result.Error(e, "Failed to get upload count"))
+            }
+        }
+    }
+
+    /**
+     * Create notification for new photo
+     */
+    private fun createPhotoNotifications(flick: Flick, userPhotoUrl: String) {
+        GlobalScope.launch {
+            try {
+                // Get user's followers
+                val userDoc = db.collection("users").document(flick.userId).get().await()
+                val userProfile = userDoc.toObject(UserProfile::class.java)
+                val followers = userProfile?.followers ?: emptyList()
+
+                // Create notification for each follower
+                followers.forEach { followerId ->
+                    val notification = hashMapOf(
+                        "id" to UUID.randomUUID().toString(),
+                        "userId" to followerId,
+                        "senderId" to flick.userId,
+                        "senderName" to flick.userName,
+                        "senderPhotoUrl" to userPhotoUrl,
+                        "type" to "PHOTO_ADDED",
+                        "title" to "${flick.userName} added a new photo",
+                        "message" to "Check it out!",
+                        "flickId" to flick.id,
+                        "flickImageUrl" to flick.imageUrl,
+                        "isRead" to false,
+                        "timestamp" to System.currentTimeMillis()
+                    )
+
+                    db.collection("notifications").add(notification).await()
+                }
+            } catch (e: Exception) {
+                // Silently fail - don't block photo upload
+                e.printStackTrace()
+            }
+        }
+    }
+
+    /**
+     * Listen to notifications in real-time
      */
     fun listenToNotifications(
         userId: String,
-        onUpdate: (List<com.example.picflick.data.Notification>) -> Unit,
+        onUpdate: (List<Notification>) -> Unit,
         onError: (String) -> Unit
     ): com.google.firebase.firestore.ListenerRegistration {
         return db.collection("notifications")
             .whereEqualTo("userId", userId)
             .orderBy("timestamp", Query.Direction.DESCENDING)
-            .limit(100)
+            .limit(50)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
-                    onError("Failed to load notifications: ${error.message}")
+                    onError(error.message ?: "Failed to load notifications")
                     return@addSnapshotListener
                 }
-                
-                val notifications = snapshot?.toObjects(com.example.picflick.data.Notification::class.java) 
-                    ?: emptyList()
-                onUpdate(notifications)
+
+                if (snapshot != null) {
+                    val notifications = snapshot.toObjects(Notification::class.java)
+                    onUpdate(notifications)
+                }
             }
     }
 
     /**
-     * Mark a notification as read
+     * Mark notification as read
      */
     suspend fun markNotificationAsRead(notificationId: String): Result<Unit> {
         return try {
-            db.collection("notifications")
-                .document(notificationId)
+            db.collection("notifications").document(notificationId)
                 .update("isRead", true)
                 .await()
-            
             Result.Success(Unit)
         } catch (e: Exception) {
             Result.Error(e, "Failed to mark notification as read")
@@ -789,14 +746,277 @@ class FlickRepository private constructor() {
      */
     suspend fun deleteNotification(notificationId: String): Result<Unit> {
         return try {
-            db.collection("notifications")
-                .document(notificationId)
+            db.collection("notifications").document(notificationId)
                 .delete()
                 .await()
-            
             Result.Success(Unit)
         } catch (e: Exception) {
             Result.Error(e, "Failed to delete notification")
+        }
+    }
+
+    /**
+     * Create notification for reaction
+     */
+    private fun createReactionNotification(
+        flickId: String,
+        ownerId: String,
+        reactorId: String,
+        reactorName: String,
+        reactorPhotoUrl: String,
+        reactionType: ReactionType
+    ) {
+        db.collection("flicks").document(flickId).get()
+            .addOnSuccessListener { flickDoc ->
+                val flickImageUrl = flickDoc.getString("imageUrl")
+                val emoji = reactionType.toEmoji()
+                val displayName = reactionType.toDisplayName()
+
+                val notification = hashMapOf(
+                    "id" to UUID.randomUUID().toString(),
+                    "userId" to ownerId,
+                    "senderId" to reactorId,
+                    "senderName" to reactorName,
+                    "senderPhotoUrl" to reactorPhotoUrl,
+                    "type" to "REACTION",
+                    "title" to "$reactorName reacted $emoji to your photo",
+                    "message" to "$displayName reaction",
+                    "flickId" to flickId,
+                    "flickImageUrl" to flickImageUrl,
+                    "reactionType" to reactionType.name,
+                    "isRead" to false,
+                    "timestamp" to System.currentTimeMillis()
+                )
+
+                db.collection("notifications").add(notification)
+            }
+    }
+
+    /**
+     * Get notifications for a user
+     */
+    fun getNotifications(userId: String, onResult: (Result<List<Map<String, Any>>>) -> Unit) {
+        db.collection("notifications")
+            .whereEqualTo("userId", userId)
+            .orderBy("timestamp", Query.Direction.DESCENDING)
+            .limit(50)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    onResult(Result.Error(error, "Failed to load notifications"))
+                    return@addSnapshotListener
+                }
+
+                if (snapshot != null) {
+                    val notifications = snapshot.documents.map { it.data ?: emptyMap() }
+                    onResult(Result.Success(notifications))
+                }
+            }
+    }
+
+    /**
+     * Mark notification as read
+     */
+    fun markNotificationRead(notificationId: String, onResult: (Result<Unit>) -> Unit) {
+        db.collection("notifications").document(notificationId)
+            .update("isRead", true)
+            .addOnSuccessListener { onResult(Result.Success(Unit)) }
+            .addOnFailureListener { e -> onResult(Result.Error(e, "Failed to mark as read")) }
+    }
+
+    /**
+     * Add a comment to a flick
+     */
+    suspend fun addComment(flickId: String, userId: String, userName: String, text: String): Result<Unit> {
+        return try {
+            val comment = Comment(
+                id = UUID.randomUUID().toString(),
+                flickId = flickId,
+                userId = userId,
+                userName = userName,
+                text = text,
+                timestamp = System.currentTimeMillis()
+            )
+
+            // Add comment
+            db.collection("comments").add(comment).await()
+
+            // Update flick comment count
+            db.collection("flicks").document(flickId)
+                .update("commentCount", FieldValue.increment(1))
+                .await()
+
+            Result.Success(Unit)
+        } catch (e: Exception) {
+            Result.Error(e, "Failed to add comment")
+        }
+    }
+
+    /**
+     * Get comments for a flick
+     */
+    fun getComments(flickId: String, onResult: (Result<List<Comment>>) -> Unit) {
+        db.collection("comments")
+            .whereEqualTo("flickId", flickId)
+            .orderBy("timestamp", Query.Direction.DESCENDING)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    onResult(Result.Error(error, "Failed to load comments"))
+                    return@addSnapshotListener
+                }
+
+                if (snapshot != null) {
+                    val comments = snapshot.toObjects(Comment::class.java)
+                    onResult(Result.Success(comments))
+                }
+            }
+    }
+
+    /**
+     * Delete a comment
+     */
+    suspend fun deleteComment(commentId: String, flickId: String): Result<Unit> {
+        return try {
+            db.collection("comments").document(commentId).delete().await()
+
+            // Decrement flick comment count
+            db.collection("flicks").document(flickId)
+                .update("commentCount", FieldValue.increment(-1))
+                .await()
+
+            Result.Success(Unit)
+        } catch (e: Exception) {
+            Result.Error(e, "Failed to delete comment")
+        }
+    }
+
+    /**
+     * Update flick description
+     */
+    suspend fun updateFlickDescription(flickId: String, description: String): Result<Unit> {
+        return try {
+            db.collection("flicks").document(flickId)
+                .update("description", description)
+                .await()
+            Result.Success(Unit)
+        } catch (e: Exception) {
+            Result.Error(e, "Failed to update description")
+        }
+    }
+
+    /**
+     * Get user streak info
+     */
+    suspend fun getUserStreak(userId: String): Result<Pair<Int, Boolean>> {
+        return try {
+            val userDoc = db.collection("users").document(userId).get().await()
+            val streakData = userDoc.get("streak") as? Map<String, Any>
+
+            val currentStreak = (streakData?.get("current") as? Long)?.toInt() ?: 0
+            val lastUpload = streakData?.get("lastUpload") as? Long ?: 0
+
+            // Check if streak is still active (uploaded today or yesterday)
+            val calendar = Calendar.getInstance()
+            val today = calendar.apply {
+                set(Calendar.HOUR_OF_DAY, 0)
+                set(Calendar.MINUTE, 0)
+                set(Calendar.SECOND, 0)
+                set(Calendar.MILLISECOND, 0)
+            }.timeInMillis
+
+            calendar.add(Calendar.DAY_OF_YEAR, -1)
+            val yesterday = calendar.timeInMillis
+
+            val isActive = lastUpload >= yesterday
+            val canContinue = lastUpload in yesterday..today
+
+            val effectiveStreak = if (isActive) currentStreak else 0
+
+            Result.Success(Pair(effectiveStreak, canContinue))
+        } catch (e: Exception) {
+            Result.Error(e, "Failed to get streak")
+        }
+    }
+
+    /**
+     * Update user streak after upload
+     */
+    suspend fun updateStreak(userId: String): Result<Unit> {
+        return try {
+            val userDoc = db.collection("users").document(userId).get().await()
+            val streakData = userDoc.get("streak") as? Map<String, Any>
+
+            val currentStreak = (streakData?.get("current") as? Long)?.toInt() ?: 0
+            val lastUpload = streakData?.get("lastUpload") as? Long ?: 0
+
+            // Check if already uploaded today
+            val calendar = Calendar.getInstance()
+            val today = calendar.apply {
+                set(Calendar.HOUR_OF_DAY, 0)
+                set(Calendar.MINUTE, 0)
+                set(Calendar.SECOND, 0)
+                set(Calendar.MILLISECOND, 0)
+            }.timeInMillis
+
+            if (lastUpload >= today) {
+                // Already uploaded today, don't increment
+                return Result.Success(Unit)
+            }
+
+            calendar.add(Calendar.DAY_OF_YEAR, -1)
+            val yesterday = calendar.timeInMillis
+
+            val newStreak = if (lastUpload >= yesterday) {
+                // Continuing streak
+                currentStreak + 1
+            } else {
+                // New streak
+                1
+            }
+
+            val newStreakData = hashMapOf(
+                "current" to newStreak,
+                "lastUpload" to System.currentTimeMillis(),
+                "longest" to maxOf(newStreak, (streakData?.get("longest") as? Long)?.toInt() ?: 0)
+            )
+
+            db.collection("users").document(userId)
+                .update("streak", newStreakData)
+                .await()
+
+            Result.Success(Unit)
+        } catch (e: Exception) {
+            Result.Error(e, "Failed to update streak")
+        }
+    }
+
+    /**
+     * Get leaderboard (top users by likes/reactions)
+     */
+    suspend fun getLeaderboard(): Result<List<Pair<UserProfile, Int>>> {
+        return try {
+            // Get all users
+            val usersSnapshot = db.collection("users").limit(100).get().await()
+            val users = usersSnapshot.toObjects(UserProfile::class.java)
+
+            // Calculate scores for each user
+            val userScores = users.map { user ->
+                val flicksSnapshot = db.collection("flicks")
+                    .whereEqualTo("userId", user.uid)
+                    .get()
+                    .await()
+
+                val flicks = flicksSnapshot.toObjects(Flick::class.java)
+                val totalReactions = flicks.sumOf { it.getTotalReactions() }
+
+                Pair(user, totalReactions)
+            }
+
+            // Sort by score
+            val sorted = userScores.sortedByDescending { it.second }
+
+            Result.Success(sorted)
+        } catch (e: Exception) {
+            Result.Error(e, "Failed to get leaderboard")
         }
     }
 }

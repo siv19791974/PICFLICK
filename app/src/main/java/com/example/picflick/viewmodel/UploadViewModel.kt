@@ -12,7 +12,6 @@ import com.example.picflick.data.Flick
 import com.example.picflick.data.PhotoFilter
 import com.example.picflick.data.UserProfile
 import com.google.firebase.firestore.FirebaseFirestore
-import com.google.firebase.firestore.Query
 import com.google.firebase.storage.FirebaseStorage
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
