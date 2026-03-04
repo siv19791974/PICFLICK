@@ -2,8 +2,11 @@ package com.example.picflick.repository
 
 import com.example.picflick.data.Comment
 import com.example.picflick.data.Flick
+import com.example.picflick.data.ReactionType
 import com.example.picflick.data.Result
 import com.example.picflick.data.UserProfile
+import com.example.picflick.data.toEmoji
+import com.example.picflick.data.toDisplayName
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
@@ -333,7 +336,7 @@ class FlickRepository private constructor() {
         reactorId: String,
         reactorName: String,
         reactorPhotoUrl: String,
-        reactionType: com.example.picflick.data.ReactionType
+        reactionType: ReactionType
     ) {
         db.collection("flicks").document(flickId).get()
             .addOnSuccessListener { flickDoc ->

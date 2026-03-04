@@ -1,0 +1,14 @@
+package com.example.picflick.data
+
+/**
+ * Enum representing available photo filters
+ */
+enum class PhotoFilter(val displayName: String, val icon: String) {
+    ORIGINAL("Original", "📷"),
+    BLACK_AND_WHITE("B&W", "⚫"),
+    SEPIA("Sepia", "🟤"),
+    HIGH_CONTRAST("Contrast", "⚡"),
+    WARM("Warm", "☀️"),
+    COOL("Cool", "❄️"),
+    VINTAGE("Vintage", "📻")
+}

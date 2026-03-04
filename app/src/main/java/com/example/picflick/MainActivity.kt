@@ -1,9 +1,12 @@
 package com.example.picflick
 
+import android.net.Uri
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -35,10 +38,12 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.picflick.data.UserProfile
 import com.example.picflick.ui.components.BottomNavBar
 import com.example.picflick.ui.components.LogoImage
+import com.example.picflick.ui.components.UploadSourceDialog
 import com.example.picflick.ui.screens.AboutScreen
 import com.example.picflick.ui.screens.ChatDetailScreen
 import com.example.picflick.ui.screens.ChatsScreen
 import com.example.picflick.ui.screens.ContactScreen
+import com.example.picflick.ui.screens.FilterScreen
 import com.example.picflick.ui.screens.FindFriendsScreen
 import com.example.picflick.ui.screens.FriendsScreen
 import com.example.picflick.ui.screens.HomeScreen
@@ -56,6 +61,7 @@ import com.example.picflick.viewmodel.HomeViewModel
 import com.example.picflick.viewmodel.ChatViewModel
 import com.example.picflick.viewmodel.NotificationViewModel
 import com.example.picflick.viewmodel.ProfileViewModel
+import com.example.picflick.viewmodel.UploadViewModel
 
 /**
  * Main Activity - Entry point for the PicFlick app
@@ -93,6 +99,7 @@ sealed class Screen {
     data object About : Screen()
     data object Contact : Screen()
     data object Notifications : Screen()
+    data object Filter : Screen()
 }
 
 /**
@@ -105,13 +112,17 @@ fun MainScreen(
     profileViewModel: ProfileViewModel = viewModel(),
     friendsViewModel: FriendsViewModel = viewModel(),
     notificationViewModel: NotificationViewModel = viewModel(),
-    chatViewModel: ChatViewModel = viewModel()
+    chatViewModel: ChatViewModel = viewModel(),
+    uploadViewModel: UploadViewModel = viewModel()
 ) {
     var currentScreen by remember { mutableStateOf<Screen>(Screen.Home) }
     val currentUser = authViewModel.currentUser
     val userProfile = authViewModel.userProfile
     val context = LocalContext.current // Get context for Toast
-    var showUploadDialog by remember { mutableStateOf(false) }
+    
+    // Upload flow states
+    var showUploadSourceDialog by remember { mutableStateOf(false) }
+    var selectedPhotoUri by remember { mutableStateOf<Uri?>(null) }
     
     // State for selected chat (for navigation to ChatDetail)
     var selectedChatSession by remember { mutableStateOf<com.example.picflick.data.ChatSession?>(null) }
@@ -124,7 +135,89 @@ fun MainScreen(
         }
     }
     
+    // Load daily upload count when user is authenticated
+    LaunchedEffect(userProfile?.uid) {
+        userProfile?.uid?.let { uid ->
+            uploadViewModel.loadDailyUploadCount(uid)
+        }
+    }
+    
     val unreadCount = notificationViewModel.unreadCount
+
+    // Image pickers for upload flow
+    val galleryLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        uri?.let {
+            selectedPhotoUri = it
+            currentScreen = Screen.Filter
+        }
+    }
+
+    val cameraLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.TakePicture()
+    ) { success: Boolean ->
+        if (success && selectedPhotoUri != null) {
+            currentScreen = Screen.Filter
+        } else {
+            Toast.makeText(context, "Failed to capture photo", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    // Camera permission launcher
+    val cameraPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted: Boolean ->
+        if (isGranted) {
+            // Permission granted, launch camera
+            try {
+                val tempFile = java.io.File.createTempFile("camera_", ".jpg", context.cacheDir)
+                val uri = androidx.core.content.FileProvider.getUriForFile(
+                    context,
+                    "${context.packageName}.fileprovider",
+                    tempFile
+                )
+                selectedPhotoUri = uri
+                cameraLauncher.launch(uri)
+            } catch (e: Exception) {
+                Toast.makeText(context, "Error creating file: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
+        } else {
+            Toast.makeText(context, "Camera permission is required to take photos", Toast.LENGTH_LONG).show()
+        }
+    }
+
+    // Handle upload success/error
+    LaunchedEffect(uploadViewModel.uploadSuccess) {
+        if (uploadViewModel.uploadSuccess) {
+            Toast.makeText(context, "Photo uploaded successfully!", Toast.LENGTH_SHORT).show()
+            uploadViewModel.resetUploadState()
+            currentScreen = Screen.Home
+        }
+    }
+
+    LaunchedEffect(uploadViewModel.uploadError) {
+        uploadViewModel.uploadError?.let { error ->
+            Toast.makeText(context, "Upload failed: $error", Toast.LENGTH_LONG).show()
+            uploadViewModel.resetUploadState()
+        }
+    }
+
+    // Upload Source Dialog
+    if (showUploadSourceDialog && userProfile != null) {
+        UploadSourceDialog(
+            onDismiss = { showUploadSourceDialog = false },
+            onCameraClick = {
+                showUploadSourceDialog = false
+                // Check and request camera permission
+                cameraPermissionLauncher.launch(android.Manifest.permission.CAMERA)
+            },
+            onGalleryClick = {
+                showUploadSourceDialog = false
+                galleryLauncher.launch("image/*")
+            }
+        )
+    }
 
     // Outer Scaffold with bottom navigation for all screens
     Scaffold(
@@ -207,7 +300,7 @@ fun MainScreen(
                         when (route) {
                             "home" -> currentScreen = Screen.Home
                             "chats" -> currentScreen = Screen.Chats
-                            "upload" -> showUploadDialog = true
+                            "upload" -> showUploadSourceDialog = true
                             "friends" -> currentScreen = Screen.Friends
                             "profile" -> currentScreen = Screen.Profile
                         }
@@ -241,6 +334,7 @@ fun MainScreen(
                     friendsViewModel = friendsViewModel,
                     notificationViewModel = notificationViewModel,
                     chatViewModel = chatViewModel,
+                    uploadViewModel = uploadViewModel,
                     selectedChatSession = selectedChatSession,
                     selectedOtherUserId = selectedOtherUserId,
                     onSetSelectedChat = { session, userId ->
@@ -248,12 +342,10 @@ fun MainScreen(
                         selectedOtherUserId = userId
                     },
                     onSignOut = { authViewModel.signOut() },
-                    onProfilePhotoSelected = { uri ->
-                        // TODO: Upload to Firebase Storage and update profile
-                        Toast.makeText(context, "Photo selected: $uri\nUpload coming soon!", Toast.LENGTH_SHORT).show()
-                    },
-                    showUploadDialog = showUploadDialog,
-                    onDismissUpload = { showUploadDialog = false }
+                    selectedPhotoUri = selectedPhotoUri,
+                    onPhotoSelected = { uri ->
+                        selectedPhotoUri = uri
+                    }
                 )
             }
         }
@@ -273,14 +365,15 @@ private fun AuthenticatedContent(
     friendsViewModel: FriendsViewModel,
     notificationViewModel: NotificationViewModel,
     chatViewModel: ChatViewModel,
+    uploadViewModel: UploadViewModel,
     selectedChatSession: com.example.picflick.data.ChatSession?,
     selectedOtherUserId: String,
     onSetSelectedChat: (com.example.picflick.data.ChatSession, String) -> Unit,
     onSignOut: () -> Unit,
-    onProfilePhotoSelected: (android.net.Uri) -> Unit = {},
-    showUploadDialog: Boolean = false,
-    onDismissUpload: () -> Unit = {}
+    selectedPhotoUri: Uri?,
+    onPhotoSelected: (Uri) -> Unit
 ) {
+    val context = LocalContext.current
     // Direct screen switching - NO animation (fixes banner position shift)
     when (currentScreen) {
         is Screen.Home -> HomeScreen(
@@ -310,7 +403,7 @@ private fun AuthenticatedContent(
                 onBack = { onScreenChange(Screen.Home) },
                 onSignOut = onSignOut,
                 onMyPhotosClick = { onScreenChange(Screen.MyPhotos) },
-                onPhotoSelected = onProfilePhotoSelected
+                onPhotoSelected = onPhotoSelected
             )
 
             is Screen.MyPhotos -> MyPhotosScreen(
@@ -370,5 +463,33 @@ private fun AuthenticatedContent(
                 userProfile = userProfile,
                 onBack = { onScreenChange(Screen.Home) }
             )
+
+            is Screen.Filter -> {
+                selectedPhotoUri?.let { uri ->
+                    // Load following users if not already loaded
+                    friendsViewModel.loadFollowingUsers(userProfile.following)
+                    
+                    FilterScreen(
+                        photoUri = uri,
+                        currentUser = userProfile,
+                        friends = friendsViewModel.followingUsers,
+                        dailyUploadCount = uploadViewModel.dailyUploadCount,
+                        maxDailyUploads = 5,
+                        onBack = { onScreenChange(Screen.Home) },
+                        onUpload = { filteredUri, filter, taggedFriends ->
+                            uploadViewModel.uploadPhoto(
+                                context = context,
+                                photoUri = filteredUri,
+                                userProfile = userProfile,
+                                filter = filter,
+                                taggedFriends = taggedFriends
+                            )
+                        }
+                    )
+                } ?: run {
+                    // If no photo selected, go back to home
+                    onScreenChange(Screen.Home)
+                }
+            }
     }
 }

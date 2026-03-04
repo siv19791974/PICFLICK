@@ -85,6 +85,9 @@ dependencies {
     // Accompanist for pull-to-refresh
     implementation(libs.accompanist.swiperefresh)
 
+    // Activity Result Contracts
+    implementation(libs.androidx.activity.ktx)
+    
     // Testing
     testImplementation(libs.junit)
     testImplementation(libs.mockk)
