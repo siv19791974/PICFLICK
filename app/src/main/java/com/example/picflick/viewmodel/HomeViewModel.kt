@@ -241,6 +241,7 @@ class HomeViewModel : ViewModel() {
                             id = "",
                             userId = userId,
                             userName = userDisplayName,
+                            userPhotoUrl = userPhotoUrl,
                             imageUrl = imageUrl,
                             description = caption,
                             timestamp = System.currentTimeMillis(),

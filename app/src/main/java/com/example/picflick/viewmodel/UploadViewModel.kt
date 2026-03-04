@@ -116,6 +116,7 @@ class UploadViewModel : ViewModel() {
                     id = UUID.randomUUID().toString(),
                     userId = userProfile.uid,
                     userName = userProfile.displayName,
+                    userPhotoUrl = userProfile.photoUrl,
                     imageUrl = imageUrl,
                     description = description,
                     timestamp = System.currentTimeMillis(),
