@@ -25,10 +25,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -43,7 +47,13 @@ import com.example.picflick.data.UserProfile
 import com.example.picflick.data.toEmoji
 import com.example.picflick.repository.FlickRepository
 import com.example.picflick.ui.components.AnimatedReactionPicker
+import android.content.ContentValues
+import android.content.Context
 import android.content.Intent
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.os.Build
+import android.provider.MediaStore
 import android.widget.Toast
 import android.view.LayoutInflater
 import android.widget.TextView
@@ -52,6 +62,10 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import kotlin.math.absoluteValue
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.Dispatchers
+import java.net.URL
+import java.net.HttpURLConnection
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -66,7 +80,9 @@ fun FullScreenPhotoViewer(
     onCaptionUpdated: (String) -> Unit = {},
     allPhotos: List<Flick> = emptyList(),
     currentIndex: Int = 0,
-    onNavigateToPhoto: (Int) -> Unit = {}
+    onNavigateToPhoto: (Int) -> Unit = {},
+    onUserProfileClick: (String) -> Unit = {},
+    onShareToFriend: (String, String) -> Unit = { _, _ -> },
 ) {
     val context = LocalContext.current
     
@@ -128,6 +144,11 @@ fun FullScreenPhotoViewer(
     // Show comment panel state
     var showCommentPanel by remember { mutableStateOf(false) }
     
+    // Show share dialog state
+    var showShareDialog by remember { mutableStateOf(false) }
+    var friendsList by remember { mutableStateOf<List<UserProfile>>(emptyList()) }
+    var isLoadingFriends by remember { mutableStateOf(false) }
+    
     // Heart animation state for double tap
     var showHeartAnimation by remember { mutableStateOf(false) }
     var heartAnimationKey by remember { mutableIntStateOf(0) }
@@ -143,6 +164,34 @@ fun FullScreenPhotoViewer(
                 }
                 else -> isLoadingComments = false
             }
+        }
+    }
+    
+    // Load friends when share dialog opens
+    LaunchedEffect(showShareDialog) {
+        if (showShareDialog && currentUser.following.isNotEmpty()) {
+            isLoadingFriends = true
+            val loadedFriends = mutableListOf<UserProfile>()
+            var loadedCount = 0
+            
+            currentUser.following.forEach { userId ->
+                repository.getUserProfile(userId) { result ->
+                    when (result) {
+                        is com.example.picflick.data.Result.Success -> {
+                            loadedFriends.add(result.data)
+                        }
+                        else -> { /* Skip failed loads */ }
+                    }
+                    loadedCount++
+                    if (loadedCount >= currentUser.following.size) {
+                        friendsList = loadedFriends
+                        isLoadingFriends = false
+                    }
+                }
+            }
+        } else if (showShareDialog) {
+            friendsList = emptyList()
+            isLoadingFriends = false
         }
     }
     
@@ -338,7 +387,7 @@ fun FullScreenPhotoViewer(
                         Box(
                             modifier = Modifier
                                 .padding(start = 16.dp, top = 16.dp)
-                                .size(40.dp)
+                                .size(44.dp)
                                 .background(
                                     Color.Black.copy(alpha = 0.4f),
                                     CircleShape
@@ -350,46 +399,31 @@ fun FullScreenPhotoViewer(
                                 imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                                 contentDescription = "Back",
                                 tint = Color.White,
-                                modifier = Modifier.size(24.dp)
+                                modifier = Modifier.size(28.dp)
                             )
                         }
                         
-                        // PROFILE PICTURE - Top right, clickable
-                        Box(
-                            modifier = Modifier
-                                .align(Alignment.TopEnd)
-                                .padding(top = 16.dp, end = 16.dp)
-                        ) {
-                            AsyncImage(
-                                model = currentFlick.userPhotoUrl,
-                                contentDescription = "View ${currentFlick.userName}'s profile",
-                                modifier = Modifier
-                                    .size(44.dp)
-                                    .clip(CircleShape)
-                                    .background(Color.Gray)
-                                    .border(2.dp, Color.White.copy(alpha = 0.8f), CircleShape)
-                                    .clickable {
-                                        onDismiss()
-                                    },
-                                contentScale = ContentScale.Crop
-                            )
-                        }
-                        
-                        // RIGHT SIDE ACTION BAR - No background box
+                        // RIGHT SIDE ACTION BAR - With subtle backgrounds
                         Column(
                             modifier = Modifier
                                 .align(Alignment.CenterEnd)
                                 .padding(end = 16.dp),
                             horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(16.dp)
+                            verticalArrangement = Arrangement.spacedBy(20.dp)
                         ) {
-                            // REACTION BUTTON
+                            // REACTION BUTTON - Shows filled heart if liked
                             Column(
                                 horizontalAlignment = Alignment.CenterHorizontally
                             ) {
-                                IconButton(
-                                    onClick = { showReactionPicker = true },
-                                    modifier = Modifier.size(44.dp)
+                                Box(
+                                    modifier = Modifier
+                                        .size(44.dp)
+                                        .background(
+                                            Color.Black.copy(alpha = 0.4f),
+                                            CircleShape
+                                        )
+                                        .clickable { showReactionPicker = true },
+                                    contentAlignment = Alignment.Center
                                 ) {
                                     if (userReaction != null) {
                                         Text(
@@ -398,7 +432,7 @@ fun FullScreenPhotoViewer(
                                         )
                                     } else {
                                         Icon(
-                                            imageVector = Icons.Default.FavoriteBorder,
+                                            imageVector = Icons.Default.Favorite,
                                             contentDescription = "React",
                                             tint = Color.White,
                                             modifier = Modifier.size(28.dp)
@@ -415,16 +449,22 @@ fun FullScreenPhotoViewer(
                                 }
                             }
                             
-                            // COMMENT BUTTON
+                            // COMMENT BUTTON - Chat bubble icon
                             Column(
                                 horizontalAlignment = Alignment.CenterHorizontally
                             ) {
-                                IconButton(
-                                    onClick = { showCommentPanel = true },
-                                    modifier = Modifier.size(44.dp)
+                                Box(
+                                    modifier = Modifier
+                                        .size(44.dp)
+                                        .background(
+                                            Color.Black.copy(alpha = 0.4f),
+                                            CircleShape
+                                        )
+                                        .clickable { showCommentPanel = true },
+                                    contentAlignment = Alignment.Center
                                 ) {
                                     Icon(
-                                        imageVector = Icons.Default.MailOutline,
+                                        imageVector = Icons.Default.Email,
                                         contentDescription = "Comments",
                                         tint = Color.White,
                                         modifier = Modifier.size(28.dp)
@@ -440,47 +480,66 @@ fun FullScreenPhotoViewer(
                                 }
                             }
                             
-                            // SHARE BUTTON
-                            IconButton(
-                                onClick = {
-                                    val shareIntent = Intent().apply {
-                                        action = Intent.ACTION_SEND
-                                        type = "text/plain"
-                                        putExtra(Intent.EXTRA_TEXT, "Check out this photo: ${currentFlick.imageUrl}")
-                                        setPackage("com.whatsapp")
-                                    }
-                                    try {
-                                        context.startActivity(shareIntent)
-                                    } catch (_: Exception) {
-                                        val genericIntent = Intent().apply {
-                                            action = Intent.ACTION_SEND
-                                            type = "text/plain"
-                                            putExtra(Intent.EXTRA_TEXT, "Check out this photo: ${currentFlick.imageUrl}")
-                                        }
-                                        context.startActivity(Intent.createChooser(genericIntent, "Share via"))
-                                    }
-                                },
-                                modifier = Modifier.size(44.dp)
+                            // SHARE BUTTON - In-app share to friends
+                            Box(
+                                modifier = Modifier
+                                    .size(44.dp)
+                                    .background(
+                                        Color.Black.copy(alpha = 0.4f),
+                                        CircleShape
+                                    )
+                                    .clickable { showShareDialog = true },
+                                contentAlignment = Alignment.Center
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.Share,
-                                    contentDescription = "Share",
+                                    contentDescription = "Share to friends",
                                     tint = Color.White,
-                                    modifier = Modifier.size(26.dp)
+                                    modifier = Modifier.size(28.dp)
+                                )
+                            }
+                            
+                            // SAVE/DOWNLOAD BUTTON - Actually downloads the image
+                            Box(
+                                modifier = Modifier
+                                    .size(44.dp)
+                                    .background(
+                                        Color.Black.copy(alpha = 0.4f),
+                                        CircleShape
+                                    )
+                                    .clickable {
+                                        // Launch download in coroutine
+                                        coroutineScope.launch {
+                                            downloadImageToGallery(context, currentFlick.imageUrl, currentFlick.id)
+                                        }
+                                    },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.KeyboardArrowDown,
+                                    contentDescription = "Save to device",
+                                    tint = Color.White,
+                                    modifier = Modifier.size(28.dp)
                                 )
                             }
                             
                             // DELETE BUTTON
                             if (canDelete) {
-                                IconButton(
-                                    onClick = { showDeleteConfirmation = true },
-                                    modifier = Modifier.size(44.dp)
+                                Box(
+                                    modifier = Modifier
+                                        .size(44.dp)
+                                        .background(
+                                            Color.Black.copy(alpha = 0.4f),
+                                            CircleShape
+                                        )
+                                        .clickable { showDeleteConfirmation = true },
+                                    contentAlignment = Alignment.Center
                                 ) {
                                     Icon(
                                         imageVector = Icons.Default.Delete,
                                         contentDescription = "Delete",
                                         tint = Color.Red,
-                                        modifier = Modifier.size(26.dp)
+                                        modifier = Modifier.size(28.dp)
                                     )
                                 }
                             }
@@ -494,27 +553,36 @@ fun FullScreenPhotoViewer(
                     enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
                     exit = slideOutVertically(targetOffsetY = { it }) + fadeOut()
                 ) {
+                    val keyboardController = LocalSoftwareKeyboardController.current
+                    
                     Box(
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.BottomCenter
                     ) {
+                        // Backdrop
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
                                 .background(Color.Black.copy(alpha = 0.5f))
-                                .clickable { showCommentPanel = false }
+                                .clickable { 
+                                    showCommentPanel = false
+                                    keyboardController?.hide()
+                                }
                         )
                         
+                        // Panel content - fixed max height so it doesn't overflow
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .fillMaxHeight(0.7f)
+                                .heightIn(max = 500.dp) // Max height constraint
+                                .imePadding() // Handle keyboard insets here
                                 .background(
-                                    Color.Black.copy(alpha = 0.95f),
+                                    Color.Black.copy(alpha = 0.98f),
                                     RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)
                                 )
-                                .padding(16.dp)
+                                .padding(horizontal = 16.dp, vertical = 16.dp)
                         ) {
+                            // Handle bar
                             Box(
                                 modifier = Modifier.fillMaxWidth(),
                                 contentAlignment = Alignment.Center
@@ -532,6 +600,7 @@ fun FullScreenPhotoViewer(
                             
                             Spacer(modifier = Modifier.height(16.dp))
                             
+                            // Header
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -560,38 +629,46 @@ fun FullScreenPhotoViewer(
                                 modifier = Modifier.padding(vertical = 12.dp)
                             )
                             
-                            Column(
+                            // Comments list - takes available space but doesn't push input off screen
+                            Box(
                                 modifier = Modifier
-                                    .weight(1f)
-                                    .verticalScroll(scrollState)
+                                    .fillMaxWidth()
+                                    .weight(1f) // Takes remaining space
                             ) {
-                                if (isLoadingComments) {
-                                    Box(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        CircularProgressIndicator(
-                                            color = Color.White,
-                                            strokeWidth = 2.dp
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .verticalScroll(scrollState)
+                                ) {
+                                    if (isLoadingComments) {
+                                        Box(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            CircularProgressIndicator(
+                                                color = Color.White,
+                                                strokeWidth = 2.dp
+                                            )
+                                        }
+                                    } else if (comments.isEmpty()) {
+                                        Text(
+                                            text = "No comments yet. Be the first!",
+                                            color = Color.Gray,
+                                            modifier = Modifier.padding(vertical = 16.dp)
                                         )
-                                    }
-                                } else if (comments.isEmpty()) {
-                                    Text(
-                                        text = "No comments yet. Be the first!",
-                                        color = Color.Gray,
-                                        modifier = Modifier.padding(vertical = 16.dp)
-                                    )
-                                } else {
-                                    comments.forEach { comment ->
-                                        CompactCommentItem(comment = comment)
+                                    } else {
+                                        comments.forEach { comment ->
+                                            CompactCommentItem(comment = comment)
+                                        }
                                     }
                                 }
                             }
                             
+                            // Comment input bar - fixed at bottom, not scrollable
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(top = 12.dp)
+                                    .padding(top = 12.dp, bottom = 8.dp) // Bottom padding
                                     .background(
                                         Color.DarkGray.copy(alpha = 0.5f),
                                         RoundedCornerShape(20.dp)
@@ -645,6 +722,7 @@ fun FullScreenPhotoViewer(
                                                 )
                                                 comments = comments + comment
                                                 newCommentText = ""
+                                                keyboardController?.hide() // Hide keyboard after sending
                                             }
                                         }
                                     },
@@ -664,63 +742,299 @@ fun FullScreenPhotoViewer(
                     }
                 }
                 
-                // BOTTOM LEFT USER INFO - No background box, editable description for owner
-                Column(
-                    modifier = Modifier
-                        .align(Alignment.BottomStart)
-                        .padding(start = 16.dp, bottom = 80.dp)
+                // SHARE DIALOG - Share to friends
+                AnimatedVisibility(
+                    visible = showShareDialog,
+                    enter = fadeIn(),
+                    exit = fadeOut()
                 ) {
-                    // Username
-                    Text(
-                        text = currentFlick.userName,
-                        color = Color.White,
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                    
-                    // Description - clickable to edit if owner
-                    val descriptionText = currentDescription.ifEmpty { "Add a caption..." }
-                    val descriptionColor = if (currentDescription.isEmpty()) Color.White.copy(alpha = 0.5f) else Color.White.copy(alpha = 0.9f)
-                    
-                    Text(
-                        text = descriptionText,
-                        color = descriptionColor,
-                        fontSize = 14.sp,
-                        maxLines = 2,
-                        modifier = if (canDelete) {
-                            Modifier.clickable { showEditCaption = true }
-                        } else Modifier
-                    )
-                    
-                    // Timestamp and reactions row
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        modifier = Modifier.padding(top = 4.dp)
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
                     ) {
-                        Text(
-                            text = formatTimestamp(currentFlick.timestamp),
-                            color = Color.White.copy(alpha = 0.6f),
-                            fontSize = 12.sp
+                        // Backdrop
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(Color.Black.copy(alpha = 0.7f))
+                                .clickable { showShareDialog = false }
                         )
                         
-                        if (totalReactions > 0) {
-                            Box(
+                        // Share dialog card
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth(0.85f)
+                                .background(
+                                    Color(0xFF1A1A1A),
+                                    RoundedCornerShape(16.dp)
+                                )
+                                .padding(20.dp)
+                        ) {
+                            // Header
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "Share with Friends",
+                                    color = Color.White,
+                                    fontSize = 18.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                
+                                IconButton(
+                                    onClick = { showShareDialog = false }
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Close,
+                                        contentDescription = "Close",
+                                        tint = Color.White
+                                    )
+                                }
+                            }
+                            
+                            Spacer(modifier = Modifier.height(16.dp))
+                            
+                            // Preview of photo being shared
+                            AsyncImage(
+                                model = currentFlick.imageUrl,
+                                contentDescription = null,
                                 modifier = Modifier
-                                    .size(3.dp)
-                                    .background(Color.White.copy(alpha = 0.4f), CircleShape)
+                                    .fillMaxWidth()
+                                    .height(150.dp)
+                                    .clip(RoundedCornerShape(12.dp)),
+                                contentScale = ContentScale.Crop
                             )
                             
+                            Spacer(modifier = Modifier.height(16.dp))
+                            
+                            // Friends list
                             Text(
-                                text = reactionCounts.maxByOrNull { it.value }?.key?.toEmoji() ?: "❤️",
-                                fontSize = 13.sp
+                                text = "Select a friend to share with:",
+                                color = Color.White.copy(alpha = 0.7f),
+                                fontSize = 14.sp
                             )
-                            Text(
-                                text = "$totalReactions",
-                                color = Color.White.copy(alpha = 0.8f),
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Medium
+                            
+                            Spacer(modifier = Modifier.height(12.dp))
+                            
+                            if (isLoadingFriends) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(100.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    CircularProgressIndicator(
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
+                                }
+                            } else if (friendsList.isEmpty()) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 32.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Column(
+                                        horizontalAlignment = Alignment.CenterHorizontally
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Person,
+                                            contentDescription = null,
+                                            tint = Color.White.copy(alpha = 0.4f),
+                                            modifier = Modifier.size(48.dp)
+                                        )
+                                        Spacer(modifier = Modifier.height(8.dp))
+                                        Text(
+                                            text = "No friends to share with",
+                                            color = Color.White.copy(alpha = 0.5f),
+                                            fontSize = 14.sp
+                                        )
+                                        Text(
+                                            text = "Follow users to share photos",
+                                            color = Color.White.copy(alpha = 0.4f),
+                                            fontSize = 12.sp
+                                        )
+                                    }
+                                }
+                            } else {
+                                // Friends list
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .heightIn(max = 200.dp)
+                                        .verticalScroll(rememberScrollState())
+                                ) {
+                                    friendsList.forEach { friend ->
+                                        Row(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .clickable {
+                                                    onShareToFriend(currentFlick.id, friend.uid)
+                                                    showShareDialog = false
+                                                    showPicFlickToast("Shared with ${friend.displayName}")
+                                                }
+                                                .padding(vertical = 8.dp),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            AsyncImage(
+                                                model = friend.photoUrl,
+                                                contentDescription = null,
+                                                modifier = Modifier
+                                                    .size(40.dp)
+                                                    .clip(CircleShape)
+                                                    .background(Color.Gray),
+                                                contentScale = ContentScale.Crop
+                                            )
+                                            
+                                            Spacer(modifier = Modifier.width(12.dp))
+                                            
+                                            Column {
+                                                Text(
+                                                    text = friend.displayName,
+                                                    color = Color.White,
+                                                    fontSize = 15.sp,
+                                                    fontWeight = FontWeight.Medium
+                                                )
+                                                Text(
+                                                    text = "Tap to share this photo",
+                                                    color = Color.White.copy(alpha = 0.5f),
+                                                    fontSize = 12.sp
+                                                )
+                                            }
+                                        }
+                                        
+                                        if (friend != friendsList.last()) {
+                                            HorizontalDivider(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            thickness = 1.dp,
+                                            color = Color.White.copy(alpha = 0.1f)
+                                        )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                // BOTTOM USER INFO - With gradient transparent box
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.BottomStart)
+                        .fillMaxWidth()
+                        .padding(16.dp)
+                        .padding(bottom = 64.dp)
+                ) {
+                    // Gradient transparent background box
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(
+                                Brush.verticalGradient(
+                                    colors = listOf(
+                                        Color.Transparent,
+                                        Color.Black.copy(alpha = 0.2f),
+                                        Color.Black.copy(alpha = 0.4f)
+                                    ),
+                                    startY = 0f,
+                                    endY = 100f
+                                ),
+                                RoundedCornerShape(16.dp)
                             )
+                            .border(
+                                width = 1.dp,
+                                color = Color.White.copy(alpha = 0.1f),
+                                shape = RoundedCornerShape(16.dp)
+                            )
+                            .padding(16.dp)
+                    ) {
+                        // Profile pic + name/description row
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            // Profile picture - USE CURRENT USER'S PHOTO
+                            val profilePhotoUrl = if (currentFlick.userId == currentUser.uid) {
+                                currentUser.photoUrl // Use current/up-to-date photo for own photos
+                            } else {
+                                currentFlick.userPhotoUrl // Use stored photo for others
+                            }
+                            
+                            Box(
+                                modifier = Modifier
+                                    .size(44.dp)
+                                    .clip(CircleShape)
+                                    .background(Color.Gray.copy(alpha = 0.4f))
+                                    .border(2.dp, Color.White.copy(alpha = 0.8f), CircleShape)
+                                    .clickable { onUserProfileClick(currentFlick.userId) },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                if (profilePhotoUrl.isNotBlank()) {
+                                    AsyncImage(
+                                        model = profilePhotoUrl,
+                                        contentDescription = "View ${currentFlick.userName}'s profile",
+                                        modifier = Modifier.fillMaxSize(),
+                                        contentScale = ContentScale.Crop
+                                    )
+                                } else {
+                                    // Fallback - show initial
+                                    Text(
+                                        text = currentFlick.userName.take(1).uppercase(),
+                                        color = Color.White,
+                                        fontSize = 20.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            }
+                            
+                            // Name + Description + Time in one column
+                            Column(
+                                modifier = Modifier.clickable { onUserProfileClick(currentFlick.userId) }
+                            ) {
+                                // Username
+                                Text(
+                                    text = currentFlick.userName,
+                                    color = Color.White,
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                
+                                // Description and timestamp in ONE LINE
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    // Description - clickable to edit if owner
+                                    val descriptionText = currentDescription.ifEmpty { "Add a caption..." }
+                                    val descriptionColor = if (currentDescription.isEmpty()) Color.White.copy(alpha = 0.5f) else Color.White.copy(alpha = 0.85f)
+                                    
+                                    Text(
+                                        text = descriptionText,
+                                        color = descriptionColor,
+                                        fontSize = 13.sp,
+                                        maxLines = 1,
+                                        modifier = if (canDelete) {
+                                            Modifier.clickable { showEditCaption = true }
+                                        } else Modifier
+                                    )
+                                    
+                                    // Dot separator
+                                    Box(
+                                        modifier = Modifier
+                                            .size(3.dp)
+                                            .background(Color.White.copy(alpha = 0.4f), CircleShape)
+                                    )
+                                    
+                                    // Timestamp
+                                    Text(
+                                        text = formatTimestamp(currentFlick.timestamp),
+                                        color = Color.White.copy(alpha = 0.6f),
+                                        fontSize = 12.sp
+                                    )
+                                }
+                            }
                         }
                     }
                 }
@@ -864,6 +1178,64 @@ private fun CompactCommentItem(comment: Comment) {
                 color = Color.White.copy(alpha = 0.9f),
                 fontSize = 12.sp
             )
+        }
+    }
+}
+
+/**
+ * Download image from URL and save to gallery
+ */
+private suspend fun downloadImageToGallery(context: Context, imageUrl: String, flickId: String) {
+    withContext(Dispatchers.IO) {
+        try {
+            val url = URL(imageUrl)
+            val connection = url.openConnection() as HttpURLConnection
+            connection.doInput = true
+            connection.connect()
+            
+            val inputStream = connection.inputStream
+            val bitmap = BitmapFactory.decodeStream(inputStream)
+            inputStream.close()
+            
+            withContext(Dispatchers.Main) {
+                if (bitmap != null) {
+                    saveBitmapToGallery(context, bitmap, "PicFlick_$flickId")
+                    Toast.makeText(context, "Saved to gallery!", Toast.LENGTH_SHORT).show()
+                } else {
+                    Toast.makeText(context, "Failed to download image", Toast.LENGTH_SHORT).show()
+                }
+            }
+        } catch (e: Exception) {
+            withContext(Dispatchers.Main) {
+                Toast.makeText(context, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+}
+
+/**
+ * Save bitmap to device gallery
+ */
+private fun saveBitmapToGallery(context: Context, bitmap: Bitmap, filename: String) {
+    val contentValues = ContentValues().apply {
+        put(MediaStore.Images.Media.DISPLAY_NAME, "$filename.jpg")
+        put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            put(MediaStore.Images.Media.IS_PENDING, 1)
+        }
+    }
+    
+    val uri = context.contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, contentValues)
+    
+    uri?.let { imageUri ->
+        context.contentResolver.openOutputStream(imageUri)?.use { outputStream ->
+            bitmap.compress(Bitmap.CompressFormat.JPEG, 95, outputStream)
+            
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                contentValues.clear()
+                contentValues.put(MediaStore.Images.Media.IS_PENDING, 0)
+                context.contentResolver.update(imageUri, contentValues, null, null)
+            }
         }
     }
 }
