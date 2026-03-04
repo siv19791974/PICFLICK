@@ -616,114 +616,85 @@ internal data class GridPosition(
 )
 
 /**
- * Calculate gap-free masonry grid positions
- * Fills rows completely left-to-right, never leaves empty cells
+ * STRICT gap-free masonry grid - forces 100% fill rate
+ * Every single cell must be occupied, no exceptions
  */
 private fun calculateGapFreeGridPositions(count: Int): List<GridPosition> {
     val positions = mutableListOf<GridPosition>()
     val random = java.util.Random()
     
+    // Track occupied cells: row -> set of occupied columns
+    val occupied = mutableMapOf<Int, MutableSet<Int>>()
+    
+    fun isOccupied(row: Int, col: Int): Boolean {
+        return occupied.getOrDefault(row, mutableSetOf()).contains(col)
+    }
+    
+    fun markOccupied(row: Int, col: Int, w: Int, h: Int) {
+        for (r in row until row + h) {
+            occupied.getOrPut(r) { mutableSetOf() }.addAll(col until col + w)
+        }
+    }
+    
+    fun findNextFreeCell(): Pair<Int, Int>? {
+        for (row in 0..count) { // Search enough rows
+            for (col in 0..2) {
+                if (!isOccupied(row, col)) return row to col
+            }
+        }
+        return null
+    }
+    
     var photoIndex = 0
-    var currentRow = 0
     
     while (photoIndex < count) {
-        val rowItems = mutableListOf<GridPosition>()
-        var currentCol = 0
+        // Find the first empty cell
+        val (row, col) = findNextFreeCell() ?: break
         
-        // Fill this row completely - no gaps allowed
-        while (currentCol < 3 && photoIndex < count) {
-            val remainingSlots = 3 - currentCol
-            
-            // Decide size based on remaining slots - with occasional BIG items
-            val sizeRoll = random.nextFloat()
-            
-            val (colSpan, rowSpan) = when {
-                // 3% chance for FULL WIDTH 3-wide (banner style) - only if at start of row
-                remainingSlots == 3 && sizeRoll < 0.03f -> 3 to 1
-                // 5% chance for 2x2 big square (4 squares) - only at row start
-                remainingSlots == 3 && sizeRoll < 0.08f -> 2 to 2
-                // 12% chance for 2-wide (half row)
-                remainingSlots >= 2 && sizeRoll < 0.20f -> {
-                    val isTall = random.nextFloat() < 0.3f
-                    if (isTall) 2 to 2 else 2 to 1
+        val remainingCols = 3 - col
+        val sizeRoll = random.nextFloat()
+        
+        // Decide size - STRICT fitting only
+        var (colSpan, rowSpan) = when {
+            // At row start: can use big items
+            col == 0 && remainingCols == 3 -> {
+                when {
+                    sizeRoll < 0.03f -> 3 to 1  // 3-wide banner
+                    sizeRoll < 0.08f -> 2 to 2  // 2x2 square
+                    sizeRoll < 0.20f -> 2 to 1  // 2-wide
+                    sizeRoll < 0.35f -> 1 to 2  // tall
+                    else -> 1 to 1
                 }
-                // 15% chance for tall 1-wide (1x2)
-                sizeRoll < 0.35f -> 1 to 2
-                // Default 1x1
-                else -> 1 to 1
             }
-            
-            // Check if it fits
-            if (colSpan <= remainingSlots) {
-                rowItems.add(GridPosition(
-                    index = photoIndex,
-                    row = currentRow,
-                    column = currentCol,
-                    rowSpan = rowSpan,
-                    colSpan = colSpan
-                ))
-                currentCol += colSpan
-                photoIndex++
-            } else {
-                // Doesn't fit, use 1x1
-                rowItems.add(GridPosition(
-                    index = photoIndex,
-                    row = currentRow,
-                    column = currentCol,
-                    rowSpan = 1,
-                    colSpan = 1
-                ))
-                currentCol += 1
-                photoIndex++
+            // Middle of row: limited options
+            remainingCols >= 2 -> {
+                when {
+                    sizeRoll < 0.15f -> 2 to 1
+                    sizeRoll < 0.30f -> 1 to 2
+                    else -> 1 to 1
+                }
             }
+            // Last slot: only 1x1 fits
+            else -> 1 to 1
         }
         
-        // Add all items from this row
-        positions.addAll(rowItems)
-        
-        // If we placed any 2-row items, we need to track the "debt" for next row
-        val tallItems = rowItems.filter { it.rowSpan == 2 }
-        if (tallItems.isNotEmpty() && photoIndex < count) {
-            // Next row will have these columns already occupied
-            currentRow++
-            var nextRowCol = 0
-            val nextRowItems = mutableListOf<GridPosition>()
-            
-            // Skip columns occupied by tall items from previous row
-            tallItems.sortedBy { it.column }.forEach { tallItem ->
-                // Fill gap before this tall item
-                while (nextRowCol < tallItem.column && photoIndex < count) {
-                    nextRowItems.add(GridPosition(
-                        index = photoIndex,
-                        row = currentRow,
-                        column = nextRowCol,
-                        rowSpan = 1,
-                        colSpan = 1
-                    ))
-                    nextRowCol++
-                    photoIndex++
-                }
-                // Skip the column occupied by tall item
-                nextRowCol += tallItem.colSpan
-            }
-            
-            // Fill remaining columns after last tall item
-            while (nextRowCol < 3 && photoIndex < count) {
-                nextRowItems.add(GridPosition(
-                    index = photoIndex,
-                    row = currentRow,
-                    column = nextRowCol,
-                    rowSpan = 1,
-                    colSpan = 1
-                ))
-                nextRowCol++
-                photoIndex++
-            }
-            
-            positions.addAll(nextRowItems)
+        // FORCE fit - if doesn't fit, downgrade to 1x1
+        if (col + colSpan > 3 || (rowSpan == 2 && isOccupied(row + 1, col))) {
+            colSpan = 1
+            rowSpan = 1
         }
         
-        currentRow++
+        // Place item
+        positions.add(GridPosition(
+            index = photoIndex,
+            row = row,
+            column = col,
+            rowSpan = rowSpan,
+            colSpan = colSpan
+        ))
+        
+        markOccupied(row, col, colSpan, rowSpan)
+        photoIndex++
     }
     
     return positions.sortedWith(compareBy({ it.row }, { it.column }))
