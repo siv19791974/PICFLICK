@@ -446,78 +446,71 @@ private fun FlickGrid(
         val totalRows = positionedItems.maxOfOrNull { it.row + it.rowSpan } ?: 1
         val gridHeight = baseCellSize * totalRows + (2.dp * (totalRows - 1))
         
-        // Manual grid layout with varied sizes
-        Column(
+        // ABSOLUTE POSITIONING grid - places items at exact coordinates
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(gridHeight),
-            verticalArrangement = Arrangement.spacedBy(2.dp)
+                .height(gridHeight)
         ) {
-            val rows = positionedItems.groupBy { it.row }.toSortedMap()
-            
-            rows.forEach { (rowIndex, itemsInRow) ->
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(2.dp)
+            positionedItems.forEach { item ->
+                val flick = flicks[item.index]
+                
+                // Calculate exact position
+                val xOffset = item.column * baseCellSize.value + (item.column * 2) // +2.dp spacing
+                val yOffset = item.row * baseCellSize.value + (item.row * 2)
+                val width = item.colSpan * baseCellSize.value + ((item.colSpan - 1) * 2)
+                val height = item.rowSpan * baseCellSize.value + ((item.rowSpan - 1) * 2)
+                
+                Box(
+                    modifier = Modifier
+                        .offset(xOffset.dp, yOffset.dp)
+                        .width(width.dp)
+                        .height(height.dp)
+                        .clickable { onPhotoClick(flick) }
                 ) {
-                    itemsInRow.forEach { positionedItem ->
-                        val flick = flicks[positionedItem.index]
-                        val width = baseCellSize * positionedItem.colSpan + 
-                                   (2.dp * (positionedItem.colSpan - 1))
-                        val height = baseCellSize * positionedItem.rowSpan +
-                                    (2.dp * (positionedItem.rowSpan - 1))
-                        
+                    AsyncImage(
+                        model = flick.imageUrl,
+                        contentDescription = null,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                    
+                    // Username for larger items
+                    if (item.colSpan >= 2 || item.rowSpan >= 2) {
                         Box(
                             modifier = Modifier
-                                .width(width)
-                                .height(height)
-                                .clickable { onPhotoClick(flick) }
+                                .align(Alignment.BottomStart)
+                                .fillMaxWidth()
+                                .background(Color.Black.copy(alpha = 0.5f))
+                                .padding(horizontal = 4.dp, vertical = 2.dp)
                         ) {
-                            AsyncImage(
-                                model = flick.imageUrl,
-                                contentDescription = null,
-                                modifier = Modifier.fillMaxSize(),
-                                contentScale = ContentScale.Crop
+                            Text(
+                                text = flick.userName,
+                                color = Color.White,
+                                fontSize = 10.sp,
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold
+                                ),
+                                maxLines = 1
                             )
-                            
-                            // Username overlay at bottom for larger items
-                            if (positionedItem.colSpan >= 2 || positionedItem.rowSpan >= 2) {
-                                Box(
-                                    modifier = Modifier
-                                        .align(Alignment.BottomStart)
-                                        .fillMaxWidth()
-                                        .background(Color.Black.copy(alpha = 0.5f))
-                                        .padding(horizontal = 4.dp, vertical = 2.dp)
-                                ) {
-                                    Text(
-                                        text = flick.userName,
-                                        color = Color.White,
-                                        fontSize = 10.sp,
-                                        style = MaterialTheme.typography.labelSmall.copy(
-                                            fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold
-                                        ),
-                                        maxLines = 1
-                                    )
-                                }
-                            }
-                            
-                            // Reaction overlay
-                            val userReaction = flick.getUserReaction(userProfile.uid)
-                            userReaction?.let { reaction ->
-                                Box(
-                                    modifier = Modifier
-                                        .align(Alignment.TopEnd)
-                                        .padding(2.dp)
-                                        .size(16.dp)
-                                        .background(Color.Black.copy(alpha = 0.4f), CircleShape),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Text(
-                                        text = reaction.toEmoji(),
-                                        fontSize = 10.sp
-                                    )
-                                }
-                            }
+                        }
+                    }
+                    
+                    // Reaction overlay
+                    val userReaction = flick.getUserReaction(userProfile.uid)
+                    userReaction?.let { reaction ->
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.TopEnd)
+                                .padding(2.dp)
+                                .size(16.dp)
+                                .background(Color.Black.copy(alpha = 0.4f), CircleShape),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = reaction.toEmoji(),
+                                fontSize = 10.sp
+                            )
                         }
                     }
                 }
