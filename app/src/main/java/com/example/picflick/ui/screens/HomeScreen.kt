@@ -33,6 +33,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -558,6 +559,151 @@ private fun PinterestItem(
         }
     }
 }
+
+// TIKTOK STYLE OPTION - Uncomment to use instead of Pinterest
+/*
+@Composable
+private fun FlickGrid(
+    flicks: List<Flick>,
+    userProfile: UserProfile,
+    onLikeClick: (Flick) -> Unit,
+    onPhotoClick: (Flick) -> Unit,
+    onLongPress: (Flick) -> Unit
+) {
+    // TIKTOK: Single column, tall photos, dark theme
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.spacedBy(0.dp)  // Seamless
+    ) {
+        items(flicks) { flick ->
+            TikTokItem(
+                flick = flick,
+                userProfile = userProfile,
+                onClick = { onPhotoClick(flick) },
+                onLike = { onLikeClick(flick) }
+            )
+        }
+    }
+}
+
+@Composable
+private fun TikTokItem(
+    flick: Flick,
+    userProfile: UserProfile,
+    onClick: () -> Unit,
+    onLike: () -> Unit
+) {
+    val screenHeight = LocalConfiguration.current.screenHeightDp.dp
+    val itemHeight = screenHeight * 0.75f  // 75% of screen like TikTok
+    
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(itemHeight)
+            .clickable { onClick() }
+            .background(Color.Black)
+    ) {
+        // Photo
+        AsyncImage(
+            model = flick.imageUrl,
+            contentDescription = null,
+            modifier = Modifier.fillMaxSize(),
+            contentScale = ContentScale.Crop
+        )
+        
+        // Dark gradient at bottom
+        Box(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
+                .height(200.dp)
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.9f))
+                    )
+                )
+        )
+        
+        // Bottom info (like TikTok)
+        Column(
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .padding(16.dp)
+        ) {
+            Text(
+                text = "@${flick.userName}",
+                color = Color.White,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = flick.description,
+                color = Color.White.copy(alpha = 0.9f),
+                fontSize = 14.sp,
+                maxLines = 2
+            )
+        }
+        
+        // Right side buttons (TikTok style)
+        Column(
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(end = 16.dp, bottom = 100.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(20.dp)
+        ) {
+            // Profile
+            AsyncImage(
+                model = flick.userPhotoUrl,
+                contentDescription = null,
+                modifier = Modifier
+                    .size(50.dp)
+                    .clip(CircleShape)
+                    .border(2.dp, Color.White, CircleShape)
+            )
+            
+            // Like with count
+            val totalReactions = flick.getTotalReactions()
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text("❤️", fontSize = 36.sp, modifier = Modifier.clickable { onLike() })
+                Text(
+                    text = when {
+                        totalReactions >= 1000 -> "${totalReactions / 1000}K"
+                        else -> totalReactions.toString()
+                    },
+                    color = Color.White,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+            
+            // Comments
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text("💬", fontSize = 32.sp)
+                Text(
+                    text = flick.commentCount.toString(),
+                    color = Color.White,
+                    fontSize = 12.sp
+                )
+            }
+            
+            // Share
+            Text("↗️", fontSize = 32.sp)
+            
+            // Music
+            Box(
+                modifier = Modifier
+                    .size(45.dp)
+                    .background(Color.DarkGray, CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Text("🎵", fontSize = 24.sp)
+            }
+        }
+    }
+}
+*/
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
