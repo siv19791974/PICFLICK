@@ -9,16 +9,11 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowForward
-import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -234,30 +229,45 @@ fun ProfileScreen(
             Spacer(modifier = Modifier.height(12.dp))
             
             // Light blue background container - SQUARE edges like home feed
-            Box(
+            BoxWithConstraints(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 2.dp)
                     .background(PicFlickBackground)
                     .padding(2.dp)
             ) {
-                // 3-column grid with TALL thumbnails like home feed (aspect ratio ~0.75)
+                // Dynamic masonry grid with varied sizes
+                val positionedItems = remember(photos) {
+                    calculatePhotoGridPositions(photos.size)
+                }
+                
+                val totalRows = positionedItems.maxOfOrNull { it.row + it.rowSpan } ?: 1
+                val baseWidth = (maxWidth - 4.dp) / 3
+                
                 Column(
                     modifier = Modifier.fillMaxWidth(),
                     verticalArrangement = Arrangement.spacedBy(2.dp)
                 ) {
-                    // Create rows manually
-                    val photoRows = photos.chunked(3)
-                    photoRows.forEach { rowPhotos ->
+                    // Group by rows
+                    val rows = positionedItems.groupBy { it.row }.toSortedMap()
+                    
+                    rows.forEach { (rowIndex, itemsInRow) ->
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(2.dp)
                         ) {
-                            rowPhotos.forEach { flick ->
+                            itemsInRow.forEach { positionedItem ->
+                                val flick = photos[positionedItem.index]
+                                // Calculate size based on spans
+                                val width = baseWidth * positionedItem.colSpan + 
+                                           (2.dp * (positionedItem.colSpan - 1))
+                                val height = baseWidth * positionedItem.rowSpan +
+                                            (2.dp * (positionedItem.rowSpan - 1))
+                                
                                 Box(
                                     modifier = Modifier
-                                        .weight(1f)
-                                        .aspectRatio(0.75f) // TALL like home feed (portrait)
+                                        .width(width)
+                                        .height(height)
                                         .clickable { onPhotoClick(flick, photos.indexOf(flick)) }
                                 ) {
                                     AsyncImage(
@@ -292,10 +302,6 @@ fun ProfileScreen(
                                         }
                                     }
                                 }
-                            }
-                            // Fill empty slots in row with spacers
-                            repeat(3 - rowPhotos.size) {
-                                Spacer(modifier = Modifier.weight(1f))
                             }
                         }
                     }
@@ -345,7 +351,7 @@ private enum class PhotoSize {
     WIDE     // 2x1 - landscape (wider)
 }
 
-private data class GridPosition(
+private data class PhotoGridPosition(
     val row: Int,
     val column: Int,
     val rowSpan: Int,
@@ -460,8 +466,8 @@ private fun DynamicPhotoGrid(
  * Calculate positions for mixed-size photo grid
  * Creates visual variety with different photo sizes
  */
-private fun calculateMixedPositions(count: Int): List<GridPosition> {
-    val positions = mutableListOf<GridPosition>()
+private fun calculateMixedPositions(count: Int): List<PhotoGridPosition> {
+    val positions = mutableListOf<PhotoGridPosition>()
     val occupied = mutableListOf<MutableList<Boolean>>()
     
     fun ensureRows(row: Int) {
@@ -493,21 +499,21 @@ private fun calculateMixedPositions(count: Int): List<GridPosition> {
     // Pattern: Creates visual rhythm with varied sizes
     val patterns = listOf(
         // Row 1: Large (2x2) covers whole row
-        listOf(GridPosition(0, 0, 2, 2)),
+        listOf(PhotoGridPosition(0, 0, 2, 2)),
         // Row 2: Wide (2x1) + skip
-        listOf(GridPosition(2, 0, 1, 2)),
+        listOf(PhotoGridPosition(2, 0, 1, 2)),
         // Row 3: Small + Small or Medium
         listOf(
-            GridPosition(3, 0, 1, 1),
-            GridPosition(3, 1, 1, 1)
+            PhotoGridPosition(3, 0, 1, 1),
+            PhotoGridPosition(3, 1, 1, 1)
         ),
         // Row 4: Medium (tall) next row
-        listOf(GridPosition(4, 0, 2, 1), GridPosition(4, 1, 1, 1)),
+        listOf(PhotoGridPosition(4, 0, 2, 1), PhotoGridPosition(4, 1, 1, 1)),
         // Row 5-6: Mixed
         listOf(
-            GridPosition(5, 0, 1, 1),
-            GridPosition(5, 1, 2, 1),
-            GridPosition(6, 0, 1, 1)
+            PhotoGridPosition(5, 0, 1, 1),
+            PhotoGridPosition(5, 1, 2, 1),
+            PhotoGridPosition(6, 0, 1, 1)
         )
     )
     
@@ -522,7 +528,7 @@ private fun calculateMixedPositions(count: Int): List<GridPosition> {
             0 -> {
                 // Large 2x2 photo
                 if (isFree(currentRow, 0, 2, 2)) {
-                    positions.add(GridPosition(currentRow, 0, 2, 2))
+                    positions.add(PhotoGridPosition(currentRow, 0, 2, 2))
                     occupy(currentRow, 0, 2, 2)
                     photoIndex++
                     currentRow += 2
@@ -533,7 +539,7 @@ private fun calculateMixedPositions(count: Int): List<GridPosition> {
             1 -> {
                 // Wide landscape 2x1
                 if (isFree(currentRow, 0, 2, 1)) {
-                    positions.add(GridPosition(currentRow, 0, 1, 2))
+                    positions.add(PhotoGridPosition(currentRow, 0, 1, 2))
                     occupy(currentRow, 0, 2, 1)
                     photoIndex++
                     currentRow++
@@ -544,12 +550,12 @@ private fun calculateMixedPositions(count: Int): List<GridPosition> {
             2 -> {
                 // Two small squares
                 if (isFree(currentRow, 0, 1, 1) && isFree(currentRow, 1, 1, 1)) {
-                    positions.add(GridPosition(currentRow, 0, 1, 1))
+                    positions.add(PhotoGridPosition(currentRow, 0, 1, 1))
                     occupy(currentRow, 0, 1, 1)
                     photoIndex++
                     
                     if (photoIndex < count) {
-                        positions.add(GridPosition(currentRow, 1, 1, 1))
+                        positions.add(PhotoGridPosition(currentRow, 1, 1, 1))
                         occupy(currentRow, 1, 1, 1)
                         photoIndex++
                     }
@@ -561,13 +567,13 @@ private fun calculateMixedPositions(count: Int): List<GridPosition> {
             3 -> {
                 // Tall portrait 1x2
                 if (isFree(currentRow, 0, 2, 1)) {
-                    positions.add(GridPosition(currentRow, 0, 2, 1))
+                    positions.add(PhotoGridPosition(currentRow, 0, 2, 1))
                     occupy(currentRow, 0, 2, 1)
                     photoIndex++
                     
                     // Fill remaining with small
                     if (photoIndex < count && isFree(currentRow, 1, 1, 1)) {
-                        positions.add(GridPosition(currentRow, 1, 1, 1))
+                        positions.add(PhotoGridPosition(currentRow, 1, 1, 1))
                         occupy(currentRow, 1, 1, 1)
                         photoIndex++
                     }
@@ -579,12 +585,12 @@ private fun calculateMixedPositions(count: Int): List<GridPosition> {
             else -> {
                 // Mixed: one tall, rest small
                 if (isFree(currentRow, 0, 2, 1)) {
-                    positions.add(GridPosition(currentRow, 0, 2, 1))
+                    positions.add(PhotoGridPosition(currentRow, 0, 2, 1))
                     occupy(currentRow, 0, 2, 1)
                     photoIndex++
                 }
                 if (photoIndex < count && isFree(currentRow, 1, 1, 1)) {
-                    positions.add(GridPosition(currentRow, 1, 1, 1))
+                    positions.add(PhotoGridPosition(currentRow, 1, 1, 1))
                     occupy(currentRow, 1, 1, 1)
                     photoIndex++
                 }
@@ -708,4 +714,107 @@ private fun formatNumber(number: Int): String {
         number >= 1000 -> "${number / 1000}K"
         else -> number.toString()
     }
+}
+
+// Grid position data class for masonry layout
+private data class PhotoGridPos(
+    val index: Int,
+    val row: Int,
+    val column: Int,
+    val rowSpan: Int,
+    val colSpan: Int
+)
+
+/**
+ * Calculate dynamic grid positions with varied sizes
+ * Randomly places 2x1, 1x2, and 2x2 items among 1x1 items
+ * 5% chance for 2x2, 15% for 2x1 wide, 10% for 1x2 tall, 70% normal 1x1
+ */
+private fun calculatePhotoGridPositions(count: Int): List<PhotoGridPos> {
+    val positions = mutableListOf<PhotoGridPos>()
+    val random = java.util.Random()
+    
+    // Track occupied cells
+    val occupied = mutableMapOf<Pair<Int, Int>, Boolean>()
+    
+    fun isOccupied(row: Int, col: Int): Boolean = occupied.getOrDefault(row to col, false)
+    
+    fun markOccupied(row: Int, col: Int, rows: Int, cols: Int) {
+        for (r in row until row + rows) {
+            for (c in col until col + cols) {
+                occupied[r to c] = true
+            }
+        }
+    }
+    
+    fun canPlace(row: Int, col: Int, rows: Int, cols: Int): Boolean {
+        if (col + cols > 3) return false
+        for (r in row until row + rows) {
+            for (c in col until col + cols) {
+                if (isOccupied(r, c)) return false
+            }
+        }
+        return true
+    }
+    
+    var currentRow = 0
+    var currentCol = 0
+    var photoIndex = 0
+    
+    while (photoIndex < count) {
+        // Decide size for this photo
+        val sizeRoll = random.nextFloat()
+        
+        val (rowSpan, colSpan) = when {
+            // 5% chance for 2x2 (big square)
+            sizeRoll < 0.05f && canPlace(currentRow, currentCol, 2, 2) -> 2 to 2
+            // 15% chance for 2x1 wide
+            sizeRoll < 0.20f && canPlace(currentRow, currentCol, 1, 2) -> 1 to 2
+            // 10% chance for 1x2 tall
+            sizeRoll < 0.30f && canPlace(currentRow, currentCol, 2, 1) -> 2 to 1
+            // Default 1x1
+            else -> 1 to 1
+        }
+        
+        // Try to place, fall back to 1x1 if needed
+        val finalRowSpan: Int
+        val finalColSpan: Int
+        
+        if (canPlace(currentRow, currentCol, rowSpan, colSpan)) {
+            finalRowSpan = rowSpan
+            finalColSpan = colSpan
+        } else if (canPlace(currentRow, currentCol, 1, 1)) {
+            finalRowSpan = 1
+            finalColSpan = 1
+        } else {
+            // Move to next cell
+            currentCol++
+            if (currentCol >= 3) {
+                currentCol = 0
+                currentRow++
+            }
+            continue
+        }
+        
+        // Place the item
+        positions.add(PhotoGridPos(
+            index = photoIndex,
+            row = currentRow,
+            column = currentCol,
+            rowSpan = finalRowSpan,
+            colSpan = finalColSpan
+        ))
+        
+        markOccupied(currentRow, currentCol, finalRowSpan, finalColSpan)
+        photoIndex++
+        
+        // Move to next position
+        currentCol += finalColSpan
+        if (currentCol >= 3) {
+            currentCol = 0
+            currentRow++
+        }
+    }
+    
+    return positions
 }
