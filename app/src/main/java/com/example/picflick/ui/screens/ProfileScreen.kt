@@ -744,18 +744,21 @@ private fun calculateGapFreePhotoGridPositions(count: Int): List<PhotoGridPos> {
         while (currentCol < 3 && photoIndex < count) {
             val remainingSlots = 3 - currentCol
             
-            // Decide size based on remaining slots
+            // Decide size - with occasional BIG items
             val sizeRoll = random.nextFloat()
             
             val (colSpan, rowSpan) = when {
-                // Need at least 2 slots for 2-wide
-                remainingSlots >= 2 && sizeRoll < 0.15f -> {
-                    // 15% chance for 2-wide if we have room
-                    val isTall = random.nextFloat() < 0.4f // 40% of 2-wide are tall (2x2)
+                // 3% chance for FULL WIDTH 3-wide (banner)
+                remainingSlots == 3 && sizeRoll < 0.03f -> 3 to 1
+                // 5% chance for 2x2 big square (4 squares)
+                remainingSlots == 3 && sizeRoll < 0.08f -> 2 to 2
+                // 12% chance for 2-wide
+                remainingSlots >= 2 && sizeRoll < 0.20f -> {
+                    val isTall = random.nextFloat() < 0.3f
                     if (isTall) 2 to 2 else 2 to 1
                 }
-                // 10% chance for tall 1-wide (1x2)
-                sizeRoll < 0.25f -> 1 to 2
+                // 15% chance for tall 1-wide (1x2)
+                sizeRoll < 0.35f -> 1 to 2
                 // Default 1x1
                 else -> 1 to 1
             }
