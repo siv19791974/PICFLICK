@@ -9,6 +9,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
@@ -21,6 +22,7 @@ import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.pullrefresh.PullRefreshIndicator
 import androidx.compose.material.pullrefresh.pullRefresh
 import androidx.compose.material.pullrefresh.rememberPullRefreshState
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -32,6 +34,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.FileProvider
@@ -436,7 +439,8 @@ private fun FlickGrid(
         modifier = Modifier.fillMaxSize()
     ) {
         val totalWidth = this.maxWidth
-        val baseCellSize = (totalWidth - 4.dp) / 3 // Size of 1x1 cell
+        // FULL BLEED - no padding subtraction
+        val baseCellSize = totalWidth / 3 
         
         // Calculate dynamic positions with NO GAPS
         val positionedItems = remember(flicks) {
@@ -446,7 +450,7 @@ private fun FlickGrid(
         val totalRows = positionedItems.maxOfOrNull { it.row + it.rowSpan } ?: 1
         val gridHeight = baseCellSize * totalRows
         
-        // ABSOLUTE POSITIONING grid - places items at exact coordinates
+        // SEXY ABSOLUTE POSITIONING grid
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -455,62 +459,109 @@ private fun FlickGrid(
             positionedItems.forEach { item ->
                 val flick = flicks[item.index]
                 
-                // Calculate exact position - ZERO SPACING
+                // Exact position - ZERO SPACING
                 val xOffset = item.column * baseCellSize.value
                 val yOffset = item.row * baseCellSize.value
                 val width = item.colSpan * baseCellSize.value
                 val height = item.rowSpan * baseCellSize.value
                 
-                Box(
+                // SEXY: Rounded corners for big items only
+                val cornerRadius = when {
+                    item.colSpan >= 2 && item.rowSpan >= 2 -> 16.dp  // 2x2 gets sexy rounded
+                    item.colSpan == 3 -> 20.dp  // Full width banner - extra round
+                    else -> 0.dp  // Normal = sharp
+                }
+                
+                // SEXY: Subtle shadow for big items
+                val elevation = if (item.colSpan >= 2 && item.rowSpan >= 2) 4.dp else 0.dp
+                
+                Card(
                     modifier = Modifier
                         .offset(xOffset.dp, yOffset.dp)
                         .width(width.dp)
                         .height(height.dp)
-                        .clickable { onPhotoClick(flick) }
+                        .clickable { onPhotoClick(flick) },
+                    shape = RoundedCornerShape(cornerRadius),
+                    elevation = CardDefaults.cardElevation(defaultElevation = elevation),
+                    colors = CardDefaults.cardColors(containerColor = Color.Transparent)
                 ) {
-                    AsyncImage(
-                        model = flick.imageUrl,
-                        contentDescription = null,
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop
-                    )
-                    
-                    // Username for larger items
-                    if (item.colSpan >= 2 || item.rowSpan >= 2) {
+                    Box(modifier = Modifier.fillMaxSize()) {
+                        AsyncImage(
+                            model = flick.imageUrl,
+                            contentDescription = null,
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop
+                        )
+                        
+                        // SEXY: Gradient scrim at bottom for ALL photos
                         Box(
                             modifier = Modifier
                                 .align(Alignment.BottomStart)
                                 .fillMaxWidth()
-                                .background(Color.Black.copy(alpha = 0.5f))
-                                .padding(horizontal = 4.dp, vertical = 2.dp)
-                        ) {
-                            Text(
-                                text = flick.userName,
-                                color = Color.White,
-                                fontSize = 10.sp,
-                                style = MaterialTheme.typography.labelSmall.copy(
-                                    fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold
-                                ),
-                                maxLines = 1
-                            )
-                        }
-                    }
-                    
-                    // Reaction overlay
-                    val userReaction = flick.getUserReaction(userProfile.uid)
-                    userReaction?.let { reaction ->
-                        Box(
+                                .height(28.dp)  // Taller for better text visibility
+                                .background(
+                                    Brush.verticalGradient(
+                                        colors = listOf(
+                                            Color.Transparent,
+                                            Color.Black.copy(alpha = 0.7f)  // Darker for readability
+                                        ),
+                                        startY = 0f,
+                                        endY = 100f
+                                    )
+                                )
+                        )
+                        
+                        // SEXY: Username on ALL photos - premium typography
+                        Text(
+                            text = flick.userName,
+                            color = Color.White,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.SemiBold,
                             modifier = Modifier
-                                .align(Alignment.TopEnd)
-                                .padding(2.dp)
-                                .size(16.dp)
-                                .background(Color.Black.copy(alpha = 0.4f), CircleShape),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = reaction.toEmoji(),
-                                fontSize = 10.sp
-                            )
+                                .align(Alignment.BottomStart)
+                                .padding(horizontal = 6.dp, vertical = 4.dp),
+                            maxLines = 1
+                        )
+                        
+                        // Reaction overlay - bigger and sexier
+                        val userReaction = flick.getUserReaction(userProfile.uid)
+                        userReaction?.let { reaction ->
+                            Box(
+                                modifier = Modifier
+                                    .align(Alignment.TopEnd)
+                                    .padding(4.dp)
+                                    .size(20.dp)  // Bigger
+                                    .background(Color.Black.copy(alpha = 0.5f), CircleShape)
+                                    .border(1.dp, Color.White.copy(alpha = 0.3f), CircleShape),  // Sexy border
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = reaction.toEmoji(),
+                                    fontSize = 12.sp  // Bigger emoji
+                                )
+                            }
+                        }
+                        
+                        // SEXY BONUS: Show reaction count if popular
+                        val totalReactions = flick.getTotalReactions()
+                        if (totalReactions > 2) {
+                            Box(
+                                modifier = Modifier
+                                    .align(Alignment.TopStart)
+                                    .padding(4.dp)
+                                    .background(
+                                        Color(0xFFFF4757).copy(alpha = 0.9f),  // Hot red
+                                        RoundedCornerShape(10.dp)
+                                    )
+                                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                            ) {
+                                Text(
+                                    text = "❤ $totalReactions",
+                                    color = Color.White,
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
                         }
                     }
                 }
