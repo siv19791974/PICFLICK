@@ -7,6 +7,10 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.ExperimentalMaterialApi
+import androidx.compose.material.pullrefresh.PullRefreshIndicator
+import androidx.compose.material.pullrefresh.pullRefresh
+import androidx.compose.material.pullrefresh.rememberPullRefreshState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
@@ -32,6 +36,7 @@ import java.util.*
 /**
  * WhatsApp-style Chats List Screen
  */
+@OptIn(ExperimentalMaterialApi::class)
 @Composable
 fun ChatsScreen(
     userProfile: UserProfile,
@@ -45,6 +50,12 @@ fun ChatsScreen(
         viewModel.observeUnreadCount(userProfile.uid)
     }
 
+    // Modern PullRefresh state
+    val pullRefreshState = rememberPullRefreshState(
+        refreshing = viewModel.isLoading,
+        onRefresh = { viewModel.loadChatSessions(userProfile.uid) }
+    )
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -52,74 +63,89 @@ fun ChatsScreen(
     ) {
         // NO BANNER - banner is in MainActivity
 
-        // Content
-        when {
-            viewModel.isLoading && viewModel.chatSessions.isEmpty() -> {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
+        // Modern PullRefresh content
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .pullRefresh(pullRefreshState)
+        ) {
+            when {
+                viewModel.isLoading && viewModel.chatSessions.isEmpty() -> {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
+                    }
                 }
-            }
-            viewModel.chatSessions.isEmpty() -> {
-                // Empty state
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Icon(
-                            imageVector = Icons.Default.Person,
-                            contentDescription = null,
-                            modifier = Modifier.size(80.dp),
-                            tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
-                        )
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Text(
-                            text = "No messages yet",
-                            fontSize = 18.sp,
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            text = "Start chatting with friends!",
-                            fontSize = 14.sp,
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
-                        )
+                viewModel.chatSessions.isEmpty() -> {
+                    // Empty state
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Icon(
+                                imageVector = Icons.Default.Person,
+                                contentDescription = null,
+                                modifier = Modifier.size(80.dp),
+                                tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
+                            )
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Text(
+                                text = "No messages yet",
+                                fontSize = 18.sp,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = "Start chatting with friends!",
+                                fontSize = 14.sp,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
+                            )
+                        }
+                    }
+                }
+                else -> {
+                    // Chat list - WhatsApp style
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize()
+                    ) {
+                        items(
+                            items = viewModel.chatSessions,
+                            key = { it.id }
+                        ) { session ->
+                            val otherUserId = session.participants.find { it != userProfile.uid } ?: ""
+                            val otherUserName = session.participantNames[otherUserId] ?: "Unknown"
+                            val otherUserPhoto = session.participantPhotos[otherUserId] ?: ""
+
+                            ChatListItem(
+                                session = session,
+                                otherUserId = otherUserId,
+                                otherUserName = otherUserName,
+                                otherUserPhoto = otherUserPhoto,
+                                currentUserId = userProfile.uid,
+                                onClick = { onChatClick(session, otherUserId) }
+                            )
+
+                            Divider(
+                                modifier = Modifier.padding(start = 80.dp),
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f),
+                                thickness = 0.5.dp
+                            )
+                        }
                     }
                 }
             }
-            else -> {
-                // Chat list - WhatsApp style
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize()
-                ) {
-                    items(
-                        items = viewModel.chatSessions,
-                        key = { it.id }
-                    ) { session ->
-                        val otherUserId = session.participants.find { it != userProfile.uid } ?: ""
-                        val otherUserName = session.participantNames[otherUserId] ?: "Unknown"
-                        val otherUserPhoto = session.participantPhotos[otherUserId] ?: ""
 
-                        ChatListItem(
-                            session = session,
-                            otherUserId = otherUserId,
-                            otherUserName = otherUserName,
-                            otherUserPhoto = otherUserPhoto,
-                            currentUserId = userProfile.uid,
-                            onClick = { onChatClick(session, otherUserId) }
-                        )
-
-                        Divider(
-                            modifier = Modifier.padding(start = 80.dp),
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f),
-                            thickness = 0.5.dp
-                        )
-                    }
-                }
-            }
+            // Modern PullRefreshIndicator
+            PullRefreshIndicator(
+                refreshing = viewModel.isLoading,
+                state = pullRefreshState,
+                modifier = Modifier.align(Alignment.TopCenter),
+                backgroundColor = MaterialTheme.colorScheme.surface,
+                contentColor = MaterialTheme.colorScheme.primary
+            )
         }
     }
 }

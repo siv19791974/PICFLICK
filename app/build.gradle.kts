@@ -56,6 +56,7 @@ dependencies {
     implementation(libs.androidx.compose.ui.graphics)
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.material3)
+    implementation(libs.androidx.compose.material) // For modern PullRefresh
 
     // Navigation
     implementation(libs.androidx.navigation.compose)
@@ -81,9 +82,6 @@ dependencies {
     // Coil for image loading
     implementation(libs.coil.compose)
     implementation(libs.coil.network.okhttp)
-    
-    // Accompanist for pull-to-refresh
-    implementation(libs.accompanist.swiperefresh)
 
     // Activity Result Contracts
     implementation(libs.androidx.activity.ktx)

@@ -2,47 +2,34 @@ package com.example.picflick.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectDragGestures
-import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.Send
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.ExperimentalMaterialApi
+import androidx.compose.material.pullrefresh.PullRefreshIndicator
+import androidx.compose.material.pullrefresh.pullRefresh
+import androidx.compose.material.pullrefresh.rememberPullRefreshState
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
-import com.example.picflick.data.Comment
 import com.example.picflick.data.Flick
 import com.example.picflick.data.UserProfile
-import com.example.picflick.repository.FlickRepository
 import com.example.picflick.ui.components.*
-import com.example.picflick.ui.theme.PicFlickBannerBackground
+import com.example.picflick.ui.theme.PicFlickBackground
 import com.example.picflick.viewmodel.ProfileViewModel
-import com.google.accompanist.swiperefresh.SwipeRefresh
-import com.google.accompanist.swiperefresh.SwipeRefreshIndicator
-import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
-import kotlinx.coroutines.launch
 
 /**
  * Screen showing current user's photos - MATCHES HOMESCREEN EXACTLY
  */
+@OptIn(ExperimentalMaterialApi::class)
 @Composable
 fun MyPhotosScreen(
     viewModel: ProfileViewModel,
@@ -58,45 +45,22 @@ fun MyPhotosScreen(
         viewModel.loadUserPhotos(userId)
     }
 
-    // Swipe refresh state
-    val swipeRefreshState = rememberSwipeRefreshState(isRefreshing = viewModel.isLoading)
+    // Modern PullRefresh state
+    val pullRefreshState = rememberPullRefreshState(
+        refreshing = viewModel.isLoading,
+        onRefresh = { viewModel.loadUserPhotos(userId) }
+    )
 
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.Black)
+            .background(PicFlickBackground),
     ) {
-        // NO BANNER - banner is now in MainActivity's Scaffold topBar!
-        // Simple back button only
-        Row(
+        // Modern PullRefresh content
+        Box(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(
-                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                contentDescription = "Go back",
-                modifier = Modifier
-                    .size(36.dp)
-                    .clickable { onBack() },
-                tint = Color.White
-            )
-        }
-
-        // SwipeRefresh content
-        SwipeRefresh(
-            state = swipeRefreshState,
-            onRefresh = { viewModel.loadUserPhotos(userId) },
-            indicator = { state, trigger ->
-                SwipeRefreshIndicator(
-                    state = state,
-                    refreshTriggerDistance = trigger,
-                    backgroundColor = MaterialTheme.colorScheme.surface,
-                    contentColor = MaterialTheme.colorScheme.primary
-                )
-            },
-            modifier = Modifier.fillMaxSize()
+                .fillMaxSize()
+                .pullRefresh(pullRefreshState)
         ) {
             when {
                 viewModel.isLoading && viewModel.photos.isEmpty() -> PhotoGridShimmer()
@@ -110,6 +74,15 @@ fun MyPhotosScreen(
                     onPhotoClick = { photo -> selectedPhoto = photo }
                 )
             }
+
+            // Modern PullRefreshIndicator
+            PullRefreshIndicator(
+                refreshing = viewModel.isLoading,
+                state = pullRefreshState,
+                modifier = Modifier.align(Alignment.TopCenter),
+                backgroundColor = MaterialTheme.colorScheme.surface,
+                contentColor = MaterialTheme.colorScheme.primary
+            )
         }
     }
 
@@ -148,21 +121,31 @@ private fun PhotoGrid(
     photos: List<Flick>,
     onPhotoClick: (Flick) -> Unit
 ) {
-    LazyVerticalGrid(
-        columns = GridCells.Fixed(3),
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(
-            start = 1.dp,
-            end = 1.dp,
-            top = 1.dp,
-            bottom = 80.dp
-        )
+    BoxWithConstraints(
+        modifier = Modifier.fillMaxSize()
     ) {
-        items(photos) { photo ->
-            PhotoCard(
-                photo = photo,
-                onPhotoClick = { onPhotoClick(photo) }
-            )
+        // Calculate height for 4 rows with tiny gap at bottom for light blue BG
+        val rowHeight = this.maxHeight / 4.1f
+        
+        LazyVerticalGrid(
+            columns = GridCells.Fixed(3),
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(
+                start = 1.dp,
+                end = 1.dp,
+                top = 4.dp,  // Slight top gap to match bottom
+                bottom = 0.dp
+            ),
+            userScrollEnabled = true // Enable scrolling for pull-to-refresh
+        ) {
+            // Show all items (scrollable)
+            items(photos) { photo ->
+                PhotoCard(
+                    photo = photo,
+                    onPhotoClick = { onPhotoClick(photo) },
+                    rowHeight = rowHeight
+                )
+            }
         }
     }
 }
@@ -170,26 +153,25 @@ private fun PhotoGrid(
 @Composable
 private fun PhotoCard(
     photo: Flick,
-    onPhotoClick: () -> Unit
+    onPhotoClick: () -> Unit,
+    rowHeight: androidx.compose.ui.unit.Dp
 ) {
     Card(
         modifier = Modifier
-            .padding(2.dp)
+            .padding(1.dp) // Smaller padding
+            .height(rowHeight) // Fixed height for exact 4 rows
             .clickable { onPhotoClick() },
-        shape = RoundedCornerShape(12.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        shape = RectangleShape, // NO rounded corners
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp), // No elevation
         colors = CardDefaults.cardColors(
-            containerColor = Color.DarkGray.copy(alpha = 0.3f)
+            containerColor = Color.Transparent // Transparent background
         )
     ) {
-        // CLEAN thumbnail - no overlay, just the photo
+        // CLEAN thumbnail - no overlay, no rounded corners
         AsyncImage(
             model = photo.imageUrl,
             contentDescription = null,
-            modifier = Modifier
-                .fillMaxWidth()
-                .aspectRatio(1f)
-                .clip(RoundedCornerShape(12.dp)),
+            modifier = Modifier.fillMaxSize(), // Fill the exact height
             contentScale = ContentScale.Crop
         )
     }
