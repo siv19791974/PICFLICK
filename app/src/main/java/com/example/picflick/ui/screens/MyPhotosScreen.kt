@@ -126,8 +126,8 @@ fun MyPhotosScreen(
             onNavigateToPhoto = { index: Int -> 
                 selectedPhoto = viewModel.photos.getOrNull(index)
             },
-            onLikeClick = { 
-                // Handle like in viewModel if needed
+            onReaction = { reactionType ->
+                // Handle reaction in viewModel if needed
             },
             onShareClick = {
                 val shareIntent = android.content.Intent().apply {

@@ -325,6 +325,7 @@ private fun getNotificationIcon(type: NotificationType) = when (type) {
 @Composable
 private fun getNotificationColor(type: NotificationType) = when (type) {
     NotificationType.LIKE -> Color(0xFFE91E63) // Pink
+    NotificationType.REACTION -> Color(0xFFE91E63) // Pink (same as LIKE)
     NotificationType.COMMENT -> Color(0xFF4FC3F7) // Light Blue
     NotificationType.FOLLOW -> Color(0xFF4CAF50) // Green
     NotificationType.FRIEND_REQUEST -> Color(0xFF9C27B0) // Purple

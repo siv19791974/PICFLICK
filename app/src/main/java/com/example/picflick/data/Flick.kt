@@ -12,7 +12,8 @@ data class Flick(
     val timestamp: Long = 0,
     val reactions: Map<String, String> = emptyMap(), // userId -> reactionType
     val commentCount: Int = 0,
-    val privacy: String = "friends" // "friends" = only friends can see, "public" = everyone
+    val privacy: String = "friends", // "friends" = only friends can see, "public" = everyone
+    val taggedFriends: List<String> = emptyList() // List of tagged friend userIds
 ) {
     /**
      * Get total reaction count
