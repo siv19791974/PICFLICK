@@ -236,71 +236,66 @@ fun ProfileScreen(
                     .background(PicFlickBackground)
                     .padding(2.dp)
             ) {
-                // Dynamic masonry grid with NO GAPS
+                // Dynamic masonry grid with NO GAPS - ABSOLUTE POSITIONING
                 val positionedItems = remember(photos) {
                     calculateGapFreePhotoGridPositions(photos.size)
                 }
                 
                 val totalRows = positionedItems.maxOfOrNull { it.row + it.rowSpan } ?: 1
                 val baseWidth = (maxWidth - 4.dp) / 3
+                val gridHeight = baseWidth * totalRows + (2.dp * (totalRows - 1))
                 
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(2.dp)
+                // ABSOLUTE POSITIONING - places items at exact coordinates
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(gridHeight)
                 ) {
-                    // Group by rows
-                    val rows = positionedItems.groupBy { it.row }.toSortedMap()
-                    
-                    rows.forEach { (rowIndex, itemsInRow) ->
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(2.dp)
+                    positionedItems.forEach { item ->
+                        val flick = photos[item.index]
+                        
+                        // Calculate exact position
+                        val xOffset = item.column * baseWidth.value + (item.column * 2)
+                        val yOffset = item.row * baseWidth.value + (item.row * 2)
+                        val width = item.colSpan * baseWidth.value + ((item.colSpan - 1) * 2)
+                        val height = item.rowSpan * baseWidth.value + ((item.rowSpan - 1) * 2)
+                        
+                        Box(
+                            modifier = Modifier
+                                .offset(xOffset.dp, yOffset.dp)
+                                .width(width.dp)
+                                .height(height.dp)
+                                .clickable { onPhotoClick(flick, photos.indexOf(flick)) }
                         ) {
-                            itemsInRow.forEach { positionedItem ->
-                                val flick = photos[positionedItem.index]
-                                // Calculate size based on spans
-                                val width = baseWidth * positionedItem.colSpan + 
-                                           (2.dp * (positionedItem.colSpan - 1))
-                                val height = baseWidth * positionedItem.rowSpan +
-                                            (2.dp * (positionedItem.rowSpan - 1))
-                                
+                            AsyncImage(
+                                model = flick.imageUrl,
+                                contentDescription = null,
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Crop
+                            )
+                            
+                            // Tiny reaction overlay (top right)
+                            val userReaction = flick.reactions.entries.firstOrNull()?.value
+                            userReaction?.let { reaction ->
                                 Box(
                                     modifier = Modifier
-                                        .width(width)
-                                        .height(height)
-                                        .clickable { onPhotoClick(flick, photos.indexOf(flick)) }
+                                        .align(Alignment.TopEnd)
+                                        .padding(2.dp)
+                                        .size(16.dp)
+                                        .background(Color.Black.copy(alpha = 0.4f), CircleShape),
+                                    contentAlignment = Alignment.Center
                                 ) {
-                                    AsyncImage(
-                                        model = flick.imageUrl,
-                                        contentDescription = null,
-                                        modifier = Modifier.fillMaxSize(),
-                                        contentScale = ContentScale.Crop
+                                    Text(
+                                        text = when (reaction) {
+                                            "LIKE" -> "❤️"
+                                            "LOVE" -> "❤️"
+                                            "FIRE" -> "🔥"
+                                            "COOL" -> "😎"
+                                            "WOW" -> "😮"
+                                            else -> "❤️"
+                                        },
+                                        fontSize = 10.sp
                                     )
-                                    
-                                    // Tiny reaction overlay (top right)
-                                    val userReaction = flick.reactions.entries.firstOrNull()?.value
-                                    userReaction?.let { reaction ->
-                                        Box(
-                                            modifier = Modifier
-                                                .align(Alignment.TopEnd)
-                                                .padding(2.dp)
-                                                .size(16.dp)
-                                                .background(Color.Black.copy(alpha = 0.4f), CircleShape),
-                                            contentAlignment = Alignment.Center
-                                        ) {
-                                            Text(
-                                                text = when (reaction) {
-                                                    "LIKE" -> "❤️"
-                                                    "LOVE" -> "❤️"
-                                                    "FIRE" -> "🔥"
-                                                    "COOL" -> "😎"
-                                                    "WOW" -> "😮"
-                                                    else -> "❤️"
-                                                },
-                                                fontSize = 10.sp
-                                            )
-                                        }
-                                    }
                                 }
                             }
                         }
