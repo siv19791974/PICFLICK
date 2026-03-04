@@ -436,9 +436,101 @@ private fun FlickGrid(
     onPhotoClick: (Flick) -> Unit,
     onLongPress: (Flick) -> Unit
 ) {
-    BoxWithConstraints(
-        modifier = Modifier.fillMaxSize()
+    // TIKTOK STYLE: Single column, full-width, tall photos
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.spacedBy(0.dp)
     ) {
+        items(flicks) { flick ->
+            TikTokItem(
+                flick = flick,
+                onClick = { onPhotoClick(flick) },
+                onLike = { onLikeClick(flick) }
+            )
+        }
+    }
+}
+
+@Composable
+private fun TikTokItem(
+    flick: Flick,
+    onClick: () -> Unit,
+    onLike: () -> Unit
+) {
+    val itemHeight = 480.dp
+    
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(itemHeight)
+            .clickable { onClick() }
+            .background(Color.Black)
+    ) {
+        AsyncImage(
+            model = flick.imageUrl,
+            contentDescription = null,
+            modifier = Modifier.fillMaxSize(),
+            contentScale = ContentScale.Crop
+        )
+        
+        // Dark gradient at bottom
+        Box(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
+                .height(120.dp)
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.8f))
+                    )
+                )
+        )
+        
+        // Username at bottom
+        Text(
+            text = "@${flick.userName}",
+            color = Color.White,
+            fontSize = 16.sp,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .padding(16.dp)
+        )
+        
+        // Right side buttons
+        Column(
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(end = 16.dp, bottom = 80.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            val totalReactions = flick.getTotalReactions()
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text("❤️", fontSize = 32.sp, modifier = Modifier.clickable { onLike() })
+                Text(
+                    text = if (totalReactions > 0) totalReactions.toString() else "",
+                    color = Color.White,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+            
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text("💬", fontSize = 28.sp)
+                Text(
+                    text = flick.commentCount.toString(),
+                    color = Color.White,
+                    fontSize = 12.sp
+                )
+            }
+            
+            Text("↗️", fontSize = 28.sp)
+        }
+    }
+}
+
+@OptIn(ExperimentalFoundationApi::class)
         val totalWidth = this.maxWidth
         val spacing = 8.dp
         val columnWidth = (totalWidth - spacing) / 2  // 2 columns like Pinterest
