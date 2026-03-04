@@ -9,7 +9,6 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
@@ -22,7 +21,6 @@ import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.pullrefresh.PullRefreshIndicator
 import androidx.compose.material.pullrefresh.pullRefresh
 import androidx.compose.material.pullrefresh.rememberPullRefreshState
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -33,9 +31,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.FileProvider
@@ -436,366 +432,37 @@ private fun FlickGrid(
     onPhotoClick: (Flick) -> Unit,
     onLongPress: (Flick) -> Unit
 ) {
-    // TIKTOK STYLE: Single column, full-width, tall photos
-    LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        verticalArrangement = Arrangement.spacedBy(0.dp)
+    BoxWithConstraints(
+        modifier = Modifier.fillMaxSize()
     ) {
-        items(flicks) { flick ->
-            TikTokItem(
-                flick = flick,
-                onClick = { onPhotoClick(flick) },
-                onLike = { onLikeClick(flick) }
-            )
-        }
-    }
-}
-
-@Composable
-private fun TikTokItem(
-    flick: Flick,
-    onClick: () -> Unit,
-    onLike: () -> Unit
-) {
-    val itemHeight = 480.dp
-    
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(itemHeight)
-            .clickable { onClick() }
-            .background(Color.Black)
-    ) {
-        AsyncImage(
-            model = flick.imageUrl,
-            contentDescription = null,
+        // Calculate height for 4 rows with tiny gap at bottom for light blue BG
+        val rowHeight = this.maxHeight / 4.1f
+        
+        LazyVerticalGrid(
+            columns = GridCells.Fixed(3),
             modifier = Modifier.fillMaxSize(),
-            contentScale = ContentScale.Crop
-        )
-        
-        // Dark gradient at bottom
-        Box(
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .fillMaxWidth()
-                .height(120.dp)
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.8f))
-                    )
-                )
-        )
-        
-        // Username at bottom
-        Text(
-            text = "@${flick.userName}",
-            color = Color.White,
-            fontSize = 16.sp,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier
-                .align(Alignment.BottomStart)
-                .padding(16.dp)
-        )
-        
-        // Right side buttons
-        Column(
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .padding(end = 16.dp, bottom = 80.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            contentPadding = PaddingValues(
+                start = 1.dp,
+                end = 1.dp,
+                top = 4.dp,  // Slight top gap to match bottom
+                bottom = 0.dp
+            ),
+            userScrollEnabled = true // Enable scrolling for pull-to-refresh
         ) {
-            val totalReactions = flick.getTotalReactions()
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("❤️", fontSize = 32.sp, modifier = Modifier.clickable { onLike() })
-                Text(
-                    text = if (totalReactions > 0) totalReactions.toString() else "",
-                    color = Color.White,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-            
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("💬", fontSize = 28.sp)
-                Text(
-                    text = flick.commentCount.toString(),
-                    color = Color.White,
-                    fontSize = 12.sp
-                )
-            }
-            
-            Text("↗️", fontSize = 28.sp)
-        }
-    }
-}
-
-@OptIn(ExperimentalFoundationApi::class)
-        val totalWidth = this.maxWidth
-        val spacing = 8.dp
-        val columnWidth = (totalWidth - spacing) / 2  // 2 columns like Pinterest
-        
-        // Calculate heights for each photo (maintain aspect ratio)
-        val photoHeights = remember(flicks) {
-            flicks.map { 
-                // Variable height: square-ish but with variation (0.8 to 1.3 aspect ratio)
-                val randomFactor = 0.8f + (it.id.hashCode() % 5) / 10f  // 0.8 to 1.3
-                columnWidth.value * randomFactor 
-            }
-        }
-        
-        // Distribute to columns (Pinterest algorithm: fill shortest column)
-        val leftColumn = mutableListOf<Pair<Int, Float>>()  // index to height
-        val rightColumn = mutableListOf<Pair<Int, Float>>()
-        var leftHeight = 0f
-        var rightHeight = 0f
-        
-        flicks.indices.forEach { index ->
-            val height = photoHeights[index]
-            if (leftHeight <= rightHeight) {
-                leftColumn.add(index to height)
-                leftHeight += height + spacing.value
-            } else {
-                rightColumn.add(index to height)
-                rightHeight += height + spacing.value
-            }
-        }
-        
-        val maxColumnHeight = maxOf(leftHeight, rightHeight).dp
-        
-        // PINTEREST ORGANIC LAYOUT
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(maxColumnHeight)
-        ) {
-            // Left column
-            var currentY = 0f
-            leftColumn.forEach { (index, height) ->
-                val flick = flicks[index]
-                PinterestItem(
+            // Show all items (scrollable)
+            items(flicks, key = { it.id }) { flick ->
+                FlickCard(
                     flick = flick,
-                    xOffset = 0f,
-                    yOffset = currentY,
-                    width = columnWidth.value,
-                    height = height,
-                    onClick = { onPhotoClick(flick) }
+                    userId = userProfile.uid,
+                    onLikeClick = { onLikeClick(flick) },
+                    onPhotoClick = { onPhotoClick(flick) },
+                    onLongPress = { onLongPress(flick) },
+                    rowHeight = rowHeight
                 )
-                currentY += height + spacing.value
-            }
-            
-            // Right column
-            currentY = 0f
-            rightColumn.forEach { (index, height) ->
-                val flick = flicks[index]
-                PinterestItem(
-                    flick = flick,
-                    xOffset = columnWidth.value + spacing.value,
-                    yOffset = currentY,
-                    width = columnWidth.value,
-                    height = height,
-                    onClick = { onPhotoClick(flick) }
-                )
-                currentY += height + spacing.value
             }
         }
     }
 }
-
-@Composable
-private fun PinterestItem(
-    flick: Flick,
-    xOffset: Float,
-    yOffset: Float,
-    width: Float,
-    height: Float,
-    onClick: () -> Unit
-) {
-    Card(
-        modifier = Modifier
-            .offset(xOffset.dp, yOffset.dp)
-            .width(width.dp)
-            .height(height.dp)
-            .clickable { onClick() },
-        shape = RoundedCornerShape(12.dp),  // PINTEREST: All rounded
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),  // Subtle shadow
-        colors = CardDefaults.cardColors(containerColor = Color.Transparent)
-    ) {
-        Box(modifier = Modifier.fillMaxSize()) {
-            AsyncImage(
-                model = flick.imageUrl,
-                contentDescription = null,
-                modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Crop
-            )
-            
-            // Clean - NO username overlay (Pinterest style)
-            
-            // Subtle reaction indicator (only if user reacted)
-            val userReaction = flick.getUserReaction("")
-            userReaction?.let { reaction ->
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .padding(8.dp)
-                        .size(24.dp)
-                        .background(Color.Black.copy(alpha = 0.4f), CircleShape),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = reaction.toEmoji(),
-                        fontSize = 14.sp
-                    )
-                }
-            }
-        }
-    }
-}
-
-// TIKTOK STYLE OPTION - Uncomment to use instead of Pinterest
-/*
-@Composable
-private fun FlickGrid(
-    flicks: List<Flick>,
-    userProfile: UserProfile,
-    onLikeClick: (Flick) -> Unit,
-    onPhotoClick: (Flick) -> Unit,
-    onLongPress: (Flick) -> Unit
-) {
-    // TIKTOK: Single column, tall photos, dark theme
-    LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        verticalArrangement = Arrangement.spacedBy(0.dp)  // Seamless
-    ) {
-        items(flicks) { flick ->
-            TikTokItem(
-                flick = flick,
-                userProfile = userProfile,
-                onClick = { onPhotoClick(flick) },
-                onLike = { onLikeClick(flick) }
-            )
-        }
-    }
-}
-
-@Composable
-private fun TikTokItem(
-    flick: Flick,
-    userProfile: UserProfile,
-    onClick: () -> Unit,
-    onLike: () -> Unit
-) {
-    val screenHeight = LocalConfiguration.current.screenHeightDp.dp
-    val itemHeight = screenHeight * 0.75f  // 75% of screen like TikTok
-    
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(itemHeight)
-            .clickable { onClick() }
-            .background(Color.Black)
-    ) {
-        // Photo
-        AsyncImage(
-            model = flick.imageUrl,
-            contentDescription = null,
-            modifier = Modifier.fillMaxSize(),
-            contentScale = ContentScale.Crop
-        )
-        
-        // Dark gradient at bottom
-        Box(
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .fillMaxWidth()
-                .height(200.dp)
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.9f))
-                    )
-                )
-        )
-        
-        // Bottom info (like TikTok)
-        Column(
-            modifier = Modifier
-                .align(Alignment.BottomStart)
-                .padding(16.dp)
-        ) {
-            Text(
-                text = "@${flick.userName}",
-                color = Color.White,
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Bold
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = flick.description,
-                color = Color.White.copy(alpha = 0.9f),
-                fontSize = 14.sp,
-                maxLines = 2
-            )
-        }
-        
-        // Right side buttons (TikTok style)
-        Column(
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .padding(end = 16.dp, bottom = 100.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(20.dp)
-        ) {
-            // Profile
-            AsyncImage(
-                model = flick.userPhotoUrl,
-                contentDescription = null,
-                modifier = Modifier
-                    .size(50.dp)
-                    .clip(CircleShape)
-                    .border(2.dp, Color.White, CircleShape)
-            )
-            
-            // Like with count
-            val totalReactions = flick.getTotalReactions()
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("❤️", fontSize = 36.sp, modifier = Modifier.clickable { onLike() })
-                Text(
-                    text = when {
-                        totalReactions >= 1000 -> "${totalReactions / 1000}K"
-                        else -> totalReactions.toString()
-                    },
-                    color = Color.White,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-            
-            // Comments
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("💬", fontSize = 32.sp)
-                Text(
-                    text = flick.commentCount.toString(),
-                    color = Color.White,
-                    fontSize = 12.sp
-                )
-            }
-            
-            // Share
-            Text("↗️", fontSize = 32.sp)
-            
-            // Music
-            Box(
-                modifier = Modifier
-                    .size(45.dp)
-                    .background(Color.DarkGray, CircleShape),
-                contentAlignment = Alignment.Center
-            ) {
-                Text("🎵", fontSize = 24.sp)
-            }
-        }
-    }
-}
-*/
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -875,100 +542,6 @@ private fun FlickCard(
             }
         }
     }
-}
-
-// Grid position data class
-internal data class GridPosition(
-    val index: Int,
-    val row: Int,
-    val column: Int,
-    val rowSpan: Int,
-    val colSpan: Int
-)
-
-/**
- * STRICT gap-free masonry grid - forces 100% fill rate
- * Every single cell must be occupied, no exceptions
- */
-private fun calculateGapFreeGridPositions(count: Int): List<GridPosition> {
-    val positions = mutableListOf<GridPosition>()
-    val random = java.util.Random()
-    
-    // Track occupied cells: row -> set of occupied columns
-    val occupied = mutableMapOf<Int, MutableSet<Int>>()
-    
-    fun isOccupied(row: Int, col: Int): Boolean {
-        return occupied.getOrDefault(row, mutableSetOf()).contains(col)
-    }
-    
-    fun markOccupied(row: Int, col: Int, w: Int, h: Int) {
-        for (r in row until row + h) {
-            occupied.getOrPut(r) { mutableSetOf() }.addAll(col until col + w)
-        }
-    }
-    
-    fun findNextFreeCell(): Pair<Int, Int>? {
-        for (row in 0..count) { // Search enough rows
-            for (col in 0..2) {
-                if (!isOccupied(row, col)) return row to col
-            }
-        }
-        return null
-    }
-    
-    var photoIndex = 0
-    
-    while (photoIndex < count) {
-        // Find the first empty cell
-        val (row, col) = findNextFreeCell() ?: break
-        
-        val remainingCols = 3 - col
-        val sizeRoll = random.nextFloat()
-        
-        // Decide size - STRICT fitting only
-        var (colSpan, rowSpan) = when {
-            // At row start: can use big items
-            col == 0 && remainingCols == 3 -> {
-                when {
-                    sizeRoll < 0.03f -> 3 to 1  // 3-wide banner
-                    sizeRoll < 0.08f -> 2 to 2  // 2x2 square
-                    sizeRoll < 0.20f -> 2 to 1  // 2-wide
-                    sizeRoll < 0.35f -> 1 to 2  // tall
-                    else -> 1 to 1
-                }
-            }
-            // Middle of row: limited options
-            remainingCols >= 2 -> {
-                when {
-                    sizeRoll < 0.15f -> 2 to 1
-                    sizeRoll < 0.30f -> 1 to 2
-                    else -> 1 to 1
-                }
-            }
-            // Last slot: only 1x1 fits
-            else -> 1 to 1
-        }
-        
-        // FORCE fit - if doesn't fit, downgrade to 1x1
-        if (col + colSpan > 3 || (rowSpan == 2 && isOccupied(row + 1, col))) {
-            colSpan = 1
-            rowSpan = 1
-        }
-        
-        // Place item
-        positions.add(GridPosition(
-            index = photoIndex,
-            row = row,
-            column = col,
-            rowSpan = rowSpan,
-            colSpan = colSpan
-        ))
-        
-        markOccupied(row, col, colSpan, rowSpan)
-        photoIndex++
-    }
-    
-    return positions.sortedWith(compareBy({ it.row }, { it.column }))
 }
 
 @Composable
