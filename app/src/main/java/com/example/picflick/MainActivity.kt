@@ -12,12 +12,15 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material3.Badge
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -33,6 +36,7 @@ import com.example.picflick.data.UserProfile
 import com.example.picflick.ui.components.BottomNavBar
 import com.example.picflick.ui.components.LogoImage
 import com.example.picflick.ui.screens.AboutScreen
+import com.example.picflick.ui.screens.ChatDetailScreen
 import com.example.picflick.ui.screens.ChatsScreen
 import com.example.picflick.ui.screens.ContactScreen
 import com.example.picflick.ui.screens.FindFriendsScreen
@@ -49,6 +53,8 @@ import com.example.picflick.ui.theme.PicFlickTheme
 import com.example.picflick.viewmodel.AuthViewModel
 import com.example.picflick.viewmodel.FriendsViewModel
 import com.example.picflick.viewmodel.HomeViewModel
+import com.example.picflick.viewmodel.ChatViewModel
+import com.example.picflick.viewmodel.NotificationViewModel
 import com.example.picflick.viewmodel.ProfileViewModel
 
 /**
@@ -82,6 +88,7 @@ sealed class Screen {
     data object MyPhotos : Screen()
     data object Friends : Screen()
     data object Chats : Screen()
+    data object ChatDetail : Screen()
     data object FindFriends : Screen()
     data object About : Screen()
     data object Contact : Screen()
@@ -96,13 +103,28 @@ fun MainScreen(
     authViewModel: AuthViewModel = viewModel(),
     homeViewModel: HomeViewModel = viewModel(),
     profileViewModel: ProfileViewModel = viewModel(),
-    friendsViewModel: FriendsViewModel = viewModel()
+    friendsViewModel: FriendsViewModel = viewModel(),
+    notificationViewModel: NotificationViewModel = viewModel(),
+    chatViewModel: ChatViewModel = viewModel()
 ) {
     var currentScreen by remember { mutableStateOf<Screen>(Screen.Home) }
     val currentUser = authViewModel.currentUser
     val userProfile = authViewModel.userProfile
     val context = LocalContext.current // Get context for Toast
     var showUploadDialog by remember { mutableStateOf(false) }
+    
+    // State for selected chat (for navigation to ChatDetail)
+    var selectedChatSession by remember { mutableStateOf<com.example.picflick.data.ChatSession?>(null) }
+    var selectedOtherUserId by remember { mutableStateOf<String>("") }
+
+    // Load notifications when user is authenticated
+    LaunchedEffect(userProfile?.uid) {
+        userProfile?.uid?.let { uid ->
+            notificationViewModel.loadNotifications(uid)
+        }
+    }
+    
+    val unreadCount = notificationViewModel.unreadCount
 
     // Outer Scaffold with bottom navigation for all screens
     Scaffold(
@@ -132,18 +154,33 @@ fun MainScreen(
                         )
                     }
                     
-                    // Notifications bell on right - LOWER to match logo, LIGHT GREY for contrast
+                    // Notifications bell on right - RED when unread, clickable
                     IconButton(
-                        onClick = { /* TODO: notifications */ },
+                        onClick = { currentScreen = Screen.Notifications },
                         modifier = Modifier
                             .align(Alignment.CenterEnd)
-                            .padding(top = 4.dp)  // Match logo's lower position
+                            .padding(top = 4.dp)
                     ) {
-                        Icon(
-                            imageVector = Icons.Outlined.Notifications,
-                            contentDescription = "Notifications",
-                            tint = Color.LightGray  // Light grey for contrast on black
-                        )
+                        Box {
+                            Icon(
+                                imageVector = Icons.Outlined.Notifications,
+                                contentDescription = "Notifications",
+                                tint = if (unreadCount > 0) Color.Red else Color.LightGray
+                            )
+                            // Red badge for unread notifications
+                            if (unreadCount > 0) {
+                                Badge(
+                                    modifier = Modifier.align(Alignment.TopEnd),
+                                    containerColor = Color.Red,
+                                    contentColor = Color.White
+                                ) {
+                                    Text(
+                                        text = if (unreadCount > 99) "99+" else unreadCount.toString(),
+                                        style = MaterialTheme.typography.labelSmall
+                                    )
+                                }
+                            }
+                        }
                     }
                     
                     // Logo centered - slightly lower with offset
@@ -202,6 +239,14 @@ fun MainScreen(
                     homeViewModel = homeViewModel,
                     profileViewModel = profileViewModel,
                     friendsViewModel = friendsViewModel,
+                    notificationViewModel = notificationViewModel,
+                    chatViewModel = chatViewModel,
+                    selectedChatSession = selectedChatSession,
+                    selectedOtherUserId = selectedOtherUserId,
+                    onSetSelectedChat = { session, userId ->
+                        selectedChatSession = session
+                        selectedOtherUserId = userId
+                    },
                     onSignOut = { authViewModel.signOut() },
                     onProfilePhotoSelected = { uri ->
                         // TODO: Upload to Firebase Storage and update profile
@@ -226,6 +271,11 @@ private fun AuthenticatedContent(
     homeViewModel: HomeViewModel,
     profileViewModel: ProfileViewModel,
     friendsViewModel: FriendsViewModel,
+    notificationViewModel: NotificationViewModel,
+    chatViewModel: ChatViewModel,
+    selectedChatSession: com.example.picflick.data.ChatSession?,
+    selectedOtherUserId: String,
+    onSetSelectedChat: (com.example.picflick.data.ChatSession, String) -> Unit,
     onSignOut: () -> Unit,
     onProfilePhotoSelected: (android.net.Uri) -> Unit = {},
     showUploadDialog: Boolean = false,
@@ -279,8 +329,28 @@ private fun AuthenticatedContent(
 
             is Screen.Chats -> ChatsScreen(
                 userProfile = userProfile,
-                onBack = { onScreenChange(Screen.Home) }
+                viewModel = chatViewModel,
+                onBack = { onScreenChange(Screen.Home) },
+                onChatClick = { session, otherUserId ->
+                    onSetSelectedChat(session, otherUserId)
+                    onScreenChange(Screen.ChatDetail)
+                }
             )
+
+            is Screen.ChatDetail -> {
+                if (selectedChatSession != null) {
+                    ChatDetailScreen(
+                        chatSession = selectedChatSession,
+                        otherUserId = selectedOtherUserId,
+                        currentUser = userProfile,
+                        viewModel = chatViewModel,
+                        onBack = { onScreenChange(Screen.Chats) }
+                    )
+                } else {
+                    // Fallback if no chat selected
+                    onScreenChange(Screen.Chats)
+                }
+            }
 
             is Screen.FindFriends -> FindFriendsScreen(
                 viewModel = friendsViewModel,
