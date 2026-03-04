@@ -33,7 +33,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.picflick.data.Flick
 import com.example.picflick.data.UserProfile
@@ -54,6 +53,7 @@ import com.example.picflick.ui.screens.MyPhotosScreen
 import com.example.picflick.ui.screens.NotificationsScreen
 import com.example.picflick.ui.screens.ProfileScreen
 import com.example.picflick.ui.screens.SettingsScreen
+import com.example.picflick.ui.screens.SplashScreen
 import com.example.picflick.ui.theme.PicFlickBackground
 import com.example.picflick.ui.theme.PicFlickBannerBackground
 import com.example.picflick.ui.theme.PicFlickTheme
@@ -71,7 +71,6 @@ import com.example.picflick.viewmodel.UploadViewModel
  */
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
-        installSplashScreen()
         super.onCreate(savedInstanceState)
 
         setContent {
@@ -80,10 +79,26 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = PicFlickBackground
                 ) {
-                    MainScreen()
+                    AppContent()
                 }
             }
         }
+    }
+}
+
+/**
+ * App content with splash screen first
+ */
+@Composable
+fun AppContent() {
+    var showSplash by remember { mutableStateOf(true) }
+
+    if (showSplash) {
+        SplashScreen(
+            onSplashComplete = { showSplash = false }
+        )
+    } else {
+        MainScreen()
     }
 }
 
