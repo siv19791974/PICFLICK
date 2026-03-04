@@ -8,10 +8,10 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.picflick.data.Flick
+import com.example.picflick.data.ReactionType
 import com.example.picflick.data.Result
 import com.example.picflick.repository.FlickRepository
 import kotlinx.coroutines.launch
-import java.util.UUID
 
 /**
  * ViewModel for the home screen with flicks feed
@@ -36,13 +36,20 @@ class HomeViewModel : ViewModel() {
         private set
 
     /**
-     * Load all flicks for the feed
+     * Load flicks for the feed (only friends' photos for privacy)
+     * Uses stored currentUserId
      */
     fun loadFlicks() {
+        val userId = currentUserId
+        if (userId == null) {
+            errorMessage = "User not logged in"
+            return
+        }
+        
         isLoading = true
         errorMessage = null
         
-        repository.getFlicks { result ->
+        repository.getFlicksForUser(userId) { result ->
             when (result) {
                 is Result.Success -> {
                     flicks.clear()
@@ -56,6 +63,14 @@ class HomeViewModel : ViewModel() {
                 is Result.Loading -> { /* Do nothing */ }
             }
         }
+    }
+
+    /**
+     * Load flicks with explicit userId (called when userId might have changed)
+     */
+    fun loadFlicks(userId: String) {
+        currentUserId = userId
+        loadFlicks()
     }
 
     /**
@@ -77,23 +92,40 @@ class HomeViewModel : ViewModel() {
     }
 
     /**
-     * Toggle like on a flick
+     * Toggle like on a flick (deprecated - use toggleReaction)
      */
-    fun toggleLike(flick: Flick, userId: String) {
-        val isLiked = flick.likes.contains(userId)
-        
-        repository.toggleLike(flick.id, userId, isLiked) { result ->
+    fun toggleLike(flick: Flick, userId: String, userName: String, userPhotoUrl: String) {
+        // Map to LIKE reaction
+        val userReaction = flick.getUserReaction(userId)
+        val newReaction = if (userReaction == ReactionType.LIKE) null else ReactionType.LIKE
+        toggleReaction(flick, userId, userName, userPhotoUrl, newReaction)
+    }
+    
+    /**
+     * Toggle or update reaction on a flick
+     * @param reactionType null = remove reaction
+     */
+    fun toggleReaction(
+        flick: Flick, 
+        userId: String, 
+        userName: String, 
+        userPhotoUrl: String,
+        reactionType: ReactionType?
+    ) {
+        repository.toggleReaction(flick.id, userId, userName, userPhotoUrl, reactionType) { result ->
             when (result) {
                 is Result.Success -> {
                     // Update local state optimistically
                     val index = flicks.indexOfFirst { it.id == flick.id }
                     if (index != -1) {
-                        val updatedLikes = if (isLiked) {
-                            flick.likes - userId
-                        } else {
-                            flick.likes + userId
+                        val newReactions = flick.reactions.toMutableMap().apply {
+                            if (reactionType == null) {
+                                remove(userId)
+                            } else {
+                                put(userId, reactionType.name)
+                            }
                         }
-                        flicks[index] = flick.copy(likes = updatedLikes)
+                        flicks[index] = flick.copy(reactions = newReactions.toMap())
                     }
                 }
                 is Result.Error -> {
@@ -151,6 +183,7 @@ class HomeViewModel : ViewModel() {
         imageUri: android.net.Uri,
         context: android.content.Context,
         caption: String = "",
+        privacy: String = "friends", // Default to friends-only privacy
         onComplete: (Boolean) -> Unit = {}
     ) {
         viewModelScope.launch {
@@ -177,7 +210,7 @@ class HomeViewModel : ViewModel() {
                     is Result.Success -> {
                         val imageUrl = uploadResult.data
                         
-                        // Create flick document
+                        // Create flick document with privacy setting
                         val flick = Flick(
                             id = "",
                             userId = userId,
@@ -185,11 +218,12 @@ class HomeViewModel : ViewModel() {
                             imageUrl = imageUrl,
                             description = caption,
                             timestamp = System.currentTimeMillis(),
-                            likes = emptyList()
+                            reactions = emptyMap(),
+                            privacy = privacy // Respect privacy setting
                         )
                         
-                        // Save to Firestore
-                        val createResult = repository.createFlick(flick)
+                        // Save to Firestore and notify friends
+                        val createResult = repository.createFlick(flick, userPhotoUrl)
                         
                         when (createResult) {
                             is Result.Success -> {

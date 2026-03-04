@@ -58,13 +58,14 @@ fun HomeScreen(
     var tempCameraUri by remember { mutableStateOf<Uri?>(null) }
     var selectedFlick by remember { mutableStateOf<Flick?>(null) }
     var selectedFlickIndex by remember { mutableIntStateOf(0) }
+    var privacySetting by remember { mutableStateOf("friends") } // "friends" or "public"
     
     // Swipe refresh state
     val swipeRefreshState = rememberSwipeRefreshState(isRefreshing = viewModel.isLoading)
 
     // Load data
-    LaunchedEffect(Unit) {
-        viewModel.loadFlicks()
+    LaunchedEffect(userProfile.uid) {
+        viewModel.loadFlicks(userProfile.uid)
     }
 
     LaunchedEffect(userProfile.uid) {
@@ -83,6 +84,7 @@ fun HomeScreen(
                 userPhotoUrl = userProfile.photoUrl,
                 imageUri = tempCameraUri!!,
                 context = context,
+                privacy = privacySetting,
                 onComplete = { success ->
                     if (success) {
                         viewModel.checkDailyUploads(userProfile.uid)
@@ -104,6 +106,7 @@ fun HomeScreen(
                 userPhotoUrl = userProfile.photoUrl,
                 imageUri = it,
                 context = context,
+                privacy = privacySetting,
                 onComplete = { success ->
                     if (success) {
                         viewModel.checkDailyUploads(userProfile.uid)
@@ -130,13 +133,13 @@ fun HomeScreen(
                 viewModel.isLoading && viewModel.flicks.isEmpty() -> PhotoGridShimmer()
                 viewModel.errorMessage != null -> ErrorMessage(
                     message = viewModel.errorMessage ?: "Unknown error",
-                    onRetry = { viewModel.loadFlicks() }
+                    onRetry = { viewModel.loadFlicks(userProfile.uid) }
                 )
                 viewModel.flicks.isEmpty() -> EmptyState()
                 else -> FlickGrid(
                     flicks = viewModel.flicks,
                     userProfile = userProfile,
-                    onLikeClick = { flick -> viewModel.toggleLike(flick, userProfile.uid) },
+                    onLikeClick = { flick -> viewModel.toggleLike(flick, userProfile.uid, userProfile.displayName, userProfile.photoUrl) },
                     onPhotoClick = { flick -> 
                         selectedFlick = flick
                         selectedFlickIndex = viewModel.flicks.indexOf(flick)
@@ -164,7 +167,9 @@ fun HomeScreen(
                     onGalleryClick = {
                         galleryLauncher.launch("image/*")
                         showUploadDialog = false
-                    }
+                    },
+                    privacySetting = privacySetting,
+                    onPrivacyChange = { privacySetting = it }
                 )
             }
         }
@@ -176,16 +181,21 @@ fun HomeScreen(
             flick = flick,
             currentUser = userProfile,
             onDismiss = { selectedFlick = null },
-            onLikeClick = {
-                viewModel.toggleLike(flick, userProfile.uid)
+            onReaction = { reactionType ->
+                // Handle reaction via ViewModel
+                viewModel.toggleReaction(flick, userProfile.uid, userProfile.displayName, userProfile.photoUrl, reactionType)
                 // Update local copy for UI
-                selectedFlick = flick.copy(
-                    likes = if (flick.likes.contains(userProfile.uid)) {
-                        flick.likes - userProfile.uid
-                    } else {
-                        flick.likes + userProfile.uid
+                selectedFlick = if (reactionType != null) {
+                    val newReactions = flick.reactions.toMutableMap().apply {
+                        put(userProfile.uid, reactionType.name)
                     }
-                )
+                    flick.copy(reactions = newReactions)
+                } else {
+                    val newReactions = flick.reactions.toMutableMap().apply {
+                        remove(userProfile.uid)
+                    }
+                    flick.copy(reactions = newReactions)
+                }
             },
             onShareClick = {
                 val shareIntent = Intent().apply {
@@ -210,7 +220,9 @@ fun HomeScreen(
 private fun UploadOverlay(
     onDismiss: () -> Unit,
     onCameraClick: () -> Unit,
-    onGalleryClick: () -> Unit
+    onGalleryClick: () -> Unit,
+    privacySetting: String = "friends",
+    onPrivacyChange: (String) -> Unit = {}
 ) {
     Box(
         modifier = Modifier
@@ -282,6 +294,62 @@ private fun UploadOverlay(
                     )
                 }
             }
+            
+            Spacer(modifier = Modifier.height(24.dp))
+            
+            // Privacy Toggle
+            Text(
+                text = "Who can see this?",
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+            
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                // Friends only option
+                FilterChip(
+                    selected = privacySetting == "friends",
+                    onClick = { onPrivacyChange("friends") },
+                    label = { Text("Friends Only") },
+                    leadingIcon = if (privacySetting == "friends") {
+                        {
+                            Icon(
+                                imageVector = Icons.Default.Check,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                    } else null
+                )
+                
+                // Public option
+                FilterChip(
+                    selected = privacySetting == "public",
+                    onClick = { onPrivacyChange("public") },
+                    label = { Text("Public") },
+                    leadingIcon = if (privacySetting == "public") {
+                        {
+                            Icon(
+                                imageVector = Icons.Default.Check,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                    } else null
+                )
+            }
+            
+            Spacer(modifier = Modifier.height(8.dp))
+            
+            Text(
+                text = if (privacySetting == "friends") 
+                    "Only your friends will see this photo" 
+                else 
+                    "Everyone can see this photo",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+            )
         }
     }
 }

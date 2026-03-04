@@ -33,9 +33,13 @@ import androidx.compose.ui.window.DialogProperties
 import coil3.compose.AsyncImage
 import com.example.picflick.data.Comment
 import com.example.picflick.data.Flick
+import com.example.picflick.data.ReactionType
 import com.example.picflick.data.UserProfile
+import com.example.picflick.data.toEmoji
 import com.example.picflick.repository.FlickRepository
+import com.example.picflick.ui.components.ReactionPicker
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import kotlin.math.absoluteValue
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
@@ -44,7 +48,7 @@ fun FullScreenPhotoViewer(
     flick: Flick,
     currentUser: UserProfile,
     onDismiss: () -> Unit,
-    onLikeClick: () -> Unit,
+    onReaction: (ReactionType?) -> Unit = {},
     onShareClick: () -> Unit = {},
     onDeleteClick: () -> Unit = {},
     canDelete: Boolean = false,
@@ -82,7 +86,13 @@ fun FullScreenPhotoViewer(
         allPhotos[pagerState.currentPage]
     } else flick
     
-    val isLiked = currentFlick.likes.contains(currentUser.uid)
+    // Get user's current reaction
+    val userReaction = currentFlick.getUserReaction(currentUser.uid)
+    val reactionCounts = currentFlick.getReactionCounts()
+    val totalReactions = currentFlick.getTotalReactions()
+    
+    // Show reaction picker state
+    var showReactionPicker by remember { mutableStateOf(false) }
     
     // Load comments when flick changes
     LaunchedEffect(currentFlick.id) {
@@ -203,7 +213,7 @@ fun FullScreenPhotoViewer(
                             )
                         }
                 ) {
-                    // HORIZONTAL PAGER
+                    // HORIZONTAL PAGER with dissolve transitions
                     HorizontalPager(
                         state = pagerState,
                         modifier = Modifier.fillMaxSize(),
@@ -214,9 +224,19 @@ fun FullScreenPhotoViewer(
                             allPhotos[page]
                         } else flick
                         
-                        val isCurrentPage = pagerState.currentPage == page
+                        // Calculate page offset for dissolve effect (-1 to 1)
+                        val pageOffset = (
+                            (pagerState.currentPage - page) + 
+                            pagerState.currentPageOffsetFraction
+                        ).coerceIn(-1f, 1f)
                         
-                        // PHOTO BOX with tap detection
+                        // Calculate alpha for dissolve (1.0 = fully visible, 0.0 = invisible)
+                        val alpha = 1f - pageOffset.absoluteValue.coerceIn(0f, 1f)
+                        
+                        // Calculate scale for subtle zoom effect during transition
+                        val scaleEffect = 1f - (pageOffset.absoluteValue * 0.1f).coerceIn(0f, 0.1f)
+                        
+                        // PHOTO BOX with tap detection and dissolve animation
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
@@ -224,10 +244,10 @@ fun FullScreenPhotoViewer(
                                     indication = null,
                                     interactionSource = remember { MutableInteractionSource() },
                                     onClick = {
-                                        if (isCurrentPage) uiVisible = !uiVisible
+                                        if (pagerState.currentPage == page) uiVisible = !uiVisible
                                     },
                                     onDoubleClick = {
-                                        if (isCurrentPage) {
+                                        if (pagerState.currentPage == page) {
                                             // Double tap to zoom
                                             scale = if (scale > 1.5f) 1f else 2.5f
                                             if (scale == 1f) offset = Offset.Zero
@@ -242,7 +262,13 @@ fun FullScreenPhotoViewer(
                                 modifier = Modifier
                                     .fillMaxSize()
                                     .graphicsLayer {
-                                        if (isCurrentPage) {
+                                        // Apply dissolve alpha
+                                        this.alpha = alpha
+                                        // Apply subtle scale during transition
+                                        scaleX = scaleEffect
+                                        scaleY = scaleEffect
+                                        // Apply zoom if this is the current page
+                                        if (pagerState.currentPage == page && scale > 1f) {
                                             scaleX = scale
                                             scaleY = scale
                                             translationX = offset.x
@@ -360,28 +386,66 @@ fun FullScreenPhotoViewer(
                                 )
                             }
                             
-                            // Action buttons
+                            // Action buttons with REACTIONS
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.Start,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                // Like
-                                IconButton(onClick = onLikeClick) {
-                                    Icon(
-                                        imageVector = if (isLiked) 
-                                            Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                                        contentDescription = "Like",
-                                        tint = if (isLiked) Color.Red else Color.White,
-                                        modifier = Modifier.size(28.dp)
-                                    )
+                                // REACTION BUTTON with long-press picker
+                                Box(contentAlignment = Alignment.Center) {
+                                    // Main reaction button - tap to quick-like, long-press for picker
+                                    IconButton(
+                                        onClick = { /* handled by pointerInput */ },
+                                        modifier = Modifier.pointerInput(Unit) {
+                                            detectTapGestures(
+                                                onTap = {
+                                                    onReaction(
+                                                        if (userReaction == ReactionType.LIKE) null 
+                                                        else ReactionType.LIKE
+                                                    )
+                                                },
+                                                onLongPress = {
+                                                    showReactionPicker = true
+                                                }
+                                            )
+                                        }
+                                    ) {
+                                        if (userReaction != null) {
+                                            // Show user's current reaction emoji
+                                            Text(
+                                                text = userReaction.toEmoji(),
+                                                fontSize = 24.sp
+                                            )
+                                        } else {
+                                            // Default like outline
+                                            Icon(
+                                                imageVector = Icons.Default.FavoriteBorder,
+                                                contentDescription = "React",
+                                                tint = Color.White,
+                                                modifier = Modifier.size(28.dp)
+                                            )
+                                        }
+                                    }
                                 }
-                                Text(
-                                    text = "${currentFlick.likes.size}",
-                                    color = Color.White,
-                                    fontWeight = FontWeight.Bold,
-                                    modifier = Modifier.padding(end = 16.dp)
-                                )
+                                
+                                // Show reaction counts
+                                if (totalReactions > 0) {
+                                    Row(
+                                        modifier = Modifier.padding(start = 4.dp, end = 16.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        // Top 3 reactions (convert to list first)
+                                        reactionCounts.toList().take(3).forEach { (type, count) ->
+                                            Text(
+                                                text = "${type.toEmoji()} $count ",
+                                                color = Color.White,
+                                                fontSize = 12.sp,
+                                                fontWeight = FontWeight.Medium
+                                            )
+                                        }
+                                    }
+                                }
                                 
                                 // Comments
                                 Icon(
@@ -482,7 +546,7 @@ fun FullScreenPhotoViewer(
                                                     userPhotoUrl = currentUser.photoUrl,
                                                     text = newCommentText.trim()
                                                 )
-                                                repository.addComment(comment)
+                                                repository.addComment(comment, comment.userName, comment.userPhotoUrl)
                                                 comments = comments + comment
                                                 newCommentText = ""
                                             }
@@ -523,6 +587,30 @@ fun FullScreenPhotoViewer(
                             fontSize = 12.sp
                         )
                     }
+                }
+                
+                // REACTION PICKER POPUP - positioned at bottom
+                AnimatedVisibility(
+                    visible = showReactionPicker,
+                    modifier = Modifier.align(Alignment.BottomStart),
+                    enter = fadeIn() + scaleIn(
+                        initialScale = 0.5f,
+                        animationSpec = spring(
+                            dampingRatio = Spring.DampingRatioMediumBouncy,
+                            stiffness = Spring.StiffnessLow
+                        )
+                    ),
+                    exit = fadeOut() + scaleOut()
+                ) {
+                    ReactionPicker(
+                        currentReaction = userReaction,
+                        onReactionSelected = { reaction ->
+                            onReaction(reaction)
+                            showReactionPicker = false
+                        },
+                        onDismiss = { showReactionPicker = false },
+                        modifier = Modifier.padding(bottom = 160.dp, start = 16.dp)
+                    )
                 }
             }
         }

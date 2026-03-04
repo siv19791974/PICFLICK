@@ -3,70 +3,351 @@ package com.example.picflick.ui.screens
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.AccountCircle
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Email
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import coil3.compose.AsyncImage
+import com.example.picflick.data.Notification
+import com.example.picflick.data.NotificationType
 import com.example.picflick.data.UserProfile
-import com.example.picflick.ui.components.LogoImage
-import com.example.picflick.ui.theme.PicFlickBackground
-import com.example.picflick.ui.theme.PicFlickBannerBackground
+import com.example.picflick.viewmodel.NotificationViewModel
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 /**
- * Notifications screen
+ * Notifications screen - displays all notifications in a list
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NotificationsScreen(
     userProfile: UserProfile,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    viewModel: NotificationViewModel = viewModel()
 ) {
+    val notifications = viewModel.notifications
+    val unreadCount = viewModel.unreadCount
+    val isLoading = viewModel.isLoading
+    val errorMessage = viewModel.errorMessage
+
+    // Load notifications
+    LaunchedEffect(userProfile.uid) {
+        viewModel.loadNotifications(userProfile.uid)
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(PicFlickBackground)
+            .background(Color.Black)
     ) {
-        // NO BANNER - banner is now in MainActivity's Scaffold topBar!
-        // Simple back button only
+        // Header with back button, title, and mark all read
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
         ) {
+            // Back button
             Icon(
                 imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                 contentDescription = "Go back",
                 modifier = Modifier
                     .size(36.dp)
                     .clickable { onBack() },
-                tint = MaterialTheme.colorScheme.onSurface
+                tint = Color.LightGray
             )
-        }
-        
-        // Content
-        Box(
-            modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center
-        ) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Icon(
-                    imageVector = Icons.Default.Notifications,
-                    contentDescription = null,
-                    modifier = Modifier.size(64.dp),
-                    tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
-                )
-                Spacer(modifier = Modifier.height(16.dp))
+
+            // Title with badge
+            Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    text = "No notifications yet",
-                    fontSize = 18.sp,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                    text = "Notifications",
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
+                )
+                if (unreadCount > 0) {
+                    Badge(
+                        modifier = Modifier.padding(start = 8.dp),
+                        containerColor = Color.Red,
+                        contentColor = Color.White
+                    ) {
+                        Text(text = unreadCount.toString())
+                    }
+                }
+            }
+
+            // Mark all read button
+            TextButton(
+                onClick = { viewModel.markAllAsRead(userProfile.uid) },
+                enabled = unreadCount > 0
+            ) {
+                Text(
+                    text = "Mark all read",
+                    color = if (unreadCount > 0) Color(0xFF4FC3F7) else Color.Gray
                 )
             }
         }
+
+        // Content
+        when {
+            isLoading && notifications.isEmpty() -> {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(color = Color.White)
+                }
+            }
+
+            notifications.isEmpty() -> {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Icon(
+                            imageVector = Icons.Default.Notifications,
+                            contentDescription = null,
+                            modifier = Modifier.size(80.dp),
+                            tint = Color.Gray
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text(
+                            text = "No notifications yet",
+                            fontSize = 18.sp,
+                            color = Color.Gray
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = "When someone likes, comments, or follows you,\nit will appear here",
+                            fontSize = 14.sp,
+                            color = Color.DarkGray,
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                        )
+                    }
+                }
+            }
+
+            else -> {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    items(notifications, key = { it.id }) { notification ->
+                        NotificationItem(
+                            notification = notification,
+                            onClick = {
+                                if (!notification.isRead) {
+                                    viewModel.markAsRead(notification.id)
+                                }
+                            },
+                            onDelete = {
+                                viewModel.deleteNotification(notification.id)
+                            }
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun NotificationItem(
+    notification: Notification,
+    onClick: () -> Unit,
+    onDelete: () -> Unit
+) {
+    val backgroundColor = if (notification.isRead) {
+        Color(0xFF1A1A1A) // Dark grey for read
+    } else {
+        Color(0xFF2D2D2D) // Slightly lighter for unread
+    }
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() },
+        colors = CardDefaults.cardColors(containerColor = backgroundColor),
+        shape = RoundedCornerShape(12.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Sender avatar with notification icon overlay
+            Box {
+                AsyncImage(
+                    model = notification.senderPhotoUrl,
+                    contentDescription = null,
+                    modifier = Modifier
+                        .size(50.dp)
+                        .clip(CircleShape)
+                        .background(Color.Gray),
+                    contentScale = ContentScale.Crop
+                )
+
+                // Notification type icon (small overlay)
+                Box(
+                    modifier = Modifier
+                        .size(20.dp)
+                        .align(Alignment.BottomEnd)
+                        .background(
+                            color = getNotificationColor(notification.type),
+                            shape = CircleShape
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = getNotificationIcon(notification.type),
+                        contentDescription = null,
+                        modifier = Modifier.size(12.dp),
+                        tint = Color.White
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.width(12.dp))
+
+            // Notification content
+            Column(
+                modifier = Modifier.weight(1f)
+            ) {
+                Text(
+                    text = notification.title,
+                    fontSize = 14.sp,
+                    fontWeight = if (notification.isRead) FontWeight.Normal else FontWeight.Bold,
+                    color = Color.White,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+
+                Spacer(modifier = Modifier.height(2.dp))
+
+                Text(
+                    text = notification.message,
+                    fontSize = 13.sp,
+                    color = Color.LightGray,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+
+                Spacer(modifier = Modifier.height(4.dp))
+
+                Text(
+                    text = formatTimestamp(notification.timestamp),
+                    fontSize = 11.sp,
+                    color = Color.Gray
+                )
+            }
+
+            // Photo thumbnail (if applicable)
+            if (notification.flickImageUrl != null) {
+                Spacer(modifier = Modifier.width(8.dp))
+                AsyncImage(
+                    model = notification.flickImageUrl,
+                    contentDescription = null,
+                    modifier = Modifier
+                        .size(50.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(Color.DarkGray),
+                    contentScale = ContentScale.Crop
+                )
+            }
+
+            // Delete button
+            IconButton(
+                onClick = onDelete,
+                modifier = Modifier.size(32.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.Delete,
+                    contentDescription = "Delete",
+                    tint = Color.Gray,
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+
+            // Unread indicator dot
+            if (!notification.isRead) {
+                Spacer(modifier = Modifier.width(4.dp))
+                Box(
+                    modifier = Modifier
+                        .size(8.dp)
+                        .background(Color.Red, CircleShape)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun getNotificationIcon(type: NotificationType) = when (type) {
+    NotificationType.LIKE -> Icons.Default.Favorite
+    NotificationType.REACTION -> Icons.Default.Favorite // Will show emoji instead
+    NotificationType.COMMENT -> Icons.Default.Email
+    NotificationType.FOLLOW -> Icons.Default.Person
+    NotificationType.FRIEND_REQUEST -> Icons.Default.Person
+    NotificationType.MESSAGE -> Icons.Default.Email
+    NotificationType.PHOTO_ADDED -> Icons.Default.Info
+    NotificationType.MENTION -> Icons.Default.Email
+    NotificationType.SYSTEM -> Icons.Default.Info
+}
+
+@Composable
+private fun getNotificationColor(type: NotificationType) = when (type) {
+    NotificationType.LIKE -> Color(0xFFE91E63) // Pink
+    NotificationType.COMMENT -> Color(0xFF4FC3F7) // Light Blue
+    NotificationType.FOLLOW -> Color(0xFF4CAF50) // Green
+    NotificationType.FRIEND_REQUEST -> Color(0xFF9C27B0) // Purple
+    NotificationType.MESSAGE -> Color(0xFFFF9800) // Orange
+    NotificationType.PHOTO_ADDED -> Color(0xFF00BCD4) // Cyan
+    NotificationType.MENTION -> Color(0xFFFF5722) // Deep Orange
+    NotificationType.SYSTEM -> Color(0xFF607D8B) // Blue Grey
+}
+
+private fun formatTimestamp(timestamp: Long): String {
+    val date = Date(timestamp)
+    val now = Date()
+    val diff = now.time - date.time
+
+    val minutes = diff / (1000 * 60)
+    val hours = diff / (1000 * 60 * 60)
+    val days = diff / (1000 * 60 * 60 * 24)
+
+    return when {
+        minutes < 1 -> "Just now"
+        minutes < 60 -> "$minutes min ago"
+        hours < 24 -> "$hours hr ago"
+        days < 7 -> "$days days ago"
+        else -> SimpleDateFormat("MMM d", Locale.getDefault()).format(date)
     }
 }

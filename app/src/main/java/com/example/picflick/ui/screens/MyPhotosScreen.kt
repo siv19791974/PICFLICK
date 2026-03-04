@@ -107,7 +107,6 @@ fun MyPhotosScreen(
                 viewModel.photos.isEmpty() -> EmptyMyPhotosState()
                 else -> PhotoGrid(
                     photos = viewModel.photos,
-                    userId = userId,
                     onPhotoClick = { photo -> selectedPhoto = photo }
                 )
             }
@@ -147,18 +146,21 @@ fun MyPhotosScreen(
 @Composable
 private fun PhotoGrid(
     photos: List<Flick>,
-    userId: String,
     onPhotoClick: (Flick) -> Unit
 ) {
     LazyVerticalGrid(
         columns = GridCells.Fixed(3),
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(bottom = 80.dp)
+        contentPadding = PaddingValues(
+            start = 1.dp,
+            end = 1.dp,
+            top = 1.dp,
+            bottom = 80.dp
+        )
     ) {
         items(photos) { photo ->
             PhotoCard(
                 photo = photo,
-                userId = userId,
                 onPhotoClick = { onPhotoClick(photo) }
             )
         }
@@ -168,58 +170,28 @@ private fun PhotoGrid(
 @Composable
 private fun PhotoCard(
     photo: Flick,
-    userId: String,
     onPhotoClick: () -> Unit
 ) {
     Card(
         modifier = Modifier
             .padding(2.dp)
-            .fillMaxWidth()
-            .aspectRatio(1f)
             .clickable { onPhotoClick() },
         shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.Transparent)
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = Color.DarkGray.copy(alpha = 0.3f)
+        )
     ) {
-        Box(modifier = Modifier.fillMaxSize()) {
-            AsyncImage(
-                model = photo.imageUrl,
-                contentDescription = null,
-                modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Crop
-            )
-
-            // Like count overlay - SAME AS HOMESCREEN
-            if (photo.likes.isNotEmpty()) {
-                Row(
-                    modifier = Modifier
-                        .align(Alignment.BottomEnd)
-                        .padding(4.dp)
-                        .background(Color.Black.copy(alpha = 0.6f), RoundedCornerShape(4.dp))
-                        .padding(horizontal = 4.dp, vertical = 2.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Favorite,
-                        contentDescription = null,
-                        tint = Color.Red,
-                        modifier = Modifier.size(12.dp)
-                    )
-                    Text(
-                        text = formatCount(photo.likes.size),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = Color.White
-                    )
-                }
-            }
-        }
-    }
-}
-
-private fun formatCount(count: Int): String {
-    return when {
-        count >= 1000000 -> "${(count / 1000000)}M"
-        count >= 1000 -> "${(count / 1000)}K"
-        else -> count.toString()
+        // CLEAN thumbnail - no overlay, just the photo
+        AsyncImage(
+            model = photo.imageUrl,
+            contentDescription = null,
+            modifier = Modifier
+                .fillMaxWidth()
+                .aspectRatio(1f)
+                .clip(RoundedCornerShape(12.dp)),
+            contentScale = ContentScale.Crop
+        )
     }
 }
 
