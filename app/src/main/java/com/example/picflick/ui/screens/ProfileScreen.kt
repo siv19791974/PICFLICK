@@ -726,111 +726,80 @@ private data class PhotoGridPos(
 )
 
 /**
- * Calculate gap-free masonry grid positions
- * Fills rows completely left-to-right, never leaves empty cells
+ * STRICT gap-free masonry grid - forces 100% fill rate
+ * Every single cell must be occupied, no exceptions
  */
 private fun calculateGapFreePhotoGridPositions(count: Int): List<PhotoGridPos> {
     val positions = mutableListOf<PhotoGridPos>()
     val random = java.util.Random()
     
+    // Track occupied cells: row -> set of occupied columns
+    val occupied = mutableMapOf<Int, MutableSet<Int>>()
+    
+    fun isOccupied(row: Int, col: Int): Boolean {
+        return occupied.getOrDefault(row, mutableSetOf()).contains(col)
+    }
+    
+    fun markOccupied(row: Int, col: Int, w: Int, h: Int) {
+        for (r in row until row + h) {
+            occupied.getOrPut(r) { mutableSetOf() }.addAll(col until col + w)
+        }
+    }
+    
+    fun findNextFreeCell(): Pair<Int, Int>? {
+        for (row in 0..count) {
+            for (col in 0..2) {
+                if (!isOccupied(row, col)) return row to col
+            }
+        }
+        return null
+    }
+    
     var photoIndex = 0
-    var currentRow = 0
     
     while (photoIndex < count) {
-        val rowItems = mutableListOf<PhotoGridPos>()
-        var currentCol = 0
+        val (row, col) = findNextFreeCell() ?: break
         
-        // Fill this row completely - no gaps allowed
-        while (currentCol < 3 && photoIndex < count) {
-            val remainingSlots = 3 - currentCol
-            
-            // Decide size - with occasional BIG items
-            val sizeRoll = random.nextFloat()
-            
-            val (colSpan, rowSpan) = when {
-                // 3% chance for FULL WIDTH 3-wide (banner)
-                remainingSlots == 3 && sizeRoll < 0.03f -> 3 to 1
-                // 5% chance for 2x2 big square (4 squares)
-                remainingSlots == 3 && sizeRoll < 0.08f -> 2 to 2
-                // 12% chance for 2-wide
-                remainingSlots >= 2 && sizeRoll < 0.20f -> {
-                    val isTall = random.nextFloat() < 0.3f
-                    if (isTall) 2 to 2 else 2 to 1
+        val remainingCols = 3 - col
+        val sizeRoll = random.nextFloat()
+        
+        // Decide size - STRICT fitting only
+        var (colSpan, rowSpan) = when {
+            col == 0 && remainingCols == 3 -> {
+                when {
+                    sizeRoll < 0.03f -> 3 to 1
+                    sizeRoll < 0.08f -> 2 to 2
+                    sizeRoll < 0.20f -> 2 to 1
+                    sizeRoll < 0.35f -> 1 to 2
+                    else -> 1 to 1
                 }
-                // 15% chance for tall 1-wide (1x2)
-                sizeRoll < 0.35f -> 1 to 2
-                // Default 1x1
-                else -> 1 to 1
             }
-            
-            // Check if it fits
-            if (colSpan <= remainingSlots) {
-                rowItems.add(PhotoGridPos(
-                    index = photoIndex,
-                    row = currentRow,
-                    column = currentCol,
-                    rowSpan = rowSpan,
-                    colSpan = colSpan
-                ))
-                currentCol += colSpan
-                photoIndex++
-            } else {
-                // Doesn't fit, use 1x1
-                rowItems.add(PhotoGridPos(
-                    index = photoIndex,
-                    row = currentRow,
-                    column = currentCol,
-                    rowSpan = 1,
-                    colSpan = 1
-                ))
-                currentCol += 1
-                photoIndex++
+            remainingCols >= 2 -> {
+                when {
+                    sizeRoll < 0.15f -> 2 to 1
+                    sizeRoll < 0.30f -> 1 to 2
+                    else -> 1 to 1
+                }
             }
+            else -> 1 to 1
         }
         
-        // Add all items from this row
-        positions.addAll(rowItems)
-        
-        // If we placed any 2-row items, fill the row below
-        val tallItems = rowItems.filter { it.rowSpan == 2 }
-        if (tallItems.isNotEmpty() && photoIndex < count) {
-            currentRow++
-            var nextRowCol = 0
-            val nextRowItems = mutableListOf<PhotoGridPos>()
-            
-            // Fill gaps before tall items
-            tallItems.sortedBy { it.column }.forEach { tallItem ->
-                while (nextRowCol < tallItem.column && photoIndex < count) {
-                    nextRowItems.add(PhotoGridPos(
-                        index = photoIndex,
-                        row = currentRow,
-                        column = nextRowCol,
-                        rowSpan = 1,
-                        colSpan = 1
-                    ))
-                    nextRowCol++
-                    photoIndex++
-                }
-                nextRowCol += tallItem.colSpan
-            }
-            
-            // Fill remaining columns after last tall item
-            while (nextRowCol < 3 && photoIndex < count) {
-                nextRowItems.add(PhotoGridPos(
-                    index = photoIndex,
-                    row = currentRow,
-                    column = nextRowCol,
-                    rowSpan = 1,
-                    colSpan = 1
-                ))
-                nextRowCol++
-                photoIndex++
-            }
-            
-            positions.addAll(nextRowItems)
+        // FORCE fit - if doesn't fit, downgrade to 1x1
+        if (col + colSpan > 3 || (rowSpan == 2 && isOccupied(row + 1, col))) {
+            colSpan = 1
+            rowSpan = 1
         }
         
-        currentRow++
+        positions.add(PhotoGridPos(
+            index = photoIndex,
+            row = row,
+            column = col,
+            rowSpan = rowSpan,
+            colSpan = colSpan
+        ))
+        
+        markOccupied(row, col, colSpan, rowSpan)
+        photoIndex++
     }
     
     return positions.sortedWith(compareBy({ it.row }, { it.column }))
