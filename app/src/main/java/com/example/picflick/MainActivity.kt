@@ -35,6 +35,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.picflick.data.Flick
 import com.example.picflick.data.UserProfile
 import com.example.picflick.ui.components.BottomNavBar
 import com.example.picflick.ui.components.LogoImage
@@ -43,6 +44,7 @@ import com.example.picflick.ui.screens.AboutScreen
 import com.example.picflick.ui.screens.ChatDetailScreen
 import com.example.picflick.ui.screens.ChatsScreen
 import com.example.picflick.ui.screens.ContactScreen
+import com.example.picflick.ui.screens.ExploreScreen
 import com.example.picflick.ui.screens.FilterScreen
 import com.example.picflick.ui.screens.FindFriendsScreen
 import com.example.picflick.ui.screens.FriendsScreen
@@ -51,8 +53,8 @@ import com.example.picflick.ui.screens.LoginScreen
 import com.example.picflick.ui.screens.MyPhotosScreen
 import com.example.picflick.ui.screens.NotificationsScreen
 import com.example.picflick.ui.screens.ProfileScreen
+import com.example.picflick.ui.screens.SettingsScreen
 import com.example.picflick.ui.theme.PicFlickBackground
-import com.example.picflick.ui.theme.PicFlickBannerBackground
 import com.example.picflick.ui.theme.PicFlickBannerBackground
 import com.example.picflick.ui.theme.PicFlickTheme
 import com.example.picflick.viewmodel.AuthViewModel
@@ -100,6 +102,8 @@ sealed class Screen {
     data object Contact : Screen()
     data object Notifications : Screen()
     data object Filter : Screen()
+    data object Settings : Screen()
+    data object Explore : Screen()
 }
 
 /**
@@ -235,7 +239,7 @@ fun MainScreen(
                 ) {
                     // Settings wheel on LEFT
                     IconButton(
-                        onClick = { /* TODO: Settings */ },
+                        onClick = { currentScreen = Screen.Settings },
                         modifier = Modifier
                             .align(Alignment.CenterStart)
                             .padding(top = 4.dp)
@@ -401,7 +405,6 @@ private fun AuthenticatedContent(
                 userProfile = userProfile,
                 photoCount = profileViewModel.photoCount,
                 onBack = { onScreenChange(Screen.Home) },
-                onSignOut = onSignOut,
                 onMyPhotosClick = { onScreenChange(Screen.MyPhotos) },
                 onPhotoSelected = onPhotoSelected
             )
@@ -464,6 +467,17 @@ private fun AuthenticatedContent(
                 onBack = { onScreenChange(Screen.Home) }
             )
 
+            is Screen.Settings -> SettingsScreen(
+                userProfile = userProfile,
+                onBack = { onScreenChange(Screen.Home) },
+                onSignOut = onSignOut,
+                onEditProfile = { onScreenChange(Screen.Profile) },
+                onPrivacySettings = { /* TODO */ },
+                onNotificationsSettings = { onScreenChange(Screen.Notifications) },
+                onHelpSupport = { onScreenChange(Screen.Contact) },
+                onAbout = { onScreenChange(Screen.About) }
+            )
+
             is Screen.Filter -> {
                 selectedPhotoUri?.let { uri ->
                     // Load following users if not already loaded
@@ -491,5 +505,16 @@ private fun AuthenticatedContent(
                     onScreenChange(Screen.Home)
                 }
             }
+
+            is Screen.Explore -> ExploreScreen(
+                userProfile = userProfile,
+                viewModel = homeViewModel,
+                onPhotoClick = { flick: Flick ->
+                    // TODO: Navigate to full screen photo viewer
+                },
+                onUserClick = { userId: String ->
+                    // TODO: Navigate to user profile
+                }
+            )
     }
 }

@@ -546,7 +546,12 @@ fun FullScreenPhotoViewer(
                                                     userPhotoUrl = currentUser.photoUrl,
                                                     text = newCommentText.trim()
                                                 )
-                                                repository.addComment(comment, comment.userName, comment.userPhotoUrl)
+                                                repository.addComment(
+                                                    currentFlick.id, 
+                                                    currentUser.uid, 
+                                                    currentUser.displayName, 
+                                                    newCommentText.trim()
+                                                )
                                                 comments = comments + comment
                                                 newCommentText = ""
                                             }

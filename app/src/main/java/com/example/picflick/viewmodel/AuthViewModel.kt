@@ -72,7 +72,17 @@ class AuthViewModel : ViewModel() {
                 displayName = user.displayName ?: "",
                 photoUrl = user.photoUrl?.toString() ?: ""
             )
-            repository.saveUserProfile(profile)
+            repository.saveUserProfile(user.uid, profile) { result ->
+                when (result) {
+                    is Result.Success -> {
+                        userProfile = profile
+                    }
+                    is Result.Error -> {
+                        errorMessage = result.message
+                    }
+                    is Result.Loading -> { }
+                }
+            }
         }
     }
 
@@ -83,8 +93,17 @@ class AuthViewModel : ViewModel() {
         viewModelScope.launch {
             userProfile?.let { profile ->
                 val updatedProfile = profile.copy(photoUrl = photoUrl)
-                repository.saveUserProfile(updatedProfile)
-                userProfile = updatedProfile
+                repository.saveUserProfile(profile.uid, updatedProfile) { result ->
+                    when (result) {
+                        is Result.Success -> {
+                            userProfile = updatedProfile
+                        }
+                        is Result.Error -> {
+                            errorMessage = result.message
+                        }
+                        is Result.Loading -> { }
+                    }
+                }
             }
         }
     }

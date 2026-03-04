@@ -23,6 +23,9 @@ class HomeViewModel : ViewModel() {
     var flicks = mutableStateListOf<Flick>()
         private set
 
+    var exploreFlicks = mutableStateListOf<Flick>()
+        private set
+
     var isLoading by mutableStateOf(false)
         private set
 
@@ -71,6 +74,29 @@ class HomeViewModel : ViewModel() {
     fun loadFlicks(userId: String) {
         currentUserId = userId
         loadFlicks()
+    }
+
+    /**
+     * Load explore flicks (all public/friends photos for discovery)
+     */
+    fun loadExploreFlicks() {
+        isLoading = true
+        errorMessage = null
+        
+        repository.getExploreFlicks { result ->
+            when (result) {
+                is Result.Success -> {
+                    exploreFlicks.clear()
+                    exploreFlicks.addAll(result.data)
+                    isLoading = false
+                }
+                is Result.Error -> {
+                    errorMessage = result.message
+                    isLoading = false
+                }
+                is Result.Loading -> { }
+            }
+        }
     }
 
     /**

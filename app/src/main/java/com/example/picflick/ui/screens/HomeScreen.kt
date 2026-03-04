@@ -5,8 +5,10 @@ import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -31,6 +33,7 @@ import androidx.core.content.FileProvider
 import coil3.compose.AsyncImage
 import com.example.picflick.data.Flick
 import com.example.picflick.data.UserProfile
+import com.example.picflick.ui.components.AnimatedReactionPicker
 import com.example.picflick.ui.components.ErrorMessage
 import com.example.picflick.ui.components.LogoImage
 import com.example.picflick.ui.components.PhotoGridShimmer
@@ -41,6 +44,7 @@ import com.google.accompanist.swiperefresh.SwipeRefresh
 import com.google.accompanist.swiperefresh.SwipeRefreshIndicator
 import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
 import java.io.File
+import androidx.compose.foundation.combinedClickable
 
 /**
  * Home screen with photo grid and bottom navigation
@@ -59,6 +63,10 @@ fun HomeScreen(
     var selectedFlick by remember { mutableStateOf<Flick?>(null) }
     var selectedFlickIndex by remember { mutableIntStateOf(0) }
     var privacySetting by remember { mutableStateOf("friends") } // "friends" or "public"
+    
+    // Reaction picker state
+    var showReactionPicker by remember { mutableStateOf(false) }
+    var flickForReaction by remember { mutableStateOf<Flick?>(null) }
     
     // Swipe refresh state
     val swipeRefreshState = rememberSwipeRefreshState(isRefreshing = viewModel.isLoading)
@@ -143,6 +151,10 @@ fun HomeScreen(
                     onPhotoClick = { flick -> 
                         selectedFlick = flick
                         selectedFlickIndex = viewModel.flicks.indexOf(flick)
+                    },
+                    onLongPress = { flick ->
+                        flickForReaction = flick
+                        showReactionPicker = true
                     }
                 )
             }
@@ -212,6 +224,29 @@ fun HomeScreen(
                 selectedFlickIndex = index
                 selectedFlick = viewModel.flicks.getOrNull(index)
             }
+        )
+    }
+
+    // Animated Reaction Picker Dialog for long press
+    if (showReactionPicker && flickForReaction != null) {
+        AnimatedReactionPicker(
+            onDismiss = {
+                showReactionPicker = false
+                flickForReaction = null
+            },
+            onReactionSelected = { reactionType ->
+                // Handle reaction via ViewModel
+                viewModel.toggleReaction(
+                    flickForReaction!!,
+                    userProfile.uid,
+                    userProfile.displayName,
+                    userProfile.photoUrl,
+                    reactionType
+                )
+                showReactionPicker = false
+                flickForReaction = null
+            },
+            currentReaction = flickForReaction?.getUserReaction(userProfile.uid)
         )
     }
 }
@@ -359,7 +394,8 @@ private fun FlickGrid(
     flicks: List<Flick>,
     userProfile: UserProfile,
     onLikeClick: (Flick) -> Unit,
-    onPhotoClick: (Flick) -> Unit
+    onPhotoClick: (Flick) -> Unit,
+    onLongPress: (Flick) -> Unit
 ) {
     LazyVerticalGrid(
         columns = GridCells.Fixed(3),
@@ -376,23 +412,29 @@ private fun FlickGrid(
                 flick = flick,
                 userId = userProfile.uid,
                 onLikeClick = { onLikeClick(flick) },
-                onPhotoClick = { onPhotoClick(flick) }
+                onPhotoClick = { onPhotoClick(flick) },
+                onLongPress = { onLongPress(flick) }
             )
         }
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun FlickCard(
     flick: Flick,
     userId: String,
     onLikeClick: () -> Unit,
-    onPhotoClick: () -> Unit
+    onPhotoClick: () -> Unit,
+    onLongPress: () -> Unit
 ) {
     Card(
         modifier = Modifier
             .padding(2.dp)
-            .clickable { onPhotoClick() },
+            .combinedClickable(
+                onClick = { onPhotoClick() },
+                onLongClick = { onLongPress() }
+            ),
         shape = RoundedCornerShape(12.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         colors = CardDefaults.cardColors(

@@ -36,7 +36,6 @@ fun ProfileScreen(
     userProfile: UserProfile,
     photoCount: Int,
     onBack: () -> Unit,
-    onSignOut: () -> Unit,
     onMyPhotosClick: () -> Unit = {},
     onPhotoSelected: (Uri) -> Unit = {}
 ) {
@@ -125,6 +124,19 @@ fun ProfileScreen(
 
         Spacer(modifier = Modifier.height(32.dp))
 
+        // Quick Actions Chips - Visual flair without duplication
+        if (userProfile.bio.isEmpty()) {
+            Text(
+                text = "✏️ Add a bio to tell people about yourself",
+                color = Color(0xFF00D09C),
+                fontSize = 14.sp,
+                modifier = Modifier
+                    .clickable { /* Goes to Settings > Edit Profile */ }
+                    .padding(horizontal = 24.dp)
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+        }
+
         // MODERN STATS GRID - Horizontal layout like Instagram
         Row(
             modifier = Modifier
@@ -150,49 +162,45 @@ fun ProfileScreen(
             )
         }
 
-        Spacer(modifier = Modifier.height(32.dp))
+        Spacer(modifier = Modifier.height(24.dp))
 
-        // Action Buttons Row - Modern style
+        // FRIEND PREVIEW - Show first 5 friends
+        if (userProfile.following.isNotEmpty()) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = "Following ${userProfile.following.size} people",
+                    color = Color.Gray,
+                    fontSize = 14.sp
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                // Friend avatars row would go here - simplified for now
+            }
+            Spacer(modifier = Modifier.height(24.dp))
+        }
+
+        // ACHIEVEMENT BADGES
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+            horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally)
         ) {
-            // Edit Profile Button
-            OutlinedButton(
-                onClick = { /* TODO: Edit profile */ },
-                modifier = Modifier.weight(1f),
-                shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.outlinedButtonColors(
-                    contentColor = Color.White
-                ),
-                border = ButtonDefaults.outlinedButtonBorder.copy(
-                    width = 1.dp,
-                    brush = androidx.compose.ui.graphics.SolidColor(Color.White.copy(alpha = 0.5f))
-                )
-            ) {
-                Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(18.dp))
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("Edit Profile")
+            if (photoCount > 0) {
+                BadgeItem(emoji = "📸", label = "Photographer")
             }
-
-            // Sign Out Button
-            OutlinedButton(
-                onClick = onSignOut,
-                modifier = Modifier.weight(1f),
-                shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.outlinedButtonColors(
-                    contentColor = Color.Red.copy(alpha = 0.8f)
-                ),
-                border = ButtonDefaults.outlinedButtonBorder.copy(
-                    width = 1.dp,
-                    brush = androidx.compose.ui.graphics.SolidColor(Color.Red.copy(alpha = 0.5f))
-                )
-            ) {
-                Icon(Icons.AutoMirrored.Filled.ExitToApp, contentDescription = null, modifier = Modifier.size(18.dp))
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("Sign Out")
+            if (userProfile.totalLikes >= 10) {
+                BadgeItem(emoji = "❤️", label = "Liked")
+            }
+            if (userProfile.following.size >= 5) {
+                BadgeItem(emoji = "👥", label = "Socialite")
+            }
+            if (photoCount >= 5) {
+                BadgeItem(emoji = "🔥", label = "Active")
             }
         }
 
@@ -261,82 +269,6 @@ fun ProfileScreen(
             }
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // About & Contact Links - Modern cards
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            // About Card
-            Card(
-                modifier = Modifier
-                    .weight(1f)
-                    .clickable { /* TODO: Navigate to About */ },
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = Color.DarkGray.copy(alpha = 0.3f)
-                ),
-                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Icon(
-                        Icons.Default.Info,
-                        contentDescription = null,
-                        tint = Color.White,
-                        modifier = Modifier.size(24.dp)
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        "About",
-                        color = Color.White,
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Medium
-                    )
-                }
-            }
-
-            // Contact Card
-            Card(
-                modifier = Modifier
-                    .weight(1f)
-                    .clickable { /* TODO: Navigate to Contact */ },
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = Color.DarkGray.copy(alpha = 0.3f)
-                ),
-                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Icon(
-                        Icons.Default.MailOutline,
-                        contentDescription = null,
-                        tint = Color.White,
-                        modifier = Modifier.size(24.dp)
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        "Contact",
-                        color = Color.White,
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Medium
-                    )
-                }
-            }
-        }
-
         Spacer(modifier = Modifier.height(32.dp))
 
         // App Version at bottom
@@ -369,6 +301,33 @@ private fun ModernStatItem(
             text = label,
             fontSize = 13.sp,
             color = Color.Gray,
+            fontWeight = FontWeight.Medium
+        )
+    }
+}
+
+@Composable
+private fun BadgeItem(emoji: String, label: String) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier.padding(horizontal = 4.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .size(56.dp)
+                .background(Color(0xFF2C2C2E), CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = emoji,
+                fontSize = 28.sp
+            )
+        }
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            text = label,
+            color = Color.Gray,
+            fontSize = 11.sp,
             fontWeight = FontWeight.Medium
         )
     }
