@@ -8,6 +8,10 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.ExperimentalMaterialApi
+import androidx.compose.material.pullrefresh.PullRefreshIndicator
+import androidx.compose.material.pullrefresh.pullRefresh
+import androidx.compose.material.pullrefresh.rememberPullRefreshState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Person
@@ -28,13 +32,11 @@ import com.example.picflick.ui.components.LogoImage
 import com.example.picflick.ui.theme.PicFlickBackground
 import com.example.picflick.ui.theme.PicFlickBannerBackground
 import com.example.picflick.viewmodel.FriendsViewModel
-import com.google.accompanist.swiperefresh.SwipeRefresh
-import com.google.accompanist.swiperefresh.SwipeRefreshIndicator
-import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
 
 /**
  * Screen showing list of friends the user is following
  */
+@OptIn(ExperimentalMaterialApi::class)
 @Composable
 fun FriendsScreen(
     userProfile: UserProfile,
@@ -47,8 +49,11 @@ fun FriendsScreen(
         viewModel.loadFollowingUsers(userProfile.following)
     }
 
-    // Swipe refresh state
-    val swipeRefreshState = rememberSwipeRefreshState(isRefreshing = viewModel.isLoading)
+    // Modern PullRefresh state
+    val pullRefreshState = rememberPullRefreshState(
+        refreshing = viewModel.isLoading,
+        onRefresh = { viewModel.loadFollowingUsers(userProfile.following) }
+    )
 
     Column(
         modifier = Modifier
@@ -74,19 +79,11 @@ fun FriendsScreen(
             Text("Find Friends")
         }
 
-        // SwipeRefresh content
-        SwipeRefresh(
-            state = swipeRefreshState,
-            onRefresh = { viewModel.loadFollowingUsers(userProfile.following) },
-            indicator = { state, trigger ->
-                SwipeRefreshIndicator(
-                    state = state,
-                    refreshTriggerDistance = trigger,
-                    backgroundColor = MaterialTheme.colorScheme.surface,
-                    contentColor = MaterialTheme.colorScheme.primary
-                )
-            },
-            modifier = Modifier.fillMaxSize()
+        // Modern PullRefresh content
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .pullRefresh(pullRefreshState)
         ) {
             when {
                 viewModel.isLoading && viewModel.followingUsers.isEmpty() -> {
@@ -106,6 +103,15 @@ fun FriendsScreen(
                     }
                 }
             }
+
+            // Modern PullRefreshIndicator
+            PullRefreshIndicator(
+                refreshing = viewModel.isLoading,
+                state = pullRefreshState,
+                modifier = Modifier.align(Alignment.TopCenter),
+                backgroundColor = MaterialTheme.colorScheme.surface,
+                contentColor = MaterialTheme.colorScheme.primary
+            )
         }
     }
 }

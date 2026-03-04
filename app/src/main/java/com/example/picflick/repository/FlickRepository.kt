@@ -4,12 +4,11 @@ import com.example.picflick.data.*
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
-import com.google.firebase.firestore.SetOptions
 import com.google.firebase.storage.FirebaseStorage
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import java.util.Calendar
@@ -22,6 +21,9 @@ class FlickRepository private constructor() {
 
     private val db = FirebaseFirestore.getInstance()
     private val storage = FirebaseStorage.getInstance()
+    
+    // Coroutine scope for repository operations (replaces GlobalScope)
+    private val repositoryScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     // Cache for user profile
     private val _currentUserProfile = MutableStateFlow<UserProfile?>(null)
@@ -81,7 +83,7 @@ class FlickRepository private constructor() {
      * Queries separately and merges to avoid Firestore whereIn limitations
      */
     fun getFlicksForUser(userId: String, onResult: (Result<List<Flick>>) -> Unit) {
-        GlobalScope.launch {
+        repositoryScope.launch {
             try {
                 // Get friends list
                 val userDoc = db.collection("users").document(userId).get().await()
@@ -132,7 +134,7 @@ class FlickRepository private constructor() {
      * Gets photos with most reactions from last 7 days
      */
     fun getExploreFlicks(onResult: (Result<List<Flick>>) -> Unit) {
-        GlobalScope.launch {
+        repositoryScope.launch {
             try {
                 // Get photos from last 7 days (query without orderBy to avoid composite index)
                 val weekAgo = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -7) }.timeInMillis
@@ -616,7 +618,7 @@ class FlickRepository private constructor() {
      * Get daily upload count for a user
      */
     fun getDailyUploadCount(userId: String, onResult: (Result<Int>) -> Unit) {
-        GlobalScope.launch {
+        repositoryScope.launch {
             try {
                 // Get start of today
                 val calendar = Calendar.getInstance().apply {
@@ -645,7 +647,7 @@ class FlickRepository private constructor() {
      * Create notification for new photo
      */
     private fun createPhotoNotifications(flick: Flick, userPhotoUrl: String) {
-        GlobalScope.launch {
+        repositoryScope.launch {
             try {
                 // Get user's followers
                 val userDoc = db.collection("users").document(flick.userId).get().await()

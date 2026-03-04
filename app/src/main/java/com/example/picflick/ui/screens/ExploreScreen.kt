@@ -8,6 +8,10 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.ExperimentalMaterialApi
+import androidx.compose.material.pullrefresh.PullRefreshIndicator
+import androidx.compose.material.pullrefresh.pullRefresh
+import androidx.compose.material.pullrefresh.rememberPullRefreshState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.*
@@ -27,14 +31,11 @@ import com.example.picflick.data.Flick
 import com.example.picflick.data.UserProfile
 import com.example.picflick.ui.components.*
 import com.example.picflick.viewmodel.HomeViewModel
-import com.google.accompanist.swiperefresh.SwipeRefresh
-import com.google.accompanist.swiperefresh.SwipeRefreshIndicator
-import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
 
 /**
  * Explore page for discovering trending and popular photos
  */
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterialApi::class)
 @Composable
 fun ExploreScreen(
     userProfile: UserProfile,
@@ -45,8 +46,11 @@ fun ExploreScreen(
     var searchQuery by remember { mutableStateOf("") }
     var selectedTab by remember { mutableStateOf(ExploreTab.TRENDING) }
     
-    // Swipe refresh state
-    val swipeRefreshState = rememberSwipeRefreshState(isRefreshing = viewModel.isLoading)
+    // Modern PullRefresh state
+    val pullRefreshState = rememberPullRefreshState(
+        refreshing = viewModel.isLoading,
+        onRefresh = { viewModel.loadExploreFlicks() }
+    )
 
     // Load explore data
     LaunchedEffect(Unit) {
@@ -94,19 +98,11 @@ fun ExploreScreen(
             }
         }
 
-        // Content based on selected tab
-        SwipeRefresh(
-            state = swipeRefreshState,
-            onRefresh = { viewModel.loadExploreFlicks() },
-            indicator = { state, trigger ->
-                SwipeRefreshIndicator(
-                    state = state,
-                    refreshTriggerDistance = trigger,
-                    backgroundColor = MaterialTheme.colorScheme.surface,
-                    contentColor = MaterialTheme.colorScheme.primary
-                )
-            },
-            modifier = Modifier.fillMaxSize()
+        // Modern PullRefresh content
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .pullRefresh(pullRefreshState)
         ) {
             when (selectedTab) {
                 ExploreTab.TRENDING -> TrendingContent(
@@ -131,6 +127,15 @@ fun ExploreScreen(
                     onUserClick = onUserClick
                 )
             }
+
+            // Modern PullRefreshIndicator
+            PullRefreshIndicator(
+                refreshing = viewModel.isLoading,
+                state = pullRefreshState,
+                modifier = Modifier.align(Alignment.TopCenter),
+                backgroundColor = MaterialTheme.colorScheme.surface,
+                contentColor = MaterialTheme.colorScheme.primary
+            )
         }
     }
 }

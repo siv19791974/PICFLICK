@@ -2,7 +2,6 @@ package com.example.picflick.ui.screens
 
 import android.content.Intent
 import android.net.Uri
-import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -14,42 +13,36 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.ExperimentalMaterialApi
+import androidx.compose.material.pullrefresh.PullRefreshIndicator
+import androidx.compose.material.pullrefresh.pullRefresh
+import androidx.compose.material.pullrefresh.rememberPullRefreshState
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
-import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import androidx.core.content.FileProvider
 import coil3.compose.AsyncImage
 import com.example.picflick.data.Flick
 import com.example.picflick.data.UserProfile
 import com.example.picflick.ui.components.AnimatedReactionPicker
 import com.example.picflick.ui.components.ErrorMessage
-import com.example.picflick.ui.components.LogoImage
 import com.example.picflick.ui.components.PhotoGridShimmer
 import com.example.picflick.ui.theme.PicFlickBackground
-import com.example.picflick.ui.theme.PicFlickBannerBackground
 import com.example.picflick.viewmodel.HomeViewModel
-import com.google.accompanist.swiperefresh.SwipeRefresh
-import com.google.accompanist.swiperefresh.SwipeRefreshIndicator
-import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
 import java.io.File
-import androidx.compose.foundation.combinedClickable
 
 /**
  * Home screen with photo grid and bottom navigation
  */
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterialApi::class)
 @Composable
 fun HomeScreen(
     userProfile: UserProfile,
@@ -67,9 +60,6 @@ fun HomeScreen(
     // Reaction picker state
     var showReactionPicker by remember { mutableStateOf(false) }
     var flickForReaction by remember { mutableStateOf<Flick?>(null) }
-    
-    // Swipe refresh state
-    val swipeRefreshState = rememberSwipeRefreshState(isRefreshing = viewModel.isLoading)
 
     // Load data
     LaunchedEffect(userProfile.uid) {
@@ -132,11 +122,17 @@ fun HomeScreen(
             .background(PicFlickBackground),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // Content directly - banner is in MainActivity
+        // Modern PullRefresh content
+        val pullRefreshState = rememberPullRefreshState(
+            refreshing = viewModel.isLoading,
+            onRefresh = { viewModel.loadFlicks(userProfile.uid) }
+        )
+
         Box(
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier
+                .fillMaxSize()
+                .pullRefresh(pullRefreshState)
         ) {
-            // Direct content - no SwipeRefresh wrapper for testing
             when {
                 viewModel.isLoading && viewModel.flicks.isEmpty() -> PhotoGridShimmer()
                 viewModel.errorMessage != null -> ErrorMessage(
@@ -158,6 +154,15 @@ fun HomeScreen(
                     }
                 )
             }
+
+            // Modern PullRefreshIndicator
+            PullRefreshIndicator(
+                refreshing = viewModel.isLoading,
+                state = pullRefreshState,
+                modifier = Modifier.align(Alignment.TopCenter),
+                backgroundColor = MaterialTheme.colorScheme.surface,
+                contentColor = MaterialTheme.colorScheme.primary
+            )
 
             // Upload mini FABs overlay
             if (showUploadDialog) {
@@ -397,24 +402,34 @@ private fun FlickGrid(
     onPhotoClick: (Flick) -> Unit,
     onLongPress: (Flick) -> Unit
 ) {
-    LazyVerticalGrid(
-        columns = GridCells.Fixed(3),
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(
-            start = 1.dp,
-            end = 1.dp,
-            top = 1.dp,
-            bottom = 80.dp  // Padding for bottom nav
-        )
+    BoxWithConstraints(
+        modifier = Modifier.fillMaxSize()
     ) {
-        items(flicks) { flick ->
-            FlickCard(
-                flick = flick,
-                userId = userProfile.uid,
-                onLikeClick = { onLikeClick(flick) },
-                onPhotoClick = { onPhotoClick(flick) },
-                onLongPress = { onLongPress(flick) }
-            )
+        // Calculate height for 4 rows with tiny gap at bottom for light blue BG
+        val rowHeight = this.maxHeight / 4.1f
+        
+        LazyVerticalGrid(
+            columns = GridCells.Fixed(3),
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(
+                start = 1.dp,
+                end = 1.dp,
+                top = 4.dp,  // Slight top gap to match bottom
+                bottom = 0.dp
+            ),
+            userScrollEnabled = true // Enable scrolling for pull-to-refresh
+        ) {
+            // Show all items (scrollable)
+            items(flicks) { flick ->
+                FlickCard(
+                    flick = flick,
+                    userId = userProfile.uid,
+                    onLikeClick = { onLikeClick(flick) },
+                    onPhotoClick = { onPhotoClick(flick) },
+                    onLongPress = { onLongPress(flick) },
+                    rowHeight = rowHeight
+                )
+            }
         }
     }
 }
@@ -426,29 +441,28 @@ private fun FlickCard(
     userId: String,
     onLikeClick: () -> Unit,
     onPhotoClick: () -> Unit,
-    onLongPress: () -> Unit
+    onLongPress: () -> Unit,
+    rowHeight: androidx.compose.ui.unit.Dp
 ) {
     Card(
         modifier = Modifier
-            .padding(2.dp)
+            .padding(1.dp) // Smaller padding
+            .height(rowHeight) // Fixed height for exact 4 rows
             .combinedClickable(
                 onClick = { onPhotoClick() },
                 onLongClick = { onLongPress() }
             ),
-        shape = RoundedCornerShape(12.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        shape = RectangleShape, // NO rounded corners
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp), // No elevation
         colors = CardDefaults.cardColors(
-            containerColor = Color.DarkGray.copy(alpha = 0.3f)
+            containerColor = Color.Transparent // Transparent background
         )
     ) {
-        // CLEAN thumbnail - no overlay, just the photo
+        // CLEAN thumbnail - no overlay, no rounded corners
         AsyncImage(
             model = flick.imageUrl,
             contentDescription = null,
-            modifier = Modifier
-                .fillMaxWidth()
-                .aspectRatio(1f)
-                .clip(RoundedCornerShape(12.dp)),
+            modifier = Modifier.fillMaxSize(), // Fill the exact height
             contentScale = ContentScale.Crop
         )
     }
