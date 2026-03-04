@@ -1,0 +1,67 @@
+<problems>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/components/BottomNavBar.kt</file>
+  <line>25</line>
+  <module>PICFLICK.app.main</module>
+  <package>com.example.picflick.ui.components</package>
+  <entry_point TYPE="method" FQNAME="com.example.picflick.ui.components.BottomNavBarKt void BottomNavBar(java.lang.String currentRoute, kotlin.jvm.functions.Function1&lt;? super java.lang.String,kotlin.Unit&gt; onNavigate, int unreadNotifications)" />
+  <problem_class id="GrazieStyle" severity="STYLE_SUGGESTION" attribute_key="TEXT_STYLE_SUGGESTION">Style</problem_class>
+  <description>American English uses 'gray'</description>
+  <highlighted_element>grey</highlighted_element>
+  <language>kotlin</language>
+  <offset>50</offset>
+  <length>4</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/components/BottomNavBar.kt</file>
+  <line>62</line>
+  <module>PICFLICK.app.main</module>
+  <package>com.example.picflick.ui.components</package>
+  <entry_point TYPE="method" FQNAME="com.example.picflick.ui.components.BottomNavBarKt void BottomNavBar(java.lang.String currentRoute, kotlin.jvm.functions.Function1&lt;? super java.lang.String,kotlin.Unit&gt; onNavigate, int unreadNotifications)" />
+  <problem_class id="GrazieStyle" severity="STYLE_SUGGESTION" attribute_key="TEXT_STYLE_SUGGESTION">Style</problem_class>
+  <description>American English uses 'gray'</description>
+  <highlighted_element>grey</highlighted_element>
+  <language>kotlin</language>
+  <offset>61</offset>
+  <length>4</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/screens/LoginScreen.kt</file>
+  <line>141</line>
+  <module>PICFLICK.app.main</module>
+  <package>com.example.picflick.ui.screens</package>
+  <entry_point TYPE="method" FQNAME="com.example.picflick.ui.screens.LoginScreenKt void LoginScreen(com.example.picflick.viewmodel.AuthViewModel authViewModel, kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onLoginSuccess)" />
+  <problem_class id="GrazieStyle" severity="STYLE_SUGGESTION" attribute_key="TEXT_STYLE_SUGGESTION">Style</problem_class>
+  <description>American English does not double '-l-' in suffixes</description>
+  <highlighted_element>cancelled</highlighted_element>
+  <language>kotlin</language>
+  <offset>24</offset>
+  <length>9</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/screens/NotificationsScreen.kt</file>
+  <line>188</line>
+  <module>PICFLICK.app.main</module>
+  <package>com.example.picflick.ui.screens</package>
+  <entry_point TYPE="method" FQNAME="com.example.picflick.ui.screens.NotificationsScreenKt void NotificationItem(com.example.picflick.data.Notification notification, kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onClick, kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onDelete)" />
+  <problem_class id="GrazieStyle" severity="STYLE_SUGGESTION" attribute_key="TEXT_STYLE_SUGGESTION">Style</problem_class>
+  <description>American English uses 'gray'</description>
+  <highlighted_element>grey</highlighted_element>
+  <language>kotlin</language>
+  <offset>34</offset>
+  <length>4</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/viewmodel/HomeViewModel.kt</file>
+  <line>140</line>
+  <module>PICFLICK.app.main</module>
+  <package>com.example.picflick.viewmodel</package>
+  <entry_point TYPE="method" FQNAME="com.example.picflick.viewmodel.HomeViewModel void searchFlicks(java.lang.String query)" />
+  <problem_class id="GrazieStyle" severity="STYLE_SUGGESTION" attribute_key="TEXT_STYLE_SUGGESTION">Style</problem_class>
+  <description>It's more common nowadays to write this noun as one word.</description>
+  <highlighted_element>user name</highlighted_element>
+  <language>kotlin</language>
+  <offset>24</offset>
+  <length>9</length>
+</problem>
+</problems>

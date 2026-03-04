@@ -1,0 +1,274 @@
+<problems>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/MainActivity.kt</file>
+  <line>366</line>
+  <module>PICFLICK.app.main</module>
+  <package>com.example.picflick</package>
+  <entry_point TYPE="method" FQNAME="com.example.picflick.MainActivityKt void AuthenticatedContent(com.example.picflick.Screen currentScreen, kotlin.jvm.functions.Function1&lt;? super com.example.picflick.Screen,kotlin.Unit&gt; onScreenChange, com.example.picflick.data.UserProfile userProfile, com.example.picflick.viewmodel.HomeViewModel homeViewModel, com.example.picflick.viewmodel.ProfileViewModel profileViewModel, com.example.picflick.viewmodel.FriendsViewModel friendsViewModel, com.example.picflick.viewmodel.NotificationViewModel notificationViewModel, com.example.picflick.viewmodel.ChatViewModel chatViewModel, com.example.picflick.viewmodel.UploadViewModel uploadViewModel, com.example.picflick.data.ChatSession selectedChatSession, java.lang.String selectedOtherUserId, kotlin.jvm.functions.Function2&lt;? super com.example.picflick.data.ChatSession,? super java.lang.String,kotlin.Unit&gt; onSetSelectedChat, kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onSignOut, android.net.Uri selectedPhotoUri, kotlin.jvm.functions.Function1&lt;? super android.net.Uri,kotlin.Unit&gt; onPhotoSelected)" />
+  <problem_class id="unused" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused declaration</problem_class>
+  <hints>
+    <hint value="notificationViewModel" />
+  </hints>
+  <description>Parameter &lt;code&gt;notificationViewModel&lt;/code&gt; is not used</description>
+  <highlighted_element>notificationViewModel</highlighted_element>
+  <language>kotlin</language>
+  <offset>4</offset>
+  <length>21</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/components/BottomNavBar.kt</file>
+  <line>20</line>
+  <module>PICFLICK.app.main</module>
+  <package>com.example.picflick.ui.components</package>
+  <entry_point TYPE="method" FQNAME="com.example.picflick.ui.components.BottomNavBarKt void BottomNavBar(java.lang.String currentRoute, kotlin.jvm.functions.Function1&lt;? super java.lang.String,kotlin.Unit&gt; onNavigate, int unreadNotifications)" />
+  <problem_class id="unused" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused declaration</problem_class>
+  <hints>
+    <hint value="unreadNotifications" />
+  </hints>
+  <description>Parameter &lt;code&gt;unreadNotifications&lt;/code&gt; is not used</description>
+  <highlighted_element>unreadNotifications</highlighted_element>
+  <language>kotlin</language>
+  <offset>4</offset>
+  <length>19</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/components/ReactionPicker.kt</file>
+  <line>132</line>
+  <module>PICFLICK.app.main</module>
+  <package>com.example.picflick.ui.components</package>
+  <entry_point TYPE="method" FQNAME="com.example.picflick.ui.components.ReactionPickerKt void ReactionBar(java.util.Map&lt;com.example.picflick.data.ReactionType,java.lang.Integer&gt; reactionCounts, com.example.picflick.data.ReactionType userReaction, int totalCount, kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onShowPicker, androidx.compose.ui.Modifier modifier)" />
+  <problem_class id="unused" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused declaration</problem_class>
+  <hints>
+    <hint value="userReaction" />
+  </hints>
+  <description>Parameter &lt;code&gt;userReaction&lt;/code&gt; is not used</description>
+  <highlighted_element>userReaction</highlighted_element>
+  <language>kotlin</language>
+  <offset>4</offset>
+  <length>12</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/screens/ChatsScreen.kt</file>
+  <line>40</line>
+  <module>PICFLICK.app.main</module>
+  <package>com.example.picflick.ui.screens</package>
+  <entry_point TYPE="method" FQNAME="com.example.picflick.ui.screens.ChatsScreenKt void ChatsScreen(com.example.picflick.data.UserProfile userProfile, com.example.picflick.viewmodel.ChatViewModel viewModel, kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onBack, kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onNavigateHome, kotlin.jvm.functions.Function2&lt;? super com.example.picflick.data.ChatSession,? super java.lang.String,kotlin.Unit&gt; onChatClick)" />
+  <problem_class id="unused" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused declaration</problem_class>
+  <hints>
+    <hint value="onNavigateHome" />
+  </hints>
+  <description>Parameter &lt;code&gt;onNavigateHome&lt;/code&gt; is not used</description>
+  <highlighted_element>onNavigateHome</highlighted_element>
+  <language>kotlin</language>
+  <offset>4</offset>
+  <length>14</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/screens/ChatsScreen.kt</file>
+  <line>130</line>
+  <module>PICFLICK.app.main</module>
+  <package>com.example.picflick.ui.screens</package>
+  <entry_point TYPE="method" FQNAME="com.example.picflick.ui.screens.ChatsScreenKt void ChatListItem(com.example.picflick.data.ChatSession session, java.lang.String otherUserId, java.lang.String otherUserName, java.lang.String otherUserPhoto, java.lang.String currentUserId, kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onClick)" />
+  <problem_class id="unused" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused declaration</problem_class>
+  <hints>
+    <hint value="otherUserId" />
+  </hints>
+  <description>Parameter &lt;code&gt;otherUserId&lt;/code&gt; is not used</description>
+  <highlighted_element>otherUserId</highlighted_element>
+  <language>kotlin</language>
+  <offset>4</offset>
+  <length>11</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/screens/FilterScreen.kt</file>
+  <line>54</line>
+  <module>PICFLICK.app.main</module>
+  <package>com.example.picflick.ui.screens</package>
+  <entry_point TYPE="method" FQNAME="com.example.picflick.ui.screens.FilterScreenKt void FilterScreen(android.net.Uri photoUri, com.example.picflick.data.UserProfile currentUser, java.util.List&lt;com.example.picflick.data.UserProfile&gt; friends, int dailyUploadCount, int maxDailyUploads, kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onBack, kotlin.jvm.functions.Function3&lt;? super android.net.Uri,? super com.example.picflick.data.PhotoFilter,? super java.util.List&lt;java.lang.String&gt;,kotlin.Unit&gt; onUpload)" />
+  <problem_class id="unused" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused declaration</problem_class>
+  <hints>
+    <hint value="currentUser" />
+  </hints>
+  <description>Parameter &lt;code&gt;currentUser&lt;/code&gt; is not used</description>
+  <highlighted_element>currentUser</highlighted_element>
+  <language>kotlin</language>
+  <offset>4</offset>
+  <length>11</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/screens/FindFriendsScreen.kt</file>
+  <line>52</line>
+  <module>PICFLICK.app.main</module>
+  <package>com.example.picflick.ui.screens</package>
+  <entry_point TYPE="method" FQNAME="com.example.picflick.ui.screens.FindFriendsScreenKt void FindFriendsScreen(com.example.picflick.viewmodel.FriendsViewModel viewModel, com.example.picflick.data.UserProfile userProfile, kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onBack, kotlin.jvm.functions.Function1&lt;? super java.lang.String,kotlin.Unit&gt; onNavigateToProfile)" />
+  <problem_class id="unused" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused declaration</problem_class>
+  <hints>
+    <hint value="onBack" />
+  </hints>
+  <description>Parameter &lt;code&gt;onBack&lt;/code&gt; is not used</description>
+  <highlighted_element>onBack</highlighted_element>
+  <language>kotlin</language>
+  <offset>4</offset>
+  <length>6</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/screens/FindFriendsScreen.kt</file>
+  <line>324</line>
+  <module>PICFLICK.app.main</module>
+  <package>com.example.picflick.ui.screens</package>
+  <entry_point TYPE="method" FQNAME="com.example.picflick.ui.screens.FindFriendsScreenKt void InviteTab(com.example.picflick.data.UserProfile userProfile, boolean hasContactPermission, kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onRequestPermission)" />
+  <problem_class id="unused" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused declaration</problem_class>
+  <hints>
+    <hint value="hasContactPermission" />
+  </hints>
+  <description>Parameter &lt;code&gt;hasContactPermission&lt;/code&gt; is not used</description>
+  <highlighted_element>hasContactPermission</highlighted_element>
+  <language>kotlin</language>
+  <offset>4</offset>
+  <length>20</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/screens/FindFriendsScreen.kt</file>
+  <line>325</line>
+  <module>PICFLICK.app.main</module>
+  <package>com.example.picflick.ui.screens</package>
+  <entry_point TYPE="method" FQNAME="com.example.picflick.ui.screens.FindFriendsScreenKt void InviteTab(com.example.picflick.data.UserProfile userProfile, boolean hasContactPermission, kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onRequestPermission)" />
+  <problem_class id="unused" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused declaration</problem_class>
+  <hints>
+    <hint value="onRequestPermission" />
+  </hints>
+  <description>Parameter &lt;code&gt;onRequestPermission&lt;/code&gt; is not used</description>
+  <highlighted_element>onRequestPermission</highlighted_element>
+  <language>kotlin</language>
+  <offset>4</offset>
+  <length>19</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/screens/FriendsScreen.kt</file>
+  <line>42</line>
+  <module>PICFLICK.app.main</module>
+  <package>com.example.picflick.ui.screens</package>
+  <entry_point TYPE="method" FQNAME="com.example.picflick.ui.screens.FriendsScreenKt void FriendsScreen(com.example.picflick.data.UserProfile userProfile, com.example.picflick.viewmodel.FriendsViewModel viewModel, kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onBack, kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onFindFriendsClick)" />
+  <problem_class id="unused" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused declaration</problem_class>
+  <hints>
+    <hint value="onBack" />
+  </hints>
+  <description>Parameter &lt;code&gt;onBack&lt;/code&gt; is not used</description>
+  <highlighted_element>onBack</highlighted_element>
+  <language>kotlin</language>
+  <offset>4</offset>
+  <length>6</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/screens/HomeScreen.kt</file>
+  <line>53</line>
+  <module>PICFLICK.app.main</module>
+  <package>com.example.picflick.ui.screens</package>
+  <entry_point TYPE="method" FQNAME="com.example.picflick.ui.screens.HomeScreenKt void HomeScreen(com.example.picflick.data.UserProfile userProfile, com.example.picflick.viewmodel.HomeViewModel viewModel, kotlin.jvm.functions.Function1&lt;? super java.lang.String,kotlin.Unit&gt; onNavigate, kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onSignOut)" />
+  <problem_class id="unused" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused declaration</problem_class>
+  <hints>
+    <hint value="onNavigate" />
+  </hints>
+  <description>Parameter &lt;code&gt;onNavigate&lt;/code&gt; is not used</description>
+  <highlighted_element>onNavigate</highlighted_element>
+  <language>kotlin</language>
+  <offset>4</offset>
+  <length>10</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/screens/HomeScreen.kt</file>
+  <line>54</line>
+  <module>PICFLICK.app.main</module>
+  <package>com.example.picflick.ui.screens</package>
+  <entry_point TYPE="method" FQNAME="com.example.picflick.ui.screens.HomeScreenKt void HomeScreen(com.example.picflick.data.UserProfile userProfile, com.example.picflick.viewmodel.HomeViewModel viewModel, kotlin.jvm.functions.Function1&lt;? super java.lang.String,kotlin.Unit&gt; onNavigate, kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onSignOut)" />
+  <problem_class id="unused" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused declaration</problem_class>
+  <hints>
+    <hint value="onSignOut" />
+  </hints>
+  <description>Parameter &lt;code&gt;onSignOut&lt;/code&gt; is not used</description>
+  <highlighted_element>onSignOut</highlighted_element>
+  <language>kotlin</language>
+  <offset>4</offset>
+  <length>9</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/screens/HomeScreen.kt</file>
+  <line>388</line>
+  <module>PICFLICK.app.main</module>
+  <package>com.example.picflick.ui.screens</package>
+  <entry_point TYPE="method" FQNAME="com.example.picflick.ui.screens.HomeScreenKt void FlickCard(com.example.picflick.data.Flick flick, java.lang.String userId, kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onLikeClick, kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onPhotoClick)" />
+  <problem_class id="unused" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused declaration</problem_class>
+  <hints>
+    <hint value="userId" />
+  </hints>
+  <description>Parameter &lt;code&gt;userId&lt;/code&gt; is not used</description>
+  <highlighted_element>userId</highlighted_element>
+  <language>kotlin</language>
+  <offset>4</offset>
+  <length>6</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/screens/HomeScreen.kt</file>
+  <line>389</line>
+  <module>PICFLICK.app.main</module>
+  <package>com.example.picflick.ui.screens</package>
+  <entry_point TYPE="method" FQNAME="com.example.picflick.ui.screens.HomeScreenKt void FlickCard(com.example.picflick.data.Flick flick, java.lang.String userId, kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onLikeClick, kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onPhotoClick)" />
+  <problem_class id="unused" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused declaration</problem_class>
+  <hints>
+    <hint value="onLikeClick" />
+  </hints>
+  <description>Parameter &lt;code&gt;onLikeClick&lt;/code&gt; is not used</description>
+  <highlighted_element>onLikeClick</highlighted_element>
+  <language>kotlin</language>
+  <offset>4</offset>
+  <length>11</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/screens/ProfileScreen.kt</file>
+  <line>38</line>
+  <module>PICFLICK.app.main</module>
+  <package>com.example.picflick.ui.screens</package>
+  <entry_point TYPE="method" FQNAME="com.example.picflick.ui.screens.ProfileScreenKt void ProfileScreen(com.example.picflick.data.UserProfile userProfile, int photoCount, kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onBack, kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onSignOut, kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onMyPhotosClick, kotlin.jvm.functions.Function1&lt;? super android.net.Uri,kotlin.Unit&gt; onPhotoSelected)" />
+  <problem_class id="unused" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused declaration</problem_class>
+  <hints>
+    <hint value="onBack" />
+  </hints>
+  <description>Parameter &lt;code&gt;onBack&lt;/code&gt; is not used</description>
+  <highlighted_element>onBack</highlighted_element>
+  <language>kotlin</language>
+  <offset>4</offset>
+  <length>6</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/viewmodel/FriendsViewModel.kt</file>
+  <line>219</line>
+  <module>PICFLICK.app.main</module>
+  <package>com.example.picflick.viewmodel</package>
+  <entry_point TYPE="method" FQNAME="com.example.picflick.viewmodel.FriendsViewModel void followUser(java.lang.String currentUserId, com.example.picflick.data.UserProfile targetUser, com.example.picflick.data.UserProfile currentUser)" />
+  <problem_class id="unused" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused declaration</problem_class>
+  <hints>
+    <hint value="currentUser" />
+  </hints>
+  <description>Parameter &lt;code&gt;currentUser&lt;/code&gt; is not used</description>
+  <highlighted_element>currentUser</highlighted_element>
+  <language>kotlin</language>
+  <offset>67</offset>
+  <length>11</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/viewmodel/UploadViewModel.kt</file>
+  <line>96</line>
+  <module>PICFLICK.app.main</module>
+  <package>com.example.picflick.viewmodel</package>
+  <entry_point TYPE="method" FQNAME="com.example.picflick.viewmodel.UploadViewModel void uploadPhoto(android.content.Context context, android.net.Uri photoUri, com.example.picflick.data.UserProfile userProfile, com.example.picflick.data.PhotoFilter filter, java.util.List&lt;java.lang.String&gt; taggedFriends, java.lang.String description)" />
+  <problem_class id="unused" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused declaration</problem_class>
+  <hints>
+    <hint value="filter" />
+  </hints>
+  <description>Parameter &lt;code&gt;filter&lt;/code&gt; is not used</description>
+  <highlighted_element>filter</highlighted_element>
+  <language>kotlin</language>
+  <offset>8</offset>
+  <length>6</length>
+</problem>
+</problems>

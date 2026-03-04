@@ -1,0 +1,28 @@
+<problems>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/MainActivity.kt</file>
+  <line>129</line>
+  <module>PICFLICK.app.main</module>
+  <package>com.example.picflick</package>
+  <entry_point TYPE="method" FQNAME="com.example.picflick.MainActivityKt void MainScreen(com.example.picflick.viewmodel.AuthViewModel authViewModel, com.example.picflick.viewmodel.HomeViewModel homeViewModel, com.example.picflick.viewmodel.ProfileViewModel profileViewModel, com.example.picflick.viewmodel.FriendsViewModel friendsViewModel, com.example.picflick.viewmodel.NotificationViewModel notificationViewModel, com.example.picflick.viewmodel.ChatViewModel chatViewModel, com.example.picflick.viewmodel.UploadViewModel uploadViewModel)" />
+  <problem_class id="RemoveExplicitTypeArguments" severity="WEAK WARNING" attribute_key="INFO_ATTRIBUTES">Unnecessary type argument</problem_class>
+  <description>Explicit type arguments can be inferred</description>
+  <highlighted_element>&lt;String&gt;</highlighted_element>
+  <language>kotlin</language>
+  <offset>56</offset>
+  <length>8</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/viewmodel/AuthViewModel.kt</file>
+  <line>23</line>
+  <module>PICFLICK.app.main</module>
+  <package>com.example.picflick.viewmodel</package>
+  <entry_point TYPE="field" FQNAME="com.example.picflick.viewmodel.AuthViewModel currentUser$delegate" />
+  <problem_class id="RemoveExplicitTypeArguments" severity="WEAK WARNING" attribute_key="INFO_ATTRIBUTES">Unnecessary type argument</problem_class>
+  <description>Explicit type arguments can be inferred</description>
+  <highlighted_element>&lt;FirebaseUser?&gt;</highlighted_element>
+  <language>kotlin</language>
+  <offset>37</offset>
+  <length>15</length>
+</problem>
+</problems>

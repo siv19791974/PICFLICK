@@ -1,0 +1,15 @@
+<problems>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/AndroidManifest.xml</file>
+  <line>18</line>
+  <module>PICFLICK.app.main</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/AndroidManifest.xml" />
+  <problem_class id="AndroidLintScopedStorage" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Affected by scoped storage</problem_class>
+  <hints />
+  <description>&lt;html&gt;WRITE_EXTERNAL_STORAGE no longer provides write access when targeting Android 10, unless you use &lt;code&gt;requestLegacyExternalStorage&lt;/code&gt;&lt;/html&gt;</description>
+  <highlighted_element>android.permission.WRITE_EXTERNAL_STORAGE</highlighted_element>
+  <language>XML</language>
+  <offset>35</offset>
+  <length>41</length>
+</problem>
+</problems>

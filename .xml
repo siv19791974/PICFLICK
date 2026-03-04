@@ -1,0 +1,1107 @@
+<problems>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/androidTest/java/com/example/picflick/ExampleInstrumentedTest.kt</file>
+  <line>11</line>
+  <module>PICFLICK.app.androidTest</module>
+  <package>com.example.picflick</package>
+  <entry_point TYPE="class" FQNAME="com.example.picflick.ExampleInstrumentedTest" />
+  <language>kotlin</language>
+  <offset>0</offset>
+  <length>3</length>
+  <highlighted_element>/**</highlighted_element>
+  <problem_class id="" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">unused declaration</problem_class>
+  <hints>
+    <hint value="comment" />
+    <hint value="delete" />
+  </hints>
+  <description>Class is not instantiated.</description>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/androidTest/java/com/example/picflick/ExampleInstrumentedTest.kt</file>
+  <line>18</line>
+  <module>PICFLICK.app.androidTest</module>
+  <package>com.example.picflick</package>
+  <entry_point TYPE="method" FQNAME="com.example.picflick.ExampleInstrumentedTest void useAppContext()" />
+  <language>kotlin</language>
+  <offset>4</offset>
+  <length>5</length>
+  <highlighted_element>@Test</highlighted_element>
+  <problem_class id="" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">unused declaration</problem_class>
+  <hints>
+    <hint value="comment" />
+    <hint value="delete" />
+  </hints>
+  <description>Method is never used.</description>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/MainActivity.kt</file>
+  <line>66</line>
+  <module>PICFLICK.app.main</module>
+  <package>com.example.picflick</package>
+  <entry_point TYPE="class" FQNAME="com.example.picflick.MainActivity" />
+  <language>kotlin</language>
+  <offset>0</offset>
+  <length>3</length>
+  <highlighted_element>/**</highlighted_element>
+  <problem_class id="" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">unused declaration</problem_class>
+  <hints>
+    <hint value="comment" />
+    <hint value="delete" />
+  </hints>
+  <description>Class is not instantiated.</description>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/data/Flick.kt</file>
+  <line>57</line>
+  <module>PICFLICK.app.main</module>
+  <package>com.example.picflick.data</package>
+  <entry_point TYPE="method" FQNAME="com.example.picflick.data.Flick java.util.List&lt;java.lang.String&gt; getLikes()" />
+  <language>kotlin</language>
+  <offset>8</offset>
+  <length>77</length>
+  <highlighted_element>get() = reactions.filter { it.value == ReactionType.LIKE.name }.keys.toList()</highlighted_element>
+  <problem_class id="" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">unused declaration</problem_class>
+  <hints>
+    <hint value="comment" />
+    <hint value="delete" />
+  </hints>
+  <description>Method is not reachable from the entry points.</description>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/service/PicFlickMessagingService.kt</file>
+  <line>16</line>
+  <module>PICFLICK.app.main</module>
+  <package>com.example.picflick.service</package>
+  <entry_point TYPE="class" FQNAME="com.example.picflick.service.PicFlickMessagingService" />
+  <language>kotlin</language>
+  <offset>0</offset>
+  <length>3</length>
+  <highlighted_element>/**</highlighted_element>
+  <problem_class id="" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">unused declaration</problem_class>
+  <hints>
+    <hint value="comment" />
+    <hint value="delete" />
+  </hints>
+  <description>Class is not instantiated.</description>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/test/java/com/example/picflick/ExampleUnitTest.kt</file>
+  <line>7</line>
+  <module>PICFLICK.app.unitTest</module>
+  <package>com.example.picflick</package>
+  <entry_point TYPE="class" FQNAME="com.example.picflick.ExampleUnitTest" />
+  <language>kotlin</language>
+  <offset>0</offset>
+  <length>3</length>
+  <highlighted_element>/**</highlighted_element>
+  <problem_class id="" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">unused declaration</problem_class>
+  <hints>
+    <hint value="comment" />
+    <hint value="delete" />
+  </hints>
+  <description>Class is not instantiated.</description>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/test/java/com/example/picflick/ExampleUnitTest.kt</file>
+  <line>13</line>
+  <module>PICFLICK.app.unitTest</module>
+  <package>com.example.picflick</package>
+  <entry_point TYPE="method" FQNAME="com.example.picflick.ExampleUnitTest void addition_isCorrect()" />
+  <language>kotlin</language>
+  <offset>4</offset>
+  <length>5</length>
+  <highlighted_element>@Test</highlighted_element>
+  <problem_class id="" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">unused declaration</problem_class>
+  <hints>
+    <hint value="comment" />
+    <hint value="delete" />
+  </hints>
+  <description>Method is never used.</description>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/test/java/com/example/picflick/data/DataClassesTest.kt</file>
+  <line>6</line>
+  <module>PICFLICK.app.unitTest</module>
+  <package>com.example.picflick.data</package>
+  <entry_point TYPE="class" FQNAME="com.example.picflick.data.DataClassesTest" />
+  <language>kotlin</language>
+  <offset>0</offset>
+  <length>3</length>
+  <highlighted_element>/**</highlighted_element>
+  <problem_class id="" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">unused declaration</problem_class>
+  <hints>
+    <hint value="comment" />
+    <hint value="delete" />
+  </hints>
+  <description>Class is not instantiated.</description>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/test/java/com/example/picflick/data/DataClassesTest.kt</file>
+  <line>11</line>
+  <module>PICFLICK.app.unitTest</module>
+  <package>com.example.picflick.data</package>
+  <entry_point TYPE="method" FQNAME="com.example.picflick.data.DataClassesTest void UserProfile should have correct default values()" />
+  <language>kotlin</language>
+  <offset>4</offset>
+  <length>5</length>
+  <highlighted_element>@Test</highlighted_element>
+  <problem_class id="" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">unused declaration</problem_class>
+  <hints>
+    <hint value="comment" />
+    <hint value="delete" />
+  </hints>
+  <description>Method is never used.</description>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/test/java/com/example/picflick/data/DataClassesTest.kt</file>
+  <line>26</line>
+  <module>PICFLICK.app.unitTest</module>
+  <package>com.example.picflick.data</package>
+  <entry_point TYPE="method" FQNAME="com.example.picflick.data.DataClassesTest void UserProfile should accept all parameters()" />
+  <language>kotlin</language>
+  <offset>4</offset>
+  <length>5</length>
+  <highlighted_element>@Test</highlighted_element>
+  <problem_class id="" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">unused declaration</problem_class>
+  <hints>
+    <hint value="comment" />
+    <hint value="delete" />
+  </hints>
+  <description>Method is never used.</description>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/test/java/com/example/picflick/data/DataClassesTest.kt</file>
+  <line>53</line>
+  <module>PICFLICK.app.unitTest</module>
+  <package>com.example.picflick.data</package>
+  <entry_point TYPE="method" FQNAME="com.example.picflick.data.DataClassesTest void Flick should have correct default values()" />
+  <language>kotlin</language>
+  <offset>4</offset>
+  <length>5</length>
+  <highlighted_element>@Test</highlighted_element>
+  <problem_class id="" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">unused declaration</problem_class>
+  <hints>
+    <hint value="comment" />
+    <hint value="delete" />
+  </hints>
+  <description>Method is never used.</description>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/test/java/com/example/picflick/data/DataClassesTest.kt</file>
+  <line>68</line>
+  <module>PICFLICK.app.unitTest</module>
+  <package>com.example.picflick.data</package>
+  <entry_point TYPE="method" FQNAME="com.example.picflick.data.DataClassesTest void Flick should accept all parameters()" />
+  <language>kotlin</language>
+  <offset>4</offset>
+  <length>5</length>
+  <highlighted_element>@Test</highlighted_element>
+  <problem_class id="" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">unused declaration</problem_class>
+  <hints>
+    <hint value="comment" />
+    <hint value="delete" />
+  </hints>
+  <description>Method is never used.</description>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/test/java/com/example/picflick/data/DataClassesTest.kt</file>
+  <line>94</line>
+  <module>PICFLICK.app.unitTest</module>
+  <package>com.example.picflick.data</package>
+  <entry_point TYPE="method" FQNAME="com.example.picflick.data.DataClassesTest void ChatSession should have correct default values()" />
+  <language>kotlin</language>
+  <offset>4</offset>
+  <length>5</length>
+  <highlighted_element>@Test</highlighted_element>
+  <problem_class id="" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">unused declaration</problem_class>
+  <hints>
+    <hint value="comment" />
+    <hint value="delete" />
+  </hints>
+  <description>Method is never used.</description>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/test/java/com/example/picflick/data/DataClassesTest.kt</file>
+  <line>106</line>
+  <module>PICFLICK.app.unitTest</module>
+  <package>com.example.picflick.data</package>
+  <entry_point TYPE="method" FQNAME="com.example.picflick.data.DataClassesTest void ChatSession should accept all parameters()" />
+  <language>kotlin</language>
+  <offset>4</offset>
+  <length>5</length>
+  <highlighted_element>@Test</highlighted_element>
+  <problem_class id="" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">unused declaration</problem_class>
+  <hints>
+    <hint value="comment" />
+    <hint value="delete" />
+  </hints>
+  <description>Method is never used.</description>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/test/java/com/example/picflick/data/DataClassesTest.kt</file>
+  <line>126</line>
+  <module>PICFLICK.app.unitTest</module>
+  <package>com.example.picflick.data</package>
+  <entry_point TYPE="method" FQNAME="com.example.picflick.data.DataClassesTest void ChatMessage should have correct default values()" />
+  <language>kotlin</language>
+  <offset>4</offset>
+  <length>5</length>
+  <highlighted_element>@Test</highlighted_element>
+  <problem_class id="" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">unused declaration</problem_class>
+  <hints>
+    <hint value="comment" />
+    <hint value="delete" />
+  </hints>
+  <description>Method is never used.</description>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/test/java/com/example/picflick/data/DataClassesTest.kt</file>
+  <line>138</line>
+  <module>PICFLICK.app.unitTest</module>
+  <package>com.example.picflick.data</package>
+  <entry_point TYPE="method" FQNAME="com.example.picflick.data.DataClassesTest void ChatMessage should accept all parameters()" />
+  <language>kotlin</language>
+  <offset>4</offset>
+  <length>5</length>
+  <highlighted_element>@Test</highlighted_element>
+  <problem_class id="" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">unused declaration</problem_class>
+  <hints>
+    <hint value="comment" />
+    <hint value="delete" />
+  </hints>
+  <description>Method is never used.</description>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/test/java/com/example/picflick/data/DataClassesTest.kt</file>
+  <line>155</line>
+  <module>PICFLICK.app.unitTest</module>
+  <package>com.example.picflick.data</package>
+  <entry_point TYPE="method" FQNAME="com.example.picflick.data.DataClassesTest void data classes should support equality()" />
+  <language>kotlin</language>
+  <offset>4</offset>
+  <length>5</length>
+  <highlighted_element>@Test</highlighted_element>
+  <problem_class id="" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">unused declaration</problem_class>
+  <hints>
+    <hint value="comment" />
+    <hint value="delete" />
+  </hints>
+  <description>Method is never used.</description>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/test/java/com/example/picflick/data/DataClassesTest.kt</file>
+  <line>167</line>
+  <module>PICFLICK.app.unitTest</module>
+  <package>com.example.picflick.data</package>
+  <entry_point TYPE="method" FQNAME="com.example.picflick.data.DataClassesTest void data classes should support copy()" />
+  <language>kotlin</language>
+  <offset>4</offset>
+  <length>5</length>
+  <highlighted_element>@Test</highlighted_element>
+  <problem_class id="" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">unused declaration</problem_class>
+  <hints>
+    <hint value="comment" />
+    <hint value="delete" />
+  </hints>
+  <description>Method is never used.</description>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/test/java/com/example/picflick/data/ResultTest.kt</file>
+  <line>6</line>
+  <module>PICFLICK.app.unitTest</module>
+  <package>com.example.picflick.data</package>
+  <entry_point TYPE="class" FQNAME="com.example.picflick.data.ResultTest" />
+  <language>kotlin</language>
+  <offset>0</offset>
+  <length>3</length>
+  <highlighted_element>/**</highlighted_element>
+  <problem_class id="" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">unused declaration</problem_class>
+  <hints>
+    <hint value="comment" />
+    <hint value="delete" />
+  </hints>
+  <description>Class is not instantiated.</description>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/test/java/com/example/picflick/data/ResultTest.kt</file>
+  <line>11</line>
+  <module>PICFLICK.app.unitTest</module>
+  <package>com.example.picflick.data</package>
+  <entry_point TYPE="method" FQNAME="com.example.picflick.data.ResultTest void Success should contain correct data()" />
+  <language>kotlin</language>
+  <offset>4</offset>
+  <length>5</length>
+  <highlighted_element>@Test</highlighted_element>
+  <problem_class id="" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">unused declaration</problem_class>
+  <hints>
+    <hint value="comment" />
+    <hint value="delete" />
+  </hints>
+  <description>Method is never used.</description>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/test/java/com/example/picflick/data/ResultTest.kt</file>
+  <line>23</line>
+  <module>PICFLICK.app.unitTest</module>
+  <package>com.example.picflick.data</package>
+  <entry_point TYPE="method" FQNAME="com.example.picflick.data.ResultTest void Error should contain correct exception and message()" />
+  <language>kotlin</language>
+  <offset>4</offset>
+  <length>5</length>
+  <highlighted_element>@Test</highlighted_element>
+  <problem_class id="" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">unused declaration</problem_class>
+  <hints>
+    <hint value="comment" />
+    <hint value="delete" />
+  </hints>
+  <description>Method is never used.</description>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/test/java/com/example/picflick/data/ResultTest.kt</file>
+  <line>37</line>
+  <module>PICFLICK.app.unitTest</module>
+  <package>com.example.picflick.data</package>
+  <entry_point TYPE="method" FQNAME="com.example.picflick.data.ResultTest void Error should use exception message as default()" />
+  <language>kotlin</language>
+  <offset>4</offset>
+  <length>5</length>
+  <highlighted_element>@Test</highlighted_element>
+  <problem_class id="" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">unused declaration</problem_class>
+  <hints>
+    <hint value="comment" />
+    <hint value="delete" />
+  </hints>
+  <description>Method is never used.</description>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/test/java/com/example/picflick/data/ResultTest.kt</file>
+  <line>50</line>
+  <module>PICFLICK.app.unitTest</module>
+  <package>com.example.picflick.data</package>
+  <entry_point TYPE="method" FQNAME="com.example.picflick.data.ResultTest void Loading should be singleton()" />
+  <language>kotlin</language>
+  <offset>4</offset>
+  <length>5</length>
+  <highlighted_element>@Test</highlighted_element>
+  <problem_class id="" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">unused declaration</problem_class>
+  <hints>
+    <hint value="comment" />
+    <hint value="delete" />
+  </hints>
+  <description>Method is never used.</description>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/test/java/com/example/picflick/data/ResultTest.kt</file>
+  <line>60</line>
+  <module>PICFLICK.app.unitTest</module>
+  <package>com.example.picflick.data</package>
+  <entry_point TYPE="method" FQNAME="com.example.picflick.data.ResultTest void Result types should be distinguishable()" />
+  <language>kotlin</language>
+  <offset>4</offset>
+  <length>5</length>
+  <highlighted_element>@Test</highlighted_element>
+  <problem_class id="" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">unused declaration</problem_class>
+  <hints>
+    <hint value="comment" />
+    <hint value="delete" />
+  </hints>
+  <description>Method is never used.</description>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/test/java/com/example/picflick/data/ResultTest.kt</file>
+  <line>73</line>
+  <module>PICFLICK.app.unitTest</module>
+  <package>com.example.picflick.data</package>
+  <entry_point TYPE="method" FQNAME="com.example.picflick.data.ResultTest void Success data can be of any type()" />
+  <language>kotlin</language>
+  <offset>4</offset>
+  <length>5</length>
+  <highlighted_element>@Test</highlighted_element>
+  <problem_class id="" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">unused declaration</problem_class>
+  <hints>
+    <hint value="comment" />
+    <hint value="delete" />
+  </hints>
+  <description>Method is never used.</description>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/test/java/com/example/picflick/viewmodel/FriendsViewModelTest.kt</file>
+  <line>24</line>
+  <module>PICFLICK.app.unitTest</module>
+  <package>com.example.picflick.viewmodel</package>
+  <entry_point TYPE="class" FQNAME="com.example.picflick.viewmodel.FriendsViewModelTest" />
+  <language>kotlin</language>
+  <offset>0</offset>
+  <length>3</length>
+  <highlighted_element>/**</highlighted_element>
+  <problem_class id="" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">unused declaration</problem_class>
+  <hints>
+    <hint value="comment" />
+    <hint value="delete" />
+  </hints>
+  <description>Class is not instantiated.</description>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/test/java/com/example/picflick/viewmodel/FriendsViewModelTest.kt</file>
+  <line>74</line>
+  <module>PICFLICK.app.unitTest</module>
+  <package>com.example.picflick.viewmodel</package>
+  <entry_point TYPE="method" FQNAME="com.example.picflick.viewmodel.FriendsViewModelTest void setup()" />
+  <language>kotlin</language>
+  <offset>4</offset>
+  <length>7</length>
+  <highlighted_element>@Before</highlighted_element>
+  <problem_class id="" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">unused declaration</problem_class>
+  <hints>
+    <hint value="comment" />
+    <hint value="delete" />
+  </hints>
+  <description>Method is never used.</description>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/test/java/com/example/picflick/viewmodel/FriendsViewModelTest.kt</file>
+  <line>86</line>
+  <module>PICFLICK.app.unitTest</module>
+  <package>com.example.picflick.viewmodel</package>
+  <entry_point TYPE="method" FQNAME="com.example.picflick.viewmodel.FriendsViewModelTest void tearDown()" />
+  <language>kotlin</language>
+  <offset>4</offset>
+  <length>6</length>
+  <highlighted_element>@After</highlighted_element>
+  <problem_class id="" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">unused declaration</problem_class>
+  <hints>
+    <hint value="comment" />
+    <hint value="delete" />
+  </hints>
+  <description>Method is never used.</description>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/test/java/com/example/picflick/viewmodel/FriendsViewModelTest.kt</file>
+  <line>92</line>
+  <module>PICFLICK.app.unitTest</module>
+  <package>com.example.picflick.viewmodel</package>
+  <entry_point TYPE="method" FQNAME="com.example.picflick.viewmodel.FriendsViewModelTest void initial state should have empty search results()" />
+  <language>kotlin</language>
+  <offset>4</offset>
+  <length>5</length>
+  <highlighted_element>@Test</highlighted_element>
+  <problem_class id="" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">unused declaration</problem_class>
+  <hints>
+    <hint value="comment" />
+    <hint value="delete" />
+  </hints>
+  <description>Method is never used.</description>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/test/java/com/example/picflick/viewmodel/FriendsViewModelTest.kt</file>
+  <line>98</line>
+  <module>PICFLICK.app.unitTest</module>
+  <package>com.example.picflick.viewmodel</package>
+  <entry_point TYPE="method" FQNAME="com.example.picflick.viewmodel.FriendsViewModelTest void initial state should not be loading()" />
+  <language>kotlin</language>
+  <offset>4</offset>
+  <length>5</length>
+  <highlighted_element>@Test</highlighted_element>
+  <problem_class id="" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">unused declaration</problem_class>
+  <hints>
+    <hint value="comment" />
+    <hint value="delete" />
+  </hints>
+  <description>Method is never used.</description>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/test/java/com/example/picflick/viewmodel/FriendsViewModelTest.kt</file>
+  <line>104</line>
+  <module>PICFLICK.app.unitTest</module>
+  <package>com.example.picflick.viewmodel</package>
+  <entry_point TYPE="method" FQNAME="com.example.picflick.viewmodel.FriendsViewModelTest void initial search query should be empty()" />
+  <language>kotlin</language>
+  <offset>4</offset>
+  <length>5</length>
+  <highlighted_element>@Test</highlighted_element>
+  <problem_class id="" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">unused declaration</problem_class>
+  <hints>
+    <hint value="comment" />
+    <hint value="delete" />
+  </hints>
+  <description>Method is never used.</description>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/test/java/com/example/picflick/viewmodel/FriendsViewModelTest.kt</file>
+  <line>110</line>
+  <module>PICFLICK.app.unitTest</module>
+  <package>com.example.picflick.viewmodel</package>
+  <entry_point TYPE="method" FQNAME="com.example.picflick.viewmodel.FriendsViewModelTest void searchUsers should set loading to true initially()" />
+  <language>kotlin</language>
+  <offset>4</offset>
+  <length>5</length>
+  <highlighted_element>@Test</highlighted_element>
+  <problem_class id="" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">unused declaration</problem_class>
+  <hints>
+    <hint value="comment" />
+    <hint value="delete" />
+  </hints>
+  <description>Method is never used.</description>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/test/java/com/example/picflick/viewmodel/FriendsViewModelTest.kt</file>
+  <line>128</line>
+  <module>PICFLICK.app.unitTest</module>
+  <package>com.example.picflick.viewmodel</package>
+  <entry_point TYPE="method" FQNAME="com.example.picflick.viewmodel.FriendsViewModelTest void searchUsers should populate results on success()" />
+  <language>kotlin</language>
+  <offset>4</offset>
+  <length>5</length>
+  <highlighted_element>@Test</highlighted_element>
+  <problem_class id="" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">unused declaration</problem_class>
+  <hints>
+    <hint value="comment" />
+    <hint value="delete" />
+  </hints>
+  <description>Method is never used.</description>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/test/java/com/example/picflick/viewmodel/FriendsViewModelTest.kt</file>
+  <line>147</line>
+  <module>PICFLICK.app.unitTest</module>
+  <package>com.example.picflick.viewmodel</package>
+  <entry_point TYPE="method" FQNAME="com.example.picflick.viewmodel.FriendsViewModelTest void searchUsers should exclude current user from results()" />
+  <language>kotlin</language>
+  <offset>4</offset>
+  <length>5</length>
+  <highlighted_element>@Test</highlighted_element>
+  <problem_class id="" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">unused declaration</problem_class>
+  <hints>
+    <hint value="comment" />
+    <hint value="delete" />
+  </hints>
+  <description>Method is never used.</description>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/test/java/com/example/picflick/viewmodel/FriendsViewModelTest.kt</file>
+  <line>164</line>
+  <module>PICFLICK.app.unitTest</module>
+  <package>com.example.picflick.viewmodel</package>
+  <entry_point TYPE="method" FQNAME="com.example.picflick.viewmodel.FriendsViewModelTest void searchUsers should set error message on failure()" />
+  <language>kotlin</language>
+  <offset>4</offset>
+  <length>5</length>
+  <highlighted_element>@Test</highlighted_element>
+  <problem_class id="" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">unused declaration</problem_class>
+  <hints>
+    <hint value="comment" />
+    <hint value="delete" />
+  </hints>
+  <description>Method is never used.</description>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/test/java/com/example/picflick/viewmodel/FriendsViewModelTest.kt</file>
+  <line>184</line>
+  <module>PICFLICK.app.unitTest</module>
+  <package>com.example.picflick.viewmodel</package>
+  <entry_point TYPE="method" FQNAME="com.example.picflick.viewmodel.FriendsViewModelTest void searchUsers with blank query should clear results()" />
+  <language>kotlin</language>
+  <offset>4</offset>
+  <length>5</length>
+  <highlighted_element>@Test</highlighted_element>
+  <problem_class id="" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">unused declaration</problem_class>
+  <hints>
+    <hint value="comment" />
+    <hint value="delete" />
+  </hints>
+  <description>Method is never used.</description>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/test/java/com/example/picflick/viewmodel/FriendsViewModelTest.kt</file>
+  <line>204</line>
+  <module>PICFLICK.app.unitTest</module>
+  <package>com.example.picflick.viewmodel</package>
+  <entry_point TYPE="method" FQNAME="com.example.picflick.viewmodel.FriendsViewModelTest void followUser should call repository followUser method()" />
+  <language>kotlin</language>
+  <offset>4</offset>
+  <length>5</length>
+  <highlighted_element>@Test</highlighted_element>
+  <problem_class id="" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">unused declaration</problem_class>
+  <hints>
+    <hint value="comment" />
+    <hint value="delete" />
+  </hints>
+  <description>Method is never used.</description>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/test/java/com/example/picflick/viewmodel/FriendsViewModelTest.kt</file>
+  <line>228</line>
+  <module>PICFLICK.app.unitTest</module>
+  <package>com.example.picflick.viewmodel</package>
+  <entry_point TYPE="method" FQNAME="com.example.picflick.viewmodel.FriendsViewModelTest void unfollowUser should call repository unfollowUser method()" />
+  <language>kotlin</language>
+  <offset>4</offset>
+  <length>5</length>
+  <highlighted_element>@Test</highlighted_element>
+  <problem_class id="" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">unused declaration</problem_class>
+  <hints>
+    <hint value="comment" />
+    <hint value="delete" />
+  </hints>
+  <description>Method is never used.</description>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/test/java/com/example/picflick/viewmodel/FriendsViewModelTest.kt</file>
+  <line>252</line>
+  <module>PICFLICK.app.unitTest</module>
+  <package>com.example.picflick.viewmodel</package>
+  <entry_point TYPE="method" FQNAME="com.example.picflick.viewmodel.FriendsViewModelTest void clearError should set error message to null()" />
+  <language>kotlin</language>
+  <offset>4</offset>
+  <length>5</length>
+  <highlighted_element>@Test</highlighted_element>
+  <problem_class id="" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">unused declaration</problem_class>
+  <hints>
+    <hint value="comment" />
+    <hint value="delete" />
+  </hints>
+  <description>Method is never used.</description>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/test/java/com/example/picflick/viewmodel/FriendsViewModelTest.kt</file>
+  <line>271</line>
+  <module>PICFLICK.app.unitTest</module>
+  <package>com.example.picflick.viewmodel</package>
+  <entry_point TYPE="method" FQNAME="com.example.picflick.viewmodel.FriendsViewModelTest void searchUsers should be called with correct parameters()" />
+  <language>kotlin</language>
+  <offset>4</offset>
+  <length>5</length>
+  <highlighted_element>@Test</highlighted_element>
+  <problem_class id="" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">unused declaration</problem_class>
+  <hints>
+    <hint value="comment" />
+    <hint value="delete" />
+  </hints>
+  <description>Method is never used.</description>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/test/java/com/example/picflick/viewmodel/HomeViewModelTest.kt</file>
+  <line>23</line>
+  <module>PICFLICK.app.unitTest</module>
+  <package>com.example.picflick.viewmodel</package>
+  <entry_point TYPE="class" FQNAME="com.example.picflick.viewmodel.HomeViewModelTest" />
+  <language>kotlin</language>
+  <offset>0</offset>
+  <length>3</length>
+  <highlighted_element>/**</highlighted_element>
+  <problem_class id="" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">unused declaration</problem_class>
+  <hints>
+    <hint value="comment" />
+    <hint value="delete" />
+  </hints>
+  <description>Class is not instantiated.</description>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/test/java/com/example/picflick/viewmodel/HomeViewModelTest.kt</file>
+  <line>54</line>
+  <module>PICFLICK.app.unitTest</module>
+  <package>com.example.picflick.viewmodel</package>
+  <entry_point TYPE="method" FQNAME="com.example.picflick.viewmodel.HomeViewModelTest void setup()" />
+  <language>kotlin</language>
+  <offset>4</offset>
+  <length>7</length>
+  <highlighted_element>@Before</highlighted_element>
+  <problem_class id="" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">unused declaration</problem_class>
+  <hints>
+    <hint value="comment" />
+    <hint value="delete" />
+  </hints>
+  <description>Method is never used.</description>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/test/java/com/example/picflick/viewmodel/HomeViewModelTest.kt</file>
+  <line>66</line>
+  <module>PICFLICK.app.unitTest</module>
+  <package>com.example.picflick.viewmodel</package>
+  <entry_point TYPE="method" FQNAME="com.example.picflick.viewmodel.HomeViewModelTest void tearDown()" />
+  <language>kotlin</language>
+  <offset>4</offset>
+  <length>6</length>
+  <highlighted_element>@After</highlighted_element>
+  <problem_class id="" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">unused declaration</problem_class>
+  <hints>
+    <hint value="comment" />
+    <hint value="delete" />
+  </hints>
+  <description>Method is never used.</description>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/test/java/com/example/picflick/viewmodel/HomeViewModelTest.kt</file>
+  <line>72</line>
+  <module>PICFLICK.app.unitTest</module>
+  <package>com.example.picflick.viewmodel</package>
+  <entry_point TYPE="method" FQNAME="com.example.picflick.viewmodel.HomeViewModelTest void initial state should have empty flicks list()" />
+  <language>kotlin</language>
+  <offset>4</offset>
+  <length>5</length>
+  <highlighted_element>@Test</highlighted_element>
+  <problem_class id="" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">unused declaration</problem_class>
+  <hints>
+    <hint value="comment" />
+    <hint value="delete" />
+  </hints>
+  <description>Method is never used.</description>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/test/java/com/example/picflick/viewmodel/HomeViewModelTest.kt</file>
+  <line>78</line>
+  <module>PICFLICK.app.unitTest</module>
+  <package>com.example.picflick.viewmodel</package>
+  <entry_point TYPE="method" FQNAME="com.example.picflick.viewmodel.HomeViewModelTest void initial state should not be loading()" />
+  <language>kotlin</language>
+  <offset>4</offset>
+  <length>5</length>
+  <highlighted_element>@Test</highlighted_element>
+  <problem_class id="" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">unused declaration</problem_class>
+  <hints>
+    <hint value="comment" />
+    <hint value="delete" />
+  </hints>
+  <description>Method is never used.</description>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/test/java/com/example/picflick/viewmodel/HomeViewModelTest.kt</file>
+  <line>84</line>
+  <module>PICFLICK.app.unitTest</module>
+  <package>com.example.picflick.viewmodel</package>
+  <entry_point TYPE="method" FQNAME="com.example.picflick.viewmodel.HomeViewModelTest void loadFlicks should set loading to true initially()" />
+  <language>kotlin</language>
+  <offset>4</offset>
+  <length>5</length>
+  <highlighted_element>@Test</highlighted_element>
+  <problem_class id="" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">unused declaration</problem_class>
+  <hints>
+    <hint value="comment" />
+    <hint value="delete" />
+  </hints>
+  <description>Method is never used.</description>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/test/java/com/example/picflick/viewmodel/HomeViewModelTest.kt</file>
+  <line>99</line>
+  <module>PICFLICK.app.unitTest</module>
+  <package>com.example.picflick.viewmodel</package>
+  <entry_point TYPE="method" FQNAME="com.example.picflick.viewmodel.HomeViewModelTest void loadFlicks should populate flicks on success()" />
+  <language>kotlin</language>
+  <offset>4</offset>
+  <length>5</length>
+  <highlighted_element>@Test</highlighted_element>
+  <problem_class id="" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">unused declaration</problem_class>
+  <hints>
+    <hint value="comment" />
+    <hint value="delete" />
+  </hints>
+  <description>Method is never used.</description>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/test/java/com/example/picflick/viewmodel/HomeViewModelTest.kt</file>
+  <line>118</line>
+  <module>PICFLICK.app.unitTest</module>
+  <package>com.example.picflick.viewmodel</package>
+  <entry_point TYPE="method" FQNAME="com.example.picflick.viewmodel.HomeViewModelTest void loadFlicks should set error message on failure()" />
+  <language>kotlin</language>
+  <offset>4</offset>
+  <length>5</length>
+  <highlighted_element>@Test</highlighted_element>
+  <problem_class id="" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">unused declaration</problem_class>
+  <hints>
+    <hint value="comment" />
+    <hint value="delete" />
+  </hints>
+  <description>Method is never used.</description>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/test/java/com/example/picflick/viewmodel/HomeViewModelTest.kt</file>
+  <line>136</line>
+  <module>PICFLICK.app.unitTest</module>
+  <package>com.example.picflick.viewmodel</package>
+  <entry_point TYPE="method" FQNAME="com.example.picflick.viewmodel.HomeViewModelTest void checkDailyUploads should update todayUploadCount on success()" />
+  <language>kotlin</language>
+  <offset>4</offset>
+  <length>5</length>
+  <highlighted_element>@Test</highlighted_element>
+  <problem_class id="" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">unused declaration</problem_class>
+  <hints>
+    <hint value="comment" />
+    <hint value="delete" />
+  </hints>
+  <description>Method is never used.</description>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/test/java/com/example/picflick/viewmodel/HomeViewModelTest.kt</file>
+  <line>154</line>
+  <module>PICFLICK.app.unitTest</module>
+  <package>com.example.picflick.viewmodel</package>
+  <entry_point TYPE="method" FQNAME="com.example.picflick.viewmodel.HomeViewModelTest void toggleLike should call repository with correct parameters()" />
+  <language>kotlin</language>
+  <offset>4</offset>
+  <length>5</length>
+  <highlighted_element>@Test</highlighted_element>
+  <problem_class id="" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">unused declaration</problem_class>
+  <hints>
+    <hint value="comment" />
+    <hint value="delete" />
+  </hints>
+  <description>Method is never used.</description>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/test/java/com/example/picflick/viewmodel/HomeViewModelTest.kt</file>
+  <line>171</line>
+  <module>PICFLICK.app.unitTest</module>
+  <package>com.example.picflick.viewmodel</package>
+  <entry_point TYPE="method" FQNAME="com.example.picflick.viewmodel.HomeViewModelTest void clearError should set error message to null()" />
+  <language>kotlin</language>
+  <offset>4</offset>
+  <length>5</length>
+  <highlighted_element>@Test</highlighted_element>
+  <problem_class id="" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">unused declaration</problem_class>
+  <hints>
+    <hint value="comment" />
+    <hint value="delete" />
+  </hints>
+  <description>Method is never used.</description>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/test/java/com/example/picflick/viewmodel/HomeViewModelTest.kt</file>
+  <line>188</line>
+  <module>PICFLICK.app.unitTest</module>
+  <package>com.example.picflick.viewmodel</package>
+  <entry_point TYPE="method" FQNAME="com.example.picflick.viewmodel.HomeViewModelTest void todayUploadCount should be 0 initially()" />
+  <language>kotlin</language>
+  <offset>4</offset>
+  <length>5</length>
+  <highlighted_element>@Test</highlighted_element>
+  <problem_class id="" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">unused declaration</problem_class>
+  <hints>
+    <hint value="comment" />
+    <hint value="delete" />
+  </hints>
+  <description>Method is never used.</description>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/test/java/com/example/picflick/viewmodel/ProfileViewModelTest.kt</file>
+  <line>23</line>
+  <module>PICFLICK.app.unitTest</module>
+  <package>com.example.picflick.viewmodel</package>
+  <entry_point TYPE="class" FQNAME="com.example.picflick.viewmodel.ProfileViewModelTest" />
+  <language>kotlin</language>
+  <offset>0</offset>
+  <length>3</length>
+  <highlighted_element>/**</highlighted_element>
+  <problem_class id="" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">unused declaration</problem_class>
+  <hints>
+    <hint value="comment" />
+    <hint value="delete" />
+  </hints>
+  <description>Class is not instantiated.</description>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/test/java/com/example/picflick/viewmodel/ProfileViewModelTest.kt</file>
+  <line>63</line>
+  <module>PICFLICK.app.unitTest</module>
+  <package>com.example.picflick.viewmodel</package>
+  <entry_point TYPE="method" FQNAME="com.example.picflick.viewmodel.ProfileViewModelTest void setup()" />
+  <language>kotlin</language>
+  <offset>4</offset>
+  <length>7</length>
+  <highlighted_element>@Before</highlighted_element>
+  <problem_class id="" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">unused declaration</problem_class>
+  <hints>
+    <hint value="comment" />
+    <hint value="delete" />
+  </hints>
+  <description>Method is never used.</description>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/test/java/com/example/picflick/viewmodel/ProfileViewModelTest.kt</file>
+  <line>75</line>
+  <module>PICFLICK.app.unitTest</module>
+  <package>com.example.picflick.viewmodel</package>
+  <entry_point TYPE="method" FQNAME="com.example.picflick.viewmodel.ProfileViewModelTest void tearDown()" />
+  <language>kotlin</language>
+  <offset>4</offset>
+  <length>6</length>
+  <highlighted_element>@After</highlighted_element>
+  <problem_class id="" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">unused declaration</problem_class>
+  <hints>
+    <hint value="comment" />
+    <hint value="delete" />
+  </hints>
+  <description>Method is never used.</description>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/test/java/com/example/picflick/viewmodel/ProfileViewModelTest.kt</file>
+  <line>81</line>
+  <module>PICFLICK.app.unitTest</module>
+  <package>com.example.picflick.viewmodel</package>
+  <entry_point TYPE="method" FQNAME="com.example.picflick.viewmodel.ProfileViewModelTest void initial state should have empty photos list()" />
+  <language>kotlin</language>
+  <offset>4</offset>
+  <length>5</length>
+  <highlighted_element>@Test</highlighted_element>
+  <problem_class id="" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">unused declaration</problem_class>
+  <hints>
+    <hint value="comment" />
+    <hint value="delete" />
+  </hints>
+  <description>Method is never used.</description>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/test/java/com/example/picflick/viewmodel/ProfileViewModelTest.kt</file>
+  <line>87</line>
+  <module>PICFLICK.app.unitTest</module>
+  <package>com.example.picflick.viewmodel</package>
+  <entry_point TYPE="method" FQNAME="com.example.picflick.viewmodel.ProfileViewModelTest void initial state should not be loading()" />
+  <language>kotlin</language>
+  <offset>4</offset>
+  <length>5</length>
+  <highlighted_element>@Test</highlighted_element>
+  <problem_class id="" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">unused declaration</problem_class>
+  <hints>
+    <hint value="comment" />
+    <hint value="delete" />
+  </hints>
+  <description>Method is never used.</description>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/test/java/com/example/picflick/viewmodel/ProfileViewModelTest.kt</file>
+  <line>93</line>
+  <module>PICFLICK.app.unitTest</module>
+  <package>com.example.picflick.viewmodel</package>
+  <entry_point TYPE="method" FQNAME="com.example.picflick.viewmodel.ProfileViewModelTest void initial photo count should be 0()" />
+  <language>kotlin</language>
+  <offset>4</offset>
+  <length>5</length>
+  <highlighted_element>@Test</highlighted_element>
+  <problem_class id="" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">unused declaration</problem_class>
+  <hints>
+    <hint value="comment" />
+    <hint value="delete" />
+  </hints>
+  <description>Method is never used.</description>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/test/java/com/example/picflick/viewmodel/ProfileViewModelTest.kt</file>
+  <line>99</line>
+  <module>PICFLICK.app.unitTest</module>
+  <package>com.example.picflick.viewmodel</package>
+  <entry_point TYPE="method" FQNAME="com.example.picflick.viewmodel.ProfileViewModelTest void loadUserPhotos should set loading to true initially()" />
+  <language>kotlin</language>
+  <offset>4</offset>
+  <length>5</length>
+  <highlighted_element>@Test</highlighted_element>
+  <problem_class id="" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">unused declaration</problem_class>
+  <hints>
+    <hint value="comment" />
+    <hint value="delete" />
+  </hints>
+  <description>Method is never used.</description>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/test/java/com/example/picflick/viewmodel/ProfileViewModelTest.kt</file>
+  <line>115</line>
+  <module>PICFLICK.app.unitTest</module>
+  <package>com.example.picflick.viewmodel</package>
+  <entry_point TYPE="method" FQNAME="com.example.picflick.viewmodel.ProfileViewModelTest void loadUserPhotos should populate photos on success()" />
+  <language>kotlin</language>
+  <offset>4</offset>
+  <length>5</length>
+  <highlighted_element>@Test</highlighted_element>
+  <problem_class id="" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">unused declaration</problem_class>
+  <hints>
+    <hint value="comment" />
+    <hint value="delete" />
+  </hints>
+  <description>Method is never used.</description>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/test/java/com/example/picflick/viewmodel/ProfileViewModelTest.kt</file>
+  <line>137</line>
+  <module>PICFLICK.app.unitTest</module>
+  <package>com.example.picflick.viewmodel</package>
+  <entry_point TYPE="method" FQNAME="com.example.picflick.viewmodel.ProfileViewModelTest void loadUserPhotos should update photoCount correctly()" />
+  <language>kotlin</language>
+  <offset>4</offset>
+  <length>5</length>
+  <highlighted_element>@Test</highlighted_element>
+  <problem_class id="" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">unused declaration</problem_class>
+  <hints>
+    <hint value="comment" />
+    <hint value="delete" />
+  </hints>
+  <description>Method is never used.</description>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/test/java/com/example/picflick/viewmodel/ProfileViewModelTest.kt</file>
+  <line>153</line>
+  <module>PICFLICK.app.unitTest</module>
+  <package>com.example.picflick.viewmodel</package>
+  <entry_point TYPE="method" FQNAME="com.example.picflick.viewmodel.ProfileViewModelTest void loadUserPhotos should set error message on failure()" />
+  <language>kotlin</language>
+  <offset>4</offset>
+  <length>5</length>
+  <highlighted_element>@Test</highlighted_element>
+  <problem_class id="" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">unused declaration</problem_class>
+  <hints>
+    <hint value="comment" />
+    <hint value="delete" />
+  </hints>
+  <description>Method is never used.</description>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/test/java/com/example/picflick/viewmodel/ProfileViewModelTest.kt</file>
+  <line>173</line>
+  <module>PICFLICK.app.unitTest</module>
+  <package>com.example.picflick.viewmodel</package>
+  <entry_point TYPE="method" FQNAME="com.example.picflick.viewmodel.ProfileViewModelTest void loadUserPhotos should handle empty result()" />
+  <language>kotlin</language>
+  <offset>4</offset>
+  <length>5</length>
+  <highlighted_element>@Test</highlighted_element>
+  <problem_class id="" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">unused declaration</problem_class>
+  <hints>
+    <hint value="comment" />
+    <hint value="delete" />
+  </hints>
+  <description>Method is never used.</description>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/test/java/com/example/picflick/viewmodel/ProfileViewModelTest.kt</file>
+  <line>192</line>
+  <module>PICFLICK.app.unitTest</module>
+  <package>com.example.picflick.viewmodel</package>
+  <entry_point TYPE="method" FQNAME="com.example.picflick.viewmodel.ProfileViewModelTest void clearError should set error message to null()" />
+  <language>kotlin</language>
+  <offset>4</offset>
+  <length>5</length>
+  <highlighted_element>@Test</highlighted_element>
+  <problem_class id="" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">unused declaration</problem_class>
+  <hints>
+    <hint value="comment" />
+    <hint value="delete" />
+  </hints>
+  <description>Method is never used.</description>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/test/java/com/example/picflick/viewmodel/ProfileViewModelTest.kt</file>
+  <line>210</line>
+  <module>PICFLICK.app.unitTest</module>
+  <package>com.example.picflick.viewmodel</package>
+  <entry_point TYPE="method" FQNAME="com.example.picflick.viewmodel.ProfileViewModelTest void loadUserPhotos should be called with correct userId()" />
+  <language>kotlin</language>
+  <offset>4</offset>
+  <length>5</length>
+  <highlighted_element>@Test</highlighted_element>
+  <problem_class id="" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">unused declaration</problem_class>
+  <hints>
+    <hint value="comment" />
+    <hint value="delete" />
+  </hints>
+  <description>Method is never used.</description>
+</problem>
+</problems>
