@@ -344,6 +344,8 @@ private fun getNotificationIcon(type: NotificationType) = when (type) {
     NotificationType.MESSAGE -> Icons.Default.Email
     NotificationType.PHOTO_ADDED -> Icons.Default.Info
     NotificationType.MENTION -> Icons.Default.Email
+    NotificationType.STREAK_REMINDER -> Icons.Default.Notifications
+    NotificationType.ACHIEVEMENT -> Icons.Default.Notifications
     NotificationType.SYSTEM -> Icons.Default.Info
 }
 
@@ -357,6 +359,8 @@ private fun getNotificationColor(type: NotificationType) = when (type) {
     NotificationType.MESSAGE -> Color(0xFFFF9800) // Orange
     NotificationType.PHOTO_ADDED -> Color(0xFF00BCD4) // Cyan
     NotificationType.MENTION -> Color(0xFFFF5722) // Deep Orange
+    NotificationType.STREAK_REMINDER -> Color(0xFFFFD700) // Gold
+    NotificationType.ACHIEVEMENT -> Color(0xFFFFD700) // Gold
     NotificationType.SYSTEM -> Color(0xFF607D8B) // Blue Grey
 }
 

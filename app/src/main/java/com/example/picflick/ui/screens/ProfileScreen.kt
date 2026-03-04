@@ -3,10 +3,15 @@ package com.example.picflick.ui.screens
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -21,26 +26,32 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
+import com.example.picflick.data.Flick
 import com.example.picflick.data.UserProfile
+import com.example.picflick.ui.theme.PicFlickBackground
 
 /**
  * Modern Profile screen with enhanced UI
  */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun ProfileScreen(
     userProfile: UserProfile,
+    photos: List<Flick>,
     photoCount: Int,
     totalReactions: Int,
     currentStreak: Int,
     onBack: () -> Unit,
-    onMyPhotosClick: () -> Unit = {},
     onPhotoSelected: (Uri) -> Unit = {},
-    onBioUpdated: (String) -> Unit = {}
+    onBioUpdated: (String) -> Unit = {},
+    onPhotoClick: (Flick, Int) -> Unit = { _, _ -> }
 ) {
     // Image picker launcher
     val imagePicker = rememberLauncherForActivityResult(
@@ -211,70 +222,459 @@ fun ProfileScreen(
 
         Spacer(modifier = Modifier.height(32.dp))
 
-        // MY PHOTOS SECTION - Enhanced Card
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp)
-                .clickable { onMyPhotosClick() },
-            shape = RoundedCornerShape(20.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = Color.DarkGray.copy(alpha = 0.3f)
-            ),
-            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
-        ) {
-            Row(
+        // MY PHOTOS GRID - 3 column grid matching home feed style
+        if (photos.isNotEmpty()) {
+            Text(
+                text = "My Photos ($photoCount)",
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color.White,
+                modifier = Modifier.padding(horizontal = 8.dp)  // Match reduced grid padding
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            
+            // Light blue background container - SQUARE edges like home feed
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(20.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                    .padding(horizontal = 2.dp)
+                    .background(PicFlickBackground)
+                    .padding(2.dp)
             ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically
+                // 3-column grid with TALL thumbnails like home feed (aspect ratio ~0.75)
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(2.dp)
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .size(48.dp)
-                            .background(
-                                MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
-                                CircleShape
-                            ),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Edit,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(24.dp)
-                        )
-                    }
-                    Spacer(modifier = Modifier.width(16.dp))
-                    Column {
-                        Text(
-                            text = "My Photos",
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White
-                        )
-                        Text(
-                            text = "$photoCount ${if (photoCount == 1) "photo" else "photos"} uploaded",
-                            fontSize = 14.sp,
-                            color = Color.Gray
-                        )
+                    // Create rows manually
+                    val photoRows = photos.chunked(3)
+                    photoRows.forEach { rowPhotos ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(2.dp)
+                        ) {
+                            rowPhotos.forEach { flick ->
+                                Box(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .aspectRatio(0.75f) // TALL like home feed (portrait)
+                                        .clickable { onPhotoClick(flick, photos.indexOf(flick)) }
+                                ) {
+                                    AsyncImage(
+                                        model = flick.imageUrl,
+                                        contentDescription = null,
+                                        modifier = Modifier.fillMaxSize(),
+                                        contentScale = ContentScale.Crop
+                                    )
+                                    
+                                    // Tiny reaction overlay (top right)
+                                    val userReaction = flick.reactions.entries.firstOrNull()?.value
+                                    userReaction?.let { reaction ->
+                                        Box(
+                                            modifier = Modifier
+                                                .align(Alignment.TopEnd)
+                                                .padding(2.dp)
+                                                .size(16.dp)
+                                                .background(Color.Black.copy(alpha = 0.4f), CircleShape),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Text(
+                                                text = when (reaction) {
+                                                    "LIKE" -> "❤️"
+                                                    "LOVE" -> "❤️"
+                                                    "FIRE" -> "🔥"
+                                                    "COOL" -> "😎"
+                                                    "WOW" -> "😮"
+                                                    else -> "❤️"
+                                                },
+                                                fontSize = 10.sp
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                            // Fill empty slots in row with spacers
+                            repeat(3 - rowPhotos.size) {
+                                Spacer(modifier = Modifier.weight(1f))
+                            }
+                        }
                     }
                 }
-
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                    contentDescription = "View",
-                    modifier = Modifier.size(24.dp),
-                    tint = MaterialTheme.colorScheme.primary
-                )
+            }
+        } else {
+            // Empty state
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(200.dp)
+                    .padding(horizontal = 16.dp)
+                    .background(Color.DarkGray.copy(alpha = 0.2f), RoundedCornerShape(12.dp)),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Icon(
+                        imageVector = Icons.Default.Edit,
+                        contentDescription = null,
+                        tint = Color.Gray,
+                        modifier = Modifier.size(48.dp)
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "No photos yet",
+                        color = Color.Gray,
+                        fontSize = 16.sp
+                    )
+                    Text(
+                        text = "Upload your first photo!",
+                        color = Color.Gray.copy(alpha = 0.7f),
+                        fontSize = 14.sp
+                    )
+                }
             }
         }
 
         Spacer(modifier = Modifier.height(32.dp))
+    }
+}
+
+// Photo sizes for dynamic grid
+private enum class PhotoSize {
+    SMALL,   // 1x1 - normal
+    MEDIUM,  // 1x2 - portrait (taller)
+    LARGE,   // 2x2 - big square
+    WIDE     // 2x1 - landscape (wider)
+}
+
+private data class GridPosition(
+    val row: Int,
+    val column: Int,
+    val rowSpan: Int,
+    val colSpan: Int
+)
+
+/**
+ * Dynamic masonry-style photo grid with mixed sizes
+ * Creates visual interest with varied photo dimensions
+ */
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun DynamicPhotoGrid(
+    photos: List<Flick>,
+    onPhotoClick: (Flick, Int) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    // Create varied layout pattern based on photo index
+    val positions = remember(photos) {
+        calculateMixedPositions(photos.size)
+    }
+    
+    val totalRows = positions.maxOfOrNull { it.row + it.rowSpan } ?: 2
+    val gridHeight = (totalRows * 120 + (totalRows - 1) * 4).dp
+    
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(gridHeight)
+    ) {
+        photos.forEachIndexed { index, flick ->
+            if (index >= positions.size) return@forEachIndexed
+            
+            val pos = positions[index]
+            
+            // Calculate size based on spans
+            val baseCellSize = 120.dp
+            val spacing = 4.dp
+            
+            val width = pos.colSpan * baseCellSize.value + (pos.colSpan - 1) * spacing.value
+            val height = pos.rowSpan * baseCellSize.value + (pos.rowSpan - 1) * spacing.value
+            val xOffset = pos.column * (baseCellSize.value + spacing.value)
+            val yOffset = pos.row * (baseCellSize.value + spacing.value)
+            
+            Card(
+                modifier = Modifier
+                    .offset(xOffset.dp, yOffset.dp)
+                    .width(width.dp)
+                    .height(height.dp)
+                    .combinedClickable(onClick = { onPhotoClick(flick, index) }),
+                shape = RoundedCornerShape(8.dp),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                colors = CardDefaults.cardColors(containerColor = Color.DarkGray)
+            ) {
+                Box(modifier = Modifier.fillMaxSize()) {
+                    AsyncImage(
+                        model = flick.imageUrl,
+                        contentDescription = null,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                    
+                    // Show reaction count if any
+                    if (flick.getTotalReactions() > 0) {
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.TopEnd)
+                                .padding(4.dp)
+                                .size(20.dp)
+                                .background(Color.Black.copy(alpha = 0.5f), CircleShape),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = flick.getTotalReactions().toString(),
+                                color = Color.White,
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                    
+                    // Size indicator for debugging (optional)
+                    val sizeLabel = when {
+                        pos.colSpan == 2 && pos.rowSpan == 2 -> "LARGE"
+                        pos.colSpan == 2 && pos.rowSpan == 1 -> "WIDE"
+                        pos.colSpan == 1 && pos.rowSpan == 2 -> "TALL"
+                        else -> ""
+                    }
+                    if (sizeLabel.isNotEmpty()) {
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.BottomStart)
+                                .padding(4.dp)
+                                .background(Color.Black.copy(alpha = 0.5f), RoundedCornerShape(4.dp))
+                                .padding(horizontal = 4.dp, vertical = 2.dp)
+                        ) {
+                            Text(
+                                text = sizeLabel,
+                                color = Color.White,
+                                fontSize = 8.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Calculate positions for mixed-size photo grid
+ * Creates visual variety with different photo sizes
+ */
+private fun calculateMixedPositions(count: Int): List<GridPosition> {
+    val positions = mutableListOf<GridPosition>()
+    val occupied = mutableListOf<MutableList<Boolean>>()
+    
+    fun ensureRows(row: Int) {
+        while (occupied.size <= row + 1) {
+            occupied.add(mutableListOf(false, false))
+        }
+    }
+    
+    fun isFree(row: Int, col: Int, w: Int, h: Int): Boolean {
+        if (col + w > 2) return false
+        for (r in row until row + h) {
+            ensureRows(r)
+            for (c in col until col + w) {
+                if (occupied[r][c]) return false
+            }
+        }
+        return true
+    }
+    
+    fun occupy(row: Int, col: Int, w: Int, h: Int) {
+        for (r in row until row + h) {
+            ensureRows(r)
+            for (c in col until col + w) {
+                occupied[r][c] = true
+            }
+        }
+    }
+    
+    // Pattern: Creates visual rhythm with varied sizes
+    val patterns = listOf(
+        // Row 1: Large (2x2) covers whole row
+        listOf(GridPosition(0, 0, 2, 2)),
+        // Row 2: Wide (2x1) + skip
+        listOf(GridPosition(2, 0, 1, 2)),
+        // Row 3: Small + Small or Medium
+        listOf(
+            GridPosition(3, 0, 1, 1),
+            GridPosition(3, 1, 1, 1)
+        ),
+        // Row 4: Medium (tall) next row
+        listOf(GridPosition(4, 0, 2, 1), GridPosition(4, 1, 1, 1)),
+        // Row 5-6: Mixed
+        listOf(
+            GridPosition(5, 0, 1, 1),
+            GridPosition(5, 1, 2, 1),
+            GridPosition(6, 0, 1, 1)
+        )
+    )
+    
+    var currentRow = 0
+    var photoIndex = 0
+    
+    while (photoIndex < count) {
+        // Determine pattern based on position for variety
+        val patternType = (photoIndex / 3) % 5
+        
+        when (patternType) {
+            0 -> {
+                // Large 2x2 photo
+                if (isFree(currentRow, 0, 2, 2)) {
+                    positions.add(GridPosition(currentRow, 0, 2, 2))
+                    occupy(currentRow, 0, 2, 2)
+                    photoIndex++
+                    currentRow += 2
+                } else {
+                    currentRow++
+                }
+            }
+            1 -> {
+                // Wide landscape 2x1
+                if (isFree(currentRow, 0, 2, 1)) {
+                    positions.add(GridPosition(currentRow, 0, 1, 2))
+                    occupy(currentRow, 0, 2, 1)
+                    photoIndex++
+                    currentRow++
+                } else {
+                    currentRow++
+                }
+            }
+            2 -> {
+                // Two small squares
+                if (isFree(currentRow, 0, 1, 1) && isFree(currentRow, 1, 1, 1)) {
+                    positions.add(GridPosition(currentRow, 0, 1, 1))
+                    occupy(currentRow, 0, 1, 1)
+                    photoIndex++
+                    
+                    if (photoIndex < count) {
+                        positions.add(GridPosition(currentRow, 1, 1, 1))
+                        occupy(currentRow, 1, 1, 1)
+                        photoIndex++
+                    }
+                    currentRow++
+                } else {
+                    currentRow++
+                }
+            }
+            3 -> {
+                // Tall portrait 1x2
+                if (isFree(currentRow, 0, 2, 1)) {
+                    positions.add(GridPosition(currentRow, 0, 2, 1))
+                    occupy(currentRow, 0, 2, 1)
+                    photoIndex++
+                    
+                    // Fill remaining with small
+                    if (photoIndex < count && isFree(currentRow, 1, 1, 1)) {
+                        positions.add(GridPosition(currentRow, 1, 1, 1))
+                        occupy(currentRow, 1, 1, 1)
+                        photoIndex++
+                    }
+                    currentRow++
+                } else {
+                    currentRow++
+                }
+            }
+            else -> {
+                // Mixed: one tall, rest small
+                if (isFree(currentRow, 0, 2, 1)) {
+                    positions.add(GridPosition(currentRow, 0, 2, 1))
+                    occupy(currentRow, 0, 2, 1)
+                    photoIndex++
+                }
+                if (photoIndex < count && isFree(currentRow, 1, 1, 1)) {
+                    positions.add(GridPosition(currentRow, 1, 1, 1))
+                    occupy(currentRow, 1, 1, 1)
+                    photoIndex++
+                }
+                currentRow++
+            }
+        }
+        
+        // Safety check to prevent infinite loop
+        if (currentRow > count + 10) break
+    }
+    
+    return positions.take(count)
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun PhotoGridItem(
+    flick: Flick,
+    onPhotoClick: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .aspectRatio(1f) // Square aspect ratio
+            .combinedClickable(
+                onClick = onPhotoClick
+            ),
+        shape = RectangleShape,
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.Transparent)
+    ) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            AsyncImage(
+                model = flick.imageUrl,
+                contentDescription = null,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun ProfilePhotoGridItem(
+    flick: Flick,
+    rowHeight: androidx.compose.ui.unit.Dp,
+    onPhotoClick: () -> Unit
+) {
+    val userReaction = flick.reactions.entries.firstOrNull()?.value
+    
+    Card(
+        modifier = Modifier
+            .height(rowHeight)
+            .combinedClickable(onClick = onPhotoClick),
+        shape = androidx.compose.ui.graphics.RectangleShape,
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.Transparent)
+    ) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            AsyncImage(
+                model = flick.imageUrl,
+                contentDescription = null,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop
+            )
+            
+            // Tiny reaction overlay (top right)
+            userReaction?.let { reaction ->
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(2.dp)
+                        .size(16.dp)
+                        .background(Color.Black.copy(alpha = 0.4f), CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = when (reaction) {
+                            "LIKE" -> "❤️"
+                            "LOVE" -> "❤️"
+                            "FIRE" -> "🔥"
+                            "COOL" -> "😎"
+                            "WOW" -> "😮"
+                            else -> "❤️"
+                        },
+                        fontSize = 10.sp
+                    )
+                }
+            }
+        }
     }
 }
 

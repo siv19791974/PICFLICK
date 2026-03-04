@@ -8,6 +8,7 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.picflick.data.Flick
+import com.example.picflick.data.ReactionType
 import com.example.picflick.data.Result
 import com.example.picflick.repository.FlickRepository
 import kotlinx.coroutines.launch
@@ -79,6 +80,94 @@ class ProfileViewModel : ViewModel() {
                 else -> {
                     currentStreak = 0
                 }
+            }
+        }
+    }
+    
+    /**
+     * Toggle reaction on a photo
+     */
+    fun toggleReaction(
+        flick: Flick,
+        userId: String,
+        userName: String,
+        userPhotoUrl: String,
+        reactionType: ReactionType?
+    ) {
+        repository.toggleReaction(
+            flick.id,
+            userId,
+            userName,
+            userPhotoUrl,
+            reactionType
+        ) { result ->
+            when (result) {
+                is Result.Success -> {
+                    // Update local state
+                    val index = photos.indexOfFirst { it.id == flick.id }
+                    if (index != -1) {
+                        val newReactions = flick.reactions.toMutableMap().apply {
+                            if (reactionType == null) {
+                                remove(userId)
+                            } else {
+                                put(userId, reactionType.name)
+                            }
+                        }
+                        photos[index] = flick.copy(reactions = newReactions)
+                        // Recalculate total
+                        totalReactions = photos.sumOf { it.getTotalReactions() }
+                    }
+                }
+                is Result.Error -> {
+                    errorMessage = result.message
+                }
+                is Result.Loading -> { }
+            }
+        }
+    }
+    
+    /**
+     * Delete a photo
+     */
+    fun deletePhoto(photoId: String, onComplete: (Boolean) -> Unit) {
+        repository.deleteFlick(photoId) { result ->
+            when (result) {
+                is Result.Success -> {
+                    // Remove from local list
+                    val removed = photos.removeIf { it.id == photoId }
+                    if (removed) {
+                        photoCount = photos.size
+                        totalReactions = photos.sumOf { it.getTotalReactions() }
+                    }
+                    onComplete(true)
+                }
+                is Result.Error -> {
+                    errorMessage = result.message
+                    onComplete(false)
+                }
+                is Result.Loading -> { }
+            }
+        }
+    }
+    
+    /**
+     * Update photo caption/description
+     */
+    fun updateCaption(photoId: String, newCaption: String) {
+        viewModelScope.launch {
+            val result = repository.updateFlickDescription(photoId, newCaption)
+            when (result) {
+                is Result.Success -> {
+                    // Update local state
+                    val index = photos.indexOfFirst { it.id == photoId }
+                    if (index != -1) {
+                        photos[index] = photos[index].copy(description = newCaption)
+                    }
+                }
+                is Result.Error -> {
+                    errorMessage = result.message
+                }
+                is Result.Loading -> { }
             }
         }
     }

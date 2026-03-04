@@ -411,10 +411,10 @@ fun FullScreenPhotoViewer(
                             horizontalAlignment = Alignment.CenterHorizontally,
                             verticalArrangement = Arrangement.spacedBy(20.dp)
                         ) {
-                            // REACTION BUTTON - Shows filled heart if liked
-                            Column(
-                                horizontalAlignment = Alignment.CenterHorizontally
-                            ) {
+                            if (canDelete) {
+                                // MY PHOTOS MODE - 4 icons: Tag Friends, Share, Edit, Delete
+                                
+                                // TAG FRIENDS BUTTON
                                 Box(
                                     modifier = Modifier
                                         .size(44.dp)
@@ -422,109 +422,59 @@ fun FullScreenPhotoViewer(
                                             Color.Black.copy(alpha = 0.4f),
                                             CircleShape
                                         )
-                                        .clickable { showReactionPicker = true },
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    if (userReaction != null) {
-                                        Text(
-                                            text = userReaction.toEmoji(),
-                                            fontSize = 26.sp
-                                        )
-                                    } else {
-                                        Icon(
-                                            imageVector = Icons.Default.Favorite,
-                                            contentDescription = "React",
-                                            tint = Color.White,
-                                            modifier = Modifier.size(28.dp)
-                                        )
-                                    }
-                                }
-                                if (totalReactions > 0) {
-                                    Text(
-                                        text = "$totalReactions",
-                                        color = Color.White,
-                                        fontSize = 12.sp,
-                                        fontWeight = FontWeight.Medium
-                                    )
-                                }
-                            }
-                            
-                            // COMMENT BUTTON - Chat bubble icon
-                            Column(
-                                horizontalAlignment = Alignment.CenterHorizontally
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(44.dp)
-                                        .background(
-                                            Color.Black.copy(alpha = 0.4f),
-                                            CircleShape
-                                        )
-                                        .clickable { showCommentPanel = true },
+                                        .clickable { 
+                                            // TODO: Implement tag friends functionality
+                                            showPicFlickToast("Tag Friends - Coming Soon!")
+                                        },
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Icon(
-                                        imageVector = Icons.Default.Email,
-                                        contentDescription = "Comments",
+                                        imageVector = Icons.Default.PersonAdd,
+                                        contentDescription = "Tag Friends",
                                         tint = Color.White,
                                         modifier = Modifier.size(28.dp)
                                     )
                                 }
-                                if (currentFlick.commentCount > 0) {
-                                    Text(
-                                        text = "${currentFlick.commentCount}",
-                                        color = Color.White,
-                                        fontSize = 12.sp,
-                                        fontWeight = FontWeight.Medium
+                                
+                                // SHARE BUTTON - In-app share to friends
+                                Box(
+                                    modifier = Modifier
+                                        .size(44.dp)
+                                        .background(
+                                            Color.Black.copy(alpha = 0.4f),
+                                            CircleShape
+                                        )
+                                        .clickable { showShareDialog = true },
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.AutoMirrored.Filled.Send,
+                                        contentDescription = "Share to friends",
+                                        tint = Color.White,
+                                        modifier = Modifier.size(28.dp)
                                     )
                                 }
-                            }
-                            
-                            // SHARE BUTTON - In-app share to friends
-                            Box(
-                                modifier = Modifier
-                                    .size(44.dp)
-                                    .background(
-                                        Color.Black.copy(alpha = 0.4f),
-                                        CircleShape
+                                
+                                // EDIT PHOTO/CAPTION BUTTON
+                                Box(
+                                    modifier = Modifier
+                                        .size(44.dp)
+                                        .background(
+                                            Color.Black.copy(alpha = 0.4f),
+                                            CircleShape
+                                        )
+                                        .clickable { showEditCaption = true },
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Edit,
+                                        contentDescription = "Edit Photo",
+                                        tint = Color.White,
+                                        modifier = Modifier.size(28.dp)
                                     )
-                                    .clickable { showShareDialog = true },
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Share,
-                                    contentDescription = "Share to friends",
-                                    tint = Color.White,
-                                    modifier = Modifier.size(28.dp)
-                                )
-                            }
-                            
-                            // SAVE/DOWNLOAD BUTTON - Actually downloads the image
-                            Box(
-                                modifier = Modifier
-                                    .size(44.dp)
-                                    .background(
-                                        Color.Black.copy(alpha = 0.4f),
-                                        CircleShape
-                                    )
-                                    .clickable {
-                                        // Launch download in coroutine
-                                        coroutineScope.launch {
-                                            downloadImageToGallery(context, currentFlick.imageUrl, currentFlick.id)
-                                        }
-                                    },
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.KeyboardArrowDown,
-                                    contentDescription = "Save to device",
-                                    tint = Color.White,
-                                    modifier = Modifier.size(28.dp)
-                                )
-                            }
-                            
-                            // DELETE BUTTON
-                            if (canDelete) {
+                                }
+                                
+                                // DELETE BUTTON
                                 Box(
                                     modifier = Modifier
                                         .size(44.dp)
@@ -539,6 +489,120 @@ fun FullScreenPhotoViewer(
                                         imageVector = Icons.Default.Delete,
                                         contentDescription = "Delete",
                                         tint = Color.Red,
+                                        modifier = Modifier.size(28.dp)
+                                    )
+                                }
+                            } else {
+                                // OTHER USER'S PHOTOS MODE - Original icons
+                                
+                                // REACTION BUTTON - Shows filled heart if liked
+                                Column(
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(44.dp)
+                                            .background(
+                                                Color.Black.copy(alpha = 0.4f),
+                                                CircleShape
+                                            )
+                                            .clickable { showReactionPicker = true },
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        if (userReaction != null) {
+                                            Text(
+                                                text = userReaction.toEmoji(),
+                                                fontSize = 26.sp
+                                            )
+                                        } else {
+                                            Icon(
+                                                imageVector = Icons.Default.Favorite,
+                                                contentDescription = "React",
+                                                tint = Color.White,
+                                                modifier = Modifier.size(28.dp)
+                                            )
+                                        }
+                                    }
+                                    if (totalReactions > 0) {
+                                        Text(
+                                            text = "$totalReactions",
+                                            color = Color.White,
+                                            fontSize = 12.sp,
+                                            fontWeight = FontWeight.Medium
+                                        )
+                                    }
+                                }
+                                
+                                // COMMENT BUTTON - Chat bubble icon
+                                Column(
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(44.dp)
+                                            .background(
+                                                Color.Black.copy(alpha = 0.4f),
+                                                CircleShape
+                                            )
+                                            .clickable { showCommentPanel = true },
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Email,
+                                            contentDescription = "Comments",
+                                            tint = Color.White,
+                                            modifier = Modifier.size(28.dp)
+                                        )
+                                    }
+                                    if (currentFlick.commentCount > 0) {
+                                        Text(
+                                            text = "${currentFlick.commentCount}",
+                                            color = Color.White,
+                                            fontSize = 12.sp,
+                                            fontWeight = FontWeight.Medium
+                                        )
+                                    }
+                                }
+                                
+                                // SHARE BUTTON - In-app share to friends
+                                Box(
+                                    modifier = Modifier
+                                        .size(44.dp)
+                                        .background(
+                                            Color.Black.copy(alpha = 0.4f),
+                                            CircleShape
+                                        )
+                                        .clickable { showShareDialog = true },
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.AutoMirrored.Filled.Send,
+                                        contentDescription = "Share to friends",
+                                        tint = Color.White,
+                                        modifier = Modifier.size(28.dp)
+                                    )
+                                }
+                                
+                                // SAVE/DOWNLOAD BUTTON - Actually downloads the image
+                                Box(
+                                    modifier = Modifier
+                                        .size(44.dp)
+                                        .background(
+                                            Color.Black.copy(alpha = 0.4f),
+                                            CircleShape
+                                        )
+                                        .clickable {
+                                            // Launch download in coroutine
+                                            coroutineScope.launch {
+                                                downloadImageToGallery(context, currentFlick.imageUrl, currentFlick.id)
+                                            }
+                                        },
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.KeyboardArrowDown,
+                                        contentDescription = "Save to device",
+                                        tint = Color.White,
                                         modifier = Modifier.size(28.dp)
                                     )
                                 }
