@@ -1,0 +1,107 @@
+<problems>
+<problem>
+  <file>file://$PROJECT_DIR$/gradle/libs.versions.toml</file>
+  <line>9</line>
+  <module>PICFLICK</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/gradle/libs.versions.toml" />
+  <problem_class id="AndroidLintNewerVersionAvailable" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Newer Library Versions Available</problem_class>
+  <hints />
+  <description>&lt;html&gt;A newer version of org.jetbrains.kotlin.android than 2.0.21 is available: 2.3.10&lt;/html&gt;</description>
+  <highlighted_element>&quot;2.0.21&quot;</highlighted_element>
+  <language>TOML</language>
+  <offset>9</offset>
+  <length>8</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/gradle/libs.versions.toml</file>
+  <line>9</line>
+  <module>PICFLICK</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/gradle/libs.versions.toml" />
+  <problem_class id="AndroidLintNewerVersionAvailable" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Newer Library Versions Available</problem_class>
+  <hints />
+  <description>&lt;html&gt;A newer version of org.jetbrains.kotlin.plugin.compose than 2.0.21 is available: 2.3.10&lt;/html&gt;</description>
+  <highlighted_element>&quot;2.0.21&quot;</highlighted_element>
+  <language>TOML</language>
+  <offset>9</offset>
+  <length>8</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/gradle/libs.versions.toml</file>
+  <line>12</line>
+  <module>PICFLICK</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/gradle/libs.versions.toml" />
+  <problem_class id="AndroidLintNewerVersionAvailable" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Newer Library Versions Available</problem_class>
+  <hints />
+  <description>&lt;html&gt;A newer version of io.coil-kt.coil3:coil-compose than 3.0.4 is available: 3.4.0&lt;/html&gt;</description>
+  <highlighted_element>&quot;3.0.4&quot;</highlighted_element>
+  <language>TOML</language>
+  <offset>7</offset>
+  <length>7</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/gradle/libs.versions.toml</file>
+  <line>12</line>
+  <module>PICFLICK</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/gradle/libs.versions.toml" />
+  <problem_class id="AndroidLintNewerVersionAvailable" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Newer Library Versions Available</problem_class>
+  <hints />
+  <description>&lt;html&gt;A newer version of io.coil-kt.coil3:coil-network-okhttp than 3.0.4 is available: 3.4.0&lt;/html&gt;</description>
+  <highlighted_element>&quot;3.0.4&quot;</highlighted_element>
+  <language>TOML</language>
+  <offset>7</offset>
+  <length>7</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/gradle/libs.versions.toml</file>
+  <line>17</line>
+  <module>PICFLICK</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/gradle/libs.versions.toml" />
+  <problem_class id="AndroidLintNewerVersionAvailable" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Newer Library Versions Available</problem_class>
+  <hints />
+  <description>&lt;html&gt;A newer version of org.jetbrains.kotlinx:kotlinx-coroutines-android than 1.8.1 is available: 1.10.2&lt;/html&gt;</description>
+  <highlighted_element>&quot;1.8.1&quot;</highlighted_element>
+  <language>TOML</language>
+  <offset>13</offset>
+  <length>7</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/gradle/libs.versions.toml</file>
+  <line>18</line>
+  <module>PICFLICK</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/gradle/libs.versions.toml" />
+  <problem_class id="AndroidLintNewerVersionAvailable" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Newer Library Versions Available</problem_class>
+  <hints />
+  <description>&lt;html&gt;A newer version of io.mockk:mockk than 1.13.12 is available: 1.14.9&lt;/html&gt;</description>
+  <highlighted_element>&quot;1.13.12&quot;</highlighted_element>
+  <language>TOML</language>
+  <offset>8</offset>
+  <length>9</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/gradle/libs.versions.toml</file>
+  <line>19</line>
+  <module>PICFLICK</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/gradle/libs.versions.toml" />
+  <problem_class id="AndroidLintNewerVersionAvailable" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Newer Library Versions Available</problem_class>
+  <hints />
+  <description>&lt;html&gt;A newer version of org.jetbrains.kotlinx:kotlinx-coroutines-test than 1.8.1 is available: 1.10.2&lt;/html&gt;</description>
+  <highlighted_element>&quot;1.8.1&quot;</highlighted_element>
+  <language>TOML</language>
+  <offset>17</offset>
+  <length>7</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/settings.gradle.kts</file>
+  <line>15</line>
+  <module>PICFLICK</module>
+  <package>&lt;default&gt;</package>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/settings.gradle.kts" />
+  <problem_class id="AndroidLintNewerVersionAvailable" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Newer Library Versions Available</problem_class>
+  <hints />
+  <description>&lt;html&gt;A newer version of org.gradle.toolchains.foojay-resolver-convention than 0.8.0 is available: 1.0.0&lt;/html&gt;</description>
+  <highlighted_element>&quot;0.8.0&quot;</highlighted_element>
+  <language>kotlin</language>
+  <offset>67</offset>
+  <length>7</length>
+</problem>
+</problems>

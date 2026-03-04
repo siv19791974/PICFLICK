@@ -1,0 +1,54 @@
+<problems>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/components/ReactionPicker.kt</file>
+  <line>153</line>
+  <module>PICFLICK.app.main</module>
+  <package>com.example.picflick.ui.components</package>
+  <entry_point TYPE="method" FQNAME="com.example.picflick.ui.components.ReactionPickerKt void ReactionBar(java.util.Map&lt;com.example.picflick.data.ReactionType,java.lang.Integer&gt; reactionCounts, com.example.picflick.data.ReactionType userReaction, int totalCount, kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onShowPicker, androidx.compose.ui.Modifier modifier)" />
+  <problem_class id="UnusedVariable" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused variable</problem_class>
+  <description>Unused variable</description>
+  <highlighted_element>count</highlighted_element>
+  <language>kotlin</language>
+  <offset>60</offset>
+  <length>5</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/screens/FindFriendsScreen.kt</file>
+  <line>56</line>
+  <module>PICFLICK.app.main</module>
+  <package>com.example.picflick.ui.screens</package>
+  <entry_point TYPE="method" FQNAME="com.example.picflick.ui.screens.FindFriendsScreenKt void FindFriendsScreen(com.example.picflick.viewmodel.FriendsViewModel viewModel, com.example.picflick.data.UserProfile userProfile, kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onBack, kotlin.jvm.functions.Function1&lt;? super java.lang.String,kotlin.Unit&gt; onNavigateToProfile)" />
+  <problem_class id="UnusedVariable" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused variable</problem_class>
+  <description>Unused variable</description>
+  <highlighted_element>scope</highlighted_element>
+  <language>kotlin</language>
+  <offset>8</offset>
+  <length>5</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/screens/HomeScreen.kt</file>
+  <line>64</line>
+  <module>PICFLICK.app.main</module>
+  <package>com.example.picflick.ui.screens</package>
+  <entry_point TYPE="method" FQNAME="com.example.picflick.ui.screens.HomeScreenKt void HomeScreen(com.example.picflick.data.UserProfile userProfile, com.example.picflick.viewmodel.HomeViewModel viewModel, kotlin.jvm.functions.Function1&lt;? super java.lang.String,kotlin.Unit&gt; onNavigate, kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onSignOut)" />
+  <problem_class id="UnusedVariable" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused variable</problem_class>
+  <description>Unused variable</description>
+  <highlighted_element>swipeRefreshState</highlighted_element>
+  <language>kotlin</language>
+  <offset>8</offset>
+  <length>17</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/screens/NotificationsScreen.kt</file>
+  <line>55</line>
+  <module>PICFLICK.app.main</module>
+  <package>com.example.picflick.ui.screens</package>
+  <entry_point TYPE="method" FQNAME="com.example.picflick.ui.screens.NotificationsScreenKt void NotificationsScreen(com.example.picflick.data.UserProfile userProfile, kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onBack, com.example.picflick.viewmodel.NotificationViewModel viewModel)" />
+  <problem_class id="UnusedVariable" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused variable</problem_class>
+  <description>Unused variable</description>
+  <highlighted_element>errorMessage</highlighted_element>
+  <language>kotlin</language>
+  <offset>8</offset>
+  <length>12</length>
+</problem>
+</problems>

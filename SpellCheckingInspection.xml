@@ -1,0 +1,197 @@
+<problems>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/AndroidManifest.xml</file>
+  <line>48</line>
+  <module>PICFLICK.app.main</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/AndroidManifest.xml" />
+  <problem_class id="SpellCheckingInspection" severity="TYPO" attribute_key="TYPO">Spelling</problem_class>
+  <description>Typo: In word 'fileprovider'</description>
+  <highlighted_element>fileprovider</highlighted_element>
+  <language>XML</language>
+  <offset>50</offset>
+  <length>12</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/AndroidManifest.xml</file>
+  <line>53</line>
+  <module>PICFLICK.app.main</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/AndroidManifest.xml" />
+  <problem_class id="SpellCheckingInspection" severity="TYPO" attribute_key="TYPO">Spelling</problem_class>
+  <description>Typo: In word 'fileprovider'</description>
+  <highlighted_element>fileprovider</highlighted_element>
+  <language>XML</language>
+  <offset>39</offset>
+  <length>12</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/MainActivity.kt</file>
+  <line>177</line>
+  <module>PICFLICK.app.main</module>
+  <package>com.example.picflick</package>
+  <entry_point TYPE="method" FQNAME="com.example.picflick.MainActivityKt void MainScreen(com.example.picflick.viewmodel.AuthViewModel authViewModel, com.example.picflick.viewmodel.HomeViewModel homeViewModel, com.example.picflick.viewmodel.ProfileViewModel profileViewModel, com.example.picflick.viewmodel.FriendsViewModel friendsViewModel, com.example.picflick.viewmodel.NotificationViewModel notificationViewModel, com.example.picflick.viewmodel.ChatViewModel chatViewModel, com.example.picflick.viewmodel.UploadViewModel uploadViewModel)" />
+  <problem_class id="SpellCheckingInspection" severity="TYPO" attribute_key="TYPO">Spelling</problem_class>
+  <description>Typo: In word 'fileprovider'</description>
+  <highlighted_element>fileprovider</highlighted_element>
+  <language>kotlin</language>
+  <offset>44</offset>
+  <length>12</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/screens/HomeScreen.kt</file>
+  <line>161</line>
+  <module>PICFLICK.app.main</module>
+  <package>com.example.picflick.ui.screens</package>
+  <entry_point TYPE="method" FQNAME="com.example.picflick.ui.screens.HomeScreenKt void HomeScreen(com.example.picflick.data.UserProfile userProfile, com.example.picflick.viewmodel.HomeViewModel viewModel, kotlin.jvm.functions.Function1&lt;? super java.lang.String,kotlin.Unit&gt; onNavigate, kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onSignOut)" />
+  <problem_class id="SpellCheckingInspection" severity="TYPO" attribute_key="TYPO">Spelling</problem_class>
+  <description>Typo: In word 'fileprovider'</description>
+  <highlighted_element>fileprovider</highlighted_element>
+  <language>kotlin</language>
+  <offset>52</offset>
+  <length>12</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/viewmodel/ChatViewModel.kt</file>
+  <line>70</line>
+  <module>PICFLICK.app.main</module>
+  <package>com.example.picflick.viewmodel</package>
+  <entry_point TYPE="method" FQNAME="com.example.picflick.viewmodel.ChatViewModel void loadMessages(java.lang.String chatId)" />
+  <problem_class id="SpellCheckingInspection" severity="TYPO" attribute_key="TYPO">Spelling</problem_class>
+  <description>Typo: In word 'msgs'</description>
+  <highlighted_element>msgs</highlighted_element>
+  <language>kotlin</language>
+  <offset>63</offset>
+  <length>4</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/res/values/strings.xml</file>
+  <line>4</line>
+  <module>PICFLICK.app.main</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/res/values/strings.xml" />
+  <problem_class id="SpellCheckingInspection" severity="TYPO" attribute_key="TYPO">Spelling</problem_class>
+  <description>Typo: In word 'aotmkb'</description>
+  <highlighted_element>aotmkb</highlighted_element>
+  <language>XML</language>
+  <offset>79</offset>
+  <length>6</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/res/values/strings.xml</file>
+  <line>4</line>
+  <module>PICFLICK.app.main</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/res/values/strings.xml" />
+  <problem_class id="SpellCheckingInspection" severity="TYPO" attribute_key="TYPO">Spelling</problem_class>
+  <description>Typo: In word 'drrihe'</description>
+  <highlighted_element>drrihe</highlighted_element>
+  <language>XML</language>
+  <offset>98</offset>
+  <length>6</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/res/values/strings.xml</file>
+  <line>4</line>
+  <module>PICFLICK.app.main</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/res/values/strings.xml" />
+  <problem_class id="SpellCheckingInspection" severity="TYPO" attribute_key="TYPO">Spelling</problem_class>
+  <description>Typo: In word 'googleusercontent'</description>
+  <highlighted_element>googleusercontent</highlighted_element>
+  <language>XML</language>
+  <offset>113</offset>
+  <length>17</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/res/values/themes.xml</file>
+  <line>15</line>
+  <module>PICFLICK.app.main</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/res/values/themes.xml" />
+  <problem_class id="SpellCheckingInspection" severity="TYPO" attribute_key="TYPO">Spelling</problem_class>
+  <description>Typo: In word 'ECFF'</description>
+  <highlighted_element>ECFF</highlighted_element>
+  <language>XML</language>
+  <offset>53</offset>
+  <length>4</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/res/values/themes.xml</file>
+  <line>24</line>
+  <module>PICFLICK.app.main</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/res/values/themes.xml" />
+  <problem_class id="SpellCheckingInspection" severity="TYPO" attribute_key="TYPO">Spelling</problem_class>
+  <description>Typo: In word 'ECFF'</description>
+  <highlighted_element>ECFF</highlighted_element>
+  <language>XML</language>
+  <offset>62</offset>
+  <length>4</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/gradlew.bat</file>
+  <line>16</line>
+  <module>PICFLICK</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/gradlew.bat" />
+  <problem_class id="SpellCheckingInspection" severity="TYPO" attribute_key="TYPO">Spelling</problem_class>
+  <description>Typo: In word 'SPDX'</description>
+  <highlighted_element>SPDX</highlighted_element>
+  <language>textmate</language>
+  <offset>5</offset>
+  <length>4</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/gradlew.bat</file>
+  <line>27</line>
+  <module>PICFLICK</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/gradlew.bat" />
+  <problem_class id="SpellCheckingInspection" severity="TYPO" attribute_key="TYPO">Spelling</problem_class>
+  <description>Typo: In word 'setlocal'</description>
+  <highlighted_element>setlocal</highlighted_element>
+  <language>textmate</language>
+  <offset>24</offset>
+  <length>8</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/gradlew.bat</file>
+  <line>46</line>
+  <module>PICFLICK</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/gradlew.bat" />
+  <problem_class id="SpellCheckingInspection" severity="TYPO" attribute_key="TYPO">Spelling</problem_class>
+  <description>Typo: In word 'ERRORLEVEL'</description>
+  <highlighted_element>ERRORLEVEL</highlighted_element>
+  <language>textmate</language>
+  <offset>4</offset>
+  <length>10</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/gradlew.bat</file>
+  <line>77</line>
+  <module>PICFLICK</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/gradlew.bat" />
+  <problem_class id="SpellCheckingInspection" severity="TYPO" attribute_key="TYPO">Spelling</problem_class>
+  <description>Typo: In word 'Dorg'</description>
+  <highlighted_element>Dorg</highlighted_element>
+  <language>textmate</language>
+  <offset>60</offset>
+  <length>4</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/gradlew.bat</file>
+  <line>77</line>
+  <module>PICFLICK</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/gradlew.bat" />
+  <problem_class id="SpellCheckingInspection" severity="TYPO" attribute_key="TYPO">Spelling</problem_class>
+  <description>Typo: In word 'appname'</description>
+  <highlighted_element>appname</highlighted_element>
+  <language>textmate</language>
+  <offset>72</offset>
+  <length>7</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/gradlew.bat</file>
+  <line>92</line>
+  <module>PICFLICK</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/gradlew.bat" />
+  <problem_class id="SpellCheckingInspection" severity="TYPO" attribute_key="TYPO">Spelling</problem_class>
+  <description>Typo: In word 'endlocal'</description>
+  <highlighted_element>endlocal</highlighted_element>
+  <language>textmate</language>
+  <offset>24</offset>
+  <length>8</length>
+</problem>
+</problems>
