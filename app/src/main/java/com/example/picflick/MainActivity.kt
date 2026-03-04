@@ -1,5 +1,6 @@
 package com.example.picflick
 
+import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.widget.Toast
@@ -25,6 +26,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -47,6 +49,7 @@ import com.example.picflick.ui.screens.ExploreScreen
 import com.example.picflick.ui.screens.FilterScreen
 import com.example.picflick.ui.screens.FindFriendsScreen
 import com.example.picflick.ui.screens.FriendsScreen
+import com.example.picflick.ui.screens.FullScreenPhotoViewer
 import com.example.picflick.ui.screens.HomeScreen
 import com.example.picflick.ui.screens.LoginScreen
 import com.example.picflick.ui.screens.MyPhotosScreen
@@ -418,18 +421,70 @@ private fun AuthenticatedContent(
                 onSignOut = onSignOut
             )
 
-            is Screen.Profile -> ProfileScreen(
-                userProfile = userProfile,
-                photoCount = profileViewModel.photoCount,
-                totalReactions = profileViewModel.totalReactions,
-                currentStreak = profileViewModel.currentStreak,
-                onBack = { onScreenChange(Screen.Home) },
-                onMyPhotosClick = { onScreenChange(Screen.MyPhotos) },
-                onPhotoSelected = onPhotoSelected,
-                onBioUpdated = { newBio ->
-                    authViewModel.updateBio(newBio)
-                },
-            )
+            is Screen.Profile -> {
+                // Load photos when profile screen is shown
+                LaunchedEffect(userProfile.uid) {
+                    profileViewModel.loadUserPhotos(userProfile.uid)
+                }
+                
+                // State for fullscreen photo viewer
+                var selectedPhoto by remember { mutableStateOf<Flick?>(null) }
+                var selectedPhotoIndex by remember { mutableIntStateOf(0) }
+                
+                ProfileScreen(
+                    userProfile = userProfile,
+                    photos = profileViewModel.photos,
+                    photoCount = profileViewModel.photoCount,
+                    totalReactions = profileViewModel.totalReactions,
+                    currentStreak = profileViewModel.currentStreak,
+                    onBack = { onScreenChange(Screen.Home) },
+                    onPhotoSelected = onPhotoSelected,
+                    onBioUpdated = { newBio ->
+                        authViewModel.updateBio(newBio)
+                    },
+                    onPhotoClick = { flick, index ->
+                        selectedPhoto = flick
+                        selectedPhotoIndex = index
+                    }
+                )
+                
+                // FullScreenPhotoViewer when photo selected
+                selectedPhoto?.let { flick ->
+                    FullScreenPhotoViewer(
+                        flick = flick,
+                        currentUser = userProfile,
+                        onDismiss = { selectedPhoto = null },
+                        onReaction = { reactionType ->
+                            profileViewModel.toggleReaction(flick, userProfile.uid, userProfile.displayName, userProfile.photoUrl, reactionType)
+                        },
+                        onShareClick = {
+                            val shareIntent = Intent().apply {
+                                action = Intent.ACTION_SEND
+                                type = "text/plain"
+                                putExtra(Intent.EXTRA_TEXT, "Check out my photo on PicFlick: ${flick.imageUrl}")
+                            }
+                            context.startActivity(Intent.createChooser(shareIntent, "Share Photo"))
+                        },
+                        onDeleteClick = {
+                            profileViewModel.deletePhoto(flick.id) { success ->
+                                if (success) {
+                                    selectedPhoto = null
+                                }
+                            }
+                        },
+                        canDelete = true,
+                        onCaptionUpdated = { newCaption ->
+                            profileViewModel.updateCaption(flick.id, newCaption)
+                        },
+                        allPhotos = profileViewModel.photos,
+                        currentIndex = selectedPhotoIndex,
+                        onNavigateToPhoto = { index ->
+                            selectedPhotoIndex = index
+                            selectedPhoto = profileViewModel.photos.getOrNull(index)
+                        }
+                    )
+                }
+            }
 
             is Screen.MyPhotos -> MyPhotosScreen(
                 viewModel = profileViewModel,

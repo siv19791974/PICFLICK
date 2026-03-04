@@ -38,7 +38,7 @@ class HomeViewModelTest {
             imageUrl = "https://example.com/1.jpg",
             description = "Test flick 1",
             timestamp = 1234567890,
-            likes = listOf("user2")
+            reactions = mapOf("user2" to "LIKE")
         ),
         Flick(
             id = "2",
@@ -47,7 +47,7 @@ class HomeViewModelTest {
             imageUrl = "https://example.com/2.jpg",
             description = "Test flick 2",
             timestamp = 1234567891,
-            likes = emptyList()
+            reactions = emptyMap()
         )
     )
 
@@ -154,18 +154,20 @@ class HomeViewModelTest {
     @Test
     fun `toggleLike should call repository with correct parameters`() {
         // Given
-        val flick = testFlicks[0] // Has 1 like from user2
+        val flick = testFlicks[0] // Has 1 reaction from user2
         val userId = "user3"
+        val userName = "User Three"
+        val userPhotoUrl = "https://example.com/photo3.jpg"
         val callbackSlot = slot<(Result<Unit>) -> Unit>()
-        every { mockRepository.toggleLike(flick.id, userId, false, capture(callbackSlot)) } answers {
+        every { mockRepository.toggleReaction(flick.id, userId, userName, userPhotoUrl, any(), capture(callbackSlot)) } answers {
             callbackSlot.captured(Result.Success(Unit))
         }
 
         // When
-        viewModel.toggleLike(flick, userId)
+        viewModel.toggleLike(flick, userId, userName, userPhotoUrl)
 
         // Then
-        verify { mockRepository.toggleLike(flick.id, userId, false, any()) }
+        verify { mockRepository.toggleReaction(flick.id, userId, userName, userPhotoUrl, any(), any()) }
     }
 
     @Test

@@ -38,7 +38,7 @@ class ProfileViewModelTest {
             imageUrl = "https://example.com/photo1.jpg",
             description = "My photo 1",
             timestamp = 1234567890,
-            likes = listOf("user2", "user3")
+            reactions = mapOf("user2" to "LIKE", "user3" to "LIKE")
         ),
         Flick(
             id = "2",
@@ -47,7 +47,7 @@ class ProfileViewModelTest {
             imageUrl = "https://example.com/photo2.jpg",
             description = "My photo 2",
             timestamp = 1234567891,
-            likes = emptyList()
+            reactions = emptyMap()
         ),
         Flick(
             id = "3",
@@ -56,7 +56,7 @@ class ProfileViewModelTest {
             imageUrl = "https://example.com/photo3.jpg",
             description = "My photo 3",
             timestamp = 1234567892,
-            likes = listOf("user2")
+            reactions = mapOf("user2" to "LIKE")
         )
     )
 
