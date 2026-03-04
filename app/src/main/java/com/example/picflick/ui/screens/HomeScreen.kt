@@ -616,75 +616,73 @@ internal data class GridPosition(
 )
 
 /**
- * Calculate dynamic grid positions with varied sizes
- * Randomly places 2x1, 1x2, and 2x2 items among 1x1 items
+ * Calculate dynamic grid positions with varied sizes - NO GAPS version
+ * Uses proper masonry packing that fills empty spaces
  */
 private fun calculateDynamicGridPositions(count: Int): List<GridPosition> {
     val positions = mutableListOf<GridPosition>()
     val random = java.util.Random()
     
-    // Track occupied cells: occupied[row][col] = true/false
+    // 3-column grid tracking
+    val gridWidth = 3
     val occupied = mutableMapOf<Pair<Int, Int>, Boolean>()
     
-    fun isOccupied(row: Int, col: Int): Boolean {
-        return occupied.getOrDefault(row to col, false)
+    fun isFree(row: Int, col: Int): Boolean {
+        if (col < 0 || col >= gridWidth || row < 0) return false
+        return !occupied.getOrDefault(row to col, false)
     }
     
-    fun markOccupied(row: Int, col: Int, rows: Int, cols: Int) {
-        for (r in row until row + rows) {
-            for (c in col until col + cols) {
-                occupied[r to c] = true
-            }
-        }
-    }
-    
-    fun canPlace(row: Int, col: Int, rows: Int, cols: Int): Boolean {
-        if (col + cols > 3) return false // Exceeds grid width
-        for (r in row until row + rows) {
-            for (c in col until col + cols) {
-                if (isOccupied(r, c)) return false
+    fun canPlace(row: Int, col: Int, w: Int, h: Int): Boolean {
+        if (col + w > gridWidth) return false
+        for (r in row until row + h) {
+            for (c in col until col + w) {
+                if (!isFree(r, c)) return false
             }
         }
         return true
     }
     
+    fun markOccupied(row: Int, col: Int, w: Int, h: Int) {
+        for (r in row until row + h) {
+            for (c in col until col + w) {
+                occupied[r to c] = true
+            }
+        }
+    }
+    
+    fun findNextFreeCell(startRow: Int, startCol: Int): Pair<Int, Int>? {
+        for (row in startRow..startRow + 20) { // Search reasonable range
+            for (col in 0 until gridWidth) {
+                if (row == startRow && col < startCol) continue
+                if (isFree(row, col)) return row to col
+            }
+        }
+        return null
+    }
+    
     var currentRow = 0
     var currentCol = 0
-    var photoIndex = 0
     
-    while (photoIndex < count) {
-        // Decide size for this photo (mostly 1x1, occasionally larger)
+    for (photoIndex in 0 until count) {
+        // Find next free cell
+        val nextCell = findNextFreeCell(currentRow, currentCol)
+        if (nextCell == null) break
+        
+        currentRow = nextCell.first
+        currentCol = nextCell.second
+        
+        // Decide size (only if we have room)
         val sizeRoll = random.nextFloat()
         
         val (rowSpan, colSpan) = when {
-            // 5% chance for 2x2 (needs 2x2 space)
+            // 5% chance for 2x2 at position (0,0), (0,1), or (1,0) only
             sizeRoll < 0.05f && canPlace(currentRow, currentCol, 2, 2) -> 2 to 2
-            // 15% chance for 2x1 wide (needs 2 cols)
+            // 15% chance for 2x1 wide  
             sizeRoll < 0.20f && canPlace(currentRow, currentCol, 1, 2) -> 1 to 2
-            // 10% chance for 1x2 tall (needs 2 rows)
+            // 10% chance for 1x2 tall
             sizeRoll < 0.30f && canPlace(currentRow, currentCol, 2, 1) -> 2 to 1
             // Default 1x1
             else -> 1 to 1
-        }
-        
-        // If we can't place the desired size, try 1x1
-        val finalRowSpan: Int
-        val finalColSpan: Int
-        
-        if (canPlace(currentRow, currentCol, rowSpan, colSpan)) {
-            finalRowSpan = rowSpan
-            finalColSpan = colSpan
-        } else if (canPlace(currentRow, currentCol, 1, 1)) {
-            finalRowSpan = 1
-            finalColSpan = 1
-        } else {
-            // Can't place here, move to next cell
-            currentCol++
-            if (currentCol >= 3) {
-                currentCol = 0
-                currentRow++
-            }
-            continue
         }
         
         // Place the item
@@ -692,16 +690,15 @@ private fun calculateDynamicGridPositions(count: Int): List<GridPosition> {
             index = photoIndex,
             row = currentRow,
             column = currentCol,
-            rowSpan = finalRowSpan,
-            colSpan = finalColSpan
+            rowSpan = rowSpan,
+            colSpan = colSpan
         ))
         
-        markOccupied(currentRow, currentCol, finalRowSpan, finalColSpan)
-        photoIndex++
+        markOccupied(currentRow, currentCol, colSpan, rowSpan)
         
         // Move to next position
-        currentCol += finalColSpan
-        if (currentCol >= 3) {
+        currentCol += colSpan
+        if (currentCol >= gridWidth) {
             currentCol = 0
             currentRow++
         }
