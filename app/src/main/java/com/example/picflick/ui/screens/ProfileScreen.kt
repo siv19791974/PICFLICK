@@ -229,55 +229,62 @@ fun ProfileScreen(
             )
             Spacer(modifier = Modifier.height(12.dp))
             
-            // Light blue background container - FATTER BORDER (8.dp)
+            // Light blue background container - PINTEREST STYLE
             BoxWithConstraints(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 8.dp)  // Fatter outer
-                    .background(PicFlickBackground, RoundedCornerShape(16.dp))  // Sexy rounded container
-                    .padding(8.dp)  // Fatter inner
+                    .padding(horizontal = 8.dp)
+                    .background(PicFlickBackground, RoundedCornerShape(16.dp))
+                    .padding(8.dp)
             ) {
-                // SEXY masonry grid
-                val positionedItems = remember(photos) {
-                    calculateGapFreePhotoGridPositions(photos.size)
+                // PINTEREST ORGANIC MASONRY - 2 columns
+                val spacing = 8.dp
+                val columnWidth = (maxWidth - spacing) / 2
+                
+                // Calculate variable heights
+                val photoHeights = remember(photos) {
+                    photos.map {
+                        val randomFactor = 0.8f + (it.id.hashCode() % 5) / 10f
+                        columnWidth.value * randomFactor
+                    }
                 }
                 
-                val totalRows = positionedItems.maxOfOrNull { it.row + it.rowSpan } ?: 1
-                // FULL SIZE - no padding subtraction
-                val baseWidth = maxWidth / 3
-                val gridHeight = baseWidth * totalRows
+                // Distribute to columns
+                val leftColumn = mutableListOf<Pair<Int, Float>>()
+                val rightColumn = mutableListOf<Pair<Int, Float>>()
+                var leftHeight = 0f
+                var rightHeight = 0f
                 
-                // SEXY absolute positioning
+                photos.indices.forEach { index ->
+                    val height = photoHeights[index]
+                    if (leftHeight <= rightHeight) {
+                        leftColumn.add(index to height)
+                        leftHeight += height + spacing.value
+                    } else {
+                        rightColumn.add(index to height)
+                        rightHeight += height + spacing.value
+                    }
+                }
+                
+                val maxColumnHeight = maxOf(leftHeight, rightHeight).dp
+                
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(gridHeight)
+                        .height(maxColumnHeight)
                 ) {
-                    positionedItems.forEach { item ->
-                        val flick = photos[item.index]
-                        
-                        val xOffset = item.column * baseWidth.value
-                        val yOffset = item.row * baseWidth.value
-                        val width = item.colSpan * baseWidth.value
-                        val height = item.rowSpan * baseWidth.value
-                        
-                        // SEXY: Rounded corners for big items
-                        val cornerRadius = when {
-                            item.colSpan >= 2 && item.rowSpan >= 2 -> 16.dp
-                            item.colSpan == 3 -> 20.dp
-                            else -> 0.dp
-                        }
-                        
-                        val elevation = if (item.colSpan >= 2 && item.rowSpan >= 2) 4.dp else 0.dp
-                        
+                    // Left column
+                    var currentY = 0f
+                    leftColumn.forEach { (index, height) ->
+                        val flick = photos[index]
                         Card(
                             modifier = Modifier
-                                .offset(xOffset.dp, yOffset.dp)
-                                .width(width.dp)
+                                .offset(0.dp, currentY.dp)
+                                .width(columnWidth)
                                 .height(height.dp)
-                                .clickable { onPhotoClick(flick, photos.indexOf(flick)) },
-                            shape = RoundedCornerShape(cornerRadius),
-                            elevation = CardDefaults.cardElevation(defaultElevation = elevation),
+                                .clickable { onPhotoClick(flick, index) },
+                            shape = RoundedCornerShape(12.dp),
+                            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
                             colors = CardDefaults.cardColors(containerColor = Color.Transparent)
                         ) {
                             Box(modifier = Modifier.fillMaxSize()) {
@@ -288,48 +295,17 @@ fun ProfileScreen(
                                     contentScale = ContentScale.Crop
                                 )
                                 
-                                // SEXY: Gradient scrim
-                                Box(
-                                    modifier = Modifier
-                                        .align(Alignment.BottomStart)
-                                        .fillMaxWidth()
-                                        .height(28.dp)
-                                        .background(
-                                            Brush.verticalGradient(
-                                                colors = listOf(
-                                                    Color.Transparent,
-                                                    Color.Black.copy(alpha = 0.7f)
-                                                ),
-                                                startY = 0f,
-                                                endY = 100f
-                                            )
-                                        )
-                                )
+                                // Clean - no text
                                 
-                                // SEXY: Show "MY PHOTO" indicator or just caption hint
-                                if (flick.description.isNotEmpty()) {
-                                    Text(
-                                        text = "✏️ ${flick.description.take(15)}${if (flick.description.length > 15) "..." else ""}",
-                                        color = Color.White.copy(alpha = 0.9f),
-                                        fontSize = 10.sp,
-                                        fontWeight = FontWeight.Medium,
-                                        modifier = Modifier
-                                            .align(Alignment.BottomStart)
-                                            .padding(horizontal = 6.dp, vertical = 4.dp),
-                                        maxLines = 1
-                                    )
-                                }
-                                
-                                // Reaction overlay - bigger
+                                // Reaction indicator only
                                 val userReaction = flick.reactions.entries.firstOrNull()?.value
                                 userReaction?.let { reaction ->
                                     Box(
                                         modifier = Modifier
                                             .align(Alignment.TopEnd)
-                                            .padding(4.dp)
-                                            .size(20.dp)
-                                            .background(Color.Black.copy(alpha = 0.5f), CircleShape)
-                                            .border(1.dp, Color.White.copy(alpha = 0.3f), CircleShape),
+                                            .padding(8.dp)
+                                            .size(24.dp)
+                                            .background(Color.Black.copy(alpha = 0.4f), CircleShape),
                                         contentAlignment = Alignment.Center
                                     ) {
                                         Text(
@@ -341,34 +317,63 @@ fun ProfileScreen(
                                                 "WOW" -> "😮"
                                                 else -> "❤️"
                                             },
-                                            fontSize = 12.sp
-                                        )
-                                    }
-                                }
-                                
-                                // SEXY BONUS: Show total reactions count
-                                val totalReactions = flick.getTotalReactions()
-                                if (totalReactions > 0) {
-                                    Box(
-                                        modifier = Modifier
-                                            .align(Alignment.TopStart)
-                                            .padding(4.dp)
-                                            .background(
-                                                Color(0xFFFF4757).copy(alpha = 0.9f),
-                                                RoundedCornerShape(10.dp)
-                                            )
-                                            .padding(horizontal = 6.dp, vertical = 2.dp)
-                                    ) {
-                                        Text(
-                                            text = "❤ $totalReactions",
-                                            color = Color.White,
-                                            fontSize = 10.sp,
-                                            fontWeight = FontWeight.Bold
+                                            fontSize = 14.sp
                                         )
                                     }
                                 }
                             }
                         }
+                        currentY += height + spacing.value
+                    }
+                    
+                    // Right column
+                    currentY = 0f
+                    rightColumn.forEach { (index, height) ->
+                        val flick = photos[index]
+                        Card(
+                            modifier = Modifier
+                                .offset((columnWidth.value + spacing.value).dp, currentY.dp)
+                                .width(columnWidth)
+                                .height(height.dp)
+                                .clickable { onPhotoClick(flick, index) },
+                            shape = RoundedCornerShape(12.dp),
+                            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                            colors = CardDefaults.cardColors(containerColor = Color.Transparent)
+                        ) {
+                            Box(modifier = Modifier.fillMaxSize()) {
+                                AsyncImage(
+                                    model = flick.imageUrl,
+                                    contentDescription = null,
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentScale = ContentScale.Crop
+                                )
+                                
+                                val userReaction = flick.reactions.entries.firstOrNull()?.value
+                                userReaction?.let { reaction ->
+                                    Box(
+                                        modifier = Modifier
+                                            .align(Alignment.TopEnd)
+                                            .padding(8.dp)
+                                            .size(24.dp)
+                                            .background(Color.Black.copy(alpha = 0.4f), CircleShape),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            text = when (reaction) {
+                                                "LIKE" -> "❤️"
+                                                "LOVE" -> "❤️"
+                                                "FIRE" -> "🔥"
+                                                "COOL" -> "😎"
+                                                "WOW" -> "😮"
+                                                else -> "❤️"
+                                            },
+                                            fontSize = 14.sp
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                        currentY += height + spacing.value
                     }
                 }
             }

@@ -439,131 +439,120 @@ private fun FlickGrid(
         modifier = Modifier.fillMaxSize()
     ) {
         val totalWidth = this.maxWidth
-        // FULL BLEED - no padding subtraction
-        val baseCellSize = totalWidth / 3 
+        val spacing = 8.dp
+        val columnWidth = (totalWidth - spacing) / 2  // 2 columns like Pinterest
         
-        // Calculate dynamic positions with NO GAPS
-        val positionedItems = remember(flicks) {
-            calculateGapFreeGridPositions(flicks.size)
+        // Calculate heights for each photo (maintain aspect ratio)
+        val photoHeights = remember(flicks) {
+            flicks.map { 
+                // Variable height: square-ish but with variation (0.8 to 1.3 aspect ratio)
+                val randomFactor = 0.8f + (it.id.hashCode() % 5) / 10f  // 0.8 to 1.3
+                columnWidth.value * randomFactor 
+            }
         }
         
-        val totalRows = positionedItems.maxOfOrNull { it.row + it.rowSpan } ?: 1
-        val gridHeight = baseCellSize * totalRows
+        // Distribute to columns (Pinterest algorithm: fill shortest column)
+        val leftColumn = mutableListOf<Pair<Int, Float>>()  // index to height
+        val rightColumn = mutableListOf<Pair<Int, Float>>()
+        var leftHeight = 0f
+        var rightHeight = 0f
         
-        // SEXY ABSOLUTE POSITIONING grid
+        flicks.indices.forEach { index ->
+            val height = photoHeights[index]
+            if (leftHeight <= rightHeight) {
+                leftColumn.add(index to height)
+                leftHeight += height + spacing.value
+            } else {
+                rightColumn.add(index to height)
+                rightHeight += height + spacing.value
+            }
+        }
+        
+        val maxColumnHeight = maxOf(leftHeight, rightHeight).dp
+        
+        // PINTEREST ORGANIC LAYOUT
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(gridHeight)
+                .height(maxColumnHeight)
         ) {
-            positionedItems.forEach { item ->
-                val flick = flicks[item.index]
-                
-                // Exact position - ZERO SPACING
-                val xOffset = item.column * baseCellSize.value
-                val yOffset = item.row * baseCellSize.value
-                val width = item.colSpan * baseCellSize.value
-                val height = item.rowSpan * baseCellSize.value
-                
-                // SEXY: Rounded corners for big items only
-                val cornerRadius = when {
-                    item.colSpan >= 2 && item.rowSpan >= 2 -> 16.dp  // 2x2 gets sexy rounded
-                    item.colSpan == 3 -> 20.dp  // Full width banner - extra round
-                    else -> 0.dp  // Normal = sharp
-                }
-                
-                // SEXY: Subtle shadow for big items
-                val elevation = if (item.colSpan >= 2 && item.rowSpan >= 2) 4.dp else 0.dp
-                
-                Card(
+            // Left column
+            var currentY = 0f
+            leftColumn.forEach { (index, height) ->
+                val flick = flicks[index]
+                PinterestItem(
+                    flick = flick,
+                    xOffset = 0f,
+                    yOffset = currentY,
+                    width = columnWidth.value,
+                    height = height,
+                    onClick = { onPhotoClick(flick) }
+                )
+                currentY += height + spacing.value
+            }
+            
+            // Right column
+            currentY = 0f
+            rightColumn.forEach { (index, height) ->
+                val flick = flicks[index]
+                PinterestItem(
+                    flick = flick,
+                    xOffset = columnWidth.value + spacing.value,
+                    yOffset = currentY,
+                    width = columnWidth.value,
+                    height = height,
+                    onClick = { onPhotoClick(flick) }
+                )
+                currentY += height + spacing.value
+            }
+        }
+    }
+}
+
+@Composable
+private fun PinterestItem(
+    flick: Flick,
+    xOffset: Float,
+    yOffset: Float,
+    width: Float,
+    height: Float,
+    onClick: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .offset(xOffset.dp, yOffset.dp)
+            .width(width.dp)
+            .height(height.dp)
+            .clickable { onClick() },
+        shape = RoundedCornerShape(12.dp),  // PINTEREST: All rounded
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),  // Subtle shadow
+        colors = CardDefaults.cardColors(containerColor = Color.Transparent)
+    ) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            AsyncImage(
+                model = flick.imageUrl,
+                contentDescription = null,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop
+            )
+            
+            // Clean - NO username overlay (Pinterest style)
+            
+            // Subtle reaction indicator (only if user reacted)
+            val userReaction = flick.getUserReaction("")
+            userReaction?.let { reaction ->
+                Box(
                     modifier = Modifier
-                        .offset(xOffset.dp, yOffset.dp)
-                        .width(width.dp)
-                        .height(height.dp)
-                        .clickable { onPhotoClick(flick) },
-                    shape = RoundedCornerShape(cornerRadius),
-                    elevation = CardDefaults.cardElevation(defaultElevation = elevation),
-                    colors = CardDefaults.cardColors(containerColor = Color.Transparent)
+                        .align(Alignment.TopEnd)
+                        .padding(8.dp)
+                        .size(24.dp)
+                        .background(Color.Black.copy(alpha = 0.4f), CircleShape),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Box(modifier = Modifier.fillMaxSize()) {
-                        AsyncImage(
-                            model = flick.imageUrl,
-                            contentDescription = null,
-                            modifier = Modifier.fillMaxSize(),
-                            contentScale = ContentScale.Crop
-                        )
-                        
-                        // SEXY: Gradient scrim at bottom for ALL photos
-                        Box(
-                            modifier = Modifier
-                                .align(Alignment.BottomStart)
-                                .fillMaxWidth()
-                                .height(28.dp)  // Taller for better text visibility
-                                .background(
-                                    Brush.verticalGradient(
-                                        colors = listOf(
-                                            Color.Transparent,
-                                            Color.Black.copy(alpha = 0.7f)  // Darker for readability
-                                        ),
-                                        startY = 0f,
-                                        endY = 100f
-                                    )
-                                )
-                        )
-                        
-                        // SEXY: Username on ALL photos - premium typography
-                        Text(
-                            text = flick.userName,
-                            color = Color.White,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            modifier = Modifier
-                                .align(Alignment.BottomStart)
-                                .padding(horizontal = 6.dp, vertical = 4.dp),
-                            maxLines = 1
-                        )
-                        
-                        // Reaction overlay - bigger and sexier
-                        val userReaction = flick.getUserReaction(userProfile.uid)
-                        userReaction?.let { reaction ->
-                            Box(
-                                modifier = Modifier
-                                    .align(Alignment.TopEnd)
-                                    .padding(4.dp)
-                                    .size(20.dp)  // Bigger
-                                    .background(Color.Black.copy(alpha = 0.5f), CircleShape)
-                                    .border(1.dp, Color.White.copy(alpha = 0.3f), CircleShape),  // Sexy border
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    text = reaction.toEmoji(),
-                                    fontSize = 12.sp  // Bigger emoji
-                                )
-                            }
-                        }
-                        
-                        // SEXY BONUS: Show reaction count if popular
-                        val totalReactions = flick.getTotalReactions()
-                        if (totalReactions > 2) {
-                            Box(
-                                modifier = Modifier
-                                    .align(Alignment.TopStart)
-                                    .padding(4.dp)
-                                    .background(
-                                        Color(0xFFFF4757).copy(alpha = 0.9f),  // Hot red
-                                        RoundedCornerShape(10.dp)
-                                    )
-                                    .padding(horizontal = 6.dp, vertical = 2.dp)
-                            ) {
-                                Text(
-                                    text = "❤ $totalReactions",
-                                    color = Color.White,
-                                    fontSize = 10.sp,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            }
-                        }
-                    }
+                    Text(
+                        text = reaction.toEmoji(),
+                        fontSize = 14.sp
+                    )
                 }
             }
         }
