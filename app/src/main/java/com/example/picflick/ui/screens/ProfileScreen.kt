@@ -726,49 +726,68 @@ private data class PhotoGridPos(
 )
 
 /**
- * Calculate dynamic grid positions with varied sizes
- * Randomly places 2x1, 1x2, and 2x2 items among 1x1 items
- * 5% chance for 2x2, 15% for 2x1 wide, 10% for 1x2 tall, 70% normal 1x1
+ * Calculate dynamic grid positions with varied sizes - NO GAPS version
+ * Uses proper masonry packing that fills empty spaces
  */
 private fun calculatePhotoGridPositions(count: Int): List<PhotoGridPos> {
     val positions = mutableListOf<PhotoGridPos>()
     val random = java.util.Random()
     
-    // Track occupied cells
+    // 3-column grid tracking
+    val gridWidth = 3
     val occupied = mutableMapOf<Pair<Int, Int>, Boolean>()
     
-    fun isOccupied(row: Int, col: Int): Boolean = occupied.getOrDefault(row to col, false)
-    
-    fun markOccupied(row: Int, col: Int, rows: Int, cols: Int) {
-        for (r in row until row + rows) {
-            for (c in col until col + cols) {
-                occupied[r to c] = true
-            }
-        }
+    fun isFree(row: Int, col: Int): Boolean {
+        if (col < 0 || col >= gridWidth || row < 0) return false
+        return !occupied.getOrDefault(row to col, false)
     }
     
-    fun canPlace(row: Int, col: Int, rows: Int, cols: Int): Boolean {
-        if (col + cols > 3) return false
-        for (r in row until row + rows) {
-            for (c in col until col + cols) {
-                if (isOccupied(r, c)) return false
+    fun canPlace(row: Int, col: Int, w: Int, h: Int): Boolean {
+        if (col + w > gridWidth) return false
+        for (r in row until row + h) {
+            for (c in col until col + w) {
+                if (!isFree(r, c)) return false
             }
         }
         return true
     }
     
+    fun markOccupied(row: Int, col: Int, w: Int, h: Int) {
+        for (r in row until row + h) {
+            for (c in col until col + w) {
+                occupied[r to c] = true
+            }
+        }
+    }
+    
+    fun findNextFreeCell(startRow: Int, startCol: Int): Pair<Int, Int>? {
+        for (row in startRow..startRow + 20) {
+            for (col in 0 until gridWidth) {
+                if (row == startRow && col < startCol) continue
+                if (isFree(row, col)) return row to col
+            }
+        }
+        return null
+    }
+    
     var currentRow = 0
     var currentCol = 0
-    var photoIndex = 0
     
-    while (photoIndex < count) {
-        // Decide size for this photo
+    for (photoIndex in 0 until count) {
+        // Find next free cell
+        val nextCell = findNextFreeCell(currentRow, currentCol)
+        if (nextCell == null) break
+        
+        currentRow = nextCell.first
+        currentCol = nextCell.second
+        
+        // Decide size (only if we have room)
         val sizeRoll = random.nextFloat()
         
         val (rowSpan, colSpan) = when {
-            // 5% chance for 2x2 (big square)
+            // 5% chance for 2x2
             sizeRoll < 0.05f && canPlace(currentRow, currentCol, 2, 2) -> 2 to 2
-            // 15% chance for 2x1 wide
+            // 15% chance for 2x1 wide  
             sizeRoll < 0.20f && canPlace(currentRow, currentCol, 1, 2) -> 1 to 2
             // 10% chance for 1x2 tall
             sizeRoll < 0.30f && canPlace(currentRow, currentCol, 2, 1) -> 2 to 1
@@ -776,41 +795,20 @@ private fun calculatePhotoGridPositions(count: Int): List<PhotoGridPos> {
             else -> 1 to 1
         }
         
-        // Try to place, fall back to 1x1 if needed
-        val finalRowSpan: Int
-        val finalColSpan: Int
-        
-        if (canPlace(currentRow, currentCol, rowSpan, colSpan)) {
-            finalRowSpan = rowSpan
-            finalColSpan = colSpan
-        } else if (canPlace(currentRow, currentCol, 1, 1)) {
-            finalRowSpan = 1
-            finalColSpan = 1
-        } else {
-            // Move to next cell
-            currentCol++
-            if (currentCol >= 3) {
-                currentCol = 0
-                currentRow++
-            }
-            continue
-        }
-        
         // Place the item
         positions.add(PhotoGridPos(
             index = photoIndex,
             row = currentRow,
             column = currentCol,
-            rowSpan = finalRowSpan,
-            colSpan = finalColSpan
+            rowSpan = rowSpan,
+            colSpan = colSpan
         ))
         
-        markOccupied(currentRow, currentCol, finalRowSpan, finalColSpan)
-        photoIndex++
+        markOccupied(currentRow, currentCol, colSpan, rowSpan)
         
         // Move to next position
-        currentCol += finalColSpan
-        if (currentCol >= 3) {
+        currentCol += colSpan
+        if (currentCol >= gridWidth) {
             currentCol = 0
             currentRow++
         }
