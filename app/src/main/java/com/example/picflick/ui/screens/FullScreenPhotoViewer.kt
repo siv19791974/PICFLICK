@@ -131,10 +131,6 @@ fun FullScreenPhotoViewer(
     var dragY by remember { mutableFloatStateOf(0f) }
     var isDraggingVertically by remember { mutableStateOf(false) }
     
-    // Pinch zoom state
-    var zoomScale by remember { mutableFloatStateOf(1f) }
-    var zoomOffset by remember { mutableStateOf(Offset.Zero) }
-    
     // Pager for horizontal swiping
     val pagerState = rememberPagerState(
         initialPage = currentIndex,
@@ -326,46 +322,29 @@ fun FullScreenPhotoViewer(
                     modifier = Modifier
                         .fillMaxSize()
                         .pointerInput(Unit) {
-                            // PINCH ZOOM - Only when already zoomed in
-                            detectTransformGestures(
-                                onGesture = { _, pan, zoom, _ ->
-                                    if (zoomScale > 1f || zoom != 1f) {
-                                        zoomScale = (zoomScale * zoom).coerceIn(1f, 5f)
-                                        zoomOffset += pan
-                                    }
-                                }
-                            )
-                        }
-                        .pointerInput(Unit) {
-                            // SWIPE - Only when NOT zoomed in
+                            // SIMPLE SWIPE - No pinch, no zoom, just 2D scrolling
                             detectDragGestures(
                                 onDragStart = {
-                                    // Only start swipe if not zoomed
-                                    if (zoomScale <= 1.01f) {
-                                        dragX = 0f
-                                        dragY = 0f
-                                        isDraggingVertically = false
-                                    }
+                                    dragX = 0f
+                                    dragY = 0f
+                                    isDraggingVertically = false
                                 },
                                 onDragEnd = {
-                                    // Only navigate if not zoomed
-                                    if (zoomScale <= 1.01f) {
-                                        when {
-                                            // Vertical swipe
-                                            isDraggingVertically && kotlin.math.abs(dragY) > 100f -> {
-                                                if (dragY < 0 && currentPageIndex < allPhotos.size - 1) {
-                                                    currentPageIndex++ // UP = NEXT
-                                                } else if (dragY > 0 && currentPageIndex > 0) {
-                                                    currentPageIndex-- // DOWN = PREV
-                                                }
+                                    when {
+                                        // Vertical swipe
+                                        isDraggingVertically && kotlin.math.abs(dragY) > 100f -> {
+                                            if (dragY < 0 && currentPageIndex < allPhotos.size - 1) {
+                                                currentPageIndex++ // UP = NEXT
+                                            } else if (dragY > 0 && currentPageIndex > 0) {
+                                                currentPageIndex-- // DOWN = PREV
                                             }
-                                            // Horizontal swipe
-                                            !isDraggingVertically && kotlin.math.abs(dragX) > 100f -> {
-                                                if (dragX < 0 && currentPageIndex < allPhotos.size - 1) {
-                                                    currentPageIndex++ // LEFT = NEXT
-                                                } else if (dragX > 0 && currentPageIndex > 0) {
-                                                    currentPageIndex-- // RIGHT = PREV
-                                                }
+                                        }
+                                        // Horizontal swipe
+                                        !isDraggingVertically && kotlin.math.abs(dragX) > 100f -> {
+                                            if (dragX < 0 && currentPageIndex < allPhotos.size - 1) {
+                                                currentPageIndex++ // LEFT = NEXT
+                                            } else if (dragX > 0 && currentPageIndex > 0) {
+                                                currentPageIndex-- // RIGHT = PREV
                                             }
                                         }
                                     }
@@ -373,22 +352,19 @@ fun FullScreenPhotoViewer(
                                     dragY = 0f
                                 },
                                 onDrag = { change, amount ->
-                                    // Only process swipe if not zoomed
-                                    if (zoomScale <= 1.01f) {
-                                        val absY = kotlin.math.abs(amount.y)
-                                        val absX = kotlin.math.abs(amount.x)
-                                        
-                                        // Detect direction on first movement
-                                        if (kotlin.math.abs(dragX) < 10f && kotlin.math.abs(dragY) < 10f) {
-                                            isDraggingVertically = absY > absX
-                                        }
-                                        
-                                        if (isDraggingVertically) {
-                                            dragY += amount.y
-                                            change.consume()
-                                        } else {
-                                            dragX += amount.x
-                                        }
+                                    val absY = kotlin.math.abs(amount.y)
+                                    val absX = kotlin.math.abs(amount.x)
+                                    
+                                    // Detect direction on first movement
+                                    if (kotlin.math.abs(dragX) < 10f && kotlin.math.abs(dragY) < 10f) {
+                                        isDraggingVertically = absY > absX
+                                    }
+                                    
+                                    if (isDraggingVertically) {
+                                        dragY += amount.y
+                                        change.consume()
+                                    } else {
+                                        dragX += amount.x
                                     }
                                 }
                             )
@@ -413,45 +389,25 @@ fun FullScreenPhotoViewer(
                             val dragProgress = kotlin.math.abs(dragX) / screenWidthPx
                             val verticalProgress = kotlin.math.abs(dragY) / screenHeightPx
                             val swipeScale = 1f - (kotlin.math.max(dragProgress, verticalProgress) * 0.25f).coerceIn(0f, 0.25f)
-                            val finalScale = swipeScale * zoomScale
                             
                             Box(
                                 modifier = Modifier
                                     .fillMaxSize()
-                                    .pointerInput(Unit) {
-                                        // Pinch zoom on the photo itself (when zoomed or trying to zoom)
-                                        detectTransformGestures(
-                                            onGesture = { _, pan, zoom, _ ->
-                                                if (isCurrent && (zoomScale > 1f || zoom != 1f)) {
-                                                    zoomScale = (zoomScale * zoom).coerceIn(1f, 5f)
-                                                    zoomOffset += pan
-                                                }
-                                            }
-                                        )
-                                    }
-                                    .offset { 
-                                        val zoomX = if (isCurrent) zoomOffset.x.toInt() else 0
-                                        val zoomY = if (isCurrent) zoomOffset.y.toInt() else 0
-                                        IntOffset(finalX.toInt() + zoomX, finalY.toInt() + zoomY)
-                                    }
+                                    .offset { IntOffset(finalX.toInt(), finalY.toInt()) }
                                     .graphicsLayer {
-                                        scaleX = finalScale
-                                        scaleY = finalScale
+                                        scaleX = swipeScale
+                                        scaleY = swipeScale
                                     }
                                     .combinedClickable(
                                         indication = null,
                                         interactionSource = remember { MutableInteractionSource() },
-                                        onClick = { if (isCurrent && zoomScale <= 1.01f) uiVisible = !uiVisible },
+                                        onClick = { if (isCurrent) uiVisible = !uiVisible },
                                         onDoubleClick = {
-                                            if (isCurrent && zoomScale <= 1.01f) {
-                                                // Only heart when NOT zoomed
+                                            if (isCurrent) {
+                                                // Heart on double tap
                                                 heartAnimationKey++
                                                 showHeartAnimation = true
                                                 onReaction(if (userReaction == ReactionType.LIKE) null else ReactionType.LIKE)
-                                            } else if (isCurrent && zoomScale > 1f) {
-                                                // Reset zoom on double tap when zoomed
-                                                zoomScale = 1f
-                                                zoomOffset = Offset.Zero
                                             }
                                         }
                                     ),
