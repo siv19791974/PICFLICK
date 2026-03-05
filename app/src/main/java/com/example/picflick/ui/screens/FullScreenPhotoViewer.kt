@@ -331,13 +331,13 @@ fun FullScreenPhotoViewer(
                                         val absY = kotlin.math.abs(dragAmount.y)
                                         val absX = kotlin.math.abs(dragAmount.x)
                                         
-                                        // Only handle if vertical drag dominates (INCREASED threshold)
-                                        if (absY > absX && absY > 20) {
+                                        // Only handle if vertical drag dominates (higher threshold to avoid pinch conflict)
+                                        if (absY > absX * 1.5f && absY > 25) {
                                             change.consume()
                                             verticalDragTotal += dragAmount.y
                                             
-                                            // Navigate on significant vertical swipe (INCREASED threshold)
-                                            if (kotlin.math.abs(verticalDragTotal) > 200f) {
+                                            // Navigate on significant vertical swipe (adjusted sensitivity)
+                                            if (kotlin.math.abs(verticalDragTotal) > 160f) {
                                                 val currentPage = pagerState.currentPage
                                                 if (verticalDragTotal < 0 && currentPage > 0) {
                                                     // UP = PREVIOUS photo
