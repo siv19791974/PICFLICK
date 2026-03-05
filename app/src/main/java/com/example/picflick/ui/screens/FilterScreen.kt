@@ -259,7 +259,7 @@ fun FilterScreen(
                         ) {
                             // Show currently selected filter as large preview
                             val previewBitmap = remember(bmp, selectedFilter) {
-                                applyFilterToBitmap(bmp, selectedFilter, thumbnailSize = 512)
+                                applyFilterToBitmap(bmp, selectedFilter, thumbnailSize = 1024) // High quality preview
                             }
                             Image(
                                 painter = BitmapPainter(previewBitmap.asImageBitmap()),
@@ -415,7 +415,7 @@ private fun FilterIcon(
             if (bitmap != null) {
                 // Show actual filtered thumbnail with MUCH higher quality
                 val thumbnailBitmap = remember(bitmap, filter) {
-                    applyFilterToBitmap(bitmap, filter, thumbnailSize = 192)  // High quality render
+                    applyFilterToBitmap(bitmap, filter, thumbnailSize = 300)  // Higher quality filter icons
                 }
                 Image(
                     painter = BitmapPainter(thumbnailBitmap.asImageBitmap()),
