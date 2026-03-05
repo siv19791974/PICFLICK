@@ -125,9 +125,14 @@ fun FullScreenPhotoViewer(
     // 2D Pager state
     var currentPageIndex by remember { mutableIntStateOf(currentIndex) }
     
+    // Filter out photos with empty image URLs to prevent Coil crash
+    val validPhotos = remember(allPhotos) {
+        allPhotos.filter { it.imageUrl.isNotBlank() }
+    }
+    
     // Current flick based on page index
-    val currentFlick = if (allPhotos.isNotEmpty() && currentPageIndex in allPhotos.indices) {
-        allPhotos[currentPageIndex]
+    val currentFlick = if (validPhotos.isNotEmpty() && currentPageIndex in validPhotos.indices) {
+        validPhotos[currentPageIndex]
     } else flick
     
     // Get user's current reaction
@@ -199,7 +204,7 @@ fun FullScreenPhotoViewer(
     
     // Handle page changes
     LaunchedEffect(currentPageIndex) {
-        if (allPhotos.isNotEmpty()) {
+        if (validPhotos.isNotEmpty()) {
             onNavigateToPhoto(currentPageIndex)
         }
     }
@@ -321,7 +326,7 @@ fun FullScreenPhotoViewer(
                                     when {
                                         // Vertical swipe
                                         isDraggingVertically && kotlin.math.abs(dragY) > 100f -> {
-                                            if (dragY < 0 && currentPageIndex < allPhotos.size - 1) {
+                                            if (dragY < 0 && currentPageIndex < validPhotos.size - 1) {
                                                 currentPageIndex++ // UP = NEXT
                                             } else if (dragY > 0 && currentPageIndex > 0) {
                                                 currentPageIndex-- // DOWN = PREV
@@ -329,7 +334,7 @@ fun FullScreenPhotoViewer(
                                         }
                                         // Horizontal swipe
                                         !isDraggingVertically && kotlin.math.abs(dragX) > 100f -> {
-                                            if (dragX < 0 && currentPageIndex < allPhotos.size - 1) {
+                                            if (dragX < 0 && currentPageIndex < validPhotos.size - 1) {
                                                 currentPageIndex++ // LEFT = NEXT
                                             } else if (dragX > 0 && currentPageIndex > 0) {
                                                 currentPageIndex-- // RIGHT = PREV
@@ -416,9 +421,9 @@ fun FullScreenPhotoViewer(
                     }
                     
                     // 1. CURRENT at CENTER
-                    if (currentPageIndex < allPhotos.size) {
+                    if (currentPageIndex < validPhotos.size) {
                         PhotoAtPosition(
-                            photo = allPhotos[currentPageIndex],
+                            photo = validPhotos[currentPageIndex],
                             isCurrent = true,
                             baseX = 0f,
                             baseY = 0f
@@ -426,9 +431,9 @@ fun FullScreenPhotoViewer(
                     }
                     
                     // 2. NEXT at RIGHT (for horizontal swipe)
-                    if (currentPageIndex + 1 < allPhotos.size) {
+                    if (currentPageIndex + 1 < validPhotos.size) {
                         PhotoAtPosition(
-                            photo = allPhotos[currentPageIndex + 1],
+                            photo = validPhotos[currentPageIndex + 1],
                             isCurrent = false,
                             baseX = screenWidthPx,
                             baseY = 0f
@@ -438,7 +443,7 @@ fun FullScreenPhotoViewer(
                     // 3. PREV at LEFT (for horizontal swipe)
                     if (currentPageIndex - 1 >= 0) {
                         PhotoAtPosition(
-                            photo = allPhotos[currentPageIndex - 1],
+                            photo = validPhotos[currentPageIndex - 1],
                             isCurrent = false,
                             baseX = -screenWidthPx,
                             baseY = 0f
@@ -446,9 +451,9 @@ fun FullScreenPhotoViewer(
                     }
                     
                     // 4. NEXT at BOTTOM (for vertical swipe) - SAME photo as RIGHT
-                    if (currentPageIndex + 1 < allPhotos.size) {
+                    if (currentPageIndex + 1 < validPhotos.size) {
                         PhotoAtPosition(
-                            photo = allPhotos[currentPageIndex + 1],
+                            photo = validPhotos[currentPageIndex + 1],
                             isCurrent = false,
                             baseX = 0f,
                             baseY = screenHeightPx
@@ -458,7 +463,7 @@ fun FullScreenPhotoViewer(
                     // 5. PREV at TOP (for vertical swipe) - SAME photo as LEFT
                     if (currentPageIndex - 1 >= 0) {
                         PhotoAtPosition(
-                            photo = allPhotos[currentPageIndex - 1],
+                            photo = validPhotos[currentPageIndex - 1],
                             isCurrent = false,
                             baseX = 0f,
                             baseY = -screenHeightPx
