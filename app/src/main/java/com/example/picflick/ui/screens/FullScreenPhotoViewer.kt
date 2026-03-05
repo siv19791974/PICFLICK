@@ -382,33 +382,13 @@ fun FullScreenPhotoViewer(
                         
                         // Only render current, next, and prev
                         if (isCurrent || isNext || isPrev) {
-                            // Base position (back to instant, no animation)
+                            // Base position: where the photo SHOULD be (0 for current, +W for next, -W for prev)
                             val baseX = (index - currentPageIndex) * screenWidthPx
+                            val baseY = 0f  // All photos start at same vertical position
                             
-                            // Apply drag offsets - FIXED: next/prev now slide in properly!
-                            // Current photo moves with finger
-                            val currentX = baseX + dragX
-                            val currentY = dragY
-                            
-                            // Next/prev photos also move so they slide in from edges
-                            // They start off-screen and move with the drag
-                            val nextX = screenWidthPx + dragX  // Right side
-                            val prevX = -screenWidthPx + dragX  // Left side
-                            val nextY = screenHeightPx + dragY  // Bottom
-                            val prevY = -screenHeightPx + dragY  // Top
-                            
-                            val finalX = when {
-                                isCurrent -> currentX
-                                isNext -> nextX
-                                isPrev -> prevX
-                                else -> baseX * 2f
-                            }
-                            val finalY = when {
-                                isCurrent -> currentY
-                                isNext -> nextY
-                                isPrev -> prevY
-                                else -> screenHeightPx * 2f
-                            }
+                            // SIMPLE: Add drag to ALL photos equally - they move together!
+                            val finalX = baseX + dragX
+                            val finalY = baseY + dragY
                             
                             // Calculate scale shrink and fade based on drag amount
                             val dragProgress = kotlin.math.abs(dragX) / screenWidthPx
