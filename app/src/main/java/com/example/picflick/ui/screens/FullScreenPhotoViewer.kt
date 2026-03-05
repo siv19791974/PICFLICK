@@ -124,6 +124,10 @@ fun FullScreenPhotoViewer(
     var scale by remember { mutableFloatStateOf(1f) }
     var offset by remember { mutableStateOf(Offset.Zero) }
     
+    // Vertical slide animation for vertical swipes
+    var verticalSlideOffset by remember { mutableFloatStateOf(0f) }
+    var isVerticalSwipe by remember { mutableStateOf(false) }
+    
     // Pager for horizontal swiping
     val pagerState = rememberPagerState(
         initialPage = currentIndex,
@@ -305,7 +309,7 @@ fun FullScreenPhotoViewer(
         ) {
             Box(modifier = Modifier.fillMaxSize()) {
                 
-                // OUTER GESTURE HANDLER - Smart pinch vs swipe detection + VERTICAL scrolling
+                // OUTER GESTURE HANDLER - Smart pinch vs swipe detection + VERTICAL scrolling with SLIDE
                 var verticalDragTotal by remember { mutableFloatStateOf(0f) }
                 
                 Box(
@@ -323,35 +327,56 @@ fun FullScreenPhotoViewer(
                         }
                         .pointerInput(Unit) {
                             detectDragGestures(
-                                onDragStart = { verticalDragTotal = 0f },
-                                onDragEnd = { verticalDragTotal = 0f },
-                                onDragCancel = { verticalDragTotal = 0f },
+                                onDragStart = { 
+                                    verticalDragTotal = 0f
+                                    isVerticalSwipe = false
+                                },
+                                onDragEnd = { 
+                                    // Animate back or navigate based on slide distance
+                                    if (kotlin.math.abs(verticalSlideOffset) > 100f && isVerticalSwipe) {
+                                        val currentPage = pagerState.currentPage
+                                        if (verticalSlideOffset < 0 && currentPage > 0) {
+                                            // UP = PREVIOUS - animate to completion
+                                            coroutineScope.launch {
+                                                pagerState.animateScrollToPage(currentPage - 1)
+                                            }
+                                        } else if (verticalSlideOffset > 0 && currentPage < allPhotos.size - 1) {
+                                            // DOWN = NEXT - animate to completion
+                                            coroutineScope.launch {
+                                                pagerState.animateScrollToPage(currentPage + 1)
+                                            }
+                                        }
+                                    }
+                                    // Reset slide offset
+                                    verticalSlideOffset = 0f
+                                    isVerticalSwipe = false
+                                    verticalDragTotal = 0f
+                                },
+                                onDragCancel = { 
+                                    verticalSlideOffset = 0f
+                                    isVerticalSwipe = false
+                                    verticalDragTotal = 0f
+                                },
                                 onDrag = { change, dragAmount ->
                                     if (scale <= 1.01f && allPhotos.size > 1) {
                                         val absY = kotlin.math.abs(dragAmount.y)
                                         val absX = kotlin.math.abs(dragAmount.x)
                                         
-                                        // Only handle if vertical drag dominates (higher threshold to avoid pinch conflict)
-                                        if (absY > absX * 1.5f && absY > 25) {
+                                        // Detect if this is a vertical swipe
+                                        if (!isVerticalSwipe && absY > absX * 1.5f && absY > 25) {
+                                            isVerticalSwipe = true
+                                        }
+                                        
+                                        if (isVerticalSwipe) {
                                             change.consume()
                                             verticalDragTotal += dragAmount.y
                                             
-                                            // Navigate on significant vertical swipe (adjusted sensitivity)
-                                            if (kotlin.math.abs(verticalDragTotal) > 160f) {
-                                                val currentPage = pagerState.currentPage
-                                                if (verticalDragTotal < 0 && currentPage > 0) {
-                                                    // UP = PREVIOUS photo
-                                                    coroutineScope.launch {
-                                                        pagerState.animateScrollToPage(currentPage - 1)
-                                                    }
-                                                    verticalDragTotal = 0f
-                                                } else if (verticalDragTotal > 0 && currentPage < allPhotos.size - 1) {
-                                                    // DOWN = NEXT photo  
-                                                    coroutineScope.launch {
-                                                        pagerState.animateScrollToPage(currentPage + 1)
-                                                    }
-                                                    verticalDragTotal = 0f
-                                                }
+                                            // Apply vertical slide with resistance at edges
+                                            val resistance = 0.6f
+                                            verticalSlideOffset = when {
+                                                pagerState.currentPage == 0 && dragAmount.y < 0 -> dragAmount.y * 0.3f // First page, resist UP
+                                                pagerState.currentPage == allPhotos.size - 1 && dragAmount.y > 0 -> dragAmount.y * 0.3f // Last page, resist DOWN
+                                                else -> dragAmount.y * resistance
                                             }
                                         }
                                     }
@@ -410,11 +435,15 @@ fun FullScreenPhotoViewer(
                                         this.alpha = alpha
                                         scaleX = scaleEffect
                                         scaleY = scaleEffect
+                                        // Apply vertical slide during vertical swipes
+                                        if (pagerState.currentPage == page) {
+                                            translationY = verticalSlideOffset
+                                        }
                                         if (pagerState.currentPage == page && scale > 1f) {
                                             scaleX = scale
                                             scaleY = scale
                                             translationX = offset.x
-                                            translationY = offset.y
+                                            translationY = offset.y + verticalSlideOffset
                                         }
                                     },
                                 contentScale = ContentScale.Crop
