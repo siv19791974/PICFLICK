@@ -131,13 +131,6 @@ fun FullScreenPhotoViewer(
     var dragY by remember { mutableFloatStateOf(0f) }
     var isDraggingVertically by remember { mutableStateOf(false) }
     
-    // Smooth animation for page position
-    val animatedPageOffset by animateFloatAsState(
-        targetValue = currentPageIndex.toFloat(),
-        animationSpec = tween(300, easing = FastOutSlowInEasing),
-        label = "pageAnimation"
-    )
-    
     // Pager for horizontal swiping
     val pagerState = rememberPagerState(
         initialPage = currentIndex,
@@ -384,17 +377,26 @@ fun FullScreenPhotoViewer(
                         
                         // Only render current, next, and prev
                         if (isCurrent || isNext || isPrev) {
-                            // Base position using ANIMATED offset for smooth transitions
-                            val baseX = (index - animatedPageOffset) * screenWidthPx
+                            // Base position (back to instant, no animation)
+                            val baseX = (index - currentPageIndex) * screenWidthPx
                             
                             // Apply drag offsets
                             val finalX = baseX + if (isCurrent) dragX else 0f
                             val finalY = if (isCurrent) dragY else if (isNext && dragY < 0) screenHeightPx + dragY else if (isPrev && dragY > 0) -screenHeightPx + dragY else screenHeightPx * 2f
                             
+                            // Calculate scale shrink based on drag amount
+                            val dragProgress = kotlin.math.abs(dragX) / screenWidthPx
+                            val verticalProgress = kotlin.math.abs(dragY) / screenHeightPx
+                            val scale = 1f - (kotlin.math.max(dragProgress, verticalProgress) * 0.1f).coerceIn(0f, 0.1f)
+                            
                             Box(
                                 modifier = Modifier
                                     .fillMaxSize()
                                     .offset { IntOffset(finalX.toInt(), finalY.toInt()) }
+                                    .graphicsLayer {
+                                        scaleX = scale
+                                        scaleY = scale
+                                    }
                                     .combinedClickable(
                                         indication = null,
                                         interactionSource = remember { MutableInteractionSource() },
