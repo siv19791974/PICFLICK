@@ -447,21 +447,18 @@ fun FullScreenPhotoViewer(
                                         // Calculate Y translation for vertical swipe animation
                                         // Screen height for slide-in calculation
                                         val screenHeight = 2400f // Approximate screen height in pixels
+                                        val screenWidth = 1200f  // Approximate screen width to counteract HorizontalPager
                                         
                                         val yTranslation = when {
                                             // Current page - follows finger directly
                                             pagerState.currentPage == page -> verticalSlideOffset
                                             
                                             // NEXT page slides in from BOTTOM when dragging UP (going forward)
-                                            // When dragging UP: verticalSlideOffset is negative
-                                            // Next page starts at +screenHeight and moves up
                                             isVerticalSwipe && page == pagerState.currentPage + 1 && verticalSlideOffset < 0 -> {
                                                 screenHeight + verticalSlideOffset // Starts below, moves up
                                             }
                                             
                                             // PREVIOUS page slides in from TOP when dragging DOWN (going back)
-                                            // When dragging DOWN: verticalSlideOffset is positive
-                                            // Previous page starts at -screenHeight and moves down
                                             isVerticalSwipe && page == pagerState.currentPage - 1 && verticalSlideOffset > 0 -> {
                                                 -screenHeight + verticalSlideOffset // Starts above, moves down
                                             }
@@ -469,16 +466,39 @@ fun FullScreenPhotoViewer(
                                             else -> 0f
                                         }
                                         
-                                        translationY = if (scale > 1f && pagerState.currentPage == page) {
+                                        // Calculate X translation to counteract HorizontalPager during vertical swipe
+                                        val xTranslation = when {
+                                            // Current page - normal horizontal position
+                                            isCurrentPage -> 0f
+                                            
+                                            // NEXT page: counteract being positioned to the right by pager
+                                            isVerticalSwipe && page == pagerState.currentPage + 1 && verticalSlideOffset < 0 -> {
+                                                -screenWidth // Move back to center from right
+                                            }
+                                            
+                                            // PREVIOUS page: counteract being positioned to the left by pager
+                                            isVerticalSwipe && page == pagerState.currentPage - 1 && verticalSlideOffset > 0 -> {
+                                                screenWidth // Move back to center from left
+                                            }
+                                            
+                                            else -> (pagerState.currentPage - page) * screenWidth // Normal pager position
+                                        }
+                                        
+                                        translationY = if (scale > 1f && isCurrentPage) {
                                             offset.y + verticalSlideOffset
                                         } else {
                                             yTranslation
                                         }
                                         
-                                        if (scale > 1f && pagerState.currentPage == page) {
+                                        translationX = if (scale > 1f && isCurrentPage) {
+                                            offset.x
+                                        } else {
+                                            xTranslation
+                                        }
+                                        
+                                        if (scale > 1f && isCurrentPage) {
                                             scaleX = scale
                                             scaleY = scale
-                                            translationX = offset.x
                                         }
                                     },
                                 contentScale = ContentScale.Crop
