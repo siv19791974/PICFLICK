@@ -229,7 +229,7 @@ fun ProfileScreen(
             )
             Spacer(modifier = Modifier.height(12.dp))
             
-            // Light blue background container - PINTEREST STYLE
+            // Light blue background container - MATCH HOME FEED STYLE
             BoxWithConstraints(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -237,54 +237,30 @@ fun ProfileScreen(
                     .background(PicFlickBackground, RoundedCornerShape(16.dp))
                     .padding(8.dp)
             ) {
-                // PINTEREST ORGANIC MASONRY - 2 columns
-                val spacing = 8.dp
-                val columnWidth = (maxWidth - spacing) / 2
+                // MATCH HOME FEED: 3-column grid with FlickCard style
+                val rowHeight = this.maxHeight / 4.1f
                 
-                // Calculate variable heights
-                val photoHeights = remember(photos) {
-                    photos.map {
-                        val randomFactor = 0.8f + (it.id.hashCode() % 5) / 10f
-                        columnWidth.value * randomFactor
-                    }
-                }
-                
-                // Distribute to columns
-                val leftColumn = mutableListOf<Pair<Int, Float>>()
-                val rightColumn = mutableListOf<Pair<Int, Float>>()
-                var leftHeight = 0f
-                var rightHeight = 0f
-                
-                photos.indices.forEach { index ->
-                    val height = photoHeights[index]
-                    if (leftHeight <= rightHeight) {
-                        leftColumn.add(index to height)
-                        leftHeight += height + spacing.value
-                    } else {
-                        rightColumn.add(index to height)
-                        rightHeight += height + spacing.value
-                    }
-                }
-                
-                val maxColumnHeight = maxOf(leftHeight, rightHeight).dp
-                
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(maxColumnHeight)
+                LazyVerticalGrid(
+                    columns = GridCells.Fixed(3),
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(
+                        start = 1.dp,
+                        end = 1.dp,
+                        top = 4.dp,
+                        bottom = 0.dp
+                    ),
+                    userScrollEnabled = false
                 ) {
-                    // Left column
-                    var currentY = 0f
-                    leftColumn.forEach { (index, height) ->
-                        val flick = photos[index]
+                    items(photos, key = { it.id }) { flick ->
+                        val userReaction = flick.reactions.entries.firstOrNull()?.value
+                        
                         Card(
                             modifier = Modifier
-                                .offset(0.dp, currentY.dp)
-                                .width(columnWidth)
-                                .height(height.dp)
-                                .clickable { onPhotoClick(flick, index) },
-                            shape = RoundedCornerShape(12.dp),
-                            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                                .padding(1.dp)
+                                .height(rowHeight)
+                                .clickable { onPhotoClick(flick, photos.indexOf(flick)) },
+                            shape = RectangleShape,
+                            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
                             colors = CardDefaults.cardColors(containerColor = Color.Transparent)
                         ) {
                             Box(modifier = Modifier.fillMaxSize()) {
@@ -295,16 +271,13 @@ fun ProfileScreen(
                                     contentScale = ContentScale.Crop
                                 )
                                 
-                                // Clean - no text
-                                
-                                // Reaction indicator only
-                                val userReaction = flick.reactions.entries.firstOrNull()?.value
+                                // Reaction indicator
                                 userReaction?.let { reaction ->
                                     Box(
                                         modifier = Modifier
                                             .align(Alignment.TopEnd)
-                                            .padding(8.dp)
-                                            .size(24.dp)
+                                            .padding(2.dp)
+                                            .size(16.dp)
                                             .background(Color.Black.copy(alpha = 0.4f), CircleShape),
                                         contentAlignment = Alignment.Center
                                     ) {
@@ -317,10 +290,32 @@ fun ProfileScreen(
                                                 "WOW" -> "😮"
                                                 else -> "❤️"
                                             },
-                                            fontSize = 14.sp
+                                            fontSize = 10.sp
                                         )
                                     }
                                 }
+                                
+                                // Caption hint if exists
+                                if (flick.description.isNotEmpty()) {
+                                    Box(
+                                        modifier = Modifier
+                                            .align(Alignment.BottomStart)
+                                            .fillMaxWidth()
+                                            .background(Color.Black.copy(alpha = 0.5f))
+                                            .padding(horizontal = 4.dp, vertical = 2.dp)
+                                    ) {
+                                        Text(
+                                            text = "✏️",
+                                            color = Color.White,
+                                            fontSize = 10.sp
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
                             }
                         }
                         currentY += height + spacing.value
