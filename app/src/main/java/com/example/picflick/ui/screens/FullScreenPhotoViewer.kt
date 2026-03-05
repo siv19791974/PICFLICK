@@ -465,7 +465,9 @@ fun FullScreenPhotoViewer(
                                 isCurrent -> dragY  // Current moves with finger
                                 isNext && dragY < 0 -> screenHeightPx + dragY  // Next slides in from BOTTOM when dragging up
                                 isPrev && dragY > 0 -> -screenHeightPx + dragY  // Prev slides in from TOP when dragging down
-                                else -> if (isNext || isPrev) 0f else screenHeightPx * 2f  // Default for next/prev
+                                isNext -> screenHeightPx  // Default: next is BELOW screen
+                                isPrev -> -screenHeightPx  // Default: prev is ABOVE screen
+                                else -> screenHeightPx * 2f  // Far off-screen for others
                             }
                             
                             // Calculate scale shrink and fade based on drag amount
