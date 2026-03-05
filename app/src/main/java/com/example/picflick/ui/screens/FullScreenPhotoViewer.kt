@@ -125,17 +125,11 @@ fun FullScreenPhotoViewer(
     // UI visibility toggle
     var uiVisible by remember { mutableStateOf(true) }
     
-    // Scale for zoom
-    var scale by remember { mutableFloatStateOf(1f) }
-    var offset by remember { mutableStateOf(Offset.Zero) }
-    
-    // Vertical slide animation for vertical swipes
-    var verticalSlideOffset by remember { mutableFloatStateOf(0f) }
-    var isVerticalSwipe by remember { mutableStateOf(false) }
-    
-    // Custom 2D pager drag offsets
-    var horizontalDragOffset by remember { mutableFloatStateOf(0f) }
-    var verticalDragOffset by remember { mutableFloatStateOf(0f) }
+    // Simple 2D pager state
+    var currentPageIndex by remember { mutableIntStateOf(currentIndex) }
+    var dragX by remember { mutableFloatStateOf(0f) }
+    var dragY by remember { mutableFloatStateOf(0f) }
+    var isDraggingVertically by remember { mutableStateOf(false) }
     
     // Pager for horizontal swiping
     val pagerState = rememberPagerState(
@@ -218,16 +212,16 @@ fun FullScreenPhotoViewer(
     }
     
     // Handle page changes
-    LaunchedEffect(pagerState.currentPage) {
+    LaunchedEffect(currentPageIndex) {
         if (allPhotos.isNotEmpty()) {
-            onNavigateToPhoto(pagerState.currentPage)
+            onNavigateToPhoto(currentPageIndex)
         }
     }
     
-    // Reset zoom when photo changes
-    LaunchedEffect(pagerState.currentPage) {
-        scale = 1f
-        offset = Offset.Zero
+    // Reset drag when photo changes
+    LaunchedEffect(currentPageIndex) {
+        dragX = 0f
+        dragY = 0f
     }
     
     // Edit caption dialog
