@@ -451,15 +451,42 @@ fun FullScreenPhotoViewer(
                                         this.alpha = alpha
                                         scaleX = finalScale
                                         scaleY = finalScale
-                                        // Apply vertical slide during vertical swipes
-                                        if (pagerState.currentPage == page) {
-                                            translationY = verticalSlideOffset
+                                        
+                                        // Calculate Y translation for vertical swipe animation
+                                        // Screen height for slide-in calculation
+                                        val screenHeight = 2400f // Approximate screen height in pixels
+                                        
+                                        val yTranslation = when {
+                                            // Current page - follows finger directly
+                                            pagerState.currentPage == page -> verticalSlideOffset
+                                            
+                                            // NEXT page slides in from BOTTOM when dragging UP (going forward)
+                                            // When dragging UP: verticalSlideOffset is negative
+                                            // Next page starts at +screenHeight and moves up
+                                            isVerticalSwipe && page == pagerState.currentPage + 1 && verticalSlideOffset < 0 -> {
+                                                screenHeight + verticalSlideOffset // Starts below, moves up
+                                            }
+                                            
+                                            // PREVIOUS page slides in from TOP when dragging DOWN (going back)
+                                            // When dragging DOWN: verticalSlideOffset is positive
+                                            // Previous page starts at -screenHeight and moves down
+                                            isVerticalSwipe && page == pagerState.currentPage - 1 && verticalSlideOffset > 0 -> {
+                                                -screenHeight + verticalSlideOffset // Starts above, moves down
+                                            }
+                                            
+                                            else -> 0f
                                         }
-                                        if (pagerState.currentPage == page && scale > 1f) {
+                                        
+                                        translationY = if (scale > 1f && pagerState.currentPage == page) {
+                                            offset.y + verticalSlideOffset
+                                        } else {
+                                            yTranslation
+                                        }
+                                        
+                                        if (scale > 1f && pagerState.currentPage == page) {
                                             scaleX = scale
                                             scaleY = scale
                                             translationX = offset.x
-                                            translationY = offset.y + verticalSlideOffset
                                         }
                                     },
                                 contentScale = ContentScale.Crop
