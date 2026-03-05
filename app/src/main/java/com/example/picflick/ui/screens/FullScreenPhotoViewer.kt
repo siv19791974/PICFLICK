@@ -131,6 +131,13 @@ fun FullScreenPhotoViewer(
     var dragY by remember { mutableFloatStateOf(0f) }
     var isDraggingVertically by remember { mutableStateOf(false) }
     
+    // Smooth animation for page position
+    val animatedPageOffset by animateFloatAsState(
+        targetValue = currentPageIndex.toFloat(),
+        animationSpec = tween(300, easing = FastOutSlowInEasing),
+        label = "pageAnimation"
+    )
+    
     // Pager for horizontal swiping
     val pagerState = rememberPagerState(
         initialPage = currentIndex,
@@ -377,8 +384,8 @@ fun FullScreenPhotoViewer(
                         
                         // Only render current, next, and prev
                         if (isCurrent || isNext || isPrev) {
-                            // Base position: each page is screen width apart horizontally
-                            val baseX = (index - currentPageIndex) * screenWidthPx
+                            // Base position using ANIMATED offset for smooth transitions
+                            val baseX = (index - animatedPageOffset) * screenWidthPx
                             
                             // Apply drag offsets
                             val finalX = baseX + if (isCurrent) dragX else 0f
