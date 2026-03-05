@@ -50,7 +50,8 @@ fun ProfileScreen(
     onBack: () -> Unit,
     onPhotoSelected: (Uri) -> Unit = {},
     onBioUpdated: (String) -> Unit = {},
-    onPhotoClick: (Flick, Int) -> Unit = { _, _ -> }
+    onPhotoClick: (Flick, Int) -> Unit = { _, _ -> },
+    onProfilePhotoClick: () -> Unit = {}
 ) {
     // Image picker launcher
     val imagePicker = rememberLauncherForActivityResult(
@@ -115,7 +116,14 @@ fun ProfileScreen(
                 .clip(CircleShape)
                 .background(Color.DarkGray.copy(alpha = 0.3f))
                 .border(3.dp, Color.White.copy(alpha = 0.8f), CircleShape)
-                .clickable { imagePicker.launch("image/*") },
+                .clickable { 
+                    if (userProfile.photoUrl.isNotEmpty()) {
+                        onProfilePhotoClick()
+                    } else {
+                        // If no photo, open image picker
+                        imagePicker.launch("image/*")
+                    }
+                },
             contentAlignment = Alignment.Center
         ) {
             AsyncImage(
@@ -127,22 +135,25 @@ fun ProfileScreen(
             )
 
             // Edit icon overlay - positioned at bottom right
-            Box(
-                modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .offset((-8).dp, (-8).dp)
-                    .size(44.dp)
-                    .background(MaterialTheme.colorScheme.primary, CircleShape)
-                    .border(3.dp, Color.Black, CircleShape)
-                    .clickable { imagePicker.launch("image/*") },
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Edit,
-                    contentDescription = "Change Photo",
-                    tint = Color.White,
-                    modifier = Modifier.size(22.dp)
-                )
+            // Only shown when there's a photo, clicking it opens image picker to change photo
+            if (userProfile.photoUrl.isNotEmpty()) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .offset((-8).dp, (-8).dp)
+                        .size(44.dp)
+                        .background(MaterialTheme.colorScheme.primary, CircleShape)
+                        .border(3.dp, Color.Black, CircleShape)
+                        .clickable { imagePicker.launch("image/*") },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Edit,
+                        contentDescription = "Change Photo",
+                        tint = Color.White,
+                        modifier = Modifier.size(22.dp)
+                    )
+                }
             }
         }
 

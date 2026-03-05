@@ -492,6 +492,22 @@ private fun AuthenticatedContent(
                     onPhotoClick = { flick, index ->
                         selectedPhoto = flick
                         selectedPhotoIndex = index
+                    },
+                    onProfilePhotoClick = {
+                        // Create a Flick from profile photo to view in FullScreenPhotoViewer
+                        if (userProfile.photoUrl.isNotEmpty()) {
+                            selectedPhoto = Flick(
+                                id = "profile_${userProfile.uid}",
+                                userId = userProfile.uid,
+                                userName = userProfile.displayName,
+                                userPhotoUrl = userProfile.photoUrl,
+                                imageUrl = userProfile.photoUrl,
+                                description = "${userProfile.displayName}'s Profile Photo",
+                                timestamp = System.currentTimeMillis(),
+                                reactions = emptyMap()
+                            )
+                            selectedPhotoIndex = 0
+                        }
                     }
                 )
                 
@@ -544,12 +560,60 @@ private fun AuthenticatedContent(
                 onBack = { onScreenChange(Screen.Home) }
             )
 
-            is Screen.Friends -> FriendsScreen(
-                userProfile = userProfile,
-                viewModel = friendsViewModel,
-                onBack = { onScreenChange(Screen.Home) },
-                onFindFriendsClick = { onScreenChange(Screen.FindFriends) }
-            )
+            is Screen.Friends -> {
+                // State for viewing friend profile photos
+                var selectedFriendPhoto by remember { mutableStateOf<Flick?>(null) }
+                
+                FriendsScreen(
+                    userProfile = userProfile,
+                    viewModel = friendsViewModel,
+                    onBack = { onScreenChange(Screen.Home) },
+                    onFindFriendsClick = { onScreenChange(Screen.FindFriends) },
+                    onProfilePhotoClick = { friend ->
+                        // Create a Flick from friend's profile photo to view
+                        if (friend.photoUrl.isNotEmpty()) {
+                            selectedFriendPhoto = Flick(
+                                id = "profile_${friend.uid}",
+                                userId = friend.uid,
+                                userName = friend.displayName,
+                                userPhotoUrl = friend.photoUrl,
+                                imageUrl = friend.photoUrl,
+                                description = "${friend.displayName}'s Profile Photo",
+                                timestamp = System.currentTimeMillis(),
+                                reactions = emptyMap()
+                            )
+                        }
+                    }
+                )
+                
+                // FullScreenPhotoViewer for friend's profile photo
+                selectedFriendPhoto?.let { flick ->
+                    FullScreenPhotoViewer(
+                        flick = flick,
+                        currentUser = userProfile,
+                        onDismiss = { selectedFriendPhoto = null },
+                        onReaction = { reactionType ->
+                            // Can't react to profile photos
+                        },
+                        onShareClick = {
+                            val shareIntent = Intent().apply {
+                                action = Intent.ACTION_SEND
+                                type = "text/plain"
+                                putExtra(Intent.EXTRA_TEXT, "Check out ${flick.userName}'s profile on PicFlick!")
+                            }
+                            context.startActivity(Intent.createChooser(shareIntent, "Share"))
+                        },
+                        canDelete = false, // Can't delete other's profile photos
+                        allPhotos = listOf(flick), // Single photo
+                        currentIndex = 0,
+                        onNavigateToPhoto = { },
+                        onNavigateToFindFriends = { 
+                            selectedFriendPhoto = null
+                            onScreenChange(Screen.FindFriends) 
+                        }
+                    )
+                }
+            }
 
             is Screen.Chats -> ChatsScreen(
                 userProfile = userProfile,
