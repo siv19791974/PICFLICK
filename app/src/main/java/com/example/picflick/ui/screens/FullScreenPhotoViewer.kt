@@ -326,7 +326,7 @@ fun FullScreenPhotoViewer(
                             )
                         }
                         .pointerInput(Unit) {
-                            detectDragGestures(
+                            detectVerticalDragGestures(
                                 onDragStart = { 
                                     verticalDragTotal = 0f
                                     isVerticalSwipe = false
@@ -357,27 +357,18 @@ fun FullScreenPhotoViewer(
                                     isVerticalSwipe = false
                                     verticalDragTotal = 0f
                                 },
-                                onDrag = { change, dragAmount ->
+                                onVerticalDrag = { change, dragAmount ->
                                     if (scale <= 1.01f && allPhotos.size > 1) {
-                                        val absY = kotlin.math.abs(dragAmount.y)
-                                        val absX = kotlin.math.abs(dragAmount.x)
+                                        change.consume()
+                                        verticalDragTotal += dragAmount
+                                        isVerticalSwipe = true
                                         
-                                        // Detect if this is a vertical swipe
-                                        if (!isVerticalSwipe && absY > absX * 1.5f && absY > 25) {
-                                            isVerticalSwipe = true
-                                        }
-                                        
-                                        if (isVerticalSwipe) {
-                                            change.consume()
-                                            verticalDragTotal += dragAmount.y
-                                            
-                                            // Apply vertical slide with resistance at edges
-                                            val resistance = 0.6f
-                                            verticalSlideOffset = when {
-                                                pagerState.currentPage == 0 && dragAmount.y < 0 -> dragAmount.y * 0.3f // First page, resist UP
-                                                pagerState.currentPage == allPhotos.size - 1 && dragAmount.y > 0 -> dragAmount.y * 0.3f // Last page, resist DOWN
-                                                else -> dragAmount.y * resistance
-                                            }
+                                        // Apply vertical slide with resistance at edges
+                                        val resistance = 0.6f
+                                        verticalSlideOffset = when {
+                                            pagerState.currentPage == 0 && dragAmount < 0 -> dragAmount * 0.3f // First page, resist UP
+                                            pagerState.currentPage == allPhotos.size - 1 && dragAmount > 0 -> dragAmount * 0.3f // Last page, resist DOWN
+                                            else -> dragAmount * resistance
                                         }
                                     }
                                 }
