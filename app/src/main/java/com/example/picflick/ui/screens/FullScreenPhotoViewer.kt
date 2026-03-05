@@ -409,7 +409,7 @@ fun FullScreenPhotoViewer(
                                             }
                                         }
                                     ),
-                                contentAlignment = Alignment.Center
+                                contentAlignment = Alignment.TopCenter  // Align to top for portrait photos
                             ) {
                                 AsyncImage(
                                     model = photo.imageUrl,
