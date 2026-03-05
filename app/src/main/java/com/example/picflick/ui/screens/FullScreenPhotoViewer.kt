@@ -131,6 +131,10 @@ fun FullScreenPhotoViewer(
     var dragY by remember { mutableFloatStateOf(0f) }
     var isDraggingVertically by remember { mutableStateOf(false) }
     
+    // Pinch zoom state
+    var zoomScale by remember { mutableFloatStateOf(1f) }
+    var zoomOffset by remember { mutableStateOf(Offset.Zero) }
+    
     // Pager for horizontal swiping
     val pagerState = rememberPagerState(
         initialPage = currentIndex,
@@ -322,6 +326,17 @@ fun FullScreenPhotoViewer(
                     modifier = Modifier
                         .fillMaxSize()
                         .pointerInput(Unit) {
+                            // Pinch zoom detection (higher priority than drag)
+                            detectTransformGestures(
+                                onGesture = { _, pan, zoom, _ ->
+                                    if (zoom != 1f) {
+                                        zoomScale = (zoomScale * zoom).coerceIn(1f, 5f)
+                                        zoomOffset += pan
+                                    }
+                                }
+                            )
+                        }
+                        .pointerInput(Unit) {
                             detectDragGestures(
                                 onDragStart = {
                                     dragX = 0f
@@ -387,15 +402,20 @@ fun FullScreenPhotoViewer(
                             // Calculate scale shrink based on drag amount (25% max for dramatic effect)
                             val dragProgress = kotlin.math.abs(dragX) / screenWidthPx
                             val verticalProgress = kotlin.math.abs(dragY) / screenHeightPx
-                            val scale = 1f - (kotlin.math.max(dragProgress, verticalProgress) * 0.25f).coerceIn(0f, 0.25f)
+                            val swipeScale = 1f - (kotlin.math.max(dragProgress, verticalProgress) * 0.25f).coerceIn(0f, 0.25f)
+                            val finalScale = swipeScale * zoomScale
                             
                             Box(
                                 modifier = Modifier
                                     .fillMaxSize()
-                                    .offset { IntOffset(finalX.toInt(), finalY.toInt()) }
+                                    .offset { 
+                                        val zoomX = if (isCurrent) zoomOffset.x.toInt() else 0
+                                        val zoomY = if (isCurrent) zoomOffset.y.toInt() else 0
+                                        IntOffset(finalX.toInt() + zoomX, finalY.toInt() + zoomY)
+                                    }
                                     .graphicsLayer {
-                                        scaleX = scale
-                                        scaleY = scale
+                                        scaleX = finalScale
+                                        scaleY = finalScale
                                     }
                                     .combinedClickable(
                                         indication = null,
@@ -403,13 +423,19 @@ fun FullScreenPhotoViewer(
                                         onClick = { if (isCurrent) uiVisible = !uiVisible },
                                         onDoubleClick = {
                                             if (isCurrent) {
-                                                heartAnimationKey++
-                                                showHeartAnimation = true
-                                                onReaction(if (userReaction == ReactionType.LIKE) null else ReactionType.LIKE)
+                                                // Reset zoom on double tap
+                                                if (zoomScale > 1f) {
+                                                    zoomScale = 1f
+                                                    zoomOffset = Offset.Zero
+                                                } else {
+                                                    heartAnimationKey++
+                                                    showHeartAnimation = true
+                                                    onReaction(if (userReaction == ReactionType.LIKE) null else ReactionType.LIKE)
+                                                }
                                             }
                                         }
                                     ),
-                                contentAlignment = Alignment.TopCenter  // Align to top for portrait photos
+                                contentAlignment = Alignment.Center
                             ) {
                                 AsyncImage(
                                     model = photo.imageUrl,
