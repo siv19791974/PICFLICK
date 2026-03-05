@@ -131,6 +131,11 @@ fun FullScreenPhotoViewer(
     var dragY by remember { mutableFloatStateOf(0f) }
     var isDraggingVertically by remember { mutableStateOf(false) }
     
+    // Zoom state
+    var zoomScale by remember { mutableFloatStateOf(1f) }
+    var zoomOffsetX by remember { mutableFloatStateOf(0f) }
+    var zoomOffsetY by remember { mutableFloatStateOf(0f) }
+    
     // Pager for horizontal swiping
     val pagerState = rememberPagerState(
         initialPage = currentIndex,
@@ -322,52 +327,120 @@ fun FullScreenPhotoViewer(
                     modifier = Modifier
                         .fillMaxSize()
                         .pointerInput(Unit) {
-                            // SIMPLE SWIPE - No pinch, no zoom, just 2D scrolling
-                            detectDragGestures(
-                                onDragStart = {
-                                    dragX = 0f
-                                    dragY = 0f
-                                    isDraggingVertically = false
-                                },
-                                onDragEnd = {
+                            // UNIFIED GESTURE HANDLER - Pinch + Swipe coexist!
+                            awaitPointerEventScope {
+                                var isPinching = false
+                                var isDragging = false
+                                var dragStartX = 0f
+                                var dragStartY = 0f
+                                
+                                while (true) {
+                                    val event = awaitPointerEvent()
+                                    val changes = event.changes
+                                    
                                     when {
-                                        // Vertical swipe
-                                        isDraggingVertically && kotlin.math.abs(dragY) > 100f -> {
-                                            if (dragY < 0 && currentPageIndex < allPhotos.size - 1) {
-                                                currentPageIndex++ // UP = NEXT
-                                            } else if (dragY > 0 && currentPageIndex > 0) {
-                                                currentPageIndex-- // DOWN = PREV
+                                        // PINCH: Multiple fingers down
+                                        changes.size > 1 -> {
+                                            isPinching = true
+                                            isDragging = false
+                                            
+                                            // Calculate zoom from pointer distance
+                                            if (changes.size == 2) {
+                                                val p1 = changes[0].position
+                                                val p2 = changes[1].position
+                                                val distance = kotlin.math.hypot(p2.x - p1.x, p2.y - p1.y)
+                                                
+                                                // Update zoom scale (simplified)
+                                                if (distance > 0) {
+                                                    zoomScale = (zoomScale * 1.01f).coerceIn(1f, 5f)
+                                                }
+                                            }
+                                            changes.forEach { it.consume() }
+                                        }
+                                        
+                                        // DRAG: Single finger, not zoomed or panning when zoomed
+                                        changes.size == 1 -> {
+                                            val change = changes[0]
+                                            
+                                            if (!isPinching) {
+                                                when {
+                                                    // Starting drag
+                                                    !isDragging && change.pressed -> {
+                                                        isDragging = true
+                                                        dragStartX = change.position.x
+                                                        dragStartY = change.position.y
+                                                    }
+                                                    
+                                                    // Ending drag
+                                                    isDragging && !change.pressed -> {
+                                                        isDragging = false
+                                                        
+                                                        // If not zoomed, navigate
+                                                        if (zoomScale <= 1.01f) {
+                                                            when {
+                                                                // Vertical swipe
+                                                                isDraggingVertically && kotlin.math.abs(dragY) > 100f -> {
+                                                                    if (dragY < 0 && currentPageIndex < allPhotos.size - 1) {
+                                                                        currentPageIndex++
+                                                                    } else if (dragY > 0 && currentPageIndex > 0) {
+                                                                        currentPageIndex--
+                                                                    }
+                                                                }
+                                                                // Horizontal swipe
+                                                                !isDraggingVertically && kotlin.math.abs(dragX) > 100f -> {
+                                                                    if (dragX < 0 && currentPageIndex < allPhotos.size - 1) {
+                                                                        currentPageIndex++
+                                                                    } else if (dragX > 0 && currentPageIndex > 0) {
+                                                                        currentPageIndex--
+                                                                    }
+                                                                }
+                                                            }
+                                                        }
+                                                        dragX = 0f
+                                                        dragY = 0f
+                                                        isDraggingVertically = false
+                                                    }
+                                                    
+                                                    // During drag
+                                                    isDragging && change.pressed -> {
+                                                        val dx = change.position.x - dragStartX
+                                                        val dy = change.position.y - dragStartY
+                                                        
+                                                        // Detect direction on first real movement
+                                                        if (kotlin.math.abs(dx) > 10f || kotlin.math.abs(dy) > 10f) {
+                                                            if (kotlin.math.abs(dragX) < 10f && kotlin.math.abs(dragY) < 10f) {
+                                                                isDraggingVertically = kotlin.math.abs(dy) > kotlin.math.abs(dx)
+                                                            }
+                                                        }
+                                                        
+                                                        if (zoomScale > 1.01f) {
+                                                            // When zoomed, pan the image
+                                                            zoomOffsetX += change.position.x - dragStartX
+                                                            zoomOffsetY += change.position.y - dragStartY
+                                                            dragStartX = change.position.x
+                                                            dragStartY = change.position.y
+                                                        } else {
+                                                            // When not zoomed, drag for navigation
+                                                            if (isDraggingVertically) {
+                                                                dragY = dy
+                                                            } else {
+                                                                dragX = dx
+                                                            }
+                                                        }
+                                                        change.consume()
+                                                    }
+                                                }
                                             }
                                         }
-                                        // Horizontal swipe
-                                        !isDraggingVertically && kotlin.math.abs(dragX) > 100f -> {
-                                            if (dragX < 0 && currentPageIndex < allPhotos.size - 1) {
-                                                currentPageIndex++ // LEFT = NEXT
-                                            } else if (dragX > 0 && currentPageIndex > 0) {
-                                                currentPageIndex-- // RIGHT = PREV
-                                            }
+                                        
+                                        // Reset pinch when fingers lift
+                                        changes.isEmpty() || changes.none { it.pressed } -> {
+                                            isPinching = false
+                                            isDragging = false
                                         }
-                                    }
-                                    dragX = 0f
-                                    dragY = 0f
-                                },
-                                onDrag = { change, amount ->
-                                    val absY = kotlin.math.abs(amount.y)
-                                    val absX = kotlin.math.abs(amount.x)
-                                    
-                                    // Detect direction on first movement
-                                    if (kotlin.math.abs(dragX) < 10f && kotlin.math.abs(dragY) < 10f) {
-                                        isDraggingVertically = absY > absX
-                                    }
-                                    
-                                    if (isDraggingVertically) {
-                                        dragY += amount.y
-                                        change.consume()
-                                    } else {
-                                        dragX += amount.x
                                     }
                                 }
-                            )
+                            }
                         }
                 ) {
                     // Show all pages positioned by index
@@ -385,29 +458,45 @@ fun FullScreenPhotoViewer(
                             val finalX = baseX + if (isCurrent) dragX else 0f
                             val finalY = if (isCurrent) dragY else if (isNext && dragY < 0) screenHeightPx + dragY else if (isPrev && dragY > 0) -screenHeightPx + dragY else screenHeightPx * 2f
                             
-                            // Calculate scale shrink based on drag amount (25% max for dramatic effect)
+                            // Calculate scale shrink and fade based on drag amount
                             val dragProgress = kotlin.math.abs(dragX) / screenWidthPx
                             val verticalProgress = kotlin.math.abs(dragY) / screenHeightPx
-                            val swipeScale = 1f - (kotlin.math.max(dragProgress, verticalProgress) * 0.25f).coerceIn(0f, 0.25f)
+                            val maxProgress = kotlin.math.max(dragProgress, verticalProgress)
+                            val swipeScale = 1f - (maxProgress * 0.25f).coerceIn(0f, 0.25f)
+                            val swipeAlpha = 1f - (maxProgress * 0.5f).coerceIn(0f, 0.5f)  // Fade to 50%
+                            
+                            // Apply zoom only to current photo
+                            val finalScale = if (isCurrent) swipeScale * zoomScale else swipeScale
+                            val finalAlpha = if (isCurrent && zoomScale <= 1.01f) swipeAlpha else 1f  // Only fade when not zoomed
+                            val finalOffsetX = if (isCurrent) finalX + zoomOffsetX else finalX
+                            val finalOffsetY = if (isCurrent) finalY + zoomOffsetY else finalY
                             
                             Box(
                                 modifier = Modifier
                                     .fillMaxSize()
-                                    .offset { IntOffset(finalX.toInt(), finalY.toInt()) }
+                                    .offset { IntOffset(finalOffsetX.toInt(), finalOffsetY.toInt()) }
                                     .graphicsLayer {
-                                        scaleX = swipeScale
-                                        scaleY = swipeScale
+                                        scaleX = finalScale
+                                        scaleY = finalScale
+                                        alpha = finalAlpha
                                     }
                                     .combinedClickable(
                                         indication = null,
                                         interactionSource = remember { MutableInteractionSource() },
-                                        onClick = { if (isCurrent) uiVisible = !uiVisible },
+                                        onClick = { if (isCurrent && zoomScale <= 1.01f) uiVisible = !uiVisible },
                                         onDoubleClick = {
                                             if (isCurrent) {
-                                                // Heart on double tap
-                                                heartAnimationKey++
-                                                showHeartAnimation = true
-                                                onReaction(if (userReaction == ReactionType.LIKE) null else ReactionType.LIKE)
+                                                if (zoomScale > 1.01f) {
+                                                    // Reset zoom on double tap when zoomed
+                                                    zoomScale = 1f
+                                                    zoomOffsetX = 0f
+                                                    zoomOffsetY = 0f
+                                                } else {
+                                                    // Heart on double tap when not zoomed
+                                                    heartAnimationKey++
+                                                    showHeartAnimation = true
+                                                    onReaction(if (userReaction == ReactionType.LIKE) null else ReactionType.LIKE)
+                                                }
                                             }
                                         }
                                     ),
