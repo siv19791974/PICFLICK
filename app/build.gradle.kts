@@ -83,6 +83,9 @@ dependencies {
     // Coil for image loading
     implementation(libs.coil.compose)
     implementation(libs.coil.network.okhttp)
+    
+    // ZoomImage for pinch zoom
+    implementation(libs.zoomimage.compose)
 
     // Activity Result Contracts
     implementation(libs.androidx.activity.ktx)
