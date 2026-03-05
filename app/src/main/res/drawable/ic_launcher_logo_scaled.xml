@@ -1,19 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
-<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
-    <!-- Background -->
-    <item>
-        <shape android:shape="rectangle">
-            <solid android:color="#2196F3" />
-        </shape>
-    </item>
-    
-    <!-- Scaled logo centered - maintaining aspect ratio -->
-    <item
-        android:width="64dp"
-        android:height="40dp"
-        android:gravity="center">
-        <bitmap
-            android:src="@drawable/logo"
-            android:gravity="center" />
-    </item>
-</layer-list>
+<inset xmlns:android="http://schemas.android.com/apk/res/android"
+    android:drawable="@drawable/logo"
+    android:insetLeft="22dp"
+    android:insetTop="34dp"
+    android:insetRight="22dp"
+    android:insetBottom="34dp" />
