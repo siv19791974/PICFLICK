@@ -514,7 +514,7 @@ private fun AuthenticatedContent(
                                 userName = userProfile.displayName,
                                 userPhotoUrl = userProfile.photoUrl,
                                 imageUrl = userProfile.photoUrl,
-                                description = "${userProfile.displayName}'s Profile Photo",
+                                description = "", // No description for profile photos
                                 timestamp = System.currentTimeMillis(),
                                 reactions = emptyMap()
                             )
@@ -782,7 +782,7 @@ private fun AuthenticatedContent(
                                     userName = target.displayName,
                                     userPhotoUrl = target.photoUrl,
                                     imageUrl = target.photoUrl,
-                                    description = "${target.displayName}'s Profile Photo",
+                                    description = "", // No description for profile photos
                                     timestamp = System.currentTimeMillis(),
                                     reactions = emptyMap()
                                 )
