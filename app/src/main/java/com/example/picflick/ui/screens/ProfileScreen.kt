@@ -9,6 +9,9 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -20,7 +23,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.layout.ContentScale
@@ -31,6 +33,7 @@ import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import com.example.picflick.data.Flick
 import com.example.picflick.data.UserProfile
+import com.example.picflick.data.toEmoji
 import com.example.picflick.ui.theme.PicFlickBackground
 
 /**
@@ -229,17 +232,19 @@ fun ProfileScreen(
             )
             Spacer(modifier = Modifier.height(12.dp))
             
-            // Light blue background container - MATCH HOME FEED STYLE
-            BoxWithConstraints(
+            // Photo grid - match Home Feed exactly
+            // Home calculates: (screen - banner - nav - status) / 4.1f = ~148dp
+            val rowCount = ((photos.size + 2) / 3).coerceAtLeast(4)
+            val rowHeight = 148.dp // Fine-tuned to match Home exactly
+            val gridHeight = (rowCount * rowHeight.value).dp + 8.dp
+            
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 8.dp)
-                    .background(PicFlickBackground, RoundedCornerShape(16.dp))
-                    .padding(8.dp)
+                    .height(gridHeight)
+                    .background(PicFlickBackground)
             ) {
-                // MATCH HOME FEED: 3-column grid with FlickCard style
-                val rowHeight = this.maxHeight / 4.1f
-                
+                // 3-column grid matching Home Feed exactly
                 LazyVerticalGrid(
                     columns = GridCells.Fixed(3),
                     modifier = Modifier.fillMaxSize(),
@@ -252,123 +257,15 @@ fun ProfileScreen(
                     userScrollEnabled = false
                 ) {
                     items(photos, key = { it.id }) { flick ->
-                        val userReaction = flick.reactions.entries.firstOrNull()?.value
-                        
-                        Card(
-                            modifier = Modifier
-                                .padding(1.dp)
-                                .height(rowHeight)
-                                .clickable { onPhotoClick(flick, photos.indexOf(flick)) },
-                            shape = RectangleShape,
-                            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-                            colors = CardDefaults.cardColors(containerColor = Color.Transparent)
-                        ) {
-                            Box(modifier = Modifier.fillMaxSize()) {
-                                AsyncImage(
-                                    model = flick.imageUrl,
-                                    contentDescription = null,
-                                    modifier = Modifier.fillMaxSize(),
-                                    contentScale = ContentScale.Crop
-                                )
-                                
-                                // Reaction indicator
-                                userReaction?.let { reaction ->
-                                    Box(
-                                        modifier = Modifier
-                                            .align(Alignment.TopEnd)
-                                            .padding(2.dp)
-                                            .size(16.dp)
-                                            .background(Color.Black.copy(alpha = 0.4f), CircleShape),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Text(
-                                            text = when (reaction) {
-                                                "LIKE" -> "❤️"
-                                                "LOVE" -> "❤️"
-                                                "FIRE" -> "🔥"
-                                                "COOL" -> "😎"
-                                                "WOW" -> "😮"
-                                                else -> "❤️"
-                                            },
-                                            fontSize = 10.sp
-                                        )
-                                    }
-                                }
-                                
-                                // Caption hint if exists
-                                if (flick.description.isNotEmpty()) {
-                                    Box(
-                                        modifier = Modifier
-                                            .align(Alignment.BottomStart)
-                                            .fillMaxWidth()
-                                            .background(Color.Black.copy(alpha = 0.5f))
-                                            .padding(horizontal = 4.dp, vertical = 2.dp)
-                                    ) {
-                                        Text(
-                                            text = "✏️",
-                                            color = Color.White,
-                                            fontSize = 10.sp
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-                            }
-                        }
-                        currentY += height + spacing.value
-                    }
-                    
-                    // Right column
-                    currentY = 0f
-                    rightColumn.forEach { (index, height) ->
-                        val flick = photos[index]
-                        Card(
-                            modifier = Modifier
-                                .offset((columnWidth.value + spacing.value).dp, currentY.dp)
-                                .width(columnWidth)
-                                .height(height.dp)
-                                .clickable { onPhotoClick(flick, index) },
-                            shape = RoundedCornerShape(12.dp),
-                            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-                            colors = CardDefaults.cardColors(containerColor = Color.Transparent)
-                        ) {
-                            Box(modifier = Modifier.fillMaxSize()) {
-                                AsyncImage(
-                                    model = flick.imageUrl,
-                                    contentDescription = null,
-                                    modifier = Modifier.fillMaxSize(),
-                                    contentScale = ContentScale.Crop
-                                )
-                                
-                                val userReaction = flick.reactions.entries.firstOrNull()?.value
-                                userReaction?.let { reaction ->
-                                    Box(
-                                        modifier = Modifier
-                                            .align(Alignment.TopEnd)
-                                            .padding(8.dp)
-                                            .size(24.dp)
-                                            .background(Color.Black.copy(alpha = 0.4f), CircleShape),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Text(
-                                            text = when (reaction) {
-                                                "LIKE" -> "❤️"
-                                                "LOVE" -> "❤️"
-                                                "FIRE" -> "🔥"
-                                                "COOL" -> "😎"
-                                                "WOW" -> "😮"
-                                                else -> "❤️"
-                                            },
-                                            fontSize = 14.sp
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                        currentY += height + spacing.value
+                        MyPhotoCard(
+                            flick = flick,
+                            userProfile = userProfile,
+                            onPhotoClick = { 
+                                val index = photos.indexOf(flick)
+                                onPhotoClick(flick, index) 
+                            },
+                            rowHeight = rowHeight
+                        )
                     }
                 }
             }
@@ -868,4 +765,55 @@ private fun calculateGapFreePhotoGridPositions(count: Int): List<PhotoGridPos> {
     }
     
     return positions.sortedWith(compareBy({ it.row }, { it.column }))
+}
+
+/**
+ * Photo card for My Photos grid - matches Home Feed FlickCard exactly
+ */
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun MyPhotoCard(
+    flick: Flick,
+    userProfile: UserProfile,
+    onPhotoClick: () -> Unit,
+    rowHeight: androidx.compose.ui.unit.Dp
+) {
+    val userReaction = flick.getUserReaction(userProfile.uid)
+    
+    Card(
+        modifier = Modifier
+            .padding(1.dp)
+            .height(rowHeight)
+            .combinedClickable(onClick = onPhotoClick),
+        shape = RectangleShape,
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.Transparent)
+    ) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            // Photo
+            AsyncImage(
+                model = flick.imageUrl,
+                contentDescription = null,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop
+            )
+            
+            // Tiny reaction overlay (top right) - shows if user has reacted
+            userReaction?.let { reaction ->
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(2.dp)
+                        .size(16.dp)
+                        .background(Color.Black.copy(alpha = 0.4f), CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = reaction.toEmoji(),
+                        fontSize = 10.sp
+                    )
+                }
+            }
+        }
+    }
 }
