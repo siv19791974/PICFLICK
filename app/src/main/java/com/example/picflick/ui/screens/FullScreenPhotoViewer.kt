@@ -385,20 +385,29 @@ fun FullScreenPhotoViewer(
                             // Base position (back to instant, no animation)
                             val baseX = (index - currentPageIndex) * screenWidthPx
                             
-                            // Apply drag offsets - FIXED: next/prev now slide in horizontally too!
+                            // Apply drag offsets - FIXED: next/prev now slide in properly!
+                            // Current photo moves with finger
+                            val currentX = baseX + dragX
+                            val currentY = dragY
+                            
+                            // Next/prev photos also move so they slide in from edges
+                            // They start off-screen and move with the drag
+                            val nextX = screenWidthPx + dragX  // Right side
+                            val prevX = -screenWidthPx + dragX  // Left side
+                            val nextY = screenHeightPx + dragY  // Bottom
+                            val prevY = -screenHeightPx + dragY  // Top
+                            
                             val finalX = when {
-                                isCurrent -> baseX + dragX  // Current moves with finger
-                                isNext && dragX < 0 -> screenWidthPx + dragX  // Next slides in from RIGHT when dragging left
-                                isPrev && dragX > 0 -> -screenWidthPx + dragX  // Prev slides in from LEFT when dragging right
-                                else -> baseX  // Default: at normal position (screenWidth or -screenWidth)
+                                isCurrent -> currentX
+                                isNext -> nextX
+                                isPrev -> prevX
+                                else -> baseX * 2f
                             }
                             val finalY = when {
-                                isCurrent -> dragY  // Current moves with finger
-                                isNext && dragY < 0 -> screenHeightPx + dragY  // Next slides in from BOTTOM when dragging up
-                                isPrev && dragY > 0 -> -screenHeightPx + dragY  // Prev slides in from TOP when dragging down
-                                isNext -> screenHeightPx  // Default: next is BELOW screen
-                                isPrev -> -screenHeightPx  // Default: prev is ABOVE screen
-                                else -> screenHeightPx * 2f  // Far off-screen for others
+                                isCurrent -> currentY
+                                isNext -> nextY
+                                isPrev -> prevY
+                                else -> screenHeightPx * 2f
                             }
                             
                             // Calculate scale shrink and fade based on drag amount
