@@ -84,6 +84,9 @@ dependencies {
     implementation(libs.coil.compose)
     implementation(libs.coil.network.okhttp)
     
+    // Zoomable - Simple pinch zoom and pan
+    implementation(libs.zoomable)
+    
     // ZoomImage for pinch zoom
     implementation(libs.zoomimage.compose)
 
