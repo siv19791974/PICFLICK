@@ -778,8 +778,6 @@ private fun MyPhotoCard(
     onPhotoClick: () -> Unit,
     rowHeight: androidx.compose.ui.unit.Dp
 ) {
-    val userReaction = flick.getUserReaction(userProfile.uid)
-    
     Card(
         modifier = Modifier
             .padding(1.dp)
@@ -797,23 +795,6 @@ private fun MyPhotoCard(
                 modifier = Modifier.fillMaxSize(),
                 contentScale = ContentScale.Crop
             )
-            
-            // Tiny reaction overlay (top right) - shows if user has reacted
-            userReaction?.let { reaction ->
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .padding(2.dp)
-                        .size(16.dp)
-                        .background(Color.Black.copy(alpha = 0.4f), CircleShape),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = reaction.toEmoji(),
-                        fontSize = 10.sp
-                    )
-                }
-            }
         }
     }
 }

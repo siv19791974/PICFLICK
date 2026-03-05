@@ -1015,91 +1015,106 @@ fun FullScreenPhotoViewer(
                             )
                             .padding(16.dp)
                     ) {
-                        // Profile pic + name/description row
+                        // Profile pic + name/description + reactions row
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            modifier = Modifier.fillMaxWidth()
                         ) {
-                            // Profile picture - USE CURRENT USER'S PHOTO
-                            val profilePhotoUrl = if (currentFlick.userId == currentUser.uid) {
-                                currentUser.photoUrl // Use current/up-to-date photo for own photos
-                            } else {
-                                currentFlick.userPhotoUrl // Use stored photo for others
-                            }
-                            
-                            Box(
-                                modifier = Modifier
-                                    .size(44.dp)
-                                    .clip(CircleShape)
-                                    .background(Color.Gray.copy(alpha = 0.4f))
-                                    .border(2.dp, Color.White.copy(alpha = 0.8f), CircleShape)
-                                    .clickable { onUserProfileClick(currentFlick.userId) },
-                                contentAlignment = Alignment.Center
+                            // LEFT: Profile pic + name/description
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                modifier = Modifier.weight(1f)
                             ) {
-                                if (profilePhotoUrl.isNotBlank()) {
-                                    AsyncImage(
-                                        model = profilePhotoUrl,
-                                        contentDescription = "View ${currentFlick.userName}'s profile",
-                                        modifier = Modifier.fillMaxSize(),
-                                        contentScale = ContentScale.Crop
-                                    )
+                                // Profile picture - USE CURRENT USER'S PHOTO
+                                val profilePhotoUrl = if (currentFlick.userId == currentUser.uid) {
+                                    currentUser.photoUrl // Use current/up-to-date photo for own photos
                                 } else {
-                                    // Fallback - show initial
+                                    currentFlick.userPhotoUrl // Use stored photo for others
+                                }
+                                
+                                Box(
+                                    modifier = Modifier
+                                        .size(44.dp)
+                                        .clip(CircleShape)
+                                        .background(Color.Gray.copy(alpha = 0.4f))
+                                        .border(2.dp, Color.White.copy(alpha = 0.8f), CircleShape)
+                                        .clickable { onUserProfileClick(currentFlick.userId) },
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    if (profilePhotoUrl.isNotBlank()) {
+                                        AsyncImage(
+                                            model = profilePhotoUrl,
+                                            contentDescription = "View ${currentFlick.userName}'s profile",
+                                            modifier = Modifier.fillMaxSize(),
+                                            contentScale = ContentScale.Crop
+                                        )
+                                    } else {
+                                        // Fallback - show initial
+                                        Text(
+                                            text = currentFlick.userName.take(1).uppercase(),
+                                            color = Color.White,
+                                            fontSize = 20.sp,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    }
+                                }
+                                
+                                // Name + Description + Time in one column
+                                Column(
+                                    modifier = Modifier.clickable { onUserProfileClick(currentFlick.userId) }
+                                ) {
+                                    // Username
                                     Text(
-                                        text = currentFlick.userName.take(1).uppercase(),
+                                        text = currentFlick.userName,
                                         color = Color.White,
-                                        fontSize = 20.sp,
+                                        fontSize = 16.sp,
                                         fontWeight = FontWeight.Bold
                                     )
+                                    
+                                    // Description and timestamp in ONE LINE
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                    ) {
+                                        // Description - clickable to edit if owner
+                                        val descriptionText = currentDescription.ifEmpty { "Add a caption..." }
+                                        val descriptionColor = if (currentDescription.isEmpty()) Color.White.copy(alpha = 0.5f) else Color.White.copy(alpha = 0.85f)
+                                        
+                                        Text(
+                                            text = descriptionText,
+                                            color = descriptionColor,
+                                            fontSize = 13.sp,
+                                            maxLines = 1,
+                                            modifier = if (canDelete) {
+                                                Modifier.clickable { showEditCaption = true }
+                                            } else Modifier
+                                        )
+                                        
+                                        // Dot separator
+                                        Box(
+                                            modifier = Modifier
+                                                .size(3.dp)
+                                                .background(Color.White.copy(alpha = 0.4f), CircleShape)
+                                        )
+                                        
+                                        // Timestamp
+                                        Text(
+                                            text = formatTimestamp(currentFlick.timestamp),
+                                            color = Color.White.copy(alpha = 0.6f),
+                                            fontSize = 12.sp
+                                        )
+                                    }
                                 }
                             }
                             
-                            // Name + Description + Time in one column
-                            Column(
-                                modifier = Modifier.clickable { onUserProfileClick(currentFlick.userId) }
-                            ) {
-                                // Username
-                                Text(
-                                    text = currentFlick.userName,
-                                    color = Color.White,
-                                    fontSize = 16.sp,
-                                    fontWeight = FontWeight.Bold
-                                )
-                                
-                                // Description and timestamp in ONE LINE
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                                ) {
-                                    // Description - clickable to edit if owner
-                                    val descriptionText = currentDescription.ifEmpty { "Add a caption..." }
-                                    val descriptionColor = if (currentDescription.isEmpty()) Color.White.copy(alpha = 0.5f) else Color.White.copy(alpha = 0.85f)
-                                    
-                                    Text(
-                                        text = descriptionText,
-                                        color = descriptionColor,
-                                        fontSize = 13.sp,
-                                        maxLines = 1,
-                                        modifier = if (canDelete) {
-                                            Modifier.clickable { showEditCaption = true }
-                                        } else Modifier
-                                    )
-                                    
-                                    // Dot separator
-                                    Box(
-                                        modifier = Modifier
-                                            .size(3.dp)
-                                            .background(Color.White.copy(alpha = 0.4f), CircleShape)
-                                    )
-                                    
-                                    // Timestamp
-                                    Text(
-                                        text = formatTimestamp(currentFlick.timestamp),
-                                        color = Color.White.copy(alpha = 0.6f),
-                                        fontSize = 12.sp
-                                    )
-                                }
-                            }
+                            // RIGHT: Reactions with counts
+                            ReactionCountersRow(
+                                flick = currentFlick,
+                                canReact = !canDelete, // Can't react to own photos
+                                onReactionClick = { showReactionPicker = true }
+                            )
                         }
                     }
                 }
@@ -1244,6 +1259,74 @@ private fun CompactCommentItem(comment: Comment) {
                 fontSize = 12.sp
             )
         }
+    }
+}
+
+/**
+ * Reaction counters row - displays all 5 reaction types with counts
+ */
+@Composable
+private fun ReactionCountersRow(
+    flick: Flick,
+    canReact: Boolean,
+    onReactionClick: () -> Unit
+) {
+    val reactionCounts = flick.getReactionCounts()
+    val totalReactions = flick.getTotalReactions()
+    
+    if (totalReactions == 0) {
+        // Show placeholder only if user CAN react (not their own photo)
+        if (canReact) {
+            Text(
+                text = "Be first to react!",
+                color = Color.White.copy(alpha = 0.5f),
+                fontSize = 11.sp,
+                modifier = Modifier.clickable { onReactionClick() }
+            )
+        }
+        return
+    }
+    
+    // Display reactions in a row - only show reactions with count > 0
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.clickable { onReactionClick() }
+    ) {
+        ReactionType.entries.forEach { reactionType ->
+            val count = reactionCounts[reactionType] ?: 0
+            if (count > 0) {
+                ReactionCounterItem(
+                    emoji = reactionType.toEmoji(),
+                    count = count
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Individual reaction counter item - emoji with count
+ */
+@Composable
+private fun ReactionCounterItem(
+    emoji: String,
+    count: Int
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(2.dp)
+    ) {
+        Text(
+            text = emoji,
+            fontSize = 14.sp
+        )
+        Text(
+            text = count.toString(),
+            color = Color.White.copy(alpha = 0.9f),
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Medium
+        )
     }
 }
 
