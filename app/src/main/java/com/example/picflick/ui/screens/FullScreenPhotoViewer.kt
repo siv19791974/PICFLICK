@@ -306,6 +306,8 @@ fun FullScreenPhotoViewer(
             Box(modifier = Modifier.fillMaxSize()) {
                 
                 // OUTER GESTURE HANDLER - Smart pinch vs swipe detection + VERTICAL scrolling
+                var verticalDragTotal by remember { mutableFloatStateOf(0f) }
+                
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
@@ -320,30 +322,41 @@ fun FullScreenPhotoViewer(
                             )
                         }
                         .pointerInput(Unit) {
-                            detectVerticalDragGestures { change, dragAmount ->
-                                change.consume()
-                                if (scale <= 1.01f && allPhotos.size > 1) {
-                                    val currentPage = pagerState.currentPage
-                                    when {
-                                        // UP swipe = go to PREVIOUS photo (like LEFT swipe)
-                                        dragAmount < -50 -> {
-                                            if (currentPage > 0) {
-                                                coroutineScope.launch {
-                                                    pagerState.animateScrollToPage(currentPage - 1)
-                                                }
-                                            }
-                                        }
-                                        // DOWN swipe = go to NEXT photo (like RIGHT swipe)
-                                        dragAmount > 50 -> {
-                                            if (currentPage < allPhotos.size - 1) {
-                                                coroutineScope.launch {
-                                                    pagerState.animateScrollToPage(currentPage + 1)
+                            detectDragGestures(
+                                onDragStart = { verticalDragTotal = 0f },
+                                onDragEnd = { verticalDragTotal = 0f },
+                                onDragCancel = { verticalDragTotal = 0f },
+                                onDrag = { change, dragAmount ->
+                                    if (scale <= 1.01f && allPhotos.size > 1) {
+                                        val absY = kotlin.math.abs(dragAmount.y)
+                                        val absX = kotlin.math.abs(dragAmount.x)
+                                        
+                                        // Only handle if vertical drag dominates
+                                        if (absY > absX && absY > 10) {
+                                            change.consume()
+                                            verticalDragTotal += dragAmount.y
+                                            
+                                            // Navigate on significant vertical swipe
+                                            if (kotlin.math.abs(verticalDragTotal) > 120f) {
+                                                val currentPage = pagerState.currentPage
+                                                if (verticalDragTotal < 0 && currentPage > 0) {
+                                                    // UP = PREVIOUS photo
+                                                    coroutineScope.launch {
+                                                        pagerState.animateScrollToPage(currentPage - 1)
+                                                    }
+                                                    verticalDragTotal = 0f
+                                                } else if (verticalDragTotal > 0 && currentPage < allPhotos.size - 1) {
+                                                    // DOWN = NEXT photo  
+                                                    coroutineScope.launch {
+                                                        pagerState.animateScrollToPage(currentPage + 1)
+                                                    }
+                                                    verticalDragTotal = 0f
                                                 }
                                             }
                                         }
                                     }
                                 }
-                            }
+                            )
                         }
                 ) {
                     HorizontalPager(
