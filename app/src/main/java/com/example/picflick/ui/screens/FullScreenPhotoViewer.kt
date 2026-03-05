@@ -382,11 +382,18 @@ fun FullScreenPhotoViewer(
                         
                         // Only render current, next, and prev
                         if (isCurrent || isNext || isPrev) {
-                            // Base position: where the photo SHOULD be (0 for current, +W for next, -W for prev)
+                            // Base position: where the photo SHOULD be
+                            // X: current=0, next=+W, prev=-W
+                            // Y: current=0, next=+H (below), prev=-H (above)
                             val baseX = (index - currentPageIndex) * screenWidthPx
-                            val baseY = 0f  // All photos start at same vertical position
+                            val baseY = when {
+                                isCurrent -> 0f
+                                isNext -> screenHeightPx    // Start BELOW screen
+                                isPrev -> -screenHeightPx   // Start ABOVE screen
+                                else -> 0f
+                            }
                             
-                            // SIMPLE: Add drag to ALL photos equally - they move together!
+                            // Add drag to ALL photos - they move together!
                             val finalX = baseX + dragX
                             val finalY = baseY + dragY
                             
