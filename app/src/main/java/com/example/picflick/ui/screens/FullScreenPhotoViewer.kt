@@ -348,27 +348,28 @@ fun FullScreenPhotoViewer(
                                     isVerticalSwipe = false
                                 },
                                 onDragEnd = {
+                                    val actualCurrentPage = pagerState.currentPage
                                     when {
                                         // Vertical swipe detected
                                         isVerticalSwipe && kotlin.math.abs(verticalDragOffset) > 120f -> {
-                                            if (verticalDragOffset < 0 && currentPage < allPhotos.size - 1) {
+                                            if (verticalDragOffset < 0 && actualCurrentPage < allPhotos.size - 1) {
                                                 // UP = NEXT
                                                 coroutineScope.launch {
-                                                    pagerState.scrollToPage(currentPage + 1)
+                                                    pagerState.scrollToPage(actualCurrentPage + 1)
                                                 }
-                                            } else if (verticalDragOffset > 0 && currentPage > 0) {
+                                            } else if (verticalDragOffset > 0 && actualCurrentPage > 0) {
                                                 // DOWN = PREVIOUS
                                                 coroutineScope.launch {
-                                                    pagerState.scrollToPage(currentPage - 1)
+                                                    pagerState.scrollToPage(actualCurrentPage - 1)
                                                 }
                                             }
                                         }
                                         // Horizontal swipe
                                         kotlin.math.abs(horizontalDragOffset) > screenWidthPx * 0.3f -> {
                                             val targetPage = if (horizontalDragOffset > 0) {
-                                                (currentPage - 1).coerceAtLeast(0)
+                                                (actualCurrentPage - 1).coerceAtLeast(0)
                                             } else {
-                                                (currentPage + 1).coerceAtMost(allPhotos.size - 1)
+                                                (actualCurrentPage + 1).coerceAtMost(allPhotos.size - 1)
                                             }
                                             coroutineScope.launch {
                                                 pagerState.animateScrollToPage(targetPage)
