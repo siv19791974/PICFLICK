@@ -305,7 +305,7 @@ fun FullScreenPhotoViewer(
         ) {
             Box(modifier = Modifier.fillMaxSize()) {
                 
-                // OUTER GESTURE HANDLER - Smart pinch vs swipe detection
+                // OUTER GESTURE HANDLER - Smart pinch vs swipe detection + VERTICAL scrolling
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
@@ -318,6 +318,32 @@ fun FullScreenPhotoViewer(
                                     }
                                 }
                             )
+                        }
+                        .pointerInput(Unit) {
+                            detectVerticalDragGestures { change, dragAmount ->
+                                change.consume()
+                                if (scale <= 1.01f && allPhotos.size > 1) {
+                                    val currentPage = pagerState.currentPage
+                                    when {
+                                        // UP swipe = go to PREVIOUS photo (like LEFT swipe)
+                                        dragAmount < -50 -> {
+                                            if (currentPage > 0) {
+                                                coroutineScope.launch {
+                                                    pagerState.animateScrollToPage(currentPage - 1)
+                                                }
+                                            }
+                                        }
+                                        // DOWN swipe = go to NEXT photo (like RIGHT swipe)
+                                        dragAmount > 50 -> {
+                                            if (currentPage < allPhotos.size - 1) {
+                                                coroutineScope.launch {
+                                                    pagerState.animateScrollToPage(currentPage + 1)
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
                         }
                 ) {
                     HorizontalPager(
