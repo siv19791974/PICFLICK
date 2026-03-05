@@ -691,7 +691,11 @@ private fun AuthenticatedContent(
                                 description = description
                             )
                         },
-                        onNavigateToFindFriends = { onScreenChange(Screen.FindFriends) }
+                        onNavigateToFindFriends = { onScreenChange(Screen.FindFriends) },
+                        onNavigateToCamera = { 
+                            // Go to home (user can then click Add to retake)
+                            onScreenChange(Screen.Home)
+                        }
                     )
                 } ?: run {
                     // If no photo selected, go back to home

@@ -57,7 +57,8 @@ fun FilterScreen(
     maxDailyUploads: Int = 5,
     onBack: () -> Unit,
     onUpload: (Uri, PhotoFilter, List<String>, String) -> Unit,
-    onNavigateToFindFriends: () -> Unit = {}
+    onNavigateToFindFriends: () -> Unit = {},
+    onNavigateToCamera: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -137,65 +138,82 @@ fun FilterScreen(
     Scaffold(
         modifier = Modifier
             .fillMaxSize()
-            .imePadding(),  // Handle keyboard insets properly
+            .imePadding(),
         topBar = {
             TopAppBar(
-                modifier = Modifier.statusBarsPadding(),  // Keep top bar below status bar
+                modifier = Modifier.statusBarsPadding(),
                 title = {
-                    Text(
-                        text = "Edit Photo",
-                        color = Color.White,
-                        fontWeight = FontWeight.Bold
-                    )
+                    // Centered countdown box
+                    val remainingUploads = maxDailyUploads - dailyUploadCount
+                    val isLimitReached = remainingUploads <= 0
+                    
+                    Box(
+                        modifier = Modifier.fillMaxWidth(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .background(
+                                    if (isLimitReached) Color.Red else Color(0xFF87CEEB),
+                                    RoundedCornerShape(20.dp)
+                                )
+                                .padding(horizontal = 16.dp, vertical = 8.dp)
+                        ) {
+                            Text(
+                                text = if (isLimitReached) {
+                                    "SEE YOU TOMORROW!"
+                                } else {
+                                    "$remainingUploads PHOTOS REMAINING TODAY"
+                                },
+                                color = Color.Black,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
                 },
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
+                    // Camera icon (revert to camera)
+                    IconButton(
+                        onClick = onNavigateToCamera,
+                        modifier = Modifier
+                            .size(44.dp)
+                            .background(Color.Black.copy(alpha = 0.6f), CircleShape)
+                    ) {
                         Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back",
-                            tint = Color.White
+                            imageVector = Icons.Default.Close,
+                            contentDescription = "Back to Camera",
+                            tint = Color.White,
+                            modifier = Modifier.size(24.dp)
                         )
                     }
                 },
                 actions = {
-                    // Upload count indicator
-                    Box(
-                        modifier = Modifier
-                            .padding(end = 8.dp)
-                            .background(
-                                if (canUpload) Color(0xFF87CEEB) else Color.Red,
-                                RoundedCornerShape(12.dp)
-                            )
-                            .padding(horizontal = 12.dp, vertical = 6.dp)
-                    ) {
-                        Text(
-                            text = "$remainingUploads/$maxDailyUploads",
-                            color = Color.White,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
+                    val canUpload = (maxDailyUploads - dailyUploadCount) > 0
                     
-                    // Upload button
+                    // Upload tick button
                     IconButton(
                         onClick = { triggerUpload() },
-                        enabled = !isLoading && bitmap != null && canUpload && !isUploading
+                        enabled = !isLoading && bitmap != null && canUpload && !isUploading,
+                        modifier = Modifier
+                            .size(44.dp)
+                            .background(
+                                if (canUpload && !isLoading && bitmap != null) Color(0xFF00D09C) else Color.DarkGray,
+                                CircleShape
+                            )
                     ) {
                         if (isUploading) {
                             CircularProgressIndicator(
                                 modifier = Modifier.size(24.dp),
-                                color = Color(0xFF87CEEB),
+                                color = Color.White,
                                 strokeWidth = 2.dp
                             )
                         } else {
                             Icon(
                                 imageVector = Icons.Default.Check,
                                 contentDescription = "Upload",
-                                tint = when {
-                                    !canUpload -> Color.Red
-                                    isLoading || bitmap == null -> Color.Gray
-                                    else -> Color(0xFF87CEEB)
-                                }
+                                tint = Color.White,
+                                modifier = Modifier.size(24.dp)
                             )
                         }
                     }
