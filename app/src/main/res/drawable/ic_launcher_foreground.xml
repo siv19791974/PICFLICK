@@ -1,58 +1,84 @@
 <?xml version="1.0" encoding="utf-8"?>
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
     
-    <!-- White corner brackets - top left -->
+    <!-- Background with gradient depth -->
+    <path android:pathData="M18,18 L90,18 L90,90 L18,90 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:startX="18"
+                android:startY="18"
+                android:endX="90"
+                android:endY="90"
+                android:type="linear">
+                <item android:color="#42A5F5" android:offset="0.0" />
+                <item android:color="#1976D2" android:offset="1.0" />
+            </gradient>
+        </aapt:attr>
+    </path>
+    
+    <!-- White corner bracket - Top Left -->
     <path
         android:fillColor="#FFFFFF"
-        android:pathData="M20,32 L20,24 L28,24 L28,28 L24,28 L24,32 Z" />
+        android:pathData="M24,36 L24,26 L34,26 L34,30 L28,30 L28,36 Z" />
     
-    <!-- White corner brackets - top right -->
+    <!-- White corner bracket - Top Right -->
     <path
         android:fillColor="#FFFFFF"
-        android:pathData="M88,32 L88,24 L80,24 L80,28 L84,28 L84,32 Z" />
+        android:pathData="M84,36 L84,26 L74,26 L74,30 L80,30 L80,36 Z" />
     
-    <!-- White corner brackets - bottom left -->
+    <!-- White corner bracket - Bottom Left -->
     <path
         android:fillColor="#FFFFFF"
-        android:pathData="M20,76 L20,84 L28,84 L28,80 L24,80 L24,76 Z" />
+        android:pathData="M24,72 L24,82 L34,82 L34,78 L28,78 L28,72 Z" />
     
-    <!-- White corner brackets - bottom right -->
+    <!-- White corner bracket - Bottom Right -->
     <path
         android:fillColor="#FFFFFF"
-        android:pathData="M88,76 L88,84 L80,84 L80,80 L84,80 L84,76 Z" />
+        android:pathData="M84,72 L84,82 L74,82 L74,78 L80,78 L80,72 Z" />
     
-    <!-- Camera body -->
+    <!-- Camera body with rounded corners -->
     <path
         android:fillColor="#FFFFFF"
-        android:pathData="M34,42 L74,42 L74,68 L34,68 Z" />
+        android:pathData="M32,40 L76,40 C78,40 80,42 80,44 L80,64 C80,66 78,68 76,68 L32,68 C30,68 28,66 28,64 L28,44 C28,42 30,40 32,40 Z" />
     
-    <!-- Camera lens outer circle -->
+    <!-- Camera lens outer ring -->
+    <path
+        android:fillColor="#1976D2"
+        android:pathData="M54,54m-14,0a14,14 0,1 1,28 0a14,14 0,1 1,-28 0" />
+    
+    <!-- Camera lens inner white -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M54,54m-10,0a10,10 0,1 1,20 0a10,10 0,1 1,-20 0" />
+    
+    <!-- Camera lens center blue -->
     <path
         android:fillColor="#2196F3"
-        android:pathData="M54,55m-12,0a12,12 0,1 1,24 0a12,12 0,1 1,-24 0" />
+        android:pathData="M54,54m-6,0a6,6 0,1 1,12 0a6,6 0,1 1,-12 0" />
     
-    <!-- Camera lens inner circle -->
+    <!-- Camera lens highlight dot -->
     <path
         android:fillColor="#FFFFFF"
-        android:pathData="M54,55m-7,0a7,7 0,1 1,14 0a7,7 0,1 1,-14 0" />
+        android:pathData="M58,50m-2.5,0a2.5,2.5 0,1 1,5 0a2.5,2.5 0,1 1,-5 0" />
     
-    <!-- Camera lens center dot -->
+    <!-- Camera flash -->
     <path
-        android:fillColor="#2196F3"
-        android:pathData="M54,55m-3,0a3,3 0,1 1,6 0a3,3 0,1 1,-6 0" />
+        android:fillColor="#1976D2"
+        android:pathData="M70,44m-2.5,0a2.5,2.5 0,1 1,5 0a2.5,2.5 0,1 1,-5 0" />
     
-    <!-- Camera flash dot -->
-    <path
-        android:fillColor="#2196F3"
-        android:pathData="M66,46m-2,0a2,2 0,1 1,4 0a2,2 0,1 1,-4 0" />
-    
-    <!-- Yellow curved arrow -->
+    <!-- Yellow curved arrow body -->
     <path
         android:fillColor="#FFC107"
-        android:pathData="M42,72 Q54,82 66,72 L66,68 L74,74 L66,80 L66,76 Q54,88 42,76 Z" />
+        android:pathData="M38,72 Q54,84 70,72 L70,68 L76,74 L70,80 L70,76 Q54,90 38,78 Z" />
+    
+    <!-- Arrow highlight/shine -->
+    <path
+        android:fillColor="#FFEB3B"
+        android:pathData="M42,74 Q54,82 66,74 L66,72 Q54,80 42,72 Z" />
     
 </vector>
