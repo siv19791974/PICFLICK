@@ -148,8 +148,6 @@ fun FullScreenPhotoViewer(
     
     // Show share dialog state
     var showShareDialog by remember { mutableStateOf(false) }
-    var friendsList by remember { mutableStateOf<List<UserProfile>>(emptyList()) }
-    var isLoadingFriends by remember { mutableStateOf(false) }
     
     // Tagged friends display state
     var taggedFriendsProfiles by remember { mutableStateOf<List<UserProfile>>(emptyList()) }
@@ -175,34 +173,6 @@ fun FullScreenPhotoViewer(
                 }
                 else -> isLoadingComments = false
             }
-        }
-    }
-    
-    // Load friends when share dialog opens
-    LaunchedEffect(showShareDialog) {
-        if (showShareDialog && currentUser.following.isNotEmpty()) {
-            isLoadingFriends = true
-            val loadedFriends = mutableListOf<UserProfile>()
-            var loadedCount = 0
-            
-            currentUser.following.forEach { userId ->
-                repository.getUserProfile(userId) { result ->
-                    when (result) {
-                        is com.example.picflick.data.Result.Success -> {
-                            loadedFriends.add(result.data)
-                        }
-                        else -> { /* Skip failed loads */ }
-                    }
-                    loadedCount++
-                    if (loadedCount >= currentUser.following.size) {
-                        friendsList = loadedFriends
-                        isLoadingFriends = false
-                    }
-                }
-            }
-        } else if (showShareDialog) {
-            friendsList = emptyList()
-            isLoadingFriends = false
         }
     }
     
@@ -851,175 +821,14 @@ fun FullScreenPhotoViewer(
                     enter = fadeIn(),
                     exit = fadeOut()
                 ) {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        // Backdrop
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .background(Color.Black.copy(alpha = 0.7f))
-                                .clickable { showShareDialog = false }
-                        )
-                        
-                        // Share dialog card
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth(0.85f)
-                                .background(
-                                    Color(0xFF1A1A1A),
-                                    RoundedCornerShape(16.dp)
-                                )
-                                .padding(20.dp)
-                        ) {
-                            // Header
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    text = "Share with Friends",
-                                    color = Color.White,
-                                    fontSize = 18.sp,
-                                    fontWeight = FontWeight.Bold
-                                )
-                                
-                                IconButton(
-                                    onClick = { showShareDialog = false }
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Close,
-                                        contentDescription = "Close",
-                                        tint = Color.White
-                                    )
-                                }
-                            }
-                            
-                            Spacer(modifier = Modifier.height(16.dp))
-                            
-                            // Preview of photo being shared
-                            AsyncImage(
-                                model = currentFlick.imageUrl,
-                                contentDescription = null,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(150.dp)
-                                    .clip(RoundedCornerShape(12.dp)),
-                                contentScale = ContentScale.Crop
-                            )
-                            
-                            Spacer(modifier = Modifier.height(16.dp))
-                            
-                            // Friends list
-                            Text(
-                                text = "Select a friend to share with:",
-                                color = Color.White.copy(alpha = 0.7f),
-                                fontSize = 14.sp
-                            )
-                            
-                            Spacer(modifier = Modifier.height(12.dp))
-                            
-                            if (isLoadingFriends) {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .height(100.dp),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    CircularProgressIndicator(
-                                        color = MaterialTheme.colorScheme.primary
-                                    )
-                                }
-                            } else if (friendsList.isEmpty()) {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(vertical = 32.dp),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Column(
-                                        horizontalAlignment = Alignment.CenterHorizontally
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Default.Person,
-                                            contentDescription = null,
-                                            tint = Color.White.copy(alpha = 0.4f),
-                                            modifier = Modifier.size(48.dp)
-                                        )
-                                        Spacer(modifier = Modifier.height(8.dp))
-                                        Text(
-                                            text = "No friends to share with",
-                                            color = Color.White.copy(alpha = 0.5f),
-                                            fontSize = 14.sp
-                                        )
-                                        Text(
-                                            text = "Follow users to share photos",
-                                            color = Color.White.copy(alpha = 0.4f),
-                                            fontSize = 12.sp
-                                        )
-                                    }
-                                }
-                            } else {
-                                // Friends list
-                                Column(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .heightIn(max = 200.dp)
-                                        .verticalScroll(rememberScrollState())
-                                ) {
-                                    friendsList.forEach { friend ->
-                                        Row(
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .clickable {
-                                                    onShareToFriend(currentFlick.id, friend.uid)
-                                                    showShareDialog = false
-                                                    showPicFlickToast("Shared with ${friend.displayName}")
-                                                }
-                                                .padding(vertical = 8.dp),
-                                            verticalAlignment = Alignment.CenterVertically
-                                        ) {
-                                            AsyncImage(
-                                                model = friend.photoUrl,
-                                                contentDescription = null,
-                                                modifier = Modifier
-                                                    .size(40.dp)
-                                                    .clip(CircleShape)
-                                                    .background(Color.Gray),
-                                                contentScale = ContentScale.Crop
-                                            )
-                                            
-                                            Spacer(modifier = Modifier.width(12.dp))
-                                            
-                                            Column {
-                                                Text(
-                                                    text = friend.displayName,
-                                                    color = Color.White,
-                                                    fontSize = 15.sp,
-                                                    fontWeight = FontWeight.Medium
-                                                )
-                                                Text(
-                                                    text = "Tap to share this photo",
-                                                    color = Color.White.copy(alpha = 0.5f),
-                                                    fontSize = 12.sp
-                                                )
-                                            }
-                                        }
-                                        
-                                        if (friend != friendsList.last()) {
-                                            HorizontalDivider(
-                                            modifier = Modifier.fillMaxWidth(),
-                                            thickness = 1.dp,
-                                            color = Color.White.copy(alpha = 0.1f)
-                                        )
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
+                    ShareFriendsDialog(
+                        flick = currentFlick,
+                        currentUser = currentUser,
+                        onDismiss = { showShareDialog = false },
+                        onShareToFriend = onShareToFriend,
+                        onNavigateToFindFriends = onNavigateToFindFriends,
+                        showPicFlickToast = { message -> showPicFlickToast(message) }
+                    )
                 }
                 
                 // TAG FRIENDS DIALOG - Tag existing friends or go to Find Friends
@@ -1494,6 +1303,260 @@ private fun ReactionCounterItem(
             fontSize = 11.sp,
             fontWeight = FontWeight.Medium
         )
+    }
+}
+
+/**
+ * Share Friends Dialog - Share photo with friends
+ * Full screen style matching Tag Friends design
+ */
+@Composable
+private fun ShareFriendsDialog(
+    flick: Flick,
+    currentUser: UserProfile,
+    onDismiss: () -> Unit,
+    onShareToFriend: (String, String) -> Unit,
+    onNavigateToFindFriends: () -> Unit,
+    showPicFlickToast: (String) -> Unit
+) {
+    val coroutineScope = rememberCoroutineScope()
+    val repository = remember { FlickRepository.getInstance() }
+    var friendsList by remember { mutableStateOf<List<UserProfile>>(emptyList()) }
+    var isLoadingFriends by remember { mutableStateOf(true) }
+    
+    // Load friends when dialog opens
+    LaunchedEffect(Unit) {
+        if (currentUser.following.isNotEmpty()) {
+            val loadedFriends = mutableListOf<UserProfile>()
+            var loadedCount = 0
+            
+            currentUser.following.forEach { userId ->
+                repository.getUserProfile(userId) { result ->
+                    when (result) {
+                        is com.example.picflick.data.Result.Success -> {
+                            loadedFriends.add(result.data)
+                        }
+                        else -> { /* Skip failed loads */ }
+                    }
+                    loadedCount++
+                    if (loadedCount >= currentUser.following.size) {
+                        friendsList = loadedFriends.sortedBy { it.displayName }
+                        isLoadingFriends = false
+                    }
+                }
+            }
+        } else {
+            friendsList = emptyList()
+            isLoadingFriends = false
+        }
+    }
+    
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(
+            usePlatformDefaultWidth = false,
+            dismissOnBackPress = true,
+            dismissOnClickOutside = true
+        )
+    ) {
+        Surface(
+            modifier = Modifier
+                .fillMaxSize(),
+            shape = RectangleShape,
+            color = Color(0xFF1A1A1A)
+        ) {
+            Column(
+                modifier = Modifier.padding(20.dp)
+            ) {
+                // Header
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Share with Friends",
+                        color = Color.White,
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    
+                    IconButton(onClick = onDismiss) {
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = "Close",
+                            tint = Color.White
+                        )
+                    }
+                }
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                // Preview of photo being shared - TALLER with SQUARE corners and WHITE BORDER
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(180.dp)
+                        .border(3.dp, Color.White.copy(alpha = 0.9f), RectangleShape)
+                        .padding(3.dp)
+                        .background(Color.Black)
+                ) {
+                    AsyncImage(
+                        model = flick.imageUrl,
+                        contentDescription = null,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                }
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                // Currently sharing count
+                Text(
+                    text = "Select a friend to share with:",
+                    color = Color.White.copy(alpha = 0.7f),
+                    fontSize = 14.sp,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+                
+                // Friends list or empty state
+                when {
+                    isLoadingFriends -> {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(150.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator(
+                                color = Color(0xFF87CEEB)
+                            )
+                        }
+                    }
+                    friendsList.isEmpty() -> {
+                        // No friends - show Go to Find Friends button
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 24.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Person,
+                                    contentDescription = null,
+                                    tint = Color.White.copy(alpha = 0.4f),
+                                    modifier = Modifier.size(48.dp)
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(
+                                    text = "No friends yet",
+                                    color = Color.White.copy(alpha = 0.6f),
+                                    fontSize = 14.sp
+                                )
+                                Spacer(modifier = Modifier.height(16.dp))
+                                Button(
+                                    onClick = { 
+                                        onNavigateToFindFriends()
+                                    },
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = Color(0xFF87CEEB)
+                                    )
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.PersonAdd,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text("Find Friends")
+                                }
+                            }
+                        }
+                    }
+                    else -> {
+                        // Show friends list with Share button on right
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(max = 280.dp)
+                                .verticalScroll(rememberScrollState())
+                        ) {
+                            friendsList.forEach { friend ->
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 10.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    // LEFT: Profile pic + name
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                        modifier = Modifier.weight(1f)
+                                    ) {
+                                        // Friend photo with white border like profile pic
+                                        Box(
+                                            modifier = Modifier
+                                                .size(44.dp)
+                                                .clip(CircleShape)
+                                                .background(Color.Gray.copy(alpha = 0.4f))
+                                                .border(2.dp, Color.White.copy(alpha = 0.8f), CircleShape),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            AsyncImage(
+                                                model = friend.photoUrl,
+                                                contentDescription = null,
+                                                modifier = Modifier.fillMaxSize(),
+                                                contentScale = ContentScale.Crop
+                                            )
+                                        }
+                                        
+                                        // Friend name
+                                        Text(
+                                            text = friend.displayName,
+                                            color = Color.White,
+                                            fontSize = 16.sp,
+                                            fontWeight = FontWeight.Medium
+                                        )
+                                    }
+                                    
+                                    // RIGHT: Share button
+                                    Button(
+                                        onClick = {
+                                            onShareToFriend(flick.id, friend.uid)
+                                            showPicFlickToast("Shared with ${friend.displayName}")
+                                            onDismiss()
+                                        },
+                                        colors = ButtonDefaults.buttonColors(
+                                            containerColor = Color(0xFF87CEEB)
+                                        ),
+                                        modifier = Modifier.height(36.dp)
+                                    ) {
+                                        Text(
+                                            "Share",
+                                            fontSize = 13.sp,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    }
+                                }
+                                
+                                if (friend != friendsList.last()) {
+                                    HorizontalDivider(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        thickness = 1.dp,
+                                        color = Color.White.copy(alpha = 0.1f)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 

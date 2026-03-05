@@ -25,7 +25,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.ui.layout.ContentScale
@@ -131,8 +130,12 @@ fun FilterScreen(
     }
 
     Scaffold(
+        modifier = Modifier
+            .fillMaxSize()
+            .imePadding(),  // Handle keyboard insets properly
         topBar = {
             TopAppBar(
+                modifier = Modifier.statusBarsPadding(),  // Keep top bar below status bar
                 title = {
                     Text(
                         text = "Edit Photo",
@@ -155,7 +158,7 @@ fun FilterScreen(
                         modifier = Modifier
                             .padding(end = 8.dp)
                             .background(
-                                if (canUpload) Color(0xFF00D09C) else Color.Red,
+                                if (canUpload) Color(0xFF87CEEB) else Color.Red,
                                 RoundedCornerShape(12.dp)
                             )
                             .padding(horizontal = 12.dp, vertical = 6.dp)
@@ -176,7 +179,7 @@ fun FilterScreen(
                         if (isUploading) {
                             CircularProgressIndicator(
                                 modifier = Modifier.size(24.dp),
-                                color = Color(0xFF00D09C),
+                                color = Color(0xFF87CEEB),
                                 strokeWidth = 2.dp
                             )
                         } else {
@@ -186,7 +189,7 @@ fun FilterScreen(
                                 tint = when {
                                     !canUpload -> Color.Red
                                     isLoading || bitmap == null -> Color.Gray
-                                    else -> Color(0xFF00D09C)
+                                    else -> Color(0xFF87CEEB)
                                 }
                             )
                         }
@@ -214,21 +217,30 @@ fun FilterScreen(
                     Column(
                         modifier = Modifier.fillMaxSize()
                     ) {
-                        // Main Photo Preview - BIGGER with WHITE BORDER like Tag Screen
+                        // Main Photo Preview - BIGGER with WHITE BORDER fitting portrait/landscape
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .weight(1.2f)
-                                .padding(horizontal = 20.dp, vertical = 12.dp)
-                                .border(4.dp, Color.White.copy(alpha = 0.9f), RectangleShape)
-                                .padding(4.dp)
-                                .background(Color.Black)
+                                .weight(1.5f)
+                                .padding(horizontal = 16.dp, vertical = 8.dp),
+                            contentAlignment = Alignment.Center
                         ) {
-                            FilteredImage(
-                                bitmap = bmp,
-                                filter = selectedFilter,
-                                modifier = Modifier.fillMaxSize()
-                            )
+                            // White border box that adapts to image aspect ratio
+                            Box(
+                                modifier = Modifier
+                                    .border(4.dp, Color.White.copy(alpha = 0.9f), RoundedCornerShape(4.dp))
+                                    .padding(4.dp)
+                                    .background(Color.Black, RoundedCornerShape(2.dp)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                FilteredImage(
+                                    bitmap = bmp,
+                                    filter = selectedFilter,
+                                    modifier = Modifier
+                                        .fillMaxWidth(0.95f)
+                                        .wrapContentHeight()
+                                )
+                            }
                             
                             // Uploading Overlay
                             if (isUploading) {
@@ -242,7 +254,7 @@ fun FilterScreen(
                                         horizontalAlignment = Alignment.CenterHorizontally
                                     ) {
                                         CircularProgressIndicator(
-                                            color = Color(0xFF00D09C),
+                                            color = Color(0xFF87CEEB),
                                             strokeWidth = 3.dp,
                                             modifier = Modifier.size(48.dp)
                                         )
@@ -309,14 +321,14 @@ fun FilterScreen(
                             ) {
                                 Text(
                                     text = "+",
-                                    color = Color(0xFF00D09C),
+                                    color = Color(0xFF87CEEB),
                                     fontSize = 24.sp,
                                     fontWeight = FontWeight.Bold
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text(
                                     text = if (friends.isEmpty()) "No friends to tag" else "Tag Friends (${taggedFriends.size})",
-                                    color = Color(0xFF00D09C)
+                                    color = Color(0xFF87CEEB)
                                 )
                             }
                             
@@ -331,7 +343,7 @@ fun FilterScreen(
                                 colors = OutlinedTextFieldDefaults.colors(
                                     focusedTextColor = Color.White,
                                     unfocusedTextColor = Color.White,
-                                    focusedBorderColor = Color(0xFF00D09C),
+                                    focusedBorderColor = Color(0xFF87CEEB),
                                     unfocusedBorderColor = Color.White.copy(alpha = 0.3f),
                                     focusedContainerColor = Color(0xFF2C2C2E),
                                     unfocusedContainerColor = Color(0xFF2C2C2E)
@@ -387,20 +399,20 @@ private fun FilterIcon(
     ) {
         Box(
             modifier = Modifier
-                .size(64.dp)
+                .size(72.dp)  // Bigger for better resolution
                 .clip(RoundedCornerShape(12.dp))
                 .border(
                     width = if (isSelected) 3.dp else 1.dp,
-                    color = if (isSelected) Color(0xFF00D09C) else Color.White.copy(alpha = 0.3f),
+                    color = if (isSelected) Color(0xFF87CEEB) else Color.White.copy(alpha = 0.3f),
                     shape = RoundedCornerShape(12.dp)
                 )
                 .background(Color(0xFF2C2C2E)),
             contentAlignment = Alignment.Center
         ) {
             if (bitmap != null) {
-                // Show actual filtered thumbnail
+                // Show actual filtered thumbnail with higher quality
                 val thumbnailBitmap = remember(bitmap, filter) {
-                    applyFilterToBitmap(bitmap, filter, thumbnailSize = 64)
+                    applyFilterToBitmap(bitmap, filter, thumbnailSize = 144)  // 2x for sharper display
                 }
                 Image(
                     painter = BitmapPainter(thumbnailBitmap.asImageBitmap()),
@@ -408,7 +420,9 @@ private fun FilterIcon(
                     modifier = Modifier
                         .fillMaxSize()
                         .clip(RoundedCornerShape(12.dp)),
-                    contentScale = ContentScale.Crop
+                    contentScale = ContentScale.Crop,
+                    // Use high quality filtering
+                    alignment = Alignment.Center
                 )
             } else {
                 // Fallback to emoji
@@ -424,7 +438,7 @@ private fun FilterIcon(
         // Filter name
         Text(
             text = filter.displayName,
-            color = if (isSelected) Color(0xFF00D09C) else Color.White.copy(alpha = 0.7f),
+            color = if (isSelected) Color(0xFF87CEEB) else Color.White.copy(alpha = 0.7f),
             fontSize = 11.sp,
             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
         )
@@ -439,7 +453,7 @@ private fun TaggedFriendChip(
     Box(
         modifier = Modifier
             .clip(RoundedCornerShape(16.dp))
-            .background(Color(0xFF00D09C))
+            .background(Color(0xFF87CEEB))
             .padding(start = 12.dp, end = 4.dp, top = 4.dp, bottom = 4.dp)
     ) {
         Row(
@@ -523,7 +537,7 @@ private fun FriendPickerDialog(
                                 onNavigateToFindFriends()
                             },
                             colors = ButtonDefaults.buttonColors(
-                                containerColor = Color(0xFF00D09C)
+                                containerColor = Color(0xFF87CEEB)
                             )
                         ) {
                             Icon(
@@ -648,35 +662,92 @@ private fun applyFilterToBitmap(bitmap: Bitmap, filter: PhotoFilter, thumbnailSi
             )
         }
         PhotoFilter.WARM -> ColorMatrix().apply {
+            // Advanced warm filter with golden hour feel
+            val warmth = 1.3f
+            val redShift = 30f
+            val greenShift = 15f
+            val blueShift = -20f
             set(
                 floatArrayOf(
-                    1.2f, 0f, 0f, 0f, 20f,
-                    0f, 1f, 0f, 0f, 10f,
-                    0f, 0f, 0.8f, 0f, -10f,
+                    warmth, 0.1f, 0f, 0f, redShift,
+                    0.1f, 1.05f, 0.05f, 0f, greenShift,
+                    0f, 0.1f, 0.85f, 0f, blueShift,
                     0f, 0f, 0f, 1f, 0f
                 )
             )
+            // Add slight contrast boost
+            postConcat(ColorMatrix().apply {
+                set(
+                    floatArrayOf(
+                        1.1f, 0f, 0f, 0f, -5f,
+                        0f, 1.1f, 0f, 0f, -5f,
+                        0f, 0f, 1.1f, 0f, -5f,
+                        0f, 0f, 0f, 1f, 0f
+                    )
+                )
+            })
         }
         PhotoFilter.COOL -> ColorMatrix().apply {
+            // Advanced cool filter with icy blue tones
+            val cool = 0.75f
+            val redShift = -15f
+            val greenShift = 5f
+            val blueShift = 35f
             set(
                 floatArrayOf(
-                    0.8f, 0f, 0f, 0f, -10f,
-                    0f, 1f, 0f, 0f, 0f,
-                    0f, 0f, 1.2f, 0f, 20f,
+                    cool, 0.05f, 0.1f, 0f, redShift,
+                    0.1f, 1.0f, 0.1f, 0f, greenShift,
+                    0.05f, 0.15f, 1.15f, 0f, blueShift,
                     0f, 0f, 0f, 1f, 0f
                 )
             )
+            // Slight contrast adjustment
+            postConcat(ColorMatrix().apply {
+                set(
+                    floatArrayOf(
+                        1.05f, 0f, 0f, 0f, -3f,
+                        0f, 1.05f, 0f, 0f, -3f,
+                        0f, 0f, 1.05f, 0f, -3f,
+                        0f, 0f, 0f, 1f, 0f
+                    )
+                )
+            })
         }
         PhotoFilter.VINTAGE -> ColorMatrix().apply {
+            // Advanced vintage with film-like characteristics
+            // Cross-processing effect
             set(
                 floatArrayOf(
-                    0.9f, 0.1f, 0f, 0f, 0f,
-                    0.1f, 0.9f, 0f, 0f, 0f,
-                    0f, 0.1f, 0.9f, 0f, 0f,
-                    0f, 0f, 0f, 0.9f, 0f
+                    1.1f, 0.15f, -0.05f, 0f, 10f,
+                    0.05f, 1.0f, 0.05f, 0f, 5f,
+                    0.05f, -0.05f, 0.9f, 0f, 10f,
+                    0f, 0f, 0f, 0.95f, 0f
                 )
             )
-            postConcat(ColorMatrix().apply { setSaturation(0.6f) })
+            // Reduce saturation
+            postConcat(ColorMatrix().apply { setSaturation(0.65f) })
+            // Add warm tone overlay
+            postConcat(ColorMatrix().apply {
+                set(
+                    floatArrayOf(
+                        1.05f, 0f, 0f, 0f, 8f,
+                        0f, 1.02f, 0f, 0f, 4f,
+                        0f, 0f, 0.95f, 0f, -2f,
+                        0f, 0f, 0f, 1f, 0f
+                    )
+                )
+            })
+            // Slight fade (lift blacks)
+            postConcat(ColorMatrix().apply {
+                set(
+                    floatArrayOf(
+                        0.9f, 0f, 0f, 0f, 25f,
+                        0f, 0.9f, 0f, 0f, 25f,
+                        0f, 0f, 0.9f, 0f, 25f,
+                        0f, 0f, 0f, 1f, 0f
+                    )
+                )
+            })
         }
     }
 
