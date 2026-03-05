@@ -309,35 +309,35 @@ fun FullScreenPhotoViewer(
         ) {
             Box(modifier = Modifier.fillMaxSize()) {
                 
-                // OUTER GESTURE HANDLER - Fixed: vertical swipe + pinch zoom coexist
+                // OUTER GESTURE HANDLER - Fixed: angle-based detection for vertical swipe
                 var verticalDragTotal by remember { mutableFloatStateOf(0f) }
                 
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
                         .pointerInput(Unit) {
-                            detectVerticalDragGestures(
+                            detectDragGestures(
                                 onDragStart = { 
                                     verticalDragTotal = 0f
                                     isVerticalSwipe = false
                                 },
                                 onDragEnd = { 
-                                    // Navigate based on accumulated vertical drag distance (SWAPPED)
+                                    // Navigate based on accumulated vertical drag distance
                                     if (kotlin.math.abs(verticalDragTotal) > 120f && isVerticalSwipe && scale <= 1.01f) {
                                         val currentPage = pagerState.currentPage
                                         if (verticalDragTotal < 0 && currentPage < allPhotos.size - 1) {
-                                            // UP = FORWARD/NEXT - animate to completion
+                                            // UP = FORWARD/NEXT
                                             coroutineScope.launch {
                                                 pagerState.animateScrollToPage(currentPage + 1)
                                             }
                                         } else if (verticalDragTotal > 0 && currentPage > 0) {
-                                            // DOWN = BACK/PREVIOUS - animate to completion
+                                            // DOWN = BACK/PREVIOUS
                                             coroutineScope.launch {
                                                 pagerState.animateScrollToPage(currentPage - 1)
                                             }
                                         }
                                     }
-                                    // Reset slide offset
+                                    // Reset
                                     verticalSlideOffset = 0f
                                     isVerticalSwipe = false
                                     verticalDragTotal = 0f
@@ -347,20 +347,28 @@ fun FullScreenPhotoViewer(
                                     isVerticalSwipe = false
                                     verticalDragTotal = 0f
                                 },
-                                onVerticalDrag = { change, dragAmount ->
-                                    // Only process vertical drag when not zoomed
+                                onDrag = { change, dragAmount ->
+                                    // Only process when not zoomed
                                     if (scale <= 1.01f && allPhotos.size > 1) {
-                                        verticalDragTotal += dragAmount
-                                        isVerticalSwipe = true
+                                        val absY = kotlin.math.abs(dragAmount.y)
+                                        val absX = kotlin.math.abs(dragAmount.x)
                                         
-                                        // ACCUMULATE the slide offset (not replace) so photo follows finger
-                                        val resistance = 0.6f
-                                        val delta = when {
-                                            pagerState.currentPage == 0 && dragAmount > 0 -> dragAmount * 0.3f // First page, resist DOWN
-                                            pagerState.currentPage == allPhotos.size - 1 && dragAmount < 0 -> dragAmount * 0.3f // Last page, resist UP
-                                            else -> dragAmount * resistance
+                                        // If clearly vertical (Y > X * 1.5), handle it
+                                        if (absY > absX * 1.5f) {
+                                            isVerticalSwipe = true
+                                            verticalDragTotal += dragAmount.y
+                                            change.consume()
+                                            
+                                            // Accumulate slide offset
+                                            val resistance = 0.6f
+                                            val delta = when {
+                                                pagerState.currentPage == 0 && dragAmount.y > 0 -> dragAmount.y * 0.3f
+                                                pagerState.currentPage == allPhotos.size - 1 && dragAmount.y < 0 -> dragAmount.y * 0.3f
+                                                else -> dragAmount.y * resistance
+                                            }
+                                            verticalSlideOffset += delta
                                         }
-                                        verticalSlideOffset += delta
+                                        // If horizontal, don't consume - let HorizontalPager handle it
                                     }
                                 }
                             )
