@@ -269,7 +269,7 @@ fun FilterScreen(
                                     .clip(RoundedCornerShape(8.dp))
                                     .border(3.dp, Color.White.copy(alpha = 0.9f), RoundedCornerShape(8.dp))
                                     .padding(3.dp),
-                                contentScale = ContentScale.Fit
+                                contentScale = ContentScale.Crop
                             )
                         }
 
