@@ -319,149 +319,101 @@ fun FullScreenPhotoViewer(
                     modifier = Modifier
                         .fillMaxSize()
                         .pointerInput(Unit) {
-                            // UNIFIED GESTURE HANDLER - Single detector for all gestures
-                            // Gesture types as constants (can't use enum inside pointerInput)
-                            val GESTURE_UNKNOWN = 0
-                            val GESTURE_PINCH = 1
-                            val GESTURE_DRAG = 2
-                            val GESTURE_PAN = 3
-                            
-                            awaitPointerEventScope {
-                                while (true) {
-                                    // Wait for first finger down
-                                    awaitFirstDown()
-                                    
-                                    // Track gesture state
-                                    var gestureType = GESTURE_UNKNOWN
-                                    var initialDistance = 0f
-                                    var initialZoomScale = zoomScale
-                                    
-                                    // Track positions for pinch
-                                    var lastCenterX = 0f
-                                    var lastCenterY = 0f
-                                    
-                                    // Accumulated drag for swipe
-                                    var accumulatedDragX = 0f
-                                    var accumulatedDragY = 0f
-                                    
-                                    // Process the gesture
-                                    do {
-                                        val event = awaitPointerEvent()
-                                        val fingerCount = event.changes.count { it.pressed }
-                                        
-                                        // DECIDE GESTURE TYPE based on finger count
+                            // PINCH ZOOM detection
+                            detectTransformGestures { _, pan, zoom, _ ->
+                                if (zoom != 1f) {
+                                    zoomScale = (zoomScale * zoom).coerceIn(1f, 5f)
+                                    // When zooming, also pan slightly
+                                    if (zoomScale > 1.01f) {
+                                        panX += pan.x
+                                        panY += pan.y
+                                    }
+                                }
+                            }
+                        }
+                        .pointerInput(Unit) {
+                            // SWIPE / PAN detection
+                            detectDragGestures(
+                                onDragStart = {
+                                    dragX = 0f
+                                    dragY = 0f
+                                    isDraggingVertically = false
+                                    gestureStartedAsPinch = false  // Reset at start
+                                },
+                                onDragEnd = {
+                                    // Only navigate if NOT zoomed and NOT a pinch gesture
+                                    if (zoomScale <= 1.01f && !gestureStartedAsPinch) {
                                         when {
-                                            // 2+ FINGERS = PINCH
-                                            fingerCount >= 2 && gestureType != GESTURE_DRAG -> {
-                                                gestureType = GESTURE_PINCH
-                                                
-                                                // Get finger positions
-                                                val change1 = event.changes[0]
-                                                val change2 = event.changes[1]
-                                                
-                                                // Calculate distance for zoom
-                                                val distance = kotlin.math.hypot(
-                                                    change1.position.x - change2.position.x,
-                                                    change1.position.y - change2.position.y
-                                                )
-                                                
-                                                // Calculate center for pan
-                                                val centerX = (change1.position.x + change2.position.x) / 2
-                                                val centerY = (change1.position.y + change2.position.y) / 2
-                                                
-                                                if (initialDistance == 0f) {
-                                                    initialDistance = distance
-                                                    lastCenterX = centerX
-                                                    lastCenterY = centerY
-                                                } else {
-                                                    // Calculate zoom
-                                                    val zoomDelta = distance / initialDistance
-                                                    zoomScale = (initialZoomScale * zoomDelta).coerceIn(1f, 5f)
-                                                    
-                                                    // Calculate pan
-                                                    if (zoomScale > 1.01f) {
-                                                        panX += centerX - lastCenterX
-                                                        panY += centerY - lastCenterY
-                                                    }
-                                                    
-                                                    lastCenterX = centerX
-                                                    lastCenterY = centerY
+                                            // Vertical swipe - UP goes next, DOWN goes prev
+                                            isDraggingVertically && kotlin.math.abs(dragY) > 100f -> {
+                                                if (dragY < 0 && currentPageIndex < allPhotos.size - 1) {
+                                                    currentPageIndex++ // UP = NEXT
+                                                } else if (dragY > 0 && currentPageIndex > 0) {
+                                                    currentPageIndex-- // DOWN = PREV
                                                 }
                                             }
-                                            
-                                            // 1 FINGER + NOT ZOOMED = DRAG/NAVIGATE
-                                            fingerCount == 1 && zoomScale <= 1.01f && gestureType != GESTURE_PINCH -> {
-                                                gestureType = GESTURE_DRAG
-                                                
-                                                val change = event.changes[0]
-                                                val positionChange = change.position - change.previousPosition
-                                                val dragAmountX = positionChange.x
-                                                val dragAmountY = positionChange.y
-                                                
-                                                accumulatedDragX += dragAmountX
-                                                accumulatedDragY += dragAmountY
-                                                
-                                                // Apply to drag vars (limited by threshold)
-                                                val totalDrag = kotlin.math.abs(accumulatedDragX) + kotlin.math.abs(accumulatedDragY)
-                                                
-                                                if (totalDrag < 80f) {
-                                                    // Decision zone - just accumulate
-                                                    dragX = accumulatedDragX
-                                                    dragY = accumulatedDragY
-                                                    
-                                                    if (totalDrag > 30f) {
-                                                        isDraggingVertically = kotlin.math.abs(dragY) > kotlin.math.abs(dragX)
-                                                    }
-                                                } else {
-                                                    // Past threshold - lock axis and apply
-                                                    if (kotlin.math.abs(dragX) < 10f && kotlin.math.abs(dragY) < 10f) {
-                                                        isDraggingVertically = kotlin.math.abs(dragY) > kotlin.math.abs(dragX)
-                                                    }
-                                                    
-                                                    if (isDraggingVertically) {
-                                                        dragY = accumulatedDragY
-                                                    } else {
-                                                        dragX = accumulatedDragX
-                                                    }
+                                            // Horizontal swipe - LEFT goes next, RIGHT goes prev
+                                            !isDraggingVertically && kotlin.math.abs(dragX) > 100f -> {
+                                                if (dragX < 0 && currentPageIndex < allPhotos.size - 1) {
+                                                    currentPageIndex++ // LEFT = NEXT
+                                                } else if (dragX > 0 && currentPageIndex > 0) {
+                                                    currentPageIndex-- // RIGHT = PREV
                                                 }
-                                            }
-                                            
-                                            // 1 FINGER + ZOOMED = PAN
-                                            fingerCount == 1 && zoomScale > 1.01f -> {
-                                                gestureType = GESTURE_PAN
-                                                
-                                                val change = event.changes[0]
-                                                val positionChange = change.position - change.previousPosition
-                                                
-                                                panX += positionChange.x
-                                                panY += positionChange.y
-                                            }
-                                        }
-                                        
-                                    } while (event.changes.any { it.pressed })
-                                    
-                                    // GESTURE ENDED - handle navigation if it was a drag
-                                    if (gestureType == GESTURE_DRAG && zoomScale <= 1.01f) {
-                                        if (isDraggingVertically && kotlin.math.abs(dragY) > 100f) {
-                                            if (dragY < 0 && currentPageIndex < allPhotos.size - 1) {
-                                                currentPageIndex++ // UP = NEXT
-                                            } else if (dragY > 0 && currentPageIndex > 0) {
-                                                currentPageIndex-- // DOWN = PREV
-                                            }
-                                        } else if (!isDraggingVertically && kotlin.math.abs(dragX) > 100f) {
-                                            if (dragX < 0 && currentPageIndex < allPhotos.size - 1) {
-                                                currentPageIndex++ // LEFT = NEXT
-                                            } else if (dragX > 0 && currentPageIndex > 0) {
-                                                currentPageIndex-- // RIGHT = PREV
                                             }
                                         }
                                     }
-                                    
-                                    // Reset drag vars
                                     dragX = 0f
                                     dragY = 0f
+                                    gestureStartedAsPinch = false  // Reset after gesture
+                                },
+                                onDrag = { change, amount ->
+                                    val absY = kotlin.math.abs(amount.y)
+                                    val absX = kotlin.math.abs(amount.x)
+                                    
+                                    // Nuclear: Check if zoomScale changed (pinch activated)
+                                    // If zoomScale > 1f at ANY point during gesture, mark as pinch
+                                    if (zoomScale > 1.01f) {
+                                        gestureStartedAsPinch = true
+                                    }
+                                    
+                                    // When ZOOMED or PINCH DETECTED: don't navigate
+                                    if (zoomScale > 1.01f || gestureStartedAsPinch) {
+                                        // Cancel any accumulated drag - this is a pinch, not a swipe
+                                        dragX = 0f
+                                        dragY = 0f
+                                        change.consume()
+                                    } else {
+                                        // When NOT zoomed: wait LONGER before deciding to navigate
+                                        // This gives pinch more time to activate
+                                        val totalDrag = kotlin.math.abs(dragX) + kotlin.math.abs(dragY)
+                                        
+                                        // Only decide direction after 80px (was 40px) - much less sensitive
+                                        if (totalDrag < 80f) {
+                                            // Still in "decision zone" - accumulate but don't commit to navigation
+                                            dragX += amount.x
+                                            dragY += amount.y
+                                            
+                                            // Check if we should start navigation (only after 30px)
+                                            if (totalDrag > 30f) {
+                                                isDraggingVertically = absY > absX
+                                            }
+                                        } else {
+                                            // Past threshold - commit to direction and navigate
+                                            if (kotlin.math.abs(dragX) < 10f && kotlin.math.abs(dragY) < 10f) {
+                                                isDraggingVertically = absY > absX
+                                            }
+                                            
+                                            // LOCK TO ONE AXIS
+                                            if (isDraggingVertically) {
+                                                dragY += amount.y
+                                            } else {
+                                                dragX += amount.x
+                                            }
+                                        }
+                                        change.consume()
+                                    }
                                 }
-                            }
+                            )
                         }
                 ) {
                     // PLUS SIGN LAYOUT - 5 positions: center + left + right + top + bottom
