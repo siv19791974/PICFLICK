@@ -11,7 +11,6 @@ import androidx.compose.foundation.gestures.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -23,7 +22,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
@@ -34,7 +32,6 @@ import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.foundation.layout.imePadding
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
@@ -52,7 +49,6 @@ import com.example.picflick.repository.FlickRepository
 import com.example.picflick.ui.components.AnimatedReactionPicker
 import android.content.ContentValues
 import android.content.Context
-import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.os.Build
@@ -62,7 +58,6 @@ import android.view.LayoutInflater
 import android.widget.TextView
 import com.example.picflick.R
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import kotlin.math.absoluteValue
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -125,26 +120,13 @@ fun FullScreenPhotoViewer(
     // UI visibility toggle
     var uiVisible by remember { mutableStateOf(true) }
     
-    // Simple 2D pager state
+    // 2D Pager state
     var currentPageIndex by remember { mutableIntStateOf(currentIndex) }
-    var dragX by remember { mutableFloatStateOf(0f) }
-    var dragY by remember { mutableFloatStateOf(0f) }
-    var isDraggingVertically by remember { mutableStateOf(false) }
-    
-    // Zoom state
     var zoomScale by remember { mutableFloatStateOf(1f) }
-    var zoomOffsetX by remember { mutableFloatStateOf(0f) }
-    var zoomOffsetY by remember { mutableFloatStateOf(0f) }
     
-    // Pager for horizontal swiping
-    val pagerState = rememberPagerState(
-        initialPage = currentIndex,
-        pageCount = { allPhotos.size.coerceAtLeast(1) }
-    )
-    
-    // Current flick based on pager
-    val currentFlick = if (allPhotos.isNotEmpty() && pagerState.currentPage in allPhotos.indices) {
-        allPhotos[pagerState.currentPage]
+    // Current flick based on page index
+    val currentFlick = if (allPhotos.isNotEmpty() && currentPageIndex in allPhotos.indices) {
+        allPhotos[currentPageIndex]
     } else flick
     
     // Get user's current reaction
@@ -171,9 +153,7 @@ fun FullScreenPhotoViewer(
     var isLoadingTagFriends by remember { mutableStateOf(false) }
     
     // Heart animation state for double tap
-    var showHeartAnimation by remember { mutableStateOf(false) }
-    var heartAnimationKey by remember { mutableIntStateOf(0) }
-    
+
     // Load comments when flick changes
     LaunchedEffect(currentFlick.id) {
         isLoadingComments = true
@@ -1187,14 +1167,6 @@ fun FullScreenPhotoViewer(
                             }
                         }
                     }
-                }
-                
-                // DOUBLE TAP HEART ANIMATION
-                if (showHeartAnimation) {
-                    DoubleTapHeartAnimation(
-                        key = heartAnimationKey,
-                        onAnimationEnd = { showHeartAnimation = false }
-                    )
                 }
                 
                 // REACTION PICKER POPUP
