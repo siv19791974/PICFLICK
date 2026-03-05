@@ -326,10 +326,10 @@ fun FullScreenPhotoViewer(
                     modifier = Modifier
                         .fillMaxSize()
                         .pointerInput(Unit) {
-                            // Pinch zoom detection (higher priority than drag)
+                            // PINCH ZOOM - Only when already zoomed in
                             detectTransformGestures(
                                 onGesture = { _, pan, zoom, _ ->
-                                    if (zoom != 1f) {
+                                    if (zoomScale > 1f || zoom != 1f) {
                                         zoomScale = (zoomScale * zoom).coerceIn(1f, 5f)
                                         zoomOffset += pan
                                     }
@@ -337,28 +337,35 @@ fun FullScreenPhotoViewer(
                             )
                         }
                         .pointerInput(Unit) {
+                            // SWIPE - Only when NOT zoomed in
                             detectDragGestures(
                                 onDragStart = {
-                                    dragX = 0f
-                                    dragY = 0f
-                                    isDraggingVertically = false
+                                    // Only start swipe if not zoomed
+                                    if (zoomScale <= 1.01f) {
+                                        dragX = 0f
+                                        dragY = 0f
+                                        isDraggingVertically = false
+                                    }
                                 },
                                 onDragEnd = {
-                                    when {
-                                        // Vertical swipe
-                                        isDraggingVertically && kotlin.math.abs(dragY) > 100f -> {
-                                            if (dragY < 0 && currentPageIndex < allPhotos.size - 1) {
-                                                currentPageIndex++ // UP = NEXT
-                                            } else if (dragY > 0 && currentPageIndex > 0) {
-                                                currentPageIndex-- // DOWN = PREV
+                                    // Only navigate if not zoomed
+                                    if (zoomScale <= 1.01f) {
+                                        when {
+                                            // Vertical swipe
+                                            isDraggingVertically && kotlin.math.abs(dragY) > 100f -> {
+                                                if (dragY < 0 && currentPageIndex < allPhotos.size - 1) {
+                                                    currentPageIndex++ // UP = NEXT
+                                                } else if (dragY > 0 && currentPageIndex > 0) {
+                                                    currentPageIndex-- // DOWN = PREV
+                                                }
                                             }
-                                        }
-                                        // Horizontal swipe
-                                        !isDraggingVertically && kotlin.math.abs(dragX) > 100f -> {
-                                            if (dragX < 0 && currentPageIndex < allPhotos.size - 1) {
-                                                currentPageIndex++ // LEFT = NEXT
-                                            } else if (dragX > 0 && currentPageIndex > 0) {
-                                                currentPageIndex-- // RIGHT = PREV
+                                            // Horizontal swipe
+                                            !isDraggingVertically && kotlin.math.abs(dragX) > 100f -> {
+                                                if (dragX < 0 && currentPageIndex < allPhotos.size - 1) {
+                                                    currentPageIndex++ // LEFT = NEXT
+                                                } else if (dragX > 0 && currentPageIndex > 0) {
+                                                    currentPageIndex-- // RIGHT = PREV
+                                                }
                                             }
                                         }
                                     }
@@ -366,19 +373,22 @@ fun FullScreenPhotoViewer(
                                     dragY = 0f
                                 },
                                 onDrag = { change, amount ->
-                                    val absY = kotlin.math.abs(amount.y)
-                                    val absX = kotlin.math.abs(amount.x)
-                                    
-                                    // Detect direction on first movement
-                                    if (kotlin.math.abs(dragX) < 10f && kotlin.math.abs(dragY) < 10f) {
-                                        isDraggingVertically = absY > absX
-                                    }
-                                    
-                                    if (isDraggingVertically) {
-                                        dragY += amount.y
-                                        change.consume()
-                                    } else {
-                                        dragX += amount.x
+                                    // Only process swipe if not zoomed
+                                    if (zoomScale <= 1.01f) {
+                                        val absY = kotlin.math.abs(amount.y)
+                                        val absX = kotlin.math.abs(amount.x)
+                                        
+                                        // Detect direction on first movement
+                                        if (kotlin.math.abs(dragX) < 10f && kotlin.math.abs(dragY) < 10f) {
+                                            isDraggingVertically = absY > absX
+                                        }
+                                        
+                                        if (isDraggingVertically) {
+                                            dragY += amount.y
+                                            change.consume()
+                                        } else {
+                                            dragX += amount.x
+                                        }
                                     }
                                 }
                             )
