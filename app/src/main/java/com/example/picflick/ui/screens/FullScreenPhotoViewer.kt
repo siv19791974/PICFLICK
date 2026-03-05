@@ -390,8 +390,33 @@ fun FullScreenPhotoViewer(
                             pagerState.currentPageOffsetFraction
                         ).coerceIn(-1f, 1f)
                         
-                        val alpha = 1f - pageOffset.absoluteValue.coerceIn(0f, 1f)
+                        // Calculate vertical swipe progress for dissolve effect
+                        val verticalProgress = if (pagerState.currentPage == page) {
+                            // Current page fades out as user drags
+                            (kotlin.math.abs(verticalSlideOffset) / 500f).coerceIn(0f, 1f)
+                        } else if (pagerState.currentPage == page - 1 && verticalSlideOffset < 0) {
+                            // Previous page fades in when dragging UP
+                            (kotlin.math.abs(verticalSlideOffset) / 500f).coerceIn(0f, 1f)
+                        } else if (pagerState.currentPage == page + 1 && verticalSlideOffset > 0) {
+                            // Next page fades in when dragging DOWN
+                            (kotlin.math.abs(verticalSlideOffset) / 500f).coerceIn(0f, 1f)
+                        } else 0f
+                        
+                        val horizontalAlpha = 1f - pageOffset.absoluteValue.coerceIn(0f, 1f)
+                        val verticalAlpha = 1f - verticalProgress
+                        
+                        // Combine horizontal and vertical fade
+                        val alpha = if (isVerticalSwipe && pagerState.currentPage == page) {
+                            verticalAlpha
+                        } else if (isVerticalSwipe && kotlin.math.abs(pagerState.currentPage - page) == 1) {
+                            verticalProgress // Adjacent page fades in
+                        } else {
+                            horizontalAlpha
+                        }
+                        
                         val scaleEffect = 1f - (pageOffset.absoluteValue * 0.1f).coerceIn(0f, 0.1f)
+                        val verticalScale = 1f - (verticalProgress * 0.1f).coerceIn(0f, 0.1f)
+                        val finalScale = if (isVerticalSwipe && pagerState.currentPage == page) verticalScale else scaleEffect
                         
                         Box(
                             modifier = Modifier
@@ -424,8 +449,8 @@ fun FullScreenPhotoViewer(
                                     .fillMaxSize()
                                     .graphicsLayer {
                                         this.alpha = alpha
-                                        scaleX = scaleEffect
-                                        scaleY = scaleEffect
+                                        scaleX = finalScale
+                                        scaleY = finalScale
                                         // Apply vertical slide during vertical swipes
                                         if (pagerState.currentPage == page) {
                                             translationY = verticalSlideOffset
