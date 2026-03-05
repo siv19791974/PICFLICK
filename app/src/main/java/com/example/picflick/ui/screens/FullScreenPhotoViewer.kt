@@ -32,6 +32,8 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.ui.layout.ContentScale
@@ -87,6 +89,9 @@ fun FullScreenPhotoViewer(
     onNavigateToFindFriends: () -> Unit = {},
 ) {
     val context = LocalContext.current
+    val configuration = LocalConfiguration.current
+    val screenHeightPx = with(LocalDensity.current) { configuration.screenHeightDp.dp.toPx() }
+    val screenWidthPx = with(LocalDensity.current) { configuration.screenWidthDp.dp.toPx() }
     
     // Helper function to show custom toast with PicFlick logo
     fun showPicFlickToast(message: String) {
@@ -445,22 +450,19 @@ fun FullScreenPhotoViewer(
                                         scaleY = finalScale
                                         
                                         // Calculate Y translation for vertical swipe animation
-                                        // Screen height for slide-in calculation
-                                        val screenHeight = 2400f // Approximate screen height in pixels
-                                        val screenWidth = 1200f  // Approximate screen width to counteract HorizontalPager
-                                        
+                                        // Using ACTUAL screen dimensions, not hardcoded
                                         val yTranslation = when {
                                             // Current page - follows finger directly
                                             pagerState.currentPage == page -> verticalSlideOffset
                                             
                                             // NEXT page slides in from BOTTOM when dragging UP (going forward)
                                             isVerticalSwipe && page == pagerState.currentPage + 1 && verticalSlideOffset < 0 -> {
-                                                screenHeight + verticalSlideOffset // Starts below, moves up
+                                                screenHeightPx + verticalSlideOffset // Starts below, moves up
                                             }
                                             
                                             // PREVIOUS page slides in from TOP when dragging DOWN (going back)
                                             isVerticalSwipe && page == pagerState.currentPage - 1 && verticalSlideOffset > 0 -> {
-                                                -screenHeight + verticalSlideOffset // Starts above, moves down
+                                                -screenHeightPx + verticalSlideOffset // Starts above, moves down
                                             }
                                             
                                             else -> 0f
@@ -473,15 +475,15 @@ fun FullScreenPhotoViewer(
                                             
                                             // NEXT page: counteract being positioned to the right by pager
                                             isVerticalSwipe && page == pagerState.currentPage + 1 && verticalSlideOffset < 0 -> {
-                                                -screenWidth // Move back to center from right
+                                                -screenWidthPx // Move back to center from right
                                             }
                                             
                                             // PREVIOUS page: counteract being positioned to the left by pager
                                             isVerticalSwipe && page == pagerState.currentPage - 1 && verticalSlideOffset > 0 -> {
-                                                screenWidth // Move back to center from left
+                                                screenWidthPx // Move back to center from left
                                             }
                                             
-                                            else -> (pagerState.currentPage - page) * screenWidth // Normal pager position
+                                            else -> (pagerState.currentPage - page) * screenWidthPx // Normal pager position
                                         }
                                         
                                         translationY = if (scale > 1f && isCurrentPage) {
