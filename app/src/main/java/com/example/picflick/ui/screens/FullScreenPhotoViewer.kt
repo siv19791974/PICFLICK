@@ -346,9 +346,12 @@ fun FullScreenPhotoViewer(
                                         isDraggingVertically = absY > absX
                                     }
                                     
-                                    // Update BOTH axes - this allows next/prev to slide in correctly
-                                    dragX += amount.x
-                                    dragY += amount.y
+                                    // LOCK TO ONE AXIS - no diagonal wobble!
+                                    if (isDraggingVertically) {
+                                        dragY += amount.y  // Only vertical moves
+                                    } else {
+                                        dragX += amount.x  // Only horizontal moves
+                                    }
                                     change.consume()
                                 }
                             )
