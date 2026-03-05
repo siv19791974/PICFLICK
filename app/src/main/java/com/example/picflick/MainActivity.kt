@@ -557,8 +557,10 @@ private fun AuthenticatedContent(
                         allPhotos = if (isProfilePhoto) listOf(flick) else profileViewModel.photos,
                         currentIndex = if (isProfilePhoto) 0 else selectedPhotoIndex,
                         onNavigateToPhoto = { index ->
-                            selectedPhotoIndex = index
-                            selectedPhoto = profileViewModel.photos.getOrNull(index)
+                            if (!isProfilePhoto) {
+                                selectedPhotoIndex = index
+                                selectedPhoto = profileViewModel.photos.getOrNull(index)
+                            }
                         },
                         onNavigateToFindFriends = { 
                             selectedPhoto = null
@@ -803,12 +805,14 @@ private fun AuthenticatedContent(
                     
                     // FullScreenPhotoViewer for photos
                     selectedUserPhoto?.let { flick ->
+                        val isUserProfilePhoto = flick.id.startsWith("profile_")
+                        
                         FullScreenPhotoViewer(
                             flick = flick,
                             currentUser = userProfile,
                             onDismiss = { selectedUserPhoto = null },
                             onReaction = { reactionType ->
-                                if (flick.id.startsWith("profile_")) {
+                                if (isUserProfilePhoto) {
                                     // Can't react to profile photos
                                 } else {
                                     profileViewModel.toggleReaction(
@@ -828,9 +832,9 @@ private fun AuthenticatedContent(
                                 }
                                 context.startActivity(Intent.createChooser(shareIntent, "Share Photo"))
                             },
-                            canDelete = isCurrentUser && !flick.id.startsWith("profile_"),
+                            canDelete = isCurrentUser && !isUserProfilePhoto,
                             onDeleteClick = {
-                                if (!flick.id.startsWith("profile_")) {
+                                if (!isUserProfilePhoto) {
                                     profileViewModel.deletePhoto(flick.id) { success ->
                                         if (success) {
                                             selectedUserPhoto = null
@@ -839,15 +843,17 @@ private fun AuthenticatedContent(
                                 }
                             },
                             onCaptionUpdated = { newCaption ->
-                                if (!flick.id.startsWith("profile_")) {
+                                if (!isUserProfilePhoto) {
                                     profileViewModel.updateCaption(flick.id, newCaption)
                                 }
                             },
-                            allPhotos = if (flick.id.startsWith("profile_")) listOf(flick) else targetUserPhotos,
-                            currentIndex = selectedUserPhotoIndex,
+                            allPhotos = if (isUserProfilePhoto) listOf(flick) else targetUserPhotos,
+                            currentIndex = if (isUserProfilePhoto) 0 else selectedUserPhotoIndex,
                             onNavigateToPhoto = { index ->
-                                selectedUserPhotoIndex = index
-                                selectedUserPhoto = targetUserPhotos.getOrNull(index)
+                                if (!isUserProfilePhoto) {
+                                    selectedUserPhotoIndex = index
+                                    selectedUserPhoto = targetUserPhotos.getOrNull(index)
+                                }
                             },
                             onNavigateToFindFriends = {
                                 selectedUserPhoto = null
