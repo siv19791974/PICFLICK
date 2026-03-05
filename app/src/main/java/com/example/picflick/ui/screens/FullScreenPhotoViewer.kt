@@ -301,6 +301,9 @@ fun FullScreenPhotoViewer(
                 var panX by remember { mutableFloatStateOf(0f) }
                 var panY by remember { mutableFloatStateOf(0f) }
                 
+                // Nuclear: Track if this gesture started as a pinch
+                var gestureStartedAsPinch by remember { mutableStateOf(false) }
+                
                 // Reset drag and pan when photo changes
                 LaunchedEffect(currentPageIndex) {
                     dragX = 0f
@@ -308,7 +311,8 @@ fun FullScreenPhotoViewer(
                     panX = 0f
                     panY = 0f
                     isDraggingVertically = false
-                    zoomScale = 1f  // Reset zoom on page change
+                    gestureStartedAsPinch = false
+                    zoomScale = 1f
                 }
                 
                 Box(
@@ -334,10 +338,11 @@ fun FullScreenPhotoViewer(
                                     dragX = 0f
                                     dragY = 0f
                                     isDraggingVertically = false
+                                    gestureStartedAsPinch = false  // Reset at start
                                 },
                                 onDragEnd = {
-                                    // Only navigate if NOT zoomed
-                                    if (zoomScale <= 1.01f) {
+                                    // Only navigate if NOT zoomed and NOT a pinch gesture
+                                    if (zoomScale <= 1.01f && !gestureStartedAsPinch) {
                                         when {
                                             // Vertical swipe - UP goes next, DOWN goes prev
                                             isDraggingVertically && kotlin.math.abs(dragY) > 100f -> {
@@ -359,15 +364,23 @@ fun FullScreenPhotoViewer(
                                     }
                                     dragX = 0f
                                     dragY = 0f
+                                    gestureStartedAsPinch = false  // Reset after gesture
                                 },
                                 onDrag = { change, amount ->
                                     val absY = kotlin.math.abs(amount.y)
                                     val absX = kotlin.math.abs(amount.x)
                                     
-                                    // When ZOOMED: drag pans the image
+                                    // Nuclear: Check if zoomScale changed (pinch activated)
+                                    // If zoomScale > 1f at ANY point during gesture, mark as pinch
                                     if (zoomScale > 1.01f) {
-                                        panX += amount.x
-                                        panY += amount.y
+                                        gestureStartedAsPinch = true
+                                    }
+                                    
+                                    // When ZOOMED or PINCH DETECTED: don't navigate
+                                    if (zoomScale > 1.01f || gestureStartedAsPinch) {
+                                        // Cancel any accumulated drag - this is a pinch, not a swipe
+                                        dragX = 0f
+                                        dragY = 0f
                                         change.consume()
                                     } else {
                                         // When NOT zoomed: wait LONGER before deciding to navigate
