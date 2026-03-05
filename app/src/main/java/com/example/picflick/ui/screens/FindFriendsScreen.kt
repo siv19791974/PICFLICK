@@ -484,14 +484,15 @@ private fun UserResultItem(
             modifier = Modifier.padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Profile photo
+            // Profile photo - clickable to view profile
             if (user.photoUrl.isNotEmpty()) {
                 AsyncImage(
                     model = user.photoUrl,
                     contentDescription = null,
                     modifier = Modifier
                         .size(56.dp)
-                        .clip(CircleShape),
+                        .clip(CircleShape)
+                        .clickable { onUserClick() },
                     contentScale = androidx.compose.ui.layout.ContentScale.Crop,
                     error = painterResource(id = android.R.drawable.ic_menu_myplaces)
                 )
@@ -500,7 +501,8 @@ private fun UserResultItem(
                     modifier = Modifier
                         .size(56.dp)
                         .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)),
+                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.2f))
+                        .clickable { onUserClick() },
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(

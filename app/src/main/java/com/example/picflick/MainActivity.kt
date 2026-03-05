@@ -57,7 +57,11 @@ import com.example.picflick.ui.screens.MyPhotosScreen
 import com.example.picflick.ui.screens.NotificationsScreen
 import com.example.picflick.ui.screens.ProfileScreen
 import com.example.picflick.ui.screens.SettingsScreen
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.sp
 import com.example.picflick.ui.screens.SplashScreen
+import com.example.picflick.ui.screens.UserProfileScreen
 import com.example.picflick.ui.theme.PicFlickBackground
 import com.example.picflick.ui.theme.PicFlickBannerBackground
 import com.example.picflick.ui.theme.PicFlickTheme
@@ -112,6 +116,7 @@ fun AppContent() {
 sealed class Screen {
     data object Home : Screen()
     data object Profile : Screen()
+    data class UserProfile(val userId: String) : Screen() // View another user's profile
     data object MyPhotos : Screen()
     data object Friends : Screen()
     data object Chats : Screen()
@@ -548,6 +553,10 @@ private fun AuthenticatedContent(
                         onNavigateToFindFriends = { 
                             selectedPhoto = null
                             onScreenChange(Screen.FindFriends) 
+                        },
+                        onUserProfileClick = { userId ->
+                            selectedPhoto = null
+                            onScreenChange(Screen.UserProfile(userId))
                         }
                     )
                 }
@@ -561,58 +570,16 @@ private fun AuthenticatedContent(
             )
 
             is Screen.Friends -> {
-                // State for viewing friend profile photos
-                var selectedFriendPhoto by remember { mutableStateOf<Flick?>(null) }
-                
                 FriendsScreen(
                     userProfile = userProfile,
                     viewModel = friendsViewModel,
                     onBack = { onScreenChange(Screen.Home) },
                     onFindFriendsClick = { onScreenChange(Screen.FindFriends) },
                     onProfilePhotoClick = { friend ->
-                        // Create a Flick from friend's profile photo to view
-                        if (friend.photoUrl.isNotEmpty()) {
-                            selectedFriendPhoto = Flick(
-                                id = "profile_${friend.uid}",
-                                userId = friend.uid,
-                                userName = friend.displayName,
-                                userPhotoUrl = friend.photoUrl,
-                                imageUrl = friend.photoUrl,
-                                description = "${friend.displayName}'s Profile Photo",
-                                timestamp = System.currentTimeMillis(),
-                                reactions = emptyMap()
-                            )
-                        }
+                        // Navigate to user's profile page
+                        onScreenChange(Screen.UserProfile(friend.uid))
                     }
                 )
-                
-                // FullScreenPhotoViewer for friend's profile photo
-                selectedFriendPhoto?.let { flick ->
-                    FullScreenPhotoViewer(
-                        flick = flick,
-                        currentUser = userProfile,
-                        onDismiss = { selectedFriendPhoto = null },
-                        onReaction = { reactionType ->
-                            // Can't react to profile photos
-                        },
-                        onShareClick = {
-                            val shareIntent = Intent().apply {
-                                action = Intent.ACTION_SEND
-                                type = "text/plain"
-                                putExtra(Intent.EXTRA_TEXT, "Check out ${flick.userName}'s profile on PicFlick!")
-                            }
-                            context.startActivity(Intent.createChooser(shareIntent, "Share"))
-                        },
-                        canDelete = false, // Can't delete other's profile photos
-                        allPhotos = listOf(flick), // Single photo
-                        currentIndex = 0,
-                        onNavigateToPhoto = { },
-                        onNavigateToFindFriends = { 
-                            selectedFriendPhoto = null
-                            onScreenChange(Screen.FindFriends) 
-                        }
-                    )
-                }
             }
 
             is Screen.Chats -> ChatsScreen(
@@ -622,6 +589,9 @@ private fun AuthenticatedContent(
                 onChatClick = { session, otherUserId ->
                     onSetSelectedChat(session, otherUserId)
                     onScreenChange(Screen.ChatDetail)
+                },
+                onUserProfileClick = { userId ->
+                    onScreenChange(Screen.UserProfile(userId))
                 }
             )
 
@@ -632,7 +602,10 @@ private fun AuthenticatedContent(
                         otherUserId = selectedOtherUserId,
                         currentUser = userProfile,
                         viewModel = chatViewModel,
-                        onBack = { onScreenChange(Screen.Chats) }
+                        onBack = { onScreenChange(Screen.Chats) },
+                        onUserProfileClick = { userId ->
+                            onScreenChange(Screen.UserProfile(userId))
+                        }
                     )
                 } else {
                     // Fallback if no chat selected
@@ -643,7 +616,10 @@ private fun AuthenticatedContent(
             is Screen.FindFriends -> FindFriendsScreen(
                 viewModel = friendsViewModel,
                 userProfile = userProfile,
-                onBack = { onScreenChange(Screen.Home) }
+                onBack = { onScreenChange(Screen.Home) },
+                onNavigateToProfile = { userId ->
+                    onScreenChange(Screen.UserProfile(userId))
+                }
             )
 
             is Screen.About -> AboutScreen(
@@ -707,8 +683,180 @@ private fun AuthenticatedContent(
                     // TODO: Navigate to full screen photo viewer
                 },
                 onUserClick = { userId: String ->
-                    // TODO: Navigate to user profile
+                    onScreenChange(Screen.UserProfile(userId))
                 }
             )
+
+            is Screen.UserProfile -> {
+                // State for viewing user's photos in profile
+                var selectedUserPhoto by remember { mutableStateOf<Flick?>(null) }
+                var selectedUserPhotoIndex by remember { mutableIntStateOf(0) }
+                
+                // Load target user's profile
+                var targetUser by remember { mutableStateOf<UserProfile?>(null) }
+                var targetUserPhotos by remember { mutableStateOf<List<Flick>>(emptyList()) }
+                var isLoading by remember { mutableStateOf(true) }
+                
+                val targetUserId = (currentScreen as Screen.UserProfile).userId
+                
+                // Check if this is the current user
+                val isCurrentUser = targetUserId == userProfile.uid
+                
+                // Check if they are friends
+                val isFriend = userProfile.following.contains(targetUserId) && 
+                              targetUser?.followers?.contains(userProfile.uid) == true
+                
+                LaunchedEffect(targetUserId) {
+                    isLoading = true
+                    // Load target user's profile
+                    repository.getUserProfile(targetUserId) { result ->
+                        when (result) {
+                            is com.example.picflick.data.Result.Success<UserProfile> -> {
+                                targetUser = result.data
+                                // If friends, load their photos
+                                if (userProfile.following.contains(targetUserId)) {
+                                    repository.getUserFlicks(targetUserId) { photosResult ->
+                                        when (photosResult) {
+                                            is com.example.picflick.data.Result.Success<List<Flick>> -> {
+                                                targetUserPhotos = photosResult.data
+                                                isLoading = false
+                                            }
+                                            else -> {
+                                                targetUserPhotos = emptyList()
+                                                isLoading = false
+                                            }
+                                        }
+                                    }
+                                } else {
+                                    isLoading = false
+                                }
+                            }
+                            else -> {
+                                isLoading = false
+                            }
+                        }
+                    }
+                }
+                
+                targetUser?.let { target ->
+                    UserProfileScreen(
+                        userProfile = target,
+                        currentUser = userProfile,
+                        photos = targetUserPhotos,
+                        isFriend = isFriend,
+                        isLoading = isLoading,
+                        onBack = { onScreenChange(Screen.Home) },
+                        onPhotoClick = { flick, index ->
+                            selectedUserPhoto = flick
+                            selectedUserPhotoIndex = index
+                        },
+                        onProfilePhotoClick = {
+                            // View profile photo in fullscreen
+                            if (target.photoUrl.isNotEmpty()) {
+                                selectedUserPhoto = Flick(
+                                    id = "profile_${target.uid}",
+                                    userId = target.uid,
+                                    userName = target.displayName,
+                                    userPhotoUrl = target.photoUrl,
+                                    imageUrl = target.photoUrl,
+                                    description = "${target.displayName}'s Profile Photo",
+                                    timestamp = System.currentTimeMillis(),
+                                    reactions = emptyMap()
+                                )
+                                selectedUserPhotoIndex = 0
+                            }
+                        },
+                        onAddFriend = {
+                            // Navigate to FindFriends and trigger follow
+                            friendsViewModel.followUser(
+                                userProfile.uid,
+                                target,
+                                userProfile
+                            )
+                        },
+                        onMessageClick = {
+                            // Navigate to chat with this user
+                            // TODO: Implement chat navigation
+                        }
+                    )
+                    
+                    // FullScreenPhotoViewer for photos
+                    selectedUserPhoto?.let { flick ->
+                        FullScreenPhotoViewer(
+                            flick = flick,
+                            currentUser = userProfile,
+                            onDismiss = { selectedUserPhoto = null },
+                            onReaction = { reactionType ->
+                                if (flick.id.startsWith("profile_")) {
+                                    // Can't react to profile photos
+                                } else {
+                                    profileViewModel.toggleReaction(
+                                        flick, 
+                                        userProfile.uid, 
+                                        userProfile.displayName, 
+                                        userProfile.photoUrl, 
+                                        reactionType
+                                    )
+                                }
+                            },
+                            onShareClick = {
+                                val shareIntent = Intent().apply {
+                                    action = Intent.ACTION_SEND
+                                    type = "text/plain"
+                                    putExtra(Intent.EXTRA_TEXT, "Check out this photo on PicFlick: ${flick.imageUrl}")
+                                }
+                                context.startActivity(Intent.createChooser(shareIntent, "Share Photo"))
+                            },
+                            canDelete = isCurrentUser && !flick.id.startsWith("profile_"),
+                            onDeleteClick = {
+                                if (!flick.id.startsWith("profile_")) {
+                                    profileViewModel.deletePhoto(flick.id) { success ->
+                                        if (success) {
+                                            selectedUserPhoto = null
+                                        }
+                                    }
+                                }
+                            },
+                            onCaptionUpdated = { newCaption ->
+                                if (!flick.id.startsWith("profile_")) {
+                                    profileViewModel.updateCaption(flick.id, newCaption)
+                                }
+                            },
+                            allPhotos = if (flick.id.startsWith("profile_")) listOf(flick) else targetUserPhotos,
+                            currentIndex = selectedUserPhotoIndex,
+                            onNavigateToPhoto = { index ->
+                                selectedUserPhotoIndex = index
+                                selectedUserPhoto = targetUserPhotos.getOrNull(index)
+                            },
+                            onNavigateToFindFriends = {
+                                selectedUserPhoto = null
+                                onScreenChange(Screen.FindFriends)
+                            },
+                            onUserProfileClick = { userId ->
+                                selectedUserPhoto = null
+                                if (userId != targetUserId) {
+                                    onScreenChange(Screen.UserProfile(userId))
+                                }
+                            }
+                        )
+                    }
+                } ?: run {
+                    // Loading or error state
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (isLoading) {
+                            CircularProgressIndicator(color = Color.White)
+                        } else {
+                            Text(
+                                text = "User not found",
+                                color = Color.White,
+                                fontSize = 18.sp
+                            )
+                        }
+                    }
+                }
+            }
     }
 }
