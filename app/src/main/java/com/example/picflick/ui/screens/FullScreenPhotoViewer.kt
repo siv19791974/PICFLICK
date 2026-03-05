@@ -320,11 +320,11 @@ fun FullScreenPhotoViewer(
                 
                 // NUCLEAR: Custom 2D Pager - replaces HorizontalPager completely
                 // Shows only 3 pages at a time: prev, current, next
-                val currentPage = pagerState.currentPage
-                val animatedOffsetX by animateFloatAsState(
-                    targetValue = -currentPage * screenWidthPx + horizontalDragOffset,
+                val actualCurrentPage = pagerState.currentPage
+                val animatedBaseX by animateFloatAsState(
+                    targetValue = -actualCurrentPage * screenWidthPx,
                     animationSpec = tween(300),
-                    label = "horizontalOffset"
+                    label = "horizontalBase"
                 )
                 
                 Box(
@@ -442,7 +442,7 @@ fun FullScreenPhotoViewer(
                         
                         // Calculate position
                         val baseX = page * screenWidthPx
-                        val xOffset = animatedOffsetX + baseX + horizontalDragOffset
+                        val xOffset = animatedBaseX + baseX + horizontalDragOffset
                         
                         val yOffset = when {
                             isThisCurrentPage -> verticalSlideOffset
