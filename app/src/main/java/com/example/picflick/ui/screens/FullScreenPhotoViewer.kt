@@ -374,66 +374,107 @@ fun FullScreenPhotoViewer(
                             )
                         }
                 ) {
-                    // Show all pages positioned by index
-                    allPhotos.forEachIndexed { index, photo ->
-                        val isCurrent = index == currentPageIndex
-                        val isNext = index == currentPageIndex + 1
-                        val isPrev = index == currentPageIndex - 1
+                    // PLUS SIGN LAYOUT - 5 positions: center + left + right + top + bottom
+                    // Current at center, next at right AND bottom, prev at left AND top
+                    
+                    // Helper to render a photo at a specific position
+                    @Composable
+                    fun PhotoAtPosition(
+                        photo: Flick,
+                        isCurrent: Boolean,
+                        baseX: Float,
+                        baseY: Float
+                    ) {
+                        val finalX = baseX + dragX
+                        val finalY = baseY + dragY
                         
-                        // Only render current, next, and prev
-                        if (isCurrent || isNext || isPrev) {
-                            // Base position: where the photo SHOULD be
-                            // X: current=0, next=+W, prev=-W
-                            // Y: current=0, next=+H (below), prev=-H (above)
-                            val baseX = (index - currentPageIndex) * screenWidthPx
-                            val baseY = when {
-                                isCurrent -> 0f
-                                isNext -> screenHeightPx    // Start BELOW screen
-                                isPrev -> -screenHeightPx   // Start ABOVE screen
-                                else -> 0f
-                            }
-                            
-                            // Add drag to ALL photos - they move together!
-                            val finalX = baseX + dragX
-                            val finalY = baseY + dragY
-                            
-                            // Calculate scale shrink and fade based on drag amount
-                            val dragProgress = kotlin.math.abs(dragX) / screenWidthPx
-                            val verticalProgress = kotlin.math.abs(dragY) / screenHeightPx
-                            val maxProgress = kotlin.math.max(dragProgress, verticalProgress)
-                            val swipeScale = 1f - (maxProgress * 0.25f).coerceIn(0f, 0.25f)
-                            val swipeAlpha = 1f - (maxProgress * 0.5f).coerceIn(0f, 0.5f)  // Fade to 50%
-                            
-                            // Apply zoom only to current photo
-                            val finalScale = if (isCurrent) swipeScale * zoomScale else swipeScale
-                            val finalAlpha = if (isCurrent && zoomScale <= 1.01f) swipeAlpha else 1f  // Only fade when not zoomed
-                            val finalOffsetX = if (isCurrent) finalX + zoomOffsetX else finalX
-                            val finalOffsetY = if (isCurrent) finalY + zoomOffsetY else finalY
-                            
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .offset { IntOffset(finalOffsetX.toInt(), finalOffsetY.toInt()) }
-                                    .graphicsLayer {
-                                        scaleX = finalScale
-                                        scaleY = finalScale
-                                        alpha = finalAlpha
-                                    }
-                                    .combinedClickable(
-                                        indication = null,
-                                        interactionSource = remember { MutableInteractionSource() },
-                                        onClick = { if (isCurrent && zoomScale <= 1.01f) uiVisible = !uiVisible }
-                                    ),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                AsyncImage(
-                                    model = photo.imageUrl,
-                                    contentDescription = null,
-                                    modifier = Modifier.fillMaxSize(),
-                                    contentScale = ContentScale.Fit
-                                )
-                            }
+                        // Calculate scale and fade
+                        val dragProgress = kotlin.math.abs(dragX) / screenWidthPx
+                        val verticalProgress = kotlin.math.abs(dragY) / screenHeightPx
+                        val maxProgress = kotlin.math.max(dragProgress, verticalProgress)
+                        val swipeScale = 1f - (maxProgress * 0.25f).coerceIn(0f, 0.25f)
+                        val swipeAlpha = 1f - (maxProgress * 0.5f).coerceIn(0f, 0.5f)
+                        
+                        val finalScale = if (isCurrent) swipeScale * zoomScale else swipeScale
+                        val finalAlpha = if (isCurrent && zoomScale <= 1.01f) swipeAlpha else 1f
+                        
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .offset { IntOffset(finalX.toInt(), finalY.toInt()) }
+                                .graphicsLayer {
+                                    scaleX = finalScale
+                                    scaleY = finalScale
+                                    alpha = finalAlpha
+                                }
+                                .then(
+                                    if (isCurrent) {
+                                        Modifier.combinedClickable(
+                                            indication = null,
+                                            interactionSource = remember { MutableInteractionSource() },
+                                            onClick = { if (zoomScale <= 1.01f) uiVisible = !uiVisible }
+                                        )
+                                    } else Modifier
+                                ),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            AsyncImage(
+                                model = photo.imageUrl,
+                                contentDescription = null,
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Fit
+                            )
                         }
+                    }
+                    
+                    // 1. CURRENT at CENTER
+                    if (currentPageIndex < allPhotos.size) {
+                        PhotoAtPosition(
+                            photo = allPhotos[currentPageIndex],
+                            isCurrent = true,
+                            baseX = 0f,
+                            baseY = 0f
+                        )
+                    }
+                    
+                    // 2. NEXT at RIGHT (for horizontal swipe)
+                    if (currentPageIndex + 1 < allPhotos.size) {
+                        PhotoAtPosition(
+                            photo = allPhotos[currentPageIndex + 1],
+                            isCurrent = false,
+                            baseX = screenWidthPx,
+                            baseY = 0f
+                        )
+                    }
+                    
+                    // 3. PREV at LEFT (for horizontal swipe)
+                    if (currentPageIndex - 1 >= 0) {
+                        PhotoAtPosition(
+                            photo = allPhotos[currentPageIndex - 1],
+                            isCurrent = false,
+                            baseX = -screenWidthPx,
+                            baseY = 0f
+                        )
+                    }
+                    
+                    // 4. NEXT at BOTTOM (for vertical swipe) - SAME photo as RIGHT
+                    if (currentPageIndex + 1 < allPhotos.size) {
+                        PhotoAtPosition(
+                            photo = allPhotos[currentPageIndex + 1],
+                            isCurrent = false,
+                            baseX = 0f,
+                            baseY = screenHeightPx
+                        )
+                    }
+                    
+                    // 5. PREV at TOP (for vertical swipe) - SAME photo as LEFT
+                    if (currentPageIndex - 1 >= 0) {
+                        PhotoAtPosition(
+                            photo = allPhotos[currentPageIndex - 1],
+                            isCurrent = false,
+                            baseX = 0f,
+                            baseY = -screenHeightPx
+                        )
                     }
                 }
                 
