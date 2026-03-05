@@ -332,18 +332,18 @@ fun FullScreenPhotoViewer(
                                     isVerticalSwipe = false
                                 },
                                 onDragEnd = { 
-                                    // Navigate based on accumulated vertical drag distance
+                                    // Navigate based on accumulated vertical drag distance (SWAPPED)
                                     if (kotlin.math.abs(verticalDragTotal) > 120f && isVerticalSwipe) {
                                         val currentPage = pagerState.currentPage
-                                        if (verticalDragTotal < 0 && currentPage > 0) {
-                                            // UP = PREVIOUS - animate to completion
-                                            coroutineScope.launch {
-                                                pagerState.animateScrollToPage(currentPage - 1)
-                                            }
-                                        } else if (verticalDragTotal > 0 && currentPage < allPhotos.size - 1) {
-                                            // DOWN = NEXT - animate to completion
+                                        if (verticalDragTotal < 0 && currentPage < allPhotos.size - 1) {
+                                            // UP = FORWARD/NEXT - animate to completion
                                             coroutineScope.launch {
                                                 pagerState.animateScrollToPage(currentPage + 1)
+                                            }
+                                        } else if (verticalDragTotal > 0 && currentPage > 0) {
+                                            // DOWN = BACK/PREVIOUS - animate to completion
+                                            coroutineScope.launch {
+                                                pagerState.animateScrollToPage(currentPage - 1)
                                             }
                                         }
                                     }
@@ -363,11 +363,11 @@ fun FullScreenPhotoViewer(
                                         verticalDragTotal += dragAmount
                                         isVerticalSwipe = true
                                         
-                                        // Apply vertical slide with resistance at edges
+                                        // Apply vertical slide with resistance at edges (SWAPPED directions)
                                         val resistance = 0.6f
                                         verticalSlideOffset = when {
-                                            pagerState.currentPage == 0 && dragAmount < 0 -> dragAmount * 0.3f // First page, resist UP
-                                            pagerState.currentPage == allPhotos.size - 1 && dragAmount > 0 -> dragAmount * 0.3f // Last page, resist DOWN
+                                            pagerState.currentPage == 0 && dragAmount > 0 -> dragAmount * 0.3f // First page, resist DOWN (can't go back)
+                                            pagerState.currentPage == allPhotos.size - 1 && dragAmount < 0 -> dragAmount * 0.3f // Last page, resist UP (can't go forward)
                                             else -> dragAmount * resistance
                                         }
                                     }
@@ -390,15 +390,15 @@ fun FullScreenPhotoViewer(
                             pagerState.currentPageOffsetFraction
                         ).coerceIn(-1f, 1f)
                         
-                        // Calculate vertical swipe progress for dissolve effect
+                        // Calculate vertical swipe progress for dissolve effect (SWAPPED)
                         val verticalProgress = if (pagerState.currentPage == page) {
                             // Current page fades out as user drags
                             (kotlin.math.abs(verticalSlideOffset) / 500f).coerceIn(0f, 1f)
-                        } else if (pagerState.currentPage == page - 1 && verticalSlideOffset < 0) {
-                            // Previous page fades in when dragging UP
+                        } else if (pagerState.currentPage == page + 1 && verticalSlideOffset < 0) {
+                            // NEXT page fades in when dragging UP (to go forward)
                             (kotlin.math.abs(verticalSlideOffset) / 500f).coerceIn(0f, 1f)
-                        } else if (pagerState.currentPage == page + 1 && verticalSlideOffset > 0) {
-                            // Next page fades in when dragging DOWN
+                        } else if (pagerState.currentPage == page - 1 && verticalSlideOffset > 0) {
+                            // PREVIOUS page fades in when dragging DOWN (to go back)
                             (kotlin.math.abs(verticalSlideOffset) / 500f).coerceIn(0f, 1f)
                         } else 0f
                         
