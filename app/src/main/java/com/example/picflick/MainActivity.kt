@@ -528,6 +528,10 @@ private fun AuthenticatedContent(
                         onNavigateToPhoto = { index ->
                             selectedPhotoIndex = index
                             selectedPhoto = profileViewModel.photos.getOrNull(index)
+                        },
+                        onNavigateToFindFriends = { 
+                            selectedPhoto = null
+                            onScreenChange(Screen.FindFriends) 
                         }
                     )
                 }

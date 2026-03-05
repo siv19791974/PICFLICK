@@ -27,6 +27,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
@@ -83,6 +84,7 @@ fun FullScreenPhotoViewer(
     onNavigateToPhoto: (Int) -> Unit = {},
     onUserProfileClick: (String) -> Unit = {},
     onShareToFriend: (String, String) -> Unit = { _, _ -> },
+    onNavigateToFindFriends: () -> Unit = {},
 ) {
     val context = LocalContext.current
     
@@ -148,6 +150,11 @@ fun FullScreenPhotoViewer(
     var showShareDialog by remember { mutableStateOf(false) }
     var friendsList by remember { mutableStateOf<List<UserProfile>>(emptyList()) }
     var isLoadingFriends by remember { mutableStateOf(false) }
+    
+    // Tag friends dialog state
+    var showTagFriendsDialog by remember { mutableStateOf(false) }
+    var taggedFriends by remember { mutableStateOf<List<String>>(currentFlick.taggedFriends) }
+    var isLoadingTagFriends by remember { mutableStateOf(false) }
     
     // Heart animation state for double tap
     var showHeartAnimation by remember { mutableStateOf(false) }
@@ -423,8 +430,7 @@ fun FullScreenPhotoViewer(
                                             CircleShape
                                         )
                                         .clickable { 
-                                            // TODO: Implement tag friends functionality
-                                            showPicFlickToast("Tag Friends - Coming Soon!")
+                                            showTagFriendsDialog = true
                                         },
                                     contentAlignment = Alignment.Center
                                 ) {
@@ -984,6 +990,52 @@ fun FullScreenPhotoViewer(
                     }
                 }
                 
+                // TAG FRIENDS DIALOG - Tag existing friends or go to Find Friends
+                AnimatedVisibility(
+                    visible = showTagFriendsDialog,
+                    enter = fadeIn(),
+                    exit = fadeOut()
+                ) {
+                    TagFriendsDialog(
+                        flick = currentFlick,
+                        currentUser = currentUser,
+                        taggedFriends = taggedFriends,
+                        onDismiss = { showTagFriendsDialog = false },
+                        onTagFriendsChanged = { newTaggedFriends ->
+                            taggedFriends = newTaggedFriends
+                        },
+                        onSaveTags = { finalTaggedFriends ->
+                            coroutineScope.launch {
+                                isLoadingTagFriends = true
+                                val result = repository.updateTaggedFriends(
+                                    flickId = currentFlick.id,
+                                    taggedFriends = finalTaggedFriends,
+                                    photoOwnerId = currentUser.uid,
+                                    photoOwnerName = currentUser.displayName,
+                                    photoOwnerPhotoUrl = currentUser.photoUrl
+                                )
+                                isLoadingTagFriends = false
+                                when (result) {
+                                    is com.example.picflick.data.Result.Success -> {
+                                        showPicFlickToast("Tags updated!")
+                                        showTagFriendsDialog = false
+                                    }
+                                    is com.example.picflick.data.Result.Error -> {
+                                        showPicFlickToast("Failed to update tags")
+                                    }
+                                    else -> {}
+                                }
+                            }
+                        },
+                        onNavigateToFindFriends = {
+                            showTagFriendsDialog = false
+                            onNavigateToFindFriends()
+                        },
+                        repository = repository,
+                        showPicFlickToast = { message -> showPicFlickToast(message) }
+                    )
+                }
+                
                 // BOTTOM USER INFO - With gradient transparent box
                 Box(
                     modifier = Modifier
@@ -1327,6 +1379,299 @@ private fun ReactionCounterItem(
             fontSize = 11.sp,
             fontWeight = FontWeight.Medium
         )
+    }
+}
+
+/**
+ * Tag Friends Dialog - Tag existing friends or navigate to Find Friends
+ * Full screen style with no rounded corners
+ */
+@Composable
+private fun TagFriendsDialog(
+    flick: Flick,
+    currentUser: UserProfile,
+    taggedFriends: List<String>,
+    onDismiss: () -> Unit,
+    onTagFriendsChanged: (List<String>) -> Unit,
+    onSaveTags: (List<String>) -> Unit,
+    onNavigateToFindFriends: () -> Unit,
+    repository: FlickRepository,
+    showPicFlickToast: (String) -> Unit
+) {
+    val coroutineScope = rememberCoroutineScope()
+    var friendsList by remember { mutableStateOf<List<UserProfile>>(emptyList()) }
+    var isLoadingFriends by remember { mutableStateOf(true) }
+    var selectedFriends by remember { mutableStateOf(taggedFriends.toMutableSet()) }
+    var isSaving by remember { mutableStateOf(false) }
+    
+    // Load friends when dialog opens
+    LaunchedEffect(Unit) {
+        if (currentUser.following.isNotEmpty()) {
+            val loadedFriends = mutableListOf<UserProfile>()
+            var loadedCount = 0
+            
+            currentUser.following.forEach { userId ->
+                repository.getUserProfile(userId) { result ->
+                    when (result) {
+                        is com.example.picflick.data.Result.Success -> {
+                            loadedFriends.add(result.data)
+                        }
+                        else -> { /* Skip failed loads */ }
+                    }
+                    loadedCount++
+                    if (loadedCount >= currentUser.following.size) {
+                        friendsList = loadedFriends.sortedBy { it.displayName }
+                        isLoadingFriends = false
+                    }
+                }
+            }
+        } else {
+            friendsList = emptyList()
+            isLoadingFriends = false
+        }
+    }
+    
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(
+            usePlatformDefaultWidth = false,
+            dismissOnBackPress = true,
+            dismissOnClickOutside = true
+        )
+    ) {
+        Surface(
+            modifier = Modifier
+                .fillMaxSize(),
+            shape = RectangleShape,
+            color = Color(0xFF1A1A1A)
+        ) {
+            Column(
+                modifier = Modifier.padding(20.dp)
+            ) {
+                // Header
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Tag Friends",
+                        color = Color.White,
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    
+                    IconButton(onClick = onDismiss) {
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = "Close",
+                            tint = Color.White
+                        )
+                    }
+                }
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                // Preview of photo being tagged
+                AsyncImage(
+                    model = flick.imageUrl,
+                    contentDescription = null,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(120.dp)
+                        .clip(RoundedCornerShape(12.dp)),
+                    contentScale = ContentScale.Crop
+                )
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                // Currently tagged count
+                if (selectedFriends.isNotEmpty()) {
+                    Text(
+                        text = "${selectedFriends.size} friend${if (selectedFriends.size > 1) "s" else ""} tagged",
+                        color = Color.White.copy(alpha = 0.7f),
+                        fontSize = 14.sp,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+                }
+                
+                // Friends list or empty state
+                when {
+                    isLoadingFriends -> {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(150.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
+                        }
+                    }
+                    friendsList.isEmpty() -> {
+                        // No friends - show Go to Find Friends button
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 24.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Person,
+                                    contentDescription = null,
+                                    tint = Color.White.copy(alpha = 0.4f),
+                                    modifier = Modifier.size(48.dp)
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(
+                                    text = "No friends yet",
+                                    color = Color.White.copy(alpha = 0.6f),
+                                    fontSize = 14.sp
+                                )
+                                Spacer(modifier = Modifier.height(16.dp))
+                                Button(
+                                    onClick = { 
+                                        onNavigateToFindFriends()
+                                    },
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = MaterialTheme.colorScheme.primary
+                                    )
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.PersonAdd,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text("Find Friends")
+                                }
+                            }
+                        }
+                    }
+                    else -> {
+                        // Show friends list with checkboxes
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(max = 250.dp)
+                                .verticalScroll(rememberScrollState())
+                        ) {
+                            friendsList.forEach { friend ->
+                                val isSelected = selectedFriends.contains(friend.uid)
+                                
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickable {
+                                            if (isSelected) {
+                                                selectedFriends = selectedFriends.toMutableSet().apply { remove(friend.uid) }
+                                            } else {
+                                                selectedFriends = selectedFriends.toMutableSet().apply { add(friend.uid) }
+                                            }
+                                            onTagFriendsChanged(selectedFriends.toList())
+                                        }
+                                        .padding(vertical = 8.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    // Checkbox
+                                    Checkbox(
+                                        checked = isSelected,
+                                        onCheckedChange = { checked ->
+                                            if (checked) {
+                                                selectedFriends = selectedFriends.toMutableSet().apply { add(friend.uid) }
+                                            } else {
+                                                selectedFriends = selectedFriends.toMutableSet().apply { remove(friend.uid) }
+                                            }
+                                            onTagFriendsChanged(selectedFriends.toList())
+                                        },
+                                        colors = CheckboxDefaults.colors(
+                                            checkedColor = MaterialTheme.colorScheme.primary,
+                                            uncheckedColor = Color.White.copy(alpha = 0.5f)
+                                        )
+                                    )
+                                    
+                                    Spacer(modifier = Modifier.width(12.dp))
+                                    
+                                    // Friend photo
+                                    AsyncImage(
+                                        model = friend.photoUrl,
+                                        contentDescription = null,
+                                        modifier = Modifier
+                                            .size(40.dp)
+                                            .clip(CircleShape)
+                                            .background(Color.Gray),
+                                        contentScale = ContentScale.Crop
+                                    )
+                                    
+                                    Spacer(modifier = Modifier.width(12.dp))
+                                    
+                                    // Friend name
+                                    Text(
+                                        text = friend.displayName,
+                                        color = Color.White,
+                                        fontSize = 15.sp,
+                                        fontWeight = FontWeight.Medium,
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                }
+                                
+                                if (friend != friendsList.last()) {
+                                    HorizontalDivider(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        thickness = 1.dp,
+                                        color = Color.White.copy(alpha = 0.1f)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                // Action buttons (only show Save if there are friends)
+                if (friendsList.isNotEmpty()) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        OutlinedButton(
+                            onClick = onDismiss,
+                            modifier = Modifier.weight(1f),
+                            colors = ButtonDefaults.outlinedButtonColors(
+                                contentColor = Color.White
+                            )
+                        ) {
+                            Text("Cancel")
+                        }
+                        
+                        Button(
+                            onClick = {
+                                isSaving = true
+                                onSaveTags(selectedFriends.toList())
+                            },
+                            modifier = Modifier.weight(1f),
+                            enabled = !isSaving,
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.primary
+                            )
+                        ) {
+                            if (isSaving) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(18.dp),
+                                    color = Color.White,
+                                    strokeWidth = 2.dp
+                                )
+                            } else {
+                                Text("Save Tags")
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 

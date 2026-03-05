@@ -1095,6 +1095,46 @@ class FlickRepository private constructor() {
     }
 
     /**
+     * Update tagged friends for a flick
+     */
+    suspend fun updateTaggedFriends(
+        flickId: String,
+        taggedFriends: List<String>,
+        photoOwnerId: String,
+        photoOwnerName: String,
+        photoOwnerPhotoUrl: String
+    ): Result<Unit> {
+        return try {
+            // Get current flick to check existing tags
+            val flickDoc = db.collection("flicks").document(flickId).get().await()
+            val currentTagged = flickDoc.get("taggedFriends") as? List<String> ?: emptyList()
+            
+            // Find newly added friends (to create notifications for them)
+            val newlyTagged = taggedFriends.filter { it !in currentTagged }
+            
+            // Update the flick with new tagged friends list
+            db.collection("flicks").document(flickId)
+                .update("taggedFriends", taggedFriends)
+                .await()
+            
+            // Create notifications for newly tagged friends
+            newlyTagged.forEach { taggedUserId ->
+                createTagNotification(
+                    flickId = flickId,
+                    photoOwnerId = photoOwnerId,
+                    photoOwnerName = photoOwnerName,
+                    photoOwnerPhotoUrl = photoOwnerPhotoUrl,
+                    taggedUserId = taggedUserId
+                )
+            }
+            
+            Result.Success(Unit)
+        } catch (e: Exception) {
+            Result.Error(e, "Failed to update tagged friends")
+        }
+    }
+
+    /**
      * Get user streak info
      */
     suspend fun getUserStreak(userId: String): Result<Pair<Int, Boolean>> {
