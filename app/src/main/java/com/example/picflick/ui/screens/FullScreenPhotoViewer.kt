@@ -483,22 +483,7 @@ fun FullScreenPhotoViewer(
                                     .combinedClickable(
                                         indication = null,
                                         interactionSource = remember { MutableInteractionSource() },
-                                        onClick = { if (isCurrent && zoomScale <= 1.01f) uiVisible = !uiVisible },
-                                        onDoubleClick = {
-                                            if (isCurrent) {
-                                                if (zoomScale > 1.01f) {
-                                                    // Reset zoom on double tap when zoomed
-                                                    zoomScale = 1f
-                                                    zoomOffsetX = 0f
-                                                    zoomOffsetY = 0f
-                                                } else {
-                                                    // Heart on double tap when not zoomed
-                                                    heartAnimationKey++
-                                                    showHeartAnimation = true
-                                                    onReaction(if (userReaction == ReactionType.LIKE) null else ReactionType.LIKE)
-                                                }
-                                            }
-                                        }
+                                        onClick = { if (isCurrent && zoomScale <= 1.01f) uiVisible = !uiVisible }
                                     ),
                                 contentAlignment = Alignment.Center
                             ) {
@@ -506,7 +491,7 @@ fun FullScreenPhotoViewer(
                                     model = photo.imageUrl,
                                     contentDescription = null,
                                     modifier = Modifier.fillMaxSize(),
-                                    contentScale = ContentScale.Fit  // Show full image, no zoom/crop
+                                    contentScale = ContentScale.Fit
                                 )
                             }
                         }
