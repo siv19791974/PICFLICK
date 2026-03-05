@@ -277,7 +277,7 @@ fun FilterScreen(
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .background(Color(0xFF1C1C1E))
+                                .background(Color.Black)
                                 .padding(vertical = 16.dp)
                         ) {
                             // Filter Icons (simplified - no text)
