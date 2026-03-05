@@ -384,10 +384,10 @@ fun FullScreenPhotoViewer(
                             val finalX = baseX + if (isCurrent) dragX else 0f
                             val finalY = if (isCurrent) dragY else if (isNext && dragY < 0) screenHeightPx + dragY else if (isPrev && dragY > 0) -screenHeightPx + dragY else screenHeightPx * 2f
                             
-                            // Calculate scale shrink based on drag amount (INCREASED for more noticeable effect)
+                            // Calculate scale shrink based on drag amount (25% max for dramatic effect)
                             val dragProgress = kotlin.math.abs(dragX) / screenWidthPx
                             val verticalProgress = kotlin.math.abs(dragY) / screenHeightPx
-                            val scale = 1f - (kotlin.math.max(dragProgress, verticalProgress) * 0.15f).coerceIn(0f, 0.15f)
+                            val scale = 1f - (kotlin.math.max(dragProgress, verticalProgress) * 0.25f).coerceIn(0f, 0.25f)
                             
                             Box(
                                 modifier = Modifier
@@ -415,7 +415,7 @@ fun FullScreenPhotoViewer(
                                     model = photo.imageUrl,
                                     contentDescription = null,
                                     modifier = Modifier.fillMaxSize(),
-                                    contentScale = ContentScale.Crop
+                                    contentScale = ContentScale.Fit  // Show full image, no zoom/crop
                                 )
                             }
                         }
