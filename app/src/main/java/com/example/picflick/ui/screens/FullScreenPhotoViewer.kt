@@ -418,6 +418,17 @@ fun FullScreenPhotoViewer(
                             Box(
                                 modifier = Modifier
                                     .fillMaxSize()
+                                    .pointerInput(Unit) {
+                                        // Pinch zoom on the photo itself (when zoomed or trying to zoom)
+                                        detectTransformGestures(
+                                            onGesture = { _, pan, zoom, _ ->
+                                                if (isCurrent && (zoomScale > 1f || zoom != 1f)) {
+                                                    zoomScale = (zoomScale * zoom).coerceIn(1f, 5f)
+                                                    zoomOffset += pan
+                                                }
+                                            }
+                                        )
+                                    }
                                     .offset { 
                                         val zoomX = if (isCurrent) zoomOffset.x.toInt() else 0
                                         val zoomY = if (isCurrent) zoomOffset.y.toInt() else 0
@@ -430,18 +441,17 @@ fun FullScreenPhotoViewer(
                                     .combinedClickable(
                                         indication = null,
                                         interactionSource = remember { MutableInteractionSource() },
-                                        onClick = { if (isCurrent) uiVisible = !uiVisible },
+                                        onClick = { if (isCurrent && zoomScale <= 1.01f) uiVisible = !uiVisible },
                                         onDoubleClick = {
-                                            if (isCurrent) {
-                                                // Reset zoom on double tap
-                                                if (zoomScale > 1f) {
-                                                    zoomScale = 1f
-                                                    zoomOffset = Offset.Zero
-                                                } else {
-                                                    heartAnimationKey++
-                                                    showHeartAnimation = true
-                                                    onReaction(if (userReaction == ReactionType.LIKE) null else ReactionType.LIKE)
-                                                }
+                                            if (isCurrent && zoomScale <= 1.01f) {
+                                                // Only heart when NOT zoomed
+                                                heartAnimationKey++
+                                                showHeartAnimation = true
+                                                onReaction(if (userReaction == ReactionType.LIKE) null else ReactionType.LIKE)
+                                            } else if (isCurrent && zoomScale > 1f) {
+                                                // Reset zoom on double tap when zoomed
+                                                zoomScale = 1f
+                                                zoomOffset = Offset.Zero
                                             }
                                         }
                                     ),
