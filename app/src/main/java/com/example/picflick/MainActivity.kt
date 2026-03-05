@@ -29,6 +29,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -141,7 +142,49 @@ fun MainScreen(
     val currentUser = authViewModel.currentUser
     val userProfile = authViewModel.userProfile
     val context = LocalContext.current // Get context for Toast
+    val scope = rememberCoroutineScope()
+    val repository = com.example.picflick.repository.FlickRepository.getInstance()
+
+    // State for profile photo upload
+    var profilePhotoToUpload by remember { mutableStateOf<Uri?>(null) }
     
+    // Handle profile photo upload
+    LaunchedEffect(profilePhotoToUpload) {
+        profilePhotoToUpload?.let { uri ->
+            userProfile?.let { profile ->
+                try {
+                    val uid = profile.uid
+                    
+                    // Convert URI to bytes
+                    val inputStream = context.contentResolver.openInputStream(uri)
+                    val imageBytes = inputStream?.readBytes()
+                    inputStream?.close()
+                    
+                    if (imageBytes != null) {
+                        // Upload to Firebase Storage
+                        val result = repository.uploadFlickImage(uid, imageBytes)
+                        
+                        when (result) {
+                            is com.example.picflick.data.Result.Success -> {
+                                // Update profile with new photo URL
+                                authViewModel.updateProfilePhoto(result.data)
+                                Toast.makeText(context, "Profile photo updated!", Toast.LENGTH_SHORT).show()
+                            }
+                            is com.example.picflick.data.Result.Error -> {
+                                Toast.makeText(context, "Failed to upload: ${result.message}", Toast.LENGTH_SHORT).show()
+                            }
+                            else -> {}
+                        }
+                    }
+                } catch (e: Exception) {
+                    Toast.makeText(context, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
+                }
+            }
+            // Reset after upload
+            profilePhotoToUpload = null
+        }
+    }
+
     // Upload flow states
     var showUploadSourceDialog by remember { mutableStateOf(false) }
     var selectedPhotoUri by remember { mutableStateOf<Uri?>(null) }
@@ -367,8 +410,9 @@ fun MainScreen(
                     onSignOut = { authViewModel.signOut() },
                     selectedPhotoUri = selectedPhotoUri,
                     onPhotoSelected = { uri ->
-                        selectedPhotoUri = uri
-                    }
+                        // Trigger profile photo upload via LaunchedEffect
+                        profilePhotoToUpload = uri
+                    },
                 )
             }
         }
@@ -398,6 +442,9 @@ private fun AuthenticatedContent(
     onPhotoSelected: (Uri) -> Unit
 ) {
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val repository = com.example.picflick.repository.FlickRepository.getInstance()
+    
     // Direct screen switching - NO animation (fixes banner position shift)
     when (currentScreen) {
         is Screen.Home -> HomeScreen(
