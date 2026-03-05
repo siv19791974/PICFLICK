@@ -11,10 +11,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.picflick.ui.components.LogoImage
+import androidx.compose.foundation.Image
+import androidx.compose.ui.res.painterResource
+import com.example.picflick.R
 import com.example.picflick.ui.theme.PicFlickBackground
 import kotlinx.coroutines.delay
 
@@ -66,14 +69,16 @@ fun SplashScreen(
             .background(PicFlickBackground),
         contentAlignment = Alignment.Center
     ) {
-        // Logo - SAME as home screen (40dp height)
-        Box(
+        // Logo - centered, proper aspect ratio
+        Image(
+            painter = painterResource(id = R.drawable.logo),
+            contentDescription = "PicFlick Logo",
             modifier = Modifier
                 .scale(scale)
                 .alpha(alpha)
-        ) {
-            LogoImage() // Uses 40dp height - same as home screen banner
-        }
+                .height(120.dp),  // Bigger for splash
+            contentScale = ContentScale.Fit
+        )
 
         // Loading dots at bottom
         LoadingDots(
