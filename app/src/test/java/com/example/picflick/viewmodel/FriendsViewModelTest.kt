@@ -207,7 +207,7 @@ class FriendsViewModelTest {
         val currentUserId = "user1"
         val targetUser = testUsers[0] // user2
         
-        coEvery { mockRepository.followUser(currentUserId, targetUser.uid) } returns Result.Success(Unit)
+        coEvery { mockRepository.followUser(currentUserId, targetUser.uid, currentUser.displayName) } returns Result.Success(Unit)
         
         // Setup search results to contain target user
         val query = "User"
@@ -222,7 +222,7 @@ class FriendsViewModelTest {
         testDispatcher.scheduler.advanceUntilIdle()
 
         // Then
-        coVerify { mockRepository.followUser(currentUserId, targetUser.uid) }
+        coVerify { mockRepository.followUser(currentUserId, targetUser.uid, currentUser.displayName) }
     }
 
     @Test
