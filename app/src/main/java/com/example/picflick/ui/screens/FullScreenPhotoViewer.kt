@@ -370,18 +370,18 @@ fun FullScreenPhotoViewer(
                                         panY += amount.y
                                         change.consume()
                                     } else {
-                                        // When NOT zoomed: drag navigates (but wait for threshold)
-                                        // Don't start navigation immediately - gives pinch time to activate
+                                        // When NOT zoomed: wait LONGER before deciding to navigate
+                                        // This gives pinch more time to activate
                                         val totalDrag = kotlin.math.abs(dragX) + kotlin.math.abs(dragY)
                                         
-                                        // Only decide direction after 40px of movement (higher = less sensitive)
-                                        if (totalDrag < 40f) {
-                                            // Still in "decision zone" - accumulate but don't commit
+                                        // Only decide direction after 80px (was 40px) - much less sensitive
+                                        if (totalDrag < 80f) {
+                                            // Still in "decision zone" - accumulate but don't commit to navigation
                                             dragX += amount.x
                                             dragY += amount.y
                                             
-                                            // Tentatively decide direction
-                                            if (kotlin.math.abs(dragX) > 10f || kotlin.math.abs(dragY) > 10f) {
+                                            // Check if we should start navigation (only after 30px)
+                                            if (totalDrag > 30f) {
                                                 isDraggingVertically = absY > absX
                                             }
                                         } else {
@@ -390,11 +390,11 @@ fun FullScreenPhotoViewer(
                                                 isDraggingVertically = absY > absX
                                             }
                                             
-                                            // LOCK TO ONE AXIS - no diagonal wobble!
+                                            // LOCK TO ONE AXIS
                                             if (isDraggingVertically) {
-                                                dragY += amount.y  // Only vertical moves
+                                                dragY += amount.y
                                             } else {
-                                                dragX += amount.x  // Only horizontal moves
+                                                dragX += amount.x
                                             }
                                         }
                                         change.consume()
