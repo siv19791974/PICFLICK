@@ -370,17 +370,32 @@ fun FullScreenPhotoViewer(
                                         panY += amount.y
                                         change.consume()
                                     } else {
-                                        // When NOT zoomed: drag navigates (original behavior)
-                                        // Detect direction on first real movement
-                                        if (kotlin.math.abs(dragX) < 10f && kotlin.math.abs(dragY) < 10f) {
-                                            isDraggingVertically = absY > absX
-                                        }
+                                        // When NOT zoomed: drag navigates (but wait for threshold)
+                                        // Don't start navigation immediately - gives pinch time to activate
+                                        val totalDrag = kotlin.math.abs(dragX) + kotlin.math.abs(dragY)
                                         
-                                        // LOCK TO ONE AXIS - no diagonal wobble!
-                                        if (isDraggingVertically) {
-                                            dragY += amount.y  // Only vertical moves
+                                        // Only decide direction after 40px of movement (higher = less sensitive)
+                                        if (totalDrag < 40f) {
+                                            // Still in "decision zone" - accumulate but don't commit
+                                            dragX += amount.x
+                                            dragY += amount.y
+                                            
+                                            // Tentatively decide direction
+                                            if (kotlin.math.abs(dragX) > 10f || kotlin.math.abs(dragY) > 10f) {
+                                                isDraggingVertically = absY > absX
+                                            }
                                         } else {
-                                            dragX += amount.x  // Only horizontal moves
+                                            // Past threshold - commit to direction and navigate
+                                            if (kotlin.math.abs(dragX) < 10f && kotlin.math.abs(dragY) < 10f) {
+                                                isDraggingVertically = absY > absX
+                                            }
+                                            
+                                            // LOCK TO ONE AXIS - no diagonal wobble!
+                                            if (isDraggingVertically) {
+                                                dragY += amount.y  // Only vertical moves
+                                            } else {
+                                                dragX += amount.x  // Only horizontal moves
+                                            }
                                         }
                                         change.consume()
                                     }
