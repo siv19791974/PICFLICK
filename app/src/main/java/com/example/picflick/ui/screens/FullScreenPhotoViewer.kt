@@ -366,12 +366,10 @@ fun FullScreenPhotoViewer(
                                         isDraggingVertically = absY > absX
                                     }
                                     
-                                    if (isDraggingVertically) {
-                                        dragY += amount.y
-                                        change.consume()
-                                    } else {
-                                        dragX += amount.x
-                                    }
+                                    // Update BOTH axes - this allows next/prev to slide in correctly
+                                    dragX += amount.x
+                                    dragY += amount.y
+                                    change.consume()
                                 }
                             )
                         }
