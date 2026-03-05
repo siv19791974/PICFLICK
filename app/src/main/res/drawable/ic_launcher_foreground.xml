@@ -1,84 +1,23 @@
 <?xml version="1.0" encoding="utf-8"?>
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:aapt="http://schemas.android.com/aapt"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
     
-    <!-- Background with gradient depth -->
-    <path android:pathData="M18,18 L90,18 L90,90 L18,90 Z">
-        <aapt:attr name="android:fillColor">
-            <gradient
-                android:startX="18"
-                android:startY="18"
-                android:endX="90"
-                android:endY="90"
-                android:type="linear">
-                <item android:color="#42A5F5" android:offset="0.0" />
-                <item android:color="#1976D2" android:offset="1.0" />
-            </gradient>
-        </aapt:attr>
-    </path>
-    
-    <!-- White corner bracket - Top Left -->
+    <!-- White background -->
     <path
         android:fillColor="#FFFFFF"
-        android:pathData="M24,36 L24,26 L34,26 L34,30 L28,30 L28,36 Z" />
+        android:pathData="M0,0h108v108h-108z" />
     
-    <!-- White corner bracket - Top Right -->
-    <path
-        android:fillColor="#FFFFFF"
-        android:pathData="M84,36 L84,26 L74,26 L74,30 L80,30 L80,36 Z" />
-    
-    <!-- White corner bracket - Bottom Left -->
-    <path
-        android:fillColor="#FFFFFF"
-        android:pathData="M24,72 L24,82 L34,82 L34,78 L28,78 L28,72 Z" />
-    
-    <!-- White corner bracket - Bottom Right -->
-    <path
-        android:fillColor="#FFFFFF"
-        android:pathData="M84,72 L84,82 L74,82 L74,78 L80,78 L80,72 Z" />
-    
-    <!-- Camera body with rounded corners -->
-    <path
-        android:fillColor="#FFFFFF"
-        android:pathData="M32,40 L76,40 C78,40 80,42 80,44 L80,64 C80,66 78,68 76,68 L32,68 C30,68 28,66 28,64 L28,44 C28,42 30,40 32,40 Z" />
-    
-    <!-- Camera lens outer ring -->
+    <!-- "P" letter in blue -->
     <path
         android:fillColor="#1976D2"
-        android:pathData="M54,54m-14,0a14,14 0,1 1,28 0a14,14 0,1 1,-28 0" />
+        android:pathData="M28,30 L28,78 L40,78 L40,60 L48,60 C58,60 64,54 64,45 C64,36 58,30 48,30 L28,30 Z M40,40 L46,40 C50,40 52,42 52,45 C52,48 50,50 46,50 L40,50 L40,40 Z" />
     
-    <!-- Camera lens inner white -->
+    <!-- "F" letter in green -->
     <path
-        android:fillColor="#FFFFFF"
-        android:pathData="M54,54m-10,0a10,10 0,1 1,20 0a10,10 0,1 1,-20 0" />
-    
-    <!-- Camera lens center blue -->
-    <path
-        android:fillColor="#2196F3"
-        android:pathData="M54,54m-6,0a6,6 0,1 1,12 0a6,6 0,1 1,-12 0" />
-    
-    <!-- Camera lens highlight dot -->
-    <path
-        android:fillColor="#FFFFFF"
-        android:pathData="M58,50m-2.5,0a2.5,2.5 0,1 1,5 0a2.5,2.5 0,1 1,-5 0" />
-    
-    <!-- Camera flash -->
-    <path
-        android:fillColor="#1976D2"
-        android:pathData="M70,44m-2.5,0a2.5,2.5 0,1 1,5 0a2.5,2.5 0,1 1,-5 0" />
-    
-    <!-- Yellow curved arrow body -->
-    <path
-        android:fillColor="#FFC107"
-        android:pathData="M38,72 Q54,84 70,72 L70,68 L76,74 L70,80 L70,76 Q54,90 38,78 Z" />
-    
-    <!-- Arrow highlight/shine -->
-    <path
-        android:fillColor="#FFEB3B"
-        android:pathData="M42,74 Q54,82 66,74 L66,72 Q54,80 42,72 Z" />
+        android:fillColor="#4CAF50"
+        android:pathData="M68,30 L68,78 L80,78 L80,58 L92,58 L92,48 L80,48 L80,40 L94,40 L94,30 L68,30 Z" />
     
 </vector>
