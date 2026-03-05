@@ -7,10 +7,10 @@
         </shape>
     </item>
     
-    <!-- Scaled logo centered -->
+    <!-- Scaled logo centered - smaller -->
     <item
-        android:width="72dp"
-        android:height="72dp"
+        android:width="56dp"
+        android:height="56dp"
         android:gravity="center">
         <bitmap
             android:src="@drawable/logo"
