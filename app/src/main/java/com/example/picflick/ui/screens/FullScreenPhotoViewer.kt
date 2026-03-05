@@ -332,15 +332,15 @@ fun FullScreenPhotoViewer(
                                     isVerticalSwipe = false
                                 },
                                 onDragEnd = { 
-                                    // Animate back or navigate based on slide distance
-                                    if (kotlin.math.abs(verticalSlideOffset) > 100f && isVerticalSwipe) {
+                                    // Navigate based on accumulated vertical drag distance
+                                    if (kotlin.math.abs(verticalDragTotal) > 120f && isVerticalSwipe) {
                                         val currentPage = pagerState.currentPage
-                                        if (verticalSlideOffset < 0 && currentPage > 0) {
+                                        if (verticalDragTotal < 0 && currentPage > 0) {
                                             // UP = PREVIOUS - animate to completion
                                             coroutineScope.launch {
                                                 pagerState.animateScrollToPage(currentPage - 1)
                                             }
-                                        } else if (verticalSlideOffset > 0 && currentPage < allPhotos.size - 1) {
+                                        } else if (verticalDragTotal > 0 && currentPage < allPhotos.size - 1) {
                                             // DOWN = NEXT - animate to completion
                                             coroutineScope.launch {
                                                 pagerState.animateScrollToPage(currentPage + 1)
