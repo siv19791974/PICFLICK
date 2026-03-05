@@ -470,7 +470,14 @@ private fun AuthenticatedContent(
                     }
                     onScreenChange(targetScreen)
                 },
-                onSignOut = onSignOut
+                onSignOut = onSignOut,
+                onUserProfileClick = { userId ->
+                    if (userId == userProfile.uid) {
+                        onScreenChange(Screen.Profile)
+                    } else {
+                        onScreenChange(Screen.UserProfile(userId))
+                    }
+                }
             )
 
             is Screen.Profile -> {
@@ -518,6 +525,9 @@ private fun AuthenticatedContent(
                 
                 // FullScreenPhotoViewer when photo selected
                 selectedPhoto?.let { flick ->
+                    // Check if this is a profile photo
+                    val isProfilePhoto = flick.id.startsWith("profile_")
+                    
                     FullScreenPhotoViewer(
                         flick = flick,
                         currentUser = userProfile,
@@ -544,8 +554,8 @@ private fun AuthenticatedContent(
                         onCaptionUpdated = { newCaption ->
                             profileViewModel.updateCaption(flick.id, newCaption)
                         },
-                        allPhotos = profileViewModel.photos,
-                        currentIndex = selectedPhotoIndex,
+                        allPhotos = if (isProfilePhoto) listOf(flick) else profileViewModel.photos,
+                        currentIndex = if (isProfilePhoto) 0 else selectedPhotoIndex,
                         onNavigateToPhoto = { index ->
                             selectedPhotoIndex = index
                             selectedPhoto = profileViewModel.photos.getOrNull(index)
