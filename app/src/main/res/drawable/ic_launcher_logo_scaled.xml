@@ -7,13 +7,13 @@
         </shape>
     </item>
     
-    <!-- Scaled logo centered - smaller -->
+    <!-- Scaled logo centered - maintaining aspect ratio -->
     <item
-        android:width="56dp"
-        android:height="56dp"
+        android:width="64dp"
+        android:height="40dp"
         android:gravity="center">
         <bitmap
             android:src="@drawable/logo"
-            android:gravity="fill" />
+            android:gravity="center" />
     </item>
 </layer-list>
