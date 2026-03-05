@@ -556,7 +556,11 @@ private fun AuthenticatedContent(
                         },
                         onUserProfileClick = { userId ->
                             selectedPhoto = null
-                            onScreenChange(Screen.UserProfile(userId))
+                            if (userId == userProfile.uid) {
+                                onScreenChange(Screen.Profile)
+                            } else {
+                                onScreenChange(Screen.UserProfile(userId))
+                            }
                         }
                     )
                 }
@@ -632,7 +636,14 @@ private fun AuthenticatedContent(
 
             is Screen.Notifications -> NotificationsScreen(
                 userProfile = userProfile,
-                onBack = { onScreenChange(Screen.Home) }
+                onBack = { onScreenChange(Screen.Home) },
+                onUserProfileClick = { userId ->
+                    if (userId == userProfile.uid) {
+                        onScreenChange(Screen.Profile)
+                    } else {
+                        onScreenChange(Screen.UserProfile(userId))
+                    }
+                }
             )
 
             is Screen.Settings -> SettingsScreen(
@@ -834,7 +845,9 @@ private fun AuthenticatedContent(
                             },
                             onUserProfileClick = { userId ->
                                 selectedUserPhoto = null
-                                if (userId != targetUserId) {
+                                if (userId == userProfile.uid) {
+                                    onScreenChange(Screen.Profile)
+                                } else if (userId != targetUserId) {
                                     onScreenChange(Screen.UserProfile(userId))
                                 }
                             }
