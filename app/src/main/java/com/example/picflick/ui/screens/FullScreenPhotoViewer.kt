@@ -454,9 +454,19 @@ fun FullScreenPhotoViewer(
                             // Base position (back to instant, no animation)
                             val baseX = (index - currentPageIndex) * screenWidthPx
                             
-                            // Apply drag offsets
-                            val finalX = baseX + if (isCurrent) dragX else 0f
-                            val finalY = if (isCurrent) dragY else if (isNext && dragY < 0) screenHeightPx + dragY else if (isPrev && dragY > 0) -screenHeightPx + dragY else screenHeightPx * 2f
+                            // Apply drag offsets - FIXED: next/prev now slide in horizontally too!
+                            val finalX = when {
+                                isCurrent -> baseX + dragX  // Current moves with finger
+                                isNext && dragX < 0 -> screenWidthPx + dragX  // Next slides in from RIGHT when dragging left
+                                isPrev && dragX > 0 -> -screenWidthPx + dragX  // Prev slides in from LEFT when dragging right
+                                else -> baseX * 2f  // Far off-screen (2x distance)
+                            }
+                            val finalY = when {
+                                isCurrent -> dragY  // Current moves with finger
+                                isNext && dragY < 0 -> screenHeightPx + dragY  // Next slides in from BOTTOM when dragging up
+                                isPrev && dragY > 0 -> -screenHeightPx + dragY  // Prev slides in from TOP when dragging down
+                                else -> screenHeightPx * 2f  // Far off-screen
+                            }
                             
                             // Calculate scale shrink and fade based on drag amount
                             val dragProgress = kotlin.math.abs(dragX) / screenWidthPx
