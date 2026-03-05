@@ -99,7 +99,12 @@ fun FilterScreen(
         PhotoFilter.HIGH_CONTRAST,
         PhotoFilter.WARM,
         PhotoFilter.COOL,
-        PhotoFilter.VINTAGE
+        PhotoFilter.VINTAGE,
+        // NEW FILTERS
+        PhotoFilter.RETRO,
+        PhotoFilter.NOIR,
+        PhotoFilter.FADE,
+        PhotoFilter.VIVID
     )
     
     // Calculate remaining uploads
@@ -217,65 +222,63 @@ fun FilterScreen(
                     Column(
                         modifier = Modifier.fillMaxSize()
                     ) {
-                        // Main Photo Preview - BIGGER with WHITE BORDER fitting portrait/landscape
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .weight(1.5f)
-                                .padding(horizontal = 16.dp, vertical = 8.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            // White border box that adapts to image aspect ratio
+                        // Uploading Overlay (when uploading)
+                        if (isUploading) {
                             Box(
                                 modifier = Modifier
-                                    .border(4.dp, Color.White.copy(alpha = 0.9f), RoundedCornerShape(4.dp))
-                                    .padding(4.dp)
-                                    .background(Color.Black, RoundedCornerShape(2.dp)),
+                                    .fillMaxSize()
+                                    .background(Color.Black.copy(alpha = 0.7f)),
                                 contentAlignment = Alignment.Center
                             ) {
-                                FilteredImage(
-                                    bitmap = bmp,
-                                    filter = selectedFilter,
-                                    modifier = Modifier
-                                        .fillMaxWidth(0.95f)
-                                        .wrapContentHeight()
-                                )
-                            }
-                            
-                            // Uploading Overlay
-                            if (isUploading) {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .background(Color.Black.copy(alpha = 0.7f)),
-                                    contentAlignment = Alignment.Center
+                                Column(
+                                    horizontalAlignment = Alignment.CenterHorizontally
                                 ) {
-                                    Column(
-                                        horizontalAlignment = Alignment.CenterHorizontally
-                                    ) {
-                                        CircularProgressIndicator(
-                                            color = Color(0xFF87CEEB),
-                                            strokeWidth = 3.dp,
-                                            modifier = Modifier.size(48.dp)
-                                        )
-                                        Spacer(modifier = Modifier.height(12.dp))
-                                        Text(
-                                            text = "Uploading...",
-                                            color = Color.White,
-                                            fontSize = 16.sp,
-                                            fontWeight = FontWeight.Medium
-                                        )
-                                    }
+                                    CircularProgressIndicator(
+                                        color = Color(0xFF87CEEB),
+                                        strokeWidth = 3.dp,
+                                        modifier = Modifier.size(48.dp)
+                                    )
+                                    Spacer(modifier = Modifier.height(12.dp))
+                                    Text(
+                                        text = "Uploading...",
+                                        color = Color.White,
+                                        fontSize = 16.sp,
+                                        fontWeight = FontWeight.Medium
+                                    )
                                 }
                             }
                         }
 
-                        // Bottom Panel
+                        // Main Filter Preview - Filters are the hero now!
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .weight(1.2f)
+                                .padding(horizontal = 24.dp, vertical = 16.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            // Show currently selected filter as large preview
+                            val previewBitmap = remember(bmp, selectedFilter) {
+                                applyFilterToBitmap(bmp, selectedFilter, thumbnailSize = 512)
+                            }
+                            Image(
+                                painter = BitmapPainter(previewBitmap.asImageBitmap()),
+                                contentDescription = selectedFilter.displayName,
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .border(3.dp, Color.White.copy(alpha = 0.9f), RoundedCornerShape(8.dp))
+                                    .padding(3.dp),
+                                contentScale = ContentScale.Fit
+                            )
+                        }
+
+                        // Bottom Panel with BIG filter thumbnails
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .background(Color(0xFF1C1C1E))
-                                .padding(vertical = 12.dp)
+                                .padding(vertical = 16.dp)
                         ) {
                             // Filter Icons (simplified - no text)
                             LazyRow(
@@ -399,27 +402,27 @@ private fun FilterIcon(
     ) {
         Box(
             modifier = Modifier
-                .size(72.dp)  // Bigger for better resolution
-                .clip(RoundedCornerShape(12.dp))
+                .size(96.dp)  // MUCH Bigger for better quality
+                .clip(RoundedCornerShape(16.dp))
                 .border(
-                    width = if (isSelected) 3.dp else 1.dp,
+                    width = if (isSelected) 4.dp else 2.dp,
                     color = if (isSelected) Color(0xFF87CEEB) else Color.White.copy(alpha = 0.3f),
-                    shape = RoundedCornerShape(12.dp)
+                    shape = RoundedCornerShape(16.dp)
                 )
                 .background(Color(0xFF2C2C2E)),
             contentAlignment = Alignment.Center
         ) {
             if (bitmap != null) {
-                // Show actual filtered thumbnail with higher quality
+                // Show actual filtered thumbnail with MUCH higher quality
                 val thumbnailBitmap = remember(bitmap, filter) {
-                    applyFilterToBitmap(bitmap, filter, thumbnailSize = 144)  // 2x for sharper display
+                    applyFilterToBitmap(bitmap, filter, thumbnailSize = 192)  // High quality render
                 }
                 Image(
                     painter = BitmapPainter(thumbnailBitmap.asImageBitmap()),
                     contentDescription = filter.displayName,
                     modifier = Modifier
                         .fillMaxSize()
-                        .clip(RoundedCornerShape(12.dp)),
+                        .clip(RoundedCornerShape(16.dp)),
                     contentScale = ContentScale.Crop,
                     // Use high quality filtering
                     alignment = Alignment.Center
@@ -439,7 +442,7 @@ private fun FilterIcon(
         Text(
             text = filter.displayName,
             color = if (isSelected) Color(0xFF87CEEB) else Color.White.copy(alpha = 0.7f),
-            fontSize = 11.sp,
+            fontSize = 12.sp,
             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
         )
     }
@@ -744,6 +747,122 @@ private fun applyFilterToBitmap(bitmap: Bitmap, filter: PhotoFilter, thumbnailSi
                         0.9f, 0f, 0f, 0f, 25f,
                         0f, 0.9f, 0f, 0f, 25f,
                         0f, 0f, 0.9f, 0f, 25f,
+                        0f, 0f, 0f, 1f, 0f
+                    )
+                )
+            })
+        }
+        // NEW FILTERS
+        PhotoFilter.RETRO -> ColorMatrix().apply {
+            // 70s retro look with orange/teal shift
+            set(
+                floatArrayOf(
+                    1.15f, 0.1f, -0.05f, 0f, 15f,
+                    0.05f, 1.05f, 0.05f, 0f, 10f,
+                    -0.05f, 0.1f, 1.1f, 0f, 20f,
+                    0f, 0f, 0f, 1f, 0f
+                )
+            )
+            // Boost contrast
+            postConcat(ColorMatrix().apply {
+                set(
+                    floatArrayOf(
+                        1.2f, 0f, 0f, 0f, -15f,
+                        0f, 1.2f, 0f, 0f, -15f,
+                        0f, 0f, 1.2f, 0f, -15f,
+                        0f, 0f, 0f, 1f, 0f
+                    )
+                )
+            })
+            // Slight saturation boost
+            postConcat(ColorMatrix().apply { setSaturation(1.3f) })
+        }
+        PhotoFilter.NOIR -> ColorMatrix().apply {
+            // Film noir - dramatic B&W with high contrast
+            setSaturation(0f) // B&W
+            // High contrast with crushed blacks
+            postConcat(ColorMatrix().apply {
+                set(
+                    floatArrayOf(
+                        1.5f, 0f, 0f, 0f, -40f,
+                        0f, 1.5f, 0f, 0f, -40f,
+                        0f, 0f, 1.5f, 0f, -40f,
+                        0f, 0f, 0f, 1f, 0f
+                    )
+                )
+            })
+            // Slight blue tint for noir feel
+            postConcat(ColorMatrix().apply {
+                set(
+                    floatArrayOf(
+                        0.9f, 0f, 0f, 0f, 5f,
+                        0f, 0.9f, 0f, 0f, 8f,
+                        0f, 0f, 1.05f, 0f, 15f,
+                        0f, 0f, 0f, 1f, 0f
+                    )
+                )
+            })
+        }
+        PhotoFilter.FADE -> ColorMatrix().apply {
+            // Instagram-like fade with lifted blacks and muted colors
+            // Desaturate slightly
+            postConcat(ColorMatrix().apply { setSaturation(0.75f) })
+            // Lift blacks (fade)
+            postConcat(ColorMatrix().apply {
+                set(
+                    floatArrayOf(
+                        0.85f, 0f, 0f, 0f, 40f,
+                        0f, 0.85f, 0f, 0f, 40f,
+                        0f, 0f, 0.85f, 0f, 40f,
+                        0f, 0f, 0f, 1f, 0f
+                    )
+                )
+            })
+            // Mute colors slightly
+            postConcat(ColorMatrix().apply {
+                set(
+                    floatArrayOf(
+                        0.95f, 0.05f, 0f, 0f, 0f,
+                        0.05f, 0.95f, 0f, 0f, 0f,
+                        0f, 0.05f, 0.95f, 0f, 0f,
+                        0f, 0f, 0f, 1f, 0f
+                    )
+                )
+            })
+            // Warm tint
+            postConcat(ColorMatrix().apply {
+                set(
+                    floatArrayOf(
+                        1.03f, 0f, 0f, 0f, 10f,
+                        0f, 1.01f, 0f, 0f, 5f,
+                        0f, 0f, 0.98f, 0f, -5f,
+                        0f, 0f, 0f, 1f, 0f
+                    )
+                )
+            })
+        }
+        PhotoFilter.VIVID -> ColorMatrix().apply {
+            // Vibrant colors with enhanced saturation and contrast
+            // High saturation
+            postConcat(ColorMatrix().apply { setSaturation(1.6f) })
+            // Boost contrast
+            postConcat(ColorMatrix().apply {
+                set(
+                    floatArrayOf(
+                        1.25f, 0f, 0f, 0f, -20f,
+                        0f, 1.25f, 0f, 0f, -20f,
+                        0f, 0f, 1.25f, 0f, -20f,
+                        0f, 0f, 0f, 1f, 0f
+                    )
+                )
+            })
+            // Vibrance boost (enhance less saturated colors more)
+            postConcat(ColorMatrix().apply {
+                set(
+                    floatArrayOf(
+                        1.15f, -0.05f, -0.05f, 0f, 5f,
+                        -0.05f, 1.15f, -0.05f, 0f, 5f,
+                        -0.05f, -0.05f, 1.15f, 0f, 5f,
                         0f, 0f, 0f, 1f, 0f
                     )
                 )
