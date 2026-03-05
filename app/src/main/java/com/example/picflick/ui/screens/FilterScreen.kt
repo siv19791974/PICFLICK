@@ -17,6 +17,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -53,7 +55,8 @@ fun FilterScreen(
     dailyUploadCount: Int,
     maxDailyUploads: Int = 5,
     onBack: () -> Unit,
-    onUpload: (Uri, PhotoFilter, List<String>) -> Unit
+    onUpload: (Uri, PhotoFilter, List<String>) -> Unit,
+    onNavigateToFindFriends: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -322,7 +325,8 @@ fun FilterScreen(
                 if (friend !in taggedFriends) {
                     taggedFriends = taggedFriends + friend
                 }
-            }
+            },
+            onNavigateToFindFriends = onNavigateToFindFriends
         )
     }
 }
@@ -396,7 +400,8 @@ private fun FriendPickerDialog(
     friends: List<UserProfile>,
     alreadyTagged: List<String>,
     onDismiss: () -> Unit,
-    onFriendSelected: (UserProfile) -> Unit
+    onFriendSelected: (UserProfile) -> Unit,
+    onNavigateToFindFriends: () -> Unit
 ) {
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -424,10 +429,40 @@ private fun FriendPickerDialog(
                         .padding(vertical = 32.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(
-                        text = "No friends yet",
-                        color = Color.Gray
-                    )
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Person,
+                            contentDescription = null,
+                            tint = Color.White.copy(alpha = 0.4f),
+                            modifier = Modifier.size(48.dp)
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = "No friends yet",
+                            color = Color.Gray,
+                            fontSize = 14.sp
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Button(
+                            onClick = {
+                                onDismiss()
+                                onNavigateToFindFriends()
+                            },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color(0xFF00D09C)
+                            )
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.PersonAdd,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Find Friends")
+                        }
+                    }
                 }
             } else {
                 friends.filter { it.uid !in alreadyTagged }.forEach { friend ->

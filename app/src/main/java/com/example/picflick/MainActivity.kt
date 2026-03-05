@@ -626,7 +626,8 @@ private fun AuthenticatedContent(
                                 filter = filter,
                                 taggedFriends = taggedFriends
                             )
-                        }
+                        },
+                        onNavigateToFindFriends = { onScreenChange(Screen.FindFriends) }
                     )
                 } ?: run {
                     // If no photo selected, go back to home
