@@ -1472,16 +1472,22 @@ private fun TagFriendsDialog(
                 
                 Spacer(modifier = Modifier.height(16.dp))
                 
-                // Preview of photo being tagged
-                AsyncImage(
-                    model = flick.imageUrl,
-                    contentDescription = null,
+                // Preview of photo being tagged - TALLER with SQUARE corners and WHITE BORDER
+                Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(120.dp)
-                        .clip(RoundedCornerShape(12.dp)),
-                    contentScale = ContentScale.Crop
-                )
+                        .height(180.dp)
+                        .border(3.dp, Color.White.copy(alpha = 0.9f), RectangleShape)
+                        .padding(3.dp)
+                        .background(Color.Black)
+                ) {
+                    AsyncImage(
+                        model = flick.imageUrl,
+                        contentDescription = null,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                }
                 
                 Spacer(modifier = Modifier.height(16.dp))
                 
@@ -1551,11 +1557,11 @@ private fun TagFriendsDialog(
                         }
                     }
                     else -> {
-                        // Show friends list with checkboxes
+                        // Show friends list with TAG button on right
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .heightIn(max = 250.dp)
+                                .heightIn(max = 280.dp)
                                 .verticalScroll(rememberScrollState())
                         ) {
                             friendsList.forEach { friend ->
@@ -1564,57 +1570,83 @@ private fun TagFriendsDialog(
                                 Row(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .clickable {
-                                            if (isSelected) {
-                                                selectedFriends = selectedFriends.toMutableSet().apply { remove(friend.uid) }
-                                            } else {
-                                                selectedFriends = selectedFriends.toMutableSet().apply { add(friend.uid) }
-                                            }
-                                            onTagFriendsChanged(selectedFriends.toList())
-                                        }
-                                        .padding(vertical = 8.dp),
-                                    verticalAlignment = Alignment.CenterVertically
+                                        .padding(vertical = 10.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.SpaceBetween
                                 ) {
-                                    // Checkbox
-                                    Checkbox(
-                                        checked = isSelected,
-                                        onCheckedChange = { checked ->
-                                            if (checked) {
-                                                selectedFriends = selectedFriends.toMutableSet().apply { add(friend.uid) }
-                                            } else {
-                                                selectedFriends = selectedFriends.toMutableSet().apply { remove(friend.uid) }
-                                            }
-                                            onTagFriendsChanged(selectedFriends.toList())
-                                        },
-                                        colors = CheckboxDefaults.colors(
-                                            checkedColor = MaterialTheme.colorScheme.primary,
-                                            uncheckedColor = Color.White.copy(alpha = 0.5f)
-                                        )
-                                    )
-                                    
-                                    Spacer(modifier = Modifier.width(12.dp))
-                                    
-                                    // Friend photo
-                                    AsyncImage(
-                                        model = friend.photoUrl,
-                                        contentDescription = null,
-                                        modifier = Modifier
-                                            .size(40.dp)
-                                            .clip(CircleShape)
-                                            .background(Color.Gray),
-                                        contentScale = ContentScale.Crop
-                                    )
-                                    
-                                    Spacer(modifier = Modifier.width(12.dp))
-                                    
-                                    // Friend name
-                                    Text(
-                                        text = friend.displayName,
-                                        color = Color.White,
-                                        fontSize = 15.sp,
-                                        fontWeight = FontWeight.Medium,
+                                    // LEFT: Profile pic + name
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(12.dp),
                                         modifier = Modifier.weight(1f)
-                                    )
+                                    ) {
+                                        // Friend photo with white border like profile pic
+                                        Box(
+                                            modifier = Modifier
+                                                .size(44.dp)
+                                                .clip(CircleShape)
+                                                .background(Color.Gray.copy(alpha = 0.4f))
+                                                .border(2.dp, Color.White.copy(alpha = 0.8f), CircleShape),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            AsyncImage(
+                                                model = friend.photoUrl,
+                                                contentDescription = null,
+                                                modifier = Modifier.fillMaxSize(),
+                                                contentScale = ContentScale.Crop
+                                            )
+                                        }
+                                        
+                                        // Friend name
+                                        Text(
+                                            text = friend.displayName,
+                                            color = Color.White,
+                                            fontSize = 16.sp,
+                                            fontWeight = FontWeight.Medium
+                                        )
+                                    }
+                                    
+                                    // RIGHT: Tag/Untag button
+                                    if (isSelected) {
+                                        // Already tagged - show "Tagged" button (green/primary)
+                                        Button(
+                                            onClick = {
+                                                selectedFriends = selectedFriends.toMutableSet().apply { remove(friend.uid) }
+                                                onTagFriendsChanged(selectedFriends.toList())
+                                            },
+                                            colors = ButtonDefaults.buttonColors(
+                                                containerColor = MaterialTheme.colorScheme.primary
+                                            ),
+                                            modifier = Modifier.height(36.dp)
+                                        ) {
+                                            Text(
+                                                "Tagged",
+                                                fontSize = 13.sp,
+                                                fontWeight = FontWeight.Bold
+                                            )
+                                        }
+                                    } else {
+                                        // Not tagged - show "Tag" outlined button
+                                        OutlinedButton(
+                                            onClick = {
+                                                selectedFriends = selectedFriends.toMutableSet().apply { add(friend.uid) }
+                                                onTagFriendsChanged(selectedFriends.toList())
+                                            },
+                                            colors = ButtonDefaults.outlinedButtonColors(
+                                                contentColor = Color.White
+                                            ),
+                                            modifier = Modifier.height(36.dp),
+                                            border = ButtonDefaults.outlinedButtonBorder.copy(
+                                                width = 1.dp,
+                                                brush = androidx.compose.ui.graphics.SolidColor(Color.White.copy(alpha = 0.5f))
+                                            )
+                                        ) {
+                                            Text(
+                                                "Tag",
+                                                fontSize = 13.sp
+                                            )
+                                        }
+                                    }
                                 }
                                 
                                 if (friend != friendsList.last()) {
