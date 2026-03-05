@@ -406,10 +406,11 @@ fun FullScreenPhotoViewer(
                                             change.consume()
                                             verticalDragOffset += dragAmount.y
                                             
+                                            val actualPage = pagerState.currentPage
                                             val resistance = 0.6f
                                             val delta = when {
-                                                currentPage == 0 && dragAmount.y > 0 -> dragAmount.y * 0.3f
-                                                currentPage == allPhotos.size - 1 && dragAmount.y < 0 -> dragAmount.y * 0.3f
+                                                actualPage == 0 && dragAmount.y > 0 -> dragAmount.y * 0.3f
+                                                actualPage == allPhotos.size - 1 && dragAmount.y < 0 -> dragAmount.y * 0.3f
                                                 else -> dragAmount.y * resistance
                                             }
                                             verticalSlideOffset += delta
@@ -423,10 +424,11 @@ fun FullScreenPhotoViewer(
                         }
                 ) {
                     // Render only visible pages (current ± 1)
+                    val actualCurrentPage = pagerState.currentPage
                     val visiblePages = listOf(
-                        (currentPage - 1).coerceAtLeast(0),
-                        currentPage,
-                        (currentPage + 1).coerceAtMost(allPhotos.lastIndex.coerceAtLeast(0))
+                        (actualCurrentPage - 1).coerceAtLeast(0),
+                        actualCurrentPage,
+                        (actualCurrentPage + 1).coerceAtMost(allPhotos.lastIndex.coerceAtLeast(0))
                     ).distinct()
                     
                     visiblePages.forEach { page ->
@@ -434,9 +436,9 @@ fun FullScreenPhotoViewer(
                             allPhotos[page]
                         } else flick
                         
-                        val isThisCurrentPage = page == currentPage
-                        val isThisNextPage = page == currentPage + 1
-                        val isThisPrevPage = page == currentPage - 1
+                        val isThisCurrentPage = page == actualCurrentPage
+                        val isThisNextPage = page == actualCurrentPage + 1
+                        val isThisPrevPage = page == actualCurrentPage - 1
                         
                         // Calculate position
                         val baseX = page * screenWidthPx
