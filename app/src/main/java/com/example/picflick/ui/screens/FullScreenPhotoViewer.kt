@@ -357,7 +357,7 @@ fun FullScreenPhotoViewer(
                                         if (absY > absX * 1.5f) {
                                             isVerticalSwipe = true
                                             verticalDragTotal += dragAmount.y
-                                            change.consume()
+                                            // change.consume() - REMOVED to fix gesture conflict
                                             
                                             // Accumulate slide offset
                                             val resistance = 0.6f
