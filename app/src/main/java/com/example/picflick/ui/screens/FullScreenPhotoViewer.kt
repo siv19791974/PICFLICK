@@ -309,22 +309,12 @@ fun FullScreenPhotoViewer(
         ) {
             Box(modifier = Modifier.fillMaxSize()) {
                 
-                // OUTER GESTURE HANDLER - Smart pinch vs swipe detection + VERTICAL scrolling with SLIDE
+                // OUTER GESTURE HANDLER - Fixed: vertical swipe + pinch zoom coexist
                 var verticalDragTotal by remember { mutableFloatStateOf(0f) }
                 
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .pointerInput(Unit) {
-                            detectTransformGestures(
-                                onGesture = { _, pan, zoom, _ ->
-                                    if (zoom != 1f || scale > 1f) {
-                                        scale = (scale * zoom).coerceIn(1f, 5f)
-                                        offset += pan
-                                    }
-                                }
-                            )
-                        }
                         .pointerInput(Unit) {
                             detectVerticalDragGestures(
                                 onDragStart = { 
@@ -333,7 +323,7 @@ fun FullScreenPhotoViewer(
                                 },
                                 onDragEnd = { 
                                     // Navigate based on accumulated vertical drag distance (SWAPPED)
-                                    if (kotlin.math.abs(verticalDragTotal) > 120f && isVerticalSwipe) {
+                                    if (kotlin.math.abs(verticalDragTotal) > 120f && isVerticalSwipe && scale <= 1.01f) {
                                         val currentPage = pagerState.currentPage
                                         if (verticalDragTotal < 0 && currentPage < allPhotos.size - 1) {
                                             // UP = FORWARD/NEXT - animate to completion
@@ -358,18 +348,29 @@ fun FullScreenPhotoViewer(
                                     verticalDragTotal = 0f
                                 },
                                 onVerticalDrag = { change, dragAmount ->
+                                    // Only process vertical drag when not zoomed
                                     if (scale <= 1.01f && allPhotos.size > 1) {
-                                        change.consume()
                                         verticalDragTotal += dragAmount
                                         isVerticalSwipe = true
                                         
-                                        // Apply vertical slide with resistance at edges (SWAPPED directions)
+                                        // ACCUMULATE the slide offset (not replace) so photo follows finger
                                         val resistance = 0.6f
-                                        verticalSlideOffset = when {
-                                            pagerState.currentPage == 0 && dragAmount > 0 -> dragAmount * 0.3f // First page, resist DOWN (can't go back)
-                                            pagerState.currentPage == allPhotos.size - 1 && dragAmount < 0 -> dragAmount * 0.3f // Last page, resist UP (can't go forward)
+                                        val delta = when {
+                                            pagerState.currentPage == 0 && dragAmount > 0 -> dragAmount * 0.3f // First page, resist DOWN
+                                            pagerState.currentPage == allPhotos.size - 1 && dragAmount < 0 -> dragAmount * 0.3f // Last page, resist UP
                                             else -> dragAmount * resistance
                                         }
+                                        verticalSlideOffset += delta
+                                    }
+                                }
+                            )
+                        }
+                        .pointerInput(Unit) {
+                            detectTransformGestures(
+                                onGesture = { _, pan, zoom, _ ->
+                                    if (zoom != 1f || scale > 1f) {
+                                        scale = (scale * zoom).coerceIn(1f, 5f)
+                                        offset += pan
                                     }
                                 }
                             )
