@@ -318,195 +318,98 @@ fun FullScreenPhotoViewer(
         ) {
             Box(modifier = Modifier.fillMaxSize()) {
                 
-                // NUCLEAR: Custom 2D Pager - replaces HorizontalPager completely
-                // Shows only 3 pages at a time: prev, current, next
-                val actualCurrentPage = pagerState.currentPage
-                val animatedBaseX by animateFloatAsState(
-                    targetValue = -actualCurrentPage * screenWidthPx,
-                    animationSpec = tween(300),
-                    label = "horizontalBase"
-                )
+                // SIMPLE 2D PAGER - No pinch, no fades, just direct positioning
+                var dragX by remember { mutableFloatStateOf(0f) }
+                var dragY by remember { mutableFloatStateOf(0f) }
+                var isDraggingVertically by remember { mutableStateOf(false) }
+                var currentPageIndex by remember { mutableIntStateOf(currentIndex) }
                 
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
                         .pointerInput(Unit) {
-                            detectTransformGestures(
-                                onGesture = { _, pan, zoom, _ ->
-                                    if (zoom != 1f || scale > 1f) {
-                                        scale = (scale * zoom).coerceIn(1f, 5f)
-                                        offset += pan
-                                    }
-                                }
-                            )
-                        }
-                        .pointerInput(Unit) {
                             detectDragGestures(
                                 onDragStart = {
-                                    horizontalDragOffset = 0f
-                                    verticalDragOffset = 0f
-                                    isVerticalSwipe = false
+                                    dragX = 0f
+                                    dragY = 0f
+                                    isDraggingVertically = false
                                 },
                                 onDragEnd = {
-                                    val actualCurrentPage = pagerState.currentPage
                                     when {
-                                        // Vertical swipe detected
-                                        isVerticalSwipe && kotlin.math.abs(verticalDragOffset) > 120f -> {
-                                            if (verticalDragOffset < 0 && actualCurrentPage < allPhotos.size - 1) {
-                                                // UP = NEXT
-                                                coroutineScope.launch {
-                                                    pagerState.scrollToPage(actualCurrentPage + 1)
-                                                }
-                                            } else if (verticalDragOffset > 0 && actualCurrentPage > 0) {
-                                                // DOWN = PREVIOUS
-                                                coroutineScope.launch {
-                                                    pagerState.scrollToPage(actualCurrentPage - 1)
-                                                }
+                                        // Vertical swipe
+                                        isDraggingVertically && kotlin.math.abs(dragY) > 100f -> {
+                                            if (dragY < 0 && currentPageIndex < allPhotos.size - 1) {
+                                                currentPageIndex++ // UP = NEXT
+                                            } else if (dragY > 0 && currentPageIndex > 0) {
+                                                currentPageIndex-- // DOWN = PREV
                                             }
                                         }
                                         // Horizontal swipe
-                                        kotlin.math.abs(horizontalDragOffset) > screenWidthPx * 0.3f -> {
-                                            val targetPage = if (horizontalDragOffset > 0) {
-                                                (actualCurrentPage - 1).coerceAtLeast(0)
-                                            } else {
-                                                (actualCurrentPage + 1).coerceAtMost(allPhotos.size - 1)
-                                            }
-                                            coroutineScope.launch {
-                                                pagerState.animateScrollToPage(targetPage)
+                                        !isDraggingVertically && kotlin.math.abs(dragX) > 100f -> {
+                                            if (dragX < 0 && currentPageIndex < allPhotos.size - 1) {
+                                                currentPageIndex++ // LEFT = NEXT
+                                            } else if (dragX > 0 && currentPageIndex > 0) {
+                                                currentPageIndex-- // RIGHT = PREV
                                             }
                                         }
                                     }
-                                    horizontalDragOffset = 0f
-                                    verticalDragOffset = 0f
-                                    verticalSlideOffset = 0f
-                                    isVerticalSwipe = false
+                                    dragX = 0f
+                                    dragY = 0f
                                 },
-                                onDragCancel = {
-                                    horizontalDragOffset = 0f
-                                    verticalDragOffset = 0f
-                                    verticalSlideOffset = 0f
-                                    isVerticalSwipe = false
-                                },
-                                onDrag = { change, dragAmount ->
-                                    if (scale <= 1.01f) {
-                                        val absY = kotlin.math.abs(dragAmount.y)
-                                        val absX = kotlin.math.abs(dragAmount.x)
-                                        
-                                        if (!isVerticalSwipe) {
-                                            // Detect direction on first significant movement
-                                            if (absY > absX * 1.5f && absY > 20) {
-                                                isVerticalSwipe = true
-                                            } else if (absX > absY * 1.5f && absX > 20) {
-                                                isVerticalSwipe = false
-                                            }
-                                        }
-                                        
-                                        if (isVerticalSwipe) {
-                                            // Vertical swipe: update Y offset for animation
-                                            change.consume()
-                                            verticalDragOffset += dragAmount.y
-                                            
-                                            val actualPage = pagerState.currentPage
-                                            val resistance = 0.6f
-                                            val delta = when {
-                                                actualPage == 0 && dragAmount.y > 0 -> dragAmount.y * 0.3f
-                                                actualPage == allPhotos.size - 1 && dragAmount.y < 0 -> dragAmount.y * 0.3f
-                                                else -> dragAmount.y * resistance
-                                            }
-                                            verticalSlideOffset += delta
-                                        } else {
-                                            // Horizontal swipe: update X offset
-                                            horizontalDragOffset += dragAmount.x
-                                        }
+                                onDrag = { change, amount ->
+                                    val absY = kotlin.math.abs(amount.y)
+                                    val absX = kotlin.math.abs(amount.x)
+                                    
+                                    // Detect direction on first movement
+                                    if (kotlin.math.abs(dragX) < 10f && kotlin.math.abs(dragY) < 10f) {
+                                        isDraggingVertically = absY > absX
+                                    }
+                                    
+                                    if (isDraggingVertically) {
+                                        dragY += amount.y
+                                        change.consume()
+                                    } else {
+                                        dragX += amount.x
                                     }
                                 }
                             )
                         }
                 ) {
-                    // Render only visible pages (current ± 1)
-                    val actualCurrentPage = pagerState.currentPage
-                    val visiblePages = listOf(
-                        (actualCurrentPage - 1).coerceAtLeast(0),
-                        actualCurrentPage,
-                        (actualCurrentPage + 1).coerceAtMost(allPhotos.lastIndex.coerceAtLeast(0))
-                    ).distinct()
-                    
-                    visiblePages.forEach { page ->
-                        val pageFlick = if (allPhotos.isNotEmpty() && page in allPhotos.indices) {
-                            allPhotos[page]
-                        } else flick
+                    // Show all pages positioned by index
+                    allPhotos.forEachIndexed { index, photo ->
+                        val isCurrent = index == currentPageIndex
+                        val isNext = index == currentPageIndex + 1
+                        val isPrev = index == currentPageIndex - 1
                         
-                        val isThisCurrentPage = page == actualCurrentPage
-                        val isThisNextPage = page == actualCurrentPage + 1
-                        val isThisPrevPage = page == actualCurrentPage - 1
-                        
-                        // Calculate position
-                        val baseX = page * screenWidthPx
-                        val xOffset = animatedBaseX + baseX + horizontalDragOffset
-                        
-                        val yOffset = when {
-                            isThisCurrentPage -> verticalSlideOffset
-                            isThisNextPage && isVerticalSwipe && verticalSlideOffset < 0 -> {
-                                // Next page slides in from bottom
-                                screenHeightPx + verticalSlideOffset
-                            }
-                            isThisPrevPage && isVerticalSwipe && verticalSlideOffset > 0 -> {
-                                // Prev page slides in from top
-                                -screenHeightPx + verticalSlideOffset
-                            }
-                            else -> screenHeightPx * 2f // Hide off-screen
-                        }
-                        
-                        // Calculate alpha
-                        val progress = kotlin.math.abs(verticalSlideOffset) / 500f
-                        val alpha = when {
-                            isVerticalSwipe && isThisCurrentPage -> 1f - progress.coerceIn(0f, 1f)
-                            isVerticalSwipe && (isThisNextPage || isThisPrevPage) -> progress.coerceIn(0f, 1f)
-                            else -> 1f - kotlin.math.abs(xOffset / screenWidthPx).coerceIn(0f, 1f)
-                        }
-                        
-                        val finalScale = if (isVerticalSwipe && isThisCurrentPage) {
-                            1f - (progress * 0.1f).coerceIn(0f, 0.1f)
-                        } else {
-                            1f - (kotlin.math.abs(xOffset / screenWidthPx) * 0.1f).coerceIn(0f, 0.1f)
-                        }
-                        
-                        // Only show if visible
-                        if (alpha > 0.01f) {
+                        // Only render current, next, and prev
+                        if (isCurrent || isNext || isPrev) {
+                            // Base position: each page is screen width apart horizontally
+                            val baseX = (index - currentPageIndex) * screenWidthPx
+                            
+                            // Apply drag offsets
+                            val finalX = baseX + if (isCurrent) dragX else 0f
+                            val finalY = if (isCurrent) dragY else if (isNext && dragY < 0) screenHeightPx + dragY else if (isPrev && dragY > 0) -screenHeightPx + dragY else screenHeightPx * 2f
+                            
                             Box(
                                 modifier = Modifier
                                     .fillMaxSize()
-                                    .offset { IntOffset(xOffset.toInt(), yOffset.toInt()) }
-                                    .graphicsLayer {
-                                        this.alpha = alpha
-                                        scaleX = if (isThisCurrentPage && scale > 1f) scale else finalScale
-                                        scaleY = if (isThisCurrentPage && scale > 1f) scale else finalScale
-                                        if (isThisCurrentPage && scale > 1f) {
-                                            translationX = offset.x
-                                            translationY = offset.y
-                                        }
-                                    }
+                                    .offset { IntOffset(finalX.toInt(), finalY.toInt()) }
                                     .combinedClickable(
                                         indication = null,
                                         interactionSource = remember { MutableInteractionSource() },
-                                        onClick = {
-                                            if (isThisCurrentPage) uiVisible = !uiVisible
-                                        },
+                                        onClick = { if (isCurrent) uiVisible = !uiVisible },
                                         onDoubleClick = {
-                                            if (isThisCurrentPage) {
+                                            if (isCurrent) {
                                                 heartAnimationKey++
                                                 showHeartAnimation = true
-                                                onReaction(
-                                                    if (userReaction == ReactionType.LIKE) null 
-                                                    else ReactionType.LIKE
-                                                )
+                                                onReaction(if (userReaction == ReactionType.LIKE) null else ReactionType.LIKE)
                                             }
                                         }
                                     ),
                                 contentAlignment = Alignment.Center
                             ) {
                                 AsyncImage(
-                                    model = pageFlick.imageUrl,
+                                    model = photo.imageUrl,
                                     contentDescription = null,
                                     modifier = Modifier.fillMaxSize(),
                                     contentScale = ContentScale.Crop
