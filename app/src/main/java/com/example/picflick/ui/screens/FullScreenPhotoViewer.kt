@@ -459,13 +459,13 @@ fun FullScreenPhotoViewer(
                                 isCurrent -> baseX + dragX  // Current moves with finger
                                 isNext && dragX < 0 -> screenWidthPx + dragX  // Next slides in from RIGHT when dragging left
                                 isPrev && dragX > 0 -> -screenWidthPx + dragX  // Prev slides in from LEFT when dragging right
-                                else -> baseX * 2f  // Far off-screen (2x distance)
+                                else -> baseX  // Default: at normal position (screenWidth or -screenWidth)
                             }
                             val finalY = when {
                                 isCurrent -> dragY  // Current moves with finger
                                 isNext && dragY < 0 -> screenHeightPx + dragY  // Next slides in from BOTTOM when dragging up
                                 isPrev && dragY > 0 -> -screenHeightPx + dragY  // Prev slides in from TOP when dragging down
-                                else -> screenHeightPx * 2f  // Far off-screen
+                                else -> if (isNext || isPrev) 0f else screenHeightPx * 2f  // Default for next/prev
                             }
                             
                             // Calculate scale shrink and fade based on drag amount
