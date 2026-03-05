@@ -210,6 +210,7 @@ fun FilterScreen(
         Box(
             modifier = Modifier
                 .fillMaxSize()
+                .background(Color.Black)
                 .padding(padding)
         ) {
             if (isLoading) {
