@@ -618,13 +618,14 @@ private fun AuthenticatedContent(
                         dailyUploadCount = uploadViewModel.dailyUploadCount,
                         maxDailyUploads = 5,
                         onBack = { onScreenChange(Screen.Home) },
-                        onUpload = { filteredUri, filter, taggedFriends ->
+                        onUpload = { filteredUri, filter, taggedFriends, description ->
                             uploadViewModel.uploadPhoto(
                                 context = context,
                                 photoUri = filteredUri,
                                 userProfile = userProfile,
                                 filter = filter,
-                                taggedFriends = taggedFriends
+                                taggedFriends = taggedFriends,
+                                description = description
                             )
                         },
                         onNavigateToFindFriends = { onScreenChange(Screen.FindFriends) }

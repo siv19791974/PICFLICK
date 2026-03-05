@@ -25,6 +25,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.ui.layout.ContentScale
@@ -34,6 +35,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.graphics.createBitmap
 import coil3.ImageLoader
+import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.allowHardware
 import coil3.toBitmap
@@ -55,7 +57,7 @@ fun FilterScreen(
     dailyUploadCount: Int,
     maxDailyUploads: Int = 5,
     onBack: () -> Unit,
-    onUpload: (Uri, PhotoFilter, List<String>) -> Unit,
+    onUpload: (Uri, PhotoFilter, List<String>, String) -> Unit,
     onNavigateToFindFriends: () -> Unit = {}
 ) {
     val context = LocalContext.current
@@ -68,9 +70,11 @@ fun FilterScreen(
     var taggedFriends by remember { mutableStateOf<List<UserProfile>>(emptyList()) }
     var showFriendPicker by remember { mutableStateOf(false) }
     
-    // Countdown animation
-    var showCountdown by remember { mutableStateOf(false) }
-    var countdownValue by remember { mutableIntStateOf(5) }
+    // Description/caption state
+    var description by remember { mutableStateOf("") }
+
+    // Upload loading state
+    var isUploading by remember { mutableStateOf(false) }
     
     // Load the bitmap
     LaunchedEffect(photoUri) {
@@ -103,20 +107,24 @@ fun FilterScreen(
     val remainingUploads = maxDailyUploads - dailyUploadCount
     val canUpload = remainingUploads > 0
 
-    // Countdown effect
-    LaunchedEffect(showCountdown) {
-        if (showCountdown) {
-            countdownValue = 5
-            while (countdownValue > 0) {
-                kotlinx.coroutines.delay(1000)
-                countdownValue--
-            }
-            // Countdown done, trigger upload
-            showCountdown = false
-            bitmap?.let { bmp ->
-                scope.launch {
-                    val filteredUri = applyFilterAndSave(context, bmp, selectedFilter)
-                    onUpload(filteredUri, selectedFilter, taggedFriends.map { it.uid })
+    // Upload function with loading state
+    fun triggerUpload() {
+        if (canUpload && !isUploading && bitmap != null) {
+            isUploading = true
+            scope.launch {
+                try {
+                    val filteredUri = applyFilterAndSave(context, bitmap!!, selectedFilter)
+                    onUpload(filteredUri, selectedFilter, taggedFriends.map { it.uid }, description.trim())
+                    // Show success toast
+                    withContext(Dispatchers.Main) {
+                        android.widget.Toast.makeText(context, "Upload Complete!", android.widget.Toast.LENGTH_SHORT).show()
+                    }
+                } catch (e: Exception) {
+                    withContext(Dispatchers.Main) {
+                        android.widget.Toast.makeText(context, "Upload failed", android.widget.Toast.LENGTH_SHORT).show()
+                    }
+                } finally {
+                    isUploading = false
                 }
             }
         }
@@ -162,23 +170,26 @@ fun FilterScreen(
                     
                     // Upload button
                     IconButton(
-                        onClick = {
-                            if (canUpload) {
-                                showCountdown = true
-                            }
-                        },
-                        enabled = !isLoading && bitmap != null && canUpload && !showCountdown
+                        onClick = { triggerUpload() },
+                        enabled = !isLoading && bitmap != null && canUpload && !isUploading
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.Check,
-                            contentDescription = "Upload",
-                            tint = when {
-                                !canUpload -> Color.Red
-                                isLoading || bitmap == null -> Color.Gray
-                                showCountdown -> Color(0xFF00D09C)
-                                else -> Color(0xFF00D09C)
-                            }
-                        )
+                        if (isUploading) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(24.dp),
+                                color = Color(0xFF00D09C),
+                                strokeWidth = 2.dp
+                            )
+                        } else {
+                            Icon(
+                                imageVector = Icons.Default.Check,
+                                contentDescription = "Upload",
+                                tint = when {
+                                    !canUpload -> Color.Red
+                                    isLoading || bitmap == null -> Color.Gray
+                                    else -> Color(0xFF00D09C)
+                                }
+                            )
+                        }
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -203,35 +214,46 @@ fun FilterScreen(
                     Column(
                         modifier = Modifier.fillMaxSize()
                     ) {
-                        // Main Photo Preview
+                        // Main Photo Preview - BIGGER with WHITE BORDER like Tag Screen
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .weight(1f)
-                                .padding(16.dp)
+                                .weight(1.2f)
+                                .padding(horizontal = 20.dp, vertical = 12.dp)
+                                .border(4.dp, Color.White.copy(alpha = 0.9f), RectangleShape)
+                                .padding(4.dp)
+                                .background(Color.Black)
                         ) {
                             FilteredImage(
                                 bitmap = bmp,
                                 filter = selectedFilter,
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .clip(RoundedCornerShape(12.dp))
+                                modifier = Modifier.fillMaxSize()
                             )
                             
-                            // Countdown Overlay
-                            if (showCountdown) {
+                            // Uploading Overlay
+                            if (isUploading) {
                                 Box(
                                     modifier = Modifier
                                         .fillMaxSize()
                                         .background(Color.Black.copy(alpha = 0.7f)),
                                     contentAlignment = Alignment.Center
                                 ) {
-                                    Text(
-                                        text = countdownValue.toString(),
-                                        color = Color.White,
-                                        fontSize = 72.sp,
-                                        fontWeight = FontWeight.Bold
-                                    )
+                                    Column(
+                                        horizontalAlignment = Alignment.CenterHorizontally
+                                    ) {
+                                        CircularProgressIndicator(
+                                            color = Color(0xFF00D09C),
+                                            strokeWidth = 3.dp,
+                                            modifier = Modifier.size(48.dp)
+                                        )
+                                        Spacer(modifier = Modifier.height(12.dp))
+                                        Text(
+                                            text = "Uploading...",
+                                            color = Color.White,
+                                            fontSize = 16.sp,
+                                            fontWeight = FontWeight.Medium
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -253,7 +275,8 @@ fun FilterScreen(
                                     FilterIcon(
                                         filter = filter,
                                         isSelected = selectedFilter == filter,
-                                        onClick = { selectedFilter = filter }
+                                        onClick = { selectedFilter = filter },
+                                        bitmap = bmp
                                     )
                                 }
                             }
@@ -297,6 +320,26 @@ fun FilterScreen(
                                 )
                             }
                             
+                            // Description/Caption Input Field
+                            OutlinedTextField(
+                                value = description,
+                                onValueChange = { description = it },
+                                placeholder = { Text("Add a caption...", color = Color.White.copy(alpha = 0.5f)) },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedTextColor = Color.White,
+                                    unfocusedTextColor = Color.White,
+                                    focusedBorderColor = Color(0xFF00D09C),
+                                    unfocusedBorderColor = Color.White.copy(alpha = 0.3f),
+                                    focusedContainerColor = Color(0xFF2C2C2E),
+                                    unfocusedContainerColor = Color(0xFF2C2C2E)
+                                ),
+                                maxLines = 2,
+                                singleLine = false
+                            )
+                            
                             // Upload limit warning
                             if (!canUpload) {
                                 Text(
@@ -335,26 +378,55 @@ fun FilterScreen(
 private fun FilterIcon(
     filter: PhotoFilter,
     isSelected: Boolean,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    bitmap: Bitmap? = null
 ) {
-    Box(
-        modifier = Modifier
-            .size(56.dp)
-            .clip(CircleShape)
-            .background(
-                if (isSelected) Color(0xFF00D09C) else Color(0xFF2C2C2E)
-            )
-            .border(
-                width = if (isSelected) 2.dp else 0.dp,
-                color = if (isSelected) Color(0xFF00D09C) else Color.Transparent,
-                shape = CircleShape
-            )
-            .clickable(onClick = onClick),
-        contentAlignment = Alignment.Center
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier.clickable(onClick = onClick)
     ) {
+        Box(
+            modifier = Modifier
+                .size(64.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .border(
+                    width = if (isSelected) 3.dp else 1.dp,
+                    color = if (isSelected) Color(0xFF00D09C) else Color.White.copy(alpha = 0.3f),
+                    shape = RoundedCornerShape(12.dp)
+                )
+                .background(Color(0xFF2C2C2E)),
+            contentAlignment = Alignment.Center
+        ) {
+            if (bitmap != null) {
+                // Show actual filtered thumbnail
+                val thumbnailBitmap = remember(bitmap, filter) {
+                    applyFilterToBitmap(bitmap, filter, thumbnailSize = 64)
+                }
+                Image(
+                    painter = BitmapPainter(thumbnailBitmap.asImageBitmap()),
+                    contentDescription = filter.displayName,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .clip(RoundedCornerShape(12.dp)),
+                    contentScale = ContentScale.Crop
+                )
+            } else {
+                // Fallback to emoji
+                Text(
+                    text = filter.icon,
+                    fontSize = 28.sp
+                )
+            }
+        }
+        
+        Spacer(modifier = Modifier.height(4.dp))
+        
+        // Filter name
         Text(
-            text = filter.icon,
-            fontSize = 28.sp
+            text = filter.displayName,
+            color = if (isSelected) Color(0xFF00D09C) else Color.White.copy(alpha = 0.7f),
+            fontSize = 11.sp,
+            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
         )
     }
 }
@@ -491,20 +563,30 @@ private fun FriendPickerItem(
             .padding(vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Avatar placeholder
+        // Profile photo with white border
         Box(
             modifier = Modifier
                 .size(48.dp)
                 .clip(CircleShape)
-                .background(Color(0xFF2C2C2E)),
+                .background(Color.Gray.copy(alpha = 0.4f))
+                .border(2.dp, Color.White.copy(alpha = 0.8f), CircleShape),
             contentAlignment = Alignment.Center
         ) {
-            Text(
-                text = friend.displayName.firstOrNull()?.uppercase() ?: "?",
-                color = Color.White,
-                fontSize = 20.sp,
-                fontWeight = FontWeight.Bold
-            )
+            if (friend.photoUrl.isNotBlank()) {
+                AsyncImage(
+                    model = friend.photoUrl,
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
+                )
+            } else {
+                Text(
+                    text = friend.displayName.firstOrNull()?.uppercase() ?: "?",
+                    color = Color.White,
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
         }
         
         Spacer(modifier = Modifier.width(16.dp))
@@ -512,7 +594,8 @@ private fun FriendPickerItem(
         Text(
             text = friend.displayName,
             color = Color.White,
-            fontSize = 16.sp
+            fontSize = 16.sp,
+            fontWeight = FontWeight.Medium
         )
     }
 }
