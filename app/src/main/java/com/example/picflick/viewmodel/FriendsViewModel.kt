@@ -234,6 +234,11 @@ class FriendsViewModel : ViewModel() {
                             followers = targetUser.followers + currentUserId
                         )
                     }
+                    // Update suggested users - remove followed user from suggestions
+                    val suggestedIndex = suggestedUsers.indexOfFirst { it.uid == targetUser.uid }
+                    if (suggestedIndex != -1) {
+                        suggestedUsers.removeAt(suggestedIndex)
+                    }
                 }
                 is Result.Error -> {
                     errorMessage = result.message
@@ -253,6 +258,8 @@ class FriendsViewModel : ViewModel() {
                 is Result.Success -> {
                     // Refresh search results
                     searchUsers(searchQuery, currentUserId)
+                    // Refresh suggested users to include the unfollowed user back
+                    loadSuggestedUsers(currentUserId)
                 }
                 is Result.Error -> {
                     errorMessage = result.message

@@ -87,7 +87,7 @@ class ChatRepository {
             // Create notification for recipient
             val notification = hashMapOf(
                 "userId" to recipientId,
-                "type" to "MESSAGE_RECEIVED",
+                "type" to "MESSAGE",
                 "title" to "New Message from ${message.senderName}",
                 "message" to if (message.text.length > 50) message.text.take(50) + "..." else message.text,
                 "senderId" to message.senderId,
@@ -95,7 +95,7 @@ class ChatRepository {
                 "senderPhotoUrl" to message.senderPhotoUrl,
                 "chatId" to chatId,
                 "timestamp" to System.currentTimeMillis(),
-                "read" to false
+                "isRead" to false
             )
 
             db.collection("notifications").add(notification).await()

@@ -10,6 +10,10 @@
     <!-- Contacts permission for friend suggestions -->
     <uses-permission android:name="android.permission.READ_CONTACTS" />
     
+    <!-- Phone permission for auto-detecting phone number -->
+    <uses-permission android:name="android.permission.READ_PHONE_STATE" />
+    <uses-permission android:name="android.permission.READ_PHONE_NUMBERS" />
+    
     <!-- Hardware features -->
     <uses-feature android:name="android.hardware.camera" android:required="false" />
     

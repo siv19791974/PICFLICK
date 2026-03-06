@@ -116,7 +116,7 @@ fun LoginScreen(
                                         isLoading = false
                                         if (task.isSuccessful) {
                                             auth.currentUser?.let { user ->
-                                                authViewModel.saveUserToFirestore(user)
+                                                authViewModel.saveUserToFirestore(user, context)
                                                 onLoginSuccess()
                                             }
                                         } else {

@@ -8,6 +8,7 @@ data class UserProfile(
     val email: String = "",
     val displayName: String = "",
     val photoUrl: String = "",
+    val phoneNumber: String = "", // Auto-detected from device SIM
     val bio: String = "",
     val followers: List<String> = emptyList(),
     val following: List<String> = emptyList(),

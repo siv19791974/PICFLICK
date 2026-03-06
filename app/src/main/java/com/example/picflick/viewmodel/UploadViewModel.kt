@@ -113,9 +113,9 @@ class UploadViewModel : ViewModel() {
                 // 1. Upload image to Firebase Storage
                 val imageUrl = uploadImageToStorage(context, photoUri, userProfile.uid)
 
-                // 2. Create Flick document in Firestore
+                // 2. Create Flick using repository (sends notifications to followers & tagged friends)
                 val flick = Flick(
-                    id = UUID.randomUUID().toString(),
+                    id = "", // Will be set by Firestore
                     userId = userProfile.uid,
                     userName = userProfile.displayName,
                     userPhotoUrl = userProfile.photoUrl,
@@ -128,11 +128,12 @@ class UploadViewModel : ViewModel() {
                     taggedFriends = taggedFriends
                 )
 
-                // Save to Firestore
-                firestore.collection("flicks")
-                    .document(flick.id)
-                    .set(flick)
-                    .await()
+                // Use repository to create flick - this sends notifications!
+                val result = flickRepository.createFlick(flick, userProfile.photoUrl)
+                
+                if (result is com.example.picflick.data.Result.Error) {
+                    throw Exception(result.message)
+                }
                 
                 // Increment daily count
                 dailyUploadCount++
