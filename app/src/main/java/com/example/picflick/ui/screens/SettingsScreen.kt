@@ -26,6 +26,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.platform.LocalContext
 import coil3.compose.AsyncImage
 import com.example.picflick.data.UserProfile
 
@@ -44,8 +45,13 @@ fun SettingsScreen(
     onHelpSupport: () -> Unit = {},
     onAbout: () -> Unit = {}
 ) {
+    val context = LocalContext.current
     var showSignOutDialog by remember { mutableStateOf(false) }
     var showDeleteAccountDialog by remember { mutableStateOf(false) }
+    var showClearCacheDialog by remember { mutableStateOf(false) }
+    var showAppearanceDialog by remember { mutableStateOf(false) }
+    var isDarkMode by remember { mutableStateOf(false) }
+    var cacheSize by remember { mutableStateOf("24 MB") }
 
     Scaffold(
         topBar = {
@@ -113,15 +119,15 @@ fun SettingsScreen(
                 SettingsItem(
                     icon = Icons.Default.Menu,
                     title = "Appearance",
-                    subtitle = "Dark mode (coming soon)",
-                    onClick = { /* TODO */ },
+                    subtitle = if (isDarkMode) "Dark mode (active)" else "Light mode",
+                    onClick = { showAppearanceDialog = true },
                     showArrow = false
                 )
                 SettingsItem(
                     icon = Icons.Default.Edit,
                     title = "Storage & Data",
-                    subtitle = "Clear cache: 24 MB",
-                    onClick = { /* TODO */ }
+                    subtitle = "Clear cache: $cacheSize",
+                    onClick = { showClearCacheDialog = true }
                 )
             }
 
@@ -216,6 +222,107 @@ fun SettingsScreen(
             dismissButton = {
                 TextButton(onClick = { showDeleteAccountDialog = false }) {
                     Text("Cancel")
+                }
+            },
+            containerColor = Color(0xFF1C1C1E),
+            titleContentColor = Color.White,
+            textContentColor = Color.White
+        )
+    }
+
+    // Clear Cache Confirmation Dialog
+    if (showClearCacheDialog) {
+        AlertDialog(
+            onDismissRequest = { showClearCacheDialog = false },
+            title = { Text("Clear Cache?") },
+            text = { Text("This will free up $cacheSize of storage space. Your photos and data are safe.") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showClearCacheDialog = false
+                        // Clear app cache
+                        val cacheDir = context.cacheDir
+                        val deleted = cacheDir.deleteRecursively()
+                        if (deleted) {
+                            cacheSize = "0 MB"
+                        }
+                    }
+                ) {
+                    Text("Clear", color = Color.Red)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showClearCacheDialog = false }) {
+                    Text("Cancel")
+                }
+            },
+            containerColor = Color(0xFF1C1C1E),
+            titleContentColor = Color.White,
+            textContentColor = Color.White
+        )
+    }
+
+    // Appearance Settings Dialog
+    if (showAppearanceDialog) {
+        AlertDialog(
+            onDismissRequest = { showAppearanceDialog = false },
+            title = { Text("Appearance") },
+            text = {
+                Column {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { 
+                                isDarkMode = false
+                                showAppearanceDialog = false
+                            }
+                            .padding(vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "☀️ Light Mode",
+                            modifier = Modifier.weight(1f),
+                            color = Color.White
+                        )
+                        if (!isDarkMode) {
+                            Text("✓", color = Color(0xFF00D09C))
+                        }
+                    }
+                    
+                    HorizontalDivider(color = Color(0xFF2C2C2E))
+                    
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { 
+                                isDarkMode = true
+                                showAppearanceDialog = false
+                            }
+                            .padding(vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "🌙 Dark Mode",
+                            modifier = Modifier.weight(1f),
+                            color = Color.White
+                        )
+                        if (isDarkMode) {
+                            Text("✓", color = Color(0xFF00D09C))
+                        }
+                    }
+                    
+                    Text(
+                        text = "Note: Full dark mode support coming in next update",
+                        fontSize = 12.sp,
+                        color = Color.Gray,
+                        modifier = Modifier.padding(top = 16.dp)
+                    )
+                }
+            },
+            confirmButton = {},
+            dismissButton = {
+                TextButton(onClick = { showAppearanceDialog = false }) {
+                    Text("Close")
                 }
             },
             containerColor = Color(0xFF1C1C1E),
