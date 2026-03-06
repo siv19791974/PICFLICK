@@ -47,6 +47,8 @@ import com.example.picflick.data.ReactionType
 import com.example.picflick.data.UserProfile
 import com.example.picflick.data.toEmoji
 import com.example.picflick.repository.FlickRepository
+import com.example.picflick.ui.components.LikeAnimation
+import com.example.picflick.ui.components.DoubleTapHeartAnimation
 import com.example.picflick.ui.components.AnimatedReactionPicker
 import android.content.ContentValues
 import android.content.Context
@@ -163,6 +165,8 @@ fun FullScreenPhotoViewer(
     var isLoadingTagFriends by remember { mutableStateOf(false) }
     
     // Heart animation state for double tap
+    var showDoubleTapHeart by remember { mutableStateOf(false) }
+    var heartAnimationKey by remember { mutableIntStateOf(0) }
 
     // Load comments when flick changes - use DisposableEffect to properly manage listener
     DisposableEffect(currentFlick.id) {
@@ -388,9 +392,9 @@ fun FullScreenPhotoViewer(
                 Text(
                     "You are about to block ${currentFlick.userName}.\n\n" +
                     "They will no longer be able to:\n" +
-                    "• See your photos\n" +
-                    "• Message you\n" +
-                    "• Find you in search\n\n" +
+                    "ï¿½ See your photos\n" +
+                    "ï¿½ Message you\n" +
+                    "ï¿½ Find you in search\n\n" +
                     "You can unblock them anytime from Privacy Settings.",
                     color = Color.Gray
                 )
@@ -555,7 +559,14 @@ fun FullScreenPhotoViewer(
                                             .combinedClickable(
                                                 indication = null,
                                                 interactionSource = remember { MutableInteractionSource() },
-                                                onClick = { uiVisible = !uiVisible }
+                                                onClick = { uiVisible = !uiVisible },
+                                                onDoubleClick = {
+                                                    // Double tap to like/unlike
+                                                    heartAnimationKey++
+                                                    showDoubleTapHeart = true
+                                                    // Toggle reaction (like)
+                                                    onReaction(if (userReaction != null) null else ReactionType.LIKE)
+                                                }
                                             )
                                     } else Modifier
                                 ),
@@ -607,6 +618,15 @@ fun FullScreenPhotoViewer(
                             isCurrent = false,
                             baseX = 0f,
                             baseY = screenHeightPx
+                        )
+                    }
+                    
+                    // BIG HEART ANIMATION FOR DOUBLE-TAP
+                    if (showDoubleTapHeart) {
+                        DoubleTapHeartAnimation(
+                            key = heartAnimationKey,
+                            isLiked = userReaction != null,
+                            onAnimationComplete = { showDoubleTapHeart = false }
                         )
                     }
                     
