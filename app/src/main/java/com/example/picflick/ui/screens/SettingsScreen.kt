@@ -9,19 +9,14 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material.icons.outlined.*
-
-// Specific icons we know exist
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.Notifications
-import androidx.compose.material.icons.filled.Menu
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -87,7 +82,7 @@ fun SettingsScreen(
             // Profile Section Header
             ProfileHeaderSection(userProfile, onEditProfile)
 
-            Divider(color = Color(0xFF2C2C2E), thickness = 0.5.dp)
+            HorizontalDivider(color = Color(0xFF2C2C2E), thickness = 0.5.dp)
 
             // Account Section
             SettingsSection(title = "ACCOUNT") {
@@ -111,7 +106,7 @@ fun SettingsScreen(
                 )
             }
 
-            Divider(color = Color(0xFF2C2C2E), thickness = 0.5.dp)
+            HorizontalDivider(color = Color(0xFF2C2C2E), thickness = 0.5.dp)
 
             // Preferences Section
             SettingsSection(title = "PREFERENCES") {
@@ -130,7 +125,7 @@ fun SettingsScreen(
                 )
             }
 
-            Divider(color = Color(0xFF2C2C2E), thickness = 0.5.dp)
+            HorizontalDivider(color = Color(0xFF2C2C2E), thickness = 0.5.dp)
 
             // Support Section
             SettingsSection(title = "SUPPORT") {
@@ -148,7 +143,7 @@ fun SettingsScreen(
                 )
             }
 
-            Divider(color = Color(0xFF2C2C2E), thickness = 0.5.dp)
+            HorizontalDivider(color = Color(0xFF2C2C2E), thickness = 0.5.dp)
 
             // Danger Zone
             SettingsSection(title = "DANGER ZONE") {

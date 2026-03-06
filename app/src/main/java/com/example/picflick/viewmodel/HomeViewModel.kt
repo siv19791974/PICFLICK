@@ -170,19 +170,50 @@ class HomeViewModel : ViewModel() {
             loadFlicks()
             return
         }
-        
+
         isLoading = true
         val searchQuery = query.lowercase()
-        
+
         // Filter local flicks
         val filtered = flicks.filter { flick ->
             flick.userName.lowercase().contains(searchQuery) ||
             flick.description.lowercase().contains(searchQuery)
         }
-        
+
         flicks.clear()
         flicks.addAll(filtered)
         isLoading = false
+    }
+
+    /**
+     * Search explore flicks by user name, description, or tags
+     */
+    fun searchExploreFlicks(query: String) {
+        if (query.isBlank()) {
+            loadExploreFlicks()
+            return
+        }
+
+        isLoading = true
+        val searchQuery = query.lowercase()
+
+        // Filter explore flicks locally
+        val filtered = exploreFlicks.filter { flick ->
+            flick.userName.lowercase().contains(searchQuery) ||
+            flick.description.lowercase().contains(searchQuery) ||
+            flick.taggedFriends.any { it.lowercase().contains(searchQuery) }
+        }
+
+        exploreFlicks.clear()
+        exploreFlicks.addAll(filtered)
+        isLoading = false
+    }
+
+    /**
+     * Clear search and reload all explore flicks
+     */
+    fun clearExploreSearch() {
+        loadExploreFlicks()
     }
 
     /**

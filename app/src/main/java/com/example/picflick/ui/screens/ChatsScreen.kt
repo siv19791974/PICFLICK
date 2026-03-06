@@ -43,7 +43,8 @@ fun ChatsScreen(
     viewModel: ChatViewModel,
     onBack: () -> Unit,
     onNavigateHome: () -> Unit = onBack,
-    onChatClick: (ChatSession, String) -> Unit
+    onChatClick: (ChatSession, String) -> Unit,
+    onUserProfileClick: (String) -> Unit = {}
 ) {
     LaunchedEffect(userProfile.uid) {
         viewModel.loadChatSessions(userProfile.uid)
@@ -125,7 +126,8 @@ fun ChatsScreen(
                                 otherUserName = otherUserName,
                                 otherUserPhoto = otherUserPhoto,
                                 currentUserId = userProfile.uid,
-                                onClick = { onChatClick(session, otherUserId) }
+                                onClick = { onChatClick(session, otherUserId) },
+                                onProfilePhotoClick = { onUserProfileClick(otherUserId) }
                             )
 
                             Divider(
@@ -157,7 +159,8 @@ private fun ChatListItem(
     otherUserName: String,
     otherUserPhoto: String,
     currentUserId: String,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    onProfilePhotoClick: () -> Unit = {}
 ) {
     val isLastMessageFromMe = session.lastSenderId == currentUserId
     val hasUnread = session.unreadCount > 0
@@ -169,9 +172,11 @@ private fun ChatListItem(
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Profile photo
+        // Profile photo - clickable to view profile
         Box(
-            modifier = Modifier.size(56.dp)
+            modifier = Modifier
+                .size(56.dp)
+                .clickable { onProfilePhotoClick() }
         ) {
             if (otherUserPhoto.isNotEmpty()) {
                 AsyncImage(

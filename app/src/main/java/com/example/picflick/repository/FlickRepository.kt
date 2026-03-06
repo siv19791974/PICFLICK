@@ -3,6 +3,7 @@ package com.example.picflick.repository
 import com.example.picflick.data.*
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.ListenerRegistration
 import com.google.firebase.firestore.Query
 import com.google.firebase.storage.FirebaseStorage
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -547,6 +548,39 @@ class FlickRepository private constructor() {
     }
 
     /**
+     * Block a user - they can't see your content or interact with you
+     */
+    fun blockUser(currentUserId: String, targetUserId: String, onResult: (Result<Unit>) -> Unit) {
+        val batch = db.batch()
+
+        val currentUserRef = db.collection("users").document(currentUserId)
+        val targetUserRef = db.collection("users").document(targetUserId)
+
+        // Add to blocked users list
+        batch.update(currentUserRef, "blockedUsers", FieldValue.arrayUnion(targetUserId))
+
+        // Unfollow each other (can't follow a blocked user)
+        batch.update(currentUserRef, "following", FieldValue.arrayRemove(targetUserId))
+        batch.update(currentUserRef, "followers", FieldValue.arrayRemove(targetUserId))
+        batch.update(targetUserRef, "following", FieldValue.arrayRemove(currentUserId))
+        batch.update(targetUserRef, "followers", FieldValue.arrayRemove(currentUserId))
+
+        batch.commit()
+            .addOnSuccessListener { onResult(Result.Success(Unit)) }
+            .addOnFailureListener { e -> onResult(Result.Error(e, "Failed to block user")) }
+    }
+
+    /**
+     * Unblock a user
+     */
+    fun unblockUser(currentUserId: String, targetUserId: String, onResult: (Result<Unit>) -> Unit) {
+        db.collection("users").document(currentUserId)
+            .update("blockedUsers", FieldValue.arrayRemove(targetUserId))
+            .addOnSuccessListener { onResult(Result.Success(Unit)) }
+            .addOnFailureListener { e -> onResult(Result.Error(e, "Failed to unblock user")) }
+    }
+
+    /**
      * Get following users
      */
     fun getFollowingUsers(userId: String, onResult: (Result<List<UserProfile>>) -> Unit) {
@@ -856,10 +890,10 @@ class FlickRepository private constructor() {
     suspend fun createStreakReminderNotification(userId: String, userName: String, currentStreak: Int): Result<Unit> {
         return try {
             val motivationalMessages = listOf(
-                "Don't break your $currentStreak-day streak! Share a photo today 🔥",
-                "Your $currentStreak-day streak is at risk! Post now to keep it alive ⚡",
-                "Keep the flame burning! $currentStreak days and counting 🔥",
-                "One photo away from day ${currentStreak + 1}! Don't stop now 🚀"
+                "Don't break your $currentStreak-day streak! Share a photo today ����",
+                "Your $currentStreak-day streak is at risk! Post now to keep it alive ���",
+                "Keep the flame burning! $currentStreak days and counting ����",
+                "One photo away from day ${currentStreak + 1}! Don't stop now ����"
             )
             
             val randomMessage = motivationalMessages.random()
@@ -871,7 +905,7 @@ class FlickRepository private constructor() {
                 "senderName" to "PicFlick",
                 "senderPhotoUrl" to "",
                 "type" to "STREAK_REMINDER",
-                "title" to "🔥 Streak Alert!",
+                "title" to "���� Streak Alert!",
                 "message" to randomMessage,
                 "isRead" to false,
                 "timestamp" to System.currentTimeMillis(),
@@ -930,12 +964,12 @@ class FlickRepository private constructor() {
                 "senderName" to "PicFlick",
                 "senderPhotoUrl" to "",
                 "type" to "ACHIEVEMENT",
-                "title" to "🏆 Achievement Unlocked!",
-                "message" to "Congratulations $userName! You earned the 📸 Photographer achievement for uploading your first photo!",
+                "title" to "���� Achievement Unlocked!",
+                "message" to "Congratulations $userName! You earned the ���� Photographer achievement for uploading your first photo!",
                 "isRead" to false,
                 "timestamp" to System.currentTimeMillis(),
                 "achievementType" to "PHOTOGRAPHER",
-                "emoji" to "📸"
+                "emoji" to "����"
             )
 
             db.collection("notifications").add(notification).await()
@@ -957,12 +991,12 @@ class FlickRepository private constructor() {
                 "senderName" to "PicFlick",
                 "senderPhotoUrl" to "",
                 "type" to "ACHIEVEMENT",
-                "title" to "🏆 Achievement Unlocked!",
-                "message" to "Keep it up $userName! You earned the 🔥 Active achievement for uploading $photoCount photos!",
+                "title" to "���� Achievement Unlocked!",
+                "message" to "Keep it up $userName! You earned the ���� Active achievement for uploading $photoCount photos!",
                 "isRead" to false,
                 "timestamp" to System.currentTimeMillis(),
                 "achievementType" to "ACTIVE",
-                "emoji" to "🔥",
+                "emoji" to "����",
                 "photoCount" to photoCount
             )
 
@@ -1043,10 +1077,10 @@ class FlickRepository private constructor() {
     }
 
     /**
-     * Get comments for a flick
+     * Get comments for a flick - returns a ListenerRegistration that must be removed when done
      */
-    fun getComments(flickId: String, onResult: (Result<List<Comment>>) -> Unit) {
-        db.collection("comments")
+    fun getComments(flickId: String, onResult: (Result<List<Comment>>) -> Unit): ListenerRegistration {
+        return db.collection("comments")
             .whereEqualTo("flickId", flickId)
             .orderBy("timestamp", Query.Direction.DESCENDING)
             .addSnapshotListener { snapshot, error ->
@@ -1091,6 +1125,46 @@ class FlickRepository private constructor() {
             Result.Success(Unit)
         } catch (e: Exception) {
             Result.Error(e, "Failed to update description")
+        }
+    }
+
+    /**
+     * Update tagged friends for a flick
+     */
+    suspend fun updateTaggedFriends(
+        flickId: String,
+        taggedFriends: List<String>,
+        photoOwnerId: String,
+        photoOwnerName: String,
+        photoOwnerPhotoUrl: String
+    ): Result<Unit> {
+        return try {
+            // Get current flick to check existing tags
+            val flickDoc = db.collection("flicks").document(flickId).get().await()
+            val currentTagged = flickDoc.get("taggedFriends") as? List<String> ?: emptyList()
+            
+            // Find newly added friends (to create notifications for them)
+            val newlyTagged = taggedFriends.filter { it !in currentTagged }
+            
+            // Update the flick with new tagged friends list
+            db.collection("flicks").document(flickId)
+                .update("taggedFriends", taggedFriends)
+                .await()
+            
+            // Create notifications for newly tagged friends
+            newlyTagged.forEach { taggedUserId ->
+                createTagNotification(
+                    flickId = flickId,
+                    photoOwnerId = photoOwnerId,
+                    photoOwnerName = photoOwnerName,
+                    photoOwnerPhotoUrl = photoOwnerPhotoUrl,
+                    taggedUserId = taggedUserId
+                )
+            }
+            
+            Result.Success(Unit)
+        } catch (e: Exception) {
+            Result.Error(e, "Failed to update tagged friends")
         }
     }
 
@@ -1208,6 +1282,78 @@ class FlickRepository private constructor() {
             Result.Success(sorted)
         } catch (e: Exception) {
             Result.Error(e, "Failed to get leaderboard")
+        }
+    }
+
+    /**
+     * Report a photo for inappropriate content
+     * Reports are stored for admin review
+     */
+    suspend fun reportPhoto(
+        flickId: String,
+        reporterId: String,
+        reason: String,
+        details: String = ""
+    ): Result<Unit> {
+        return try {
+            val report = hashMapOf(
+                "flickId" to flickId,
+                "reporterId" to reporterId,
+                "reason" to reason,
+                "details" to details,
+                "timestamp" to System.currentTimeMillis(),
+                "status" to "pending" // pending, reviewed, action_taken
+            )
+
+            db.collection("reports").add(report).await()
+
+            // Also increment report count on the flick for auto-moderation
+            db.collection("flicks").document(flickId)
+                .update("reportCount", FieldValue.increment(1))
+                .await()
+
+            Result.Success(Unit)
+        } catch (e: Exception) {
+            Result.Error(e, "Failed to submit report")
+        }
+    }
+
+    /**
+     * Get reported photos (for admin use)
+     */
+    suspend fun getReportedPhotos(): Result<List<Pair<Flick, Int>>> {
+        return try {
+            // Get flicks with reportCount > 0
+            val snapshot = db.collection("flicks")
+                .whereGreaterThan("reportCount", 0)
+                .orderBy("reportCount", Query.Direction.DESCENDING)
+                .get()
+                .await()
+
+            val flicks = snapshot.toObjects(Flick::class.java)
+            val reportCounts = flicks.map { it.reportCount }
+
+            Result.Success(flicks.zip(reportCounts))
+        } catch (e: Exception) {
+            Result.Error(e, "Failed to get reported photos")
+        }
+    }
+
+    /**
+     * Save user notification preferences to Firestore
+     */
+    suspend fun saveNotificationPreferences(
+        userId: String,
+        preferences: com.example.picflick.data.NotificationPreferences
+    ): Result<Unit> {
+        return try {
+            // Use set with merge to create or update the field
+            db.collection("users").document(userId)
+                .set(mapOf("notificationPreferences" to preferences), com.google.firebase.firestore.SetOptions.merge())
+                .await()
+            Result.Success(Unit)
+        } catch (e: Exception) {
+            Result.Error(e, "Failed to save notification preferences")
         }
     }
 }

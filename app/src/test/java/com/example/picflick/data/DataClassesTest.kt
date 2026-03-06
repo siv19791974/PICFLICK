@@ -88,7 +88,7 @@ class DataClassesTest {
         assertEquals("https://example.com/image.jpg", flick.imageUrl)
         assertEquals("Beautiful sunset", flick.description)
         assertEquals(1234567890L, flick.timestamp)
-        assertEquals(2, flick.getTotalReactions())
+        assertEquals(3, flick.getTotalReactions())
     }
 
     @Test

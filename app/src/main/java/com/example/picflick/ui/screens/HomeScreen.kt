@@ -57,7 +57,8 @@ fun HomeScreen(
     userProfile: UserProfile,
     viewModel: HomeViewModel,
     onNavigate: (String) -> Unit,
-    onSignOut: () -> Unit
+    onSignOut: () -> Unit,
+    onUserProfileClick: (String) -> Unit = {}
 ) {
     val context = LocalContext.current
     var showUploadDialog by remember { mutableStateOf(false) }
@@ -244,6 +245,9 @@ fun HomeScreen(
             onNavigateToPhoto = { index ->
                 selectedFlickIndex = index
                 selectedFlick = viewModel.flicks.getOrNull(index)
+            },
+            onUserProfileClick = { userId ->
+                onUserProfileClick(userId)
             }
         )
     }

@@ -65,8 +65,15 @@ fun ExploreScreen(
         // Search Bar
         SearchBar(
             query = searchQuery,
-            onQueryChange = { searchQuery = it },
-            onSearch = { /* TODO: Implement search */ },
+            onQueryChange = { 
+                searchQuery = it
+                if (it.isEmpty()) {
+                    viewModel.clearExploreSearch()
+                }
+            },
+            onSearch = { 
+                viewModel.searchExploreFlicks(searchQuery)
+            },
             modifier = Modifier.padding(16.dp)
         )
 
@@ -79,7 +86,7 @@ fun ExploreScreen(
                 if (selectedTab.ordinal < tabPositions.size) {
                     TabRowDefaults.Indicator(
                         modifier = Modifier.tabIndicatorOffset(tabPositions[selectedTab.ordinal]),
-                        color = Color(0xFF00D09C)
+                        color = Color(0xFFD7ECFF)
                     )
                 }
             }
@@ -170,7 +177,7 @@ private fun SearchBar(
             }
         },
         colors = OutlinedTextFieldDefaults.colors(
-            focusedBorderColor = Color(0xFF00D09C),
+            focusedBorderColor = Color(0xFFD7ECFF),
             unfocusedBorderColor = Color.Gray,
             focusedContainerColor = Color(0xFF1C1C1E),
             unfocusedContainerColor = Color(0xFF1C1C1E),
@@ -574,7 +581,7 @@ private fun NewPhotoCard(
                 Box(
                     modifier = Modifier
                         .padding(top = 8.dp)
-                        .background(Color(0xFF00D09C), RoundedCornerShape(8.dp))
+                        .background(Color(0xFFD7ECFF), RoundedCornerShape(8.dp))
                         .padding(horizontal = 8.dp, vertical = 4.dp)
                 ) {
                     Text(

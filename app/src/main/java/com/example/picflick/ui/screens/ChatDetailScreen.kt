@@ -1,6 +1,7 @@
 package com.example.picflick.ui.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -41,7 +42,8 @@ fun ChatDetailScreen(
     otherUserId: String,
     currentUser: UserProfile,
     viewModel: ChatViewModel,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    onUserProfileClick: (String) -> Unit = {}
 ) {
     val chatId = chatSession.id
     val otherUserName = chatSession.participantNames[otherUserId] ?: "Unknown"
@@ -77,9 +79,11 @@ fun ChatDetailScreen(
                 ),
                 title = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        // Profile photo
+                        // Profile photo - clickable to view profile
                         Box(
-                            modifier = Modifier.size(40.dp)
+                            modifier = Modifier
+                                .size(40.dp)
+                                .clickable { onUserProfileClick(otherUserId) }
                         ) {
                             if (otherUserPhoto.isNotEmpty()) {
                                 AsyncImage(

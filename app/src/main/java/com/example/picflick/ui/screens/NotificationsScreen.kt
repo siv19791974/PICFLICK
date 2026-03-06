@@ -51,6 +51,7 @@ import java.util.Locale
 fun NotificationsScreen(
     userProfile: UserProfile,
     onBack: () -> Unit,
+    onUserProfileClick: (String) -> Unit = {},
     viewModel: NotificationViewModel = viewModel()
 ) {
     val notifications = viewModel.notifications
@@ -184,6 +185,9 @@ fun NotificationsScreen(
                             },
                             onDelete = {
                                 viewModel.deleteNotification(notification.id)
+                            },
+                            onUserProfileClick = { senderId ->
+                                onUserProfileClick(senderId)
                             }
                         )
                     }
@@ -207,7 +211,8 @@ fun NotificationsScreen(
 private fun NotificationItem(
     notification: Notification,
     onClick: () -> Unit,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
+    onUserProfileClick: (String) -> Unit = {}
 ) {
     val backgroundColor = if (notification.isRead) {
         Color(0xFF1A1A1A) // Dark grey for read
@@ -228,8 +233,10 @@ private fun NotificationItem(
                 .padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Sender avatar with notification icon overlay
-            Box {
+            // Sender avatar with notification icon overlay - clickable to view profile
+            Box(
+                modifier = Modifier.clickable { onUserProfileClick(notification.senderId) }
+            ) {
                 AsyncImage(
                     model = notification.senderPhotoUrl,
                     contentDescription = null,

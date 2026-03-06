@@ -6,6 +6,10 @@ import android.provider.ContactsContract
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.*
+import androidx.compose.material.ExperimentalMaterialApi
+import androidx.compose.material.pullrefresh.PullRefreshIndicator
+import androidx.compose.material.pullrefresh.pullRefresh
+import androidx.compose.material.pullrefresh.rememberPullRefreshState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -45,6 +49,7 @@ import kotlinx.coroutines.launch
  * Comprehensive screen for finding friends, inviting contacts, and following users
  * Similar to Instagram/Facebook friend discovery with WhatsApp integration
  */
+@OptIn(ExperimentalMaterialApi::class)
 @Composable
 fun FindFriendsScreen(
     viewModel: FriendsViewModel,
@@ -150,6 +155,7 @@ fun FindFriendsScreen(
     }
 }
 
+@OptIn(ExperimentalMaterialApi::class)
 @Composable
 private fun DiscoverTab(
     viewModel: FriendsViewModel,
@@ -157,62 +163,87 @@ private fun DiscoverTab(
     onFollowClick: (UserProfile, Boolean) -> Unit,
     onUserClick: (String) -> Unit
 ) {
-    Column(
-        modifier = Modifier.fillMaxSize()
-    ) {
-        // Search bar
-        OutlinedTextField(
-            value = viewModel.searchQuery,
-            onValueChange = { query ->
-                viewModel.searchUsers(query, userProfile.uid)
-            },
-            label = { Text("Search users...") },
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
-            singleLine = true
-        )
+    // Pull-to-refresh state
+    val pullRefreshState = rememberPullRefreshState(
+        refreshing = viewModel.isLoading,
+        onRefresh = { 
+            if (viewModel.searchQuery.isBlank()) {
+                viewModel.loadSuggestedUsers(userProfile.uid)
+            } else {
+                viewModel.searchUsers(viewModel.searchQuery, userProfile.uid)
+            }
+        }
+    )
 
-        // Suggested Friends Section
-        if (viewModel.searchQuery.isBlank() && viewModel.suggestedUsers.isNotEmpty()) {
-            Text(
-                text = "Suggested for you",
-                style = MaterialTheme.typography.titleMedium,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .pullRefresh(pullRefreshState)
+    ) {
+        Column(
+            modifier = Modifier.fillMaxSize()
+        ) {
+            // Search bar
+            OutlinedTextField(
+                value = viewModel.searchQuery,
+                onValueChange = { query ->
+                    viewModel.searchUsers(query, userProfile.uid)
+                },
+                label = { Text("Search users...") },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+                singleLine = true
             )
 
-            LazyColumn {
-                items(viewModel.suggestedUsers) { user ->
-                    UserResultItem(
-                        user = user,
-                        isFollowing = userProfile.following.contains(user.uid),
-                        onFollowClick = { onFollowClick(user, userProfile.following.contains(user.uid)) },
-                        onUserClick = { onUserClick(user.uid) },
-                        showMutualFriends = true,
-                        mutualCount = (user.followers intersect userProfile.following.toSet()).size
-                    )
-                }
-            }
-        } else if (viewModel.searchQuery.isNotBlank()) {
-            // Search results
-            if (viewModel.isLoading) {
-                FullScreenLoading()
-            } else if (viewModel.searchResults.isEmpty()) {
-                EmptySearchState()
-            } else {
+            // Suggested Friends Section
+            if (viewModel.searchQuery.isBlank() && viewModel.suggestedUsers.isNotEmpty()) {
+                Text(
+                    text = "Suggested for you",
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                )
+
                 LazyColumn {
-                    items(viewModel.searchResults) { user ->
+                    items(viewModel.suggestedUsers) { user ->
                         UserResultItem(
                             user = user,
                             isFollowing = userProfile.following.contains(user.uid),
                             onFollowClick = { onFollowClick(user, userProfile.following.contains(user.uid)) },
-                            onUserClick = { onUserClick(user.uid) }
+                            onUserClick = { onUserClick(user.uid) },
+                            showMutualFriends = true,
+                            mutualCount = (user.followers intersect userProfile.following.toSet()).size
                         )
+                    }
+                }
+            } else if (viewModel.searchQuery.isNotBlank()) {
+                // Search results
+                if (viewModel.isLoading) {
+                    FullScreenLoading()
+                } else if (viewModel.searchResults.isEmpty()) {
+                    EmptySearchState()
+                } else {
+                    LazyColumn {
+                        items(viewModel.searchResults) { user ->
+                            UserResultItem(
+                                user = user,
+                                isFollowing = userProfile.following.contains(user.uid),
+                                onFollowClick = { onFollowClick(user, userProfile.following.contains(user.uid)) },
+                                onUserClick = { onUserClick(user.uid) }
+                            )
+                        }
                     }
                 }
             }
         }
+
+        // PullRefreshIndicator
+        PullRefreshIndicator(
+            refreshing = viewModel.isLoading,
+            state = pullRefreshState,
+            modifier = Modifier.align(Alignment.TopCenter)
+        )
     }
 }
 
@@ -484,14 +515,15 @@ private fun UserResultItem(
             modifier = Modifier.padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Profile photo
+            // Profile photo - clickable to view profile
             if (user.photoUrl.isNotEmpty()) {
                 AsyncImage(
                     model = user.photoUrl,
                     contentDescription = null,
                     modifier = Modifier
                         .size(56.dp)
-                        .clip(CircleShape),
+                        .clip(CircleShape)
+                        .clickable { onUserClick() },
                     contentScale = androidx.compose.ui.layout.ContentScale.Crop,
                     error = painterResource(id = android.R.drawable.ic_menu_myplaces)
                 )
@@ -500,7 +532,8 @@ private fun UserResultItem(
                     modifier = Modifier
                         .size(56.dp)
                         .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)),
+                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.2f))
+                        .clickable { onUserClick() },
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
