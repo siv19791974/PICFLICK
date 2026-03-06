@@ -1725,6 +1725,7 @@ private fun ShareFriendsDialog(
                                 Spacer(modifier = Modifier.height(16.dp))
                                 Button(
                                     onClick = { 
+                                        onDismiss()
                                         onNavigateToFindFriends()
                                     },
                                     colors = ButtonDefaults.buttonColors(
@@ -1983,6 +1984,7 @@ private fun TagFriendsDialog(
                                 Spacer(modifier = Modifier.height(16.dp))
                                 Button(
                                     onClick = { 
+                                        onDismiss()
                                         onNavigateToFindFriends()
                                     },
                                     colors = ButtonDefaults.buttonColors(
