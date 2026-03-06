@@ -57,6 +57,7 @@ import com.example.picflick.ui.screens.FriendsScreen
 import com.example.picflick.ui.screens.FullScreenPhotoViewer
 import com.example.picflick.ui.screens.HomeScreen
 import com.example.picflick.ui.screens.LoginScreen
+import com.example.picflick.ui.screens.ManageStorageScreen
 import com.example.picflick.ui.screens.MyPhotosScreen
 import com.example.picflick.ui.screens.NotificationsScreen
 import com.example.picflick.ui.screens.NotificationSettingsScreen
@@ -66,6 +67,7 @@ import com.example.picflick.ui.screens.PrivacyScreen
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.ui.unit.sp
 import com.example.picflick.ui.screens.SplashScreen
+import com.example.picflick.ui.screens.SubscriptionStatusScreen
 import com.example.picflick.ui.screens.UserProfileScreen
 import com.example.picflick.ui.theme.PicFlickBackground
 import com.example.picflick.ui.theme.PicFlickBannerBackground
@@ -135,6 +137,8 @@ sealed class Screen {
     data object Explore : Screen()
     data object Privacy : Screen()
     data object NotificationSettings : Screen()
+    data object ManageStorage : Screen()           // NEW: Storage management
+    data object SubscriptionStatus : Screen()        // NEW: Subscription details
 }
 
 /**
@@ -732,10 +736,26 @@ private fun AuthenticatedContent(
                 onBack = { onScreenChange(Screen.Home) },
                 onSignOut = onSignOut,
                 onEditProfile = { onScreenChange(Screen.Profile) },
+                onManageStorage = { onScreenChange(Screen.ManageStorage) },
+                onSubscriptionStatus = { onScreenChange(Screen.SubscriptionStatus) },
                 onPrivacySettings = { onScreenChange(Screen.Privacy) },
                 onNotificationsSettings = { onScreenChange(Screen.NotificationSettings) },
                 onHelpSupport = { onScreenChange(Screen.Contact) },
                 onAbout = { onScreenChange(Screen.About) }
+            )
+
+            is Screen.ManageStorage -> ManageStorageScreen(
+                userProfile = userProfile,
+                onBack = { onScreenChange(Screen.Settings) },
+                onUpgrade = { /* TODO: Implement billing integration */ }
+            )
+
+            is Screen.SubscriptionStatus -> SubscriptionStatusScreen(
+                userProfile = userProfile,
+                onBack = { onScreenChange(Screen.Settings) },
+                onUpgrade = { /* TODO: Implement billing integration */ },
+                onDowngrade = { /* TODO: Implement billing integration */ },
+                onManagePayment = { /* TODO: Implement payment management */ }
             )
 
             is Screen.Filter -> {
