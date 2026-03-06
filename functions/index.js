@@ -229,3 +229,11 @@ exports.sendStreakReminders = functions.pubsub
     console.log(`Sent ${remindersSent} streak reminders`);
     return null;
   });
+
+// Purchase validation functions
+const purchaseValidation = require('./purchaseValidation');
+
+exports.validatePurchase = purchaseValidation.validatePurchase;
+exports.handlePurchaseCancelled = purchaseValidation.handlePurchaseCancelled;
+exports.checkExpiredSubscriptions = purchaseValidation.checkExpiredSubscriptions;
+exports.handleRealtimeNotification = purchaseValidation.handleRealtimeNotification;
