@@ -1,4 +1,4 @@
-ï»¿package com.example.picflick.repository
+package com.example.picflick.repository
 
 import com.example.picflick.data.*
 import com.google.firebase.firestore.FieldValue
@@ -890,10 +890,10 @@ class FlickRepository private constructor() {
     suspend fun createStreakReminderNotification(userId: String, userName: String, currentStreak: Int): Result<Unit> {
         return try {
             val motivationalMessages = listOf(
-                "Don't break your $currentStreak-day streak! Share a photo today Â­Æ’Ã¶Ã‘",
-                "Your $currentStreak-day streak is at risk! Post now to keep it alive Ã”ÃœÃ­",
-                "Keep the flame burning! $currentStreak days and counting Â­Æ’Ã¶Ã‘",
-                "One photo away from day ${currentStreak + 1}! Don't stop now Â­Æ’ÃœÃ‡"
+                "Don't break your $currentStreak-day streak! Share a photo today ­ƒöÑ",
+                "Your $currentStreak-day streak is at risk! Post now to keep it alive ÔÜí",
+                "Keep the flame burning! $currentStreak days and counting ­ƒöÑ",
+                "One photo away from day ${currentStreak + 1}! Don't stop now ­ƒÜÇ"
             )
             
             val randomMessage = motivationalMessages.random()
@@ -905,7 +905,7 @@ class FlickRepository private constructor() {
                 "senderName" to "PicFlick",
                 "senderPhotoUrl" to "",
                 "type" to "STREAK_REMINDER",
-                "title" to "Â­Æ’Ã¶Ã‘ Streak Alert!",
+                "title" to "­ƒöÑ Streak Alert!",
                 "message" to randomMessage,
                 "isRead" to false,
                 "timestamp" to System.currentTimeMillis(),
@@ -964,12 +964,12 @@ class FlickRepository private constructor() {
                 "senderName" to "PicFlick",
                 "senderPhotoUrl" to "",
                 "type" to "ACHIEVEMENT",
-                "title" to "Â­Æ’Ã…Ã¥ Achievement Unlocked!",
-                "message" to "Congratulations $userName! You earned the Â­Æ’Ã´Â© Photographer achievement for uploading your first photo!",
+                "title" to "­ƒÅå Achievement Unlocked!",
+                "message" to "Congratulations $userName! You earned the ­ƒô© Photographer achievement for uploading your first photo!",
                 "isRead" to false,
                 "timestamp" to System.currentTimeMillis(),
                 "achievementType" to "PHOTOGRAPHER",
-                "emoji" to "Â­Æ’Ã´Â©"
+                "emoji" to "­ƒô©"
             )
 
             db.collection("notifications").add(notification).await()
@@ -991,12 +991,12 @@ class FlickRepository private constructor() {
                 "senderName" to "PicFlick",
                 "senderPhotoUrl" to "",
                 "type" to "ACHIEVEMENT",
-                "title" to "Â­Æ’Ã…Ã¥ Achievement Unlocked!",
-                "message" to "Keep it up $userName! You earned the Â­Æ’Ã¶Ã‘ Active achievement for uploading $photoCount photos!",
+                "title" to "­ƒÅå Achievement Unlocked!",
+                "message" to "Keep it up $userName! You earned the ­ƒöÑ Active achievement for uploading $photoCount photos!",
                 "isRead" to false,
                 "timestamp" to System.currentTimeMillis(),
                 "achievementType" to "ACTIVE",
-                "emoji" to "Â­Æ’Ã¶Ã‘",
+                "emoji" to "­ƒöÑ",
                 "photoCount" to photoCount
             )
 

@@ -58,7 +58,7 @@ fun NotificationSettingsScreen(
                     ) {
                         Text(
                             "Save",
-                            color = Color(0xFF00D09C),
+                            color = Color(0xFFD7ECFF),
                             fontWeight = FontWeight.Bold
                         )
                     }
@@ -117,13 +117,13 @@ private fun PushNotificationsSection(
             Icon(
                 imageVector = Icons.Default.Notifications,
                 contentDescription = null,
-                tint = Color(0xFF00D09C),
+                tint = Color(0xFFD7ECFF),
                 modifier = Modifier.size(24.dp)
             )
             Spacer(modifier = Modifier.width(8.dp))
             Text(
                 text = "PUSH NOTIFICATIONS",
-                color = Color(0xFF00D09C),
+                color = Color(0xFFD7ECFF),
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Bold
             )
@@ -273,13 +273,13 @@ private fun InAppNotificationsSection(
             Icon(
                 imageVector = Icons.Default.Notifications,
                 contentDescription = null,
-                tint = Color(0xFF00D09C),
+                tint = Color(0xFFD7ECFF),
                 modifier = Modifier.size(24.dp)
             )
             Spacer(modifier = Modifier.width(8.dp))
             Text(
                 text = "IN-APP NOTIFICATIONS",
-                color = Color(0xFF00D09C),
+                color = Color(0xFFD7ECFF),
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Bold
             )
@@ -448,7 +448,7 @@ private fun PreferenceToggle(
                 Icon(
                     imageVector = icon,
                     contentDescription = null,
-                    tint = if (checked) Color(0xFF00D09C) else Color.Gray,
+                    tint = if (checked) Color(0xFFD7ECFF) else Color.Gray,
                     modifier = Modifier.size(20.dp)
                 )
             }
@@ -475,8 +475,8 @@ private fun PreferenceToggle(
                 checked = checked,
                 onCheckedChange = onCheckedChange,
                 colors = SwitchDefaults.colors(
-                    checkedThumbColor = Color(0xFF00D09C),
-                    checkedTrackColor = Color(0xFF00D09C).copy(alpha = 0.5f),
+                    checkedThumbColor = Color(0xFFD7ECFF),
+                    checkedTrackColor = Color(0xFFD7ECFF).copy(alpha = 0.5f),
                     uncheckedThumbColor = Color.Gray,
                     uncheckedTrackColor = Color(0xFF2C2C2E)
                 )

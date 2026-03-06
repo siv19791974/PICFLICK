@@ -1,4 +1,4 @@
-﻿package com.example.picflick
+package com.example.picflick
 
 import android.content.Intent
 import android.net.Uri

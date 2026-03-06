@@ -124,7 +124,7 @@ private fun AnimatedReactionBubble(
             modifier = Modifier
                 .size(if (isSelected) 64.dp else 56.dp)
                 .background(
-                    if (isSelected) Color(0xFF00D09C) else Color(0xFF2C2C2E),
+                    if (isSelected) Color(0xFFD7ECFF) else Color(0xFF2C2C2E),
                     CircleShape
                 ),
             contentAlignment = Alignment.Center
@@ -138,7 +138,7 @@ private fun AnimatedReactionBubble(
         if (isSelected) {
             Text(
                 text = reactionType.name.lowercase().replaceFirstChar { it.uppercase() },
-                color = Color(0xFF00D09C),
+                color = Color(0xFFD7ECFF),
                 fontSize = 10.sp,
                 fontWeight = FontWeight.Medium,
                 modifier = Modifier.padding(top = 4.dp)

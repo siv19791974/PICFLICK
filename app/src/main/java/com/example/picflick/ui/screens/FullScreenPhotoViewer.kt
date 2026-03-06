@@ -1,4 +1,4 @@
-ï»¿package com.example.picflick.ui.screens
+package com.example.picflick.ui.screens
 
 import androidx.compose.animation.*
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -323,7 +323,7 @@ fun FullScreenPhotoViewer(
                                 selected = selectedReportReason == reason,
                                 onClick = { selectedReportReason = reason },
                                 colors = RadioButtonDefaults.colors(
-                                    selectedColor = Color(0xFF00D09C)
+                                    selectedColor = Color(0xFFD7ECFF)
                                 )
                             )
                             Text(
@@ -388,9 +388,9 @@ fun FullScreenPhotoViewer(
                 Text(
                     "You are about to block ${currentFlick.userName}.\n\n" +
                     "They will no longer be able to:\n" +
-                    "â€¢ See your photos\n" +
-                    "â€¢ Message you\n" +
-                    "â€¢ Find you in search\n\n" +
+                    "• See your photos\n" +
+                    "• Message you\n" +
+                    "• Find you in search\n\n" +
                     "You can unblock them anytime from Privacy Settings.",
                     color = Color.Gray
                 )

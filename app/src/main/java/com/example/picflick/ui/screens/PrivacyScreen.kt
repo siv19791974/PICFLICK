@@ -130,7 +130,7 @@ fun PrivacyScreen(
                         contentAlignment = Alignment.Center
                     ) {
                         CircularProgressIndicator(
-                            color = Color(0xFF00D09C)
+                            color = Color(0xFFD7ECFF)
                         )
                     }
                 }
@@ -166,7 +166,7 @@ fun PrivacyScreen(
                         showUnblockDialog = null
                     }
                 ) {
-                    Text("Unblock", color = Color(0xFF00D09C))
+                    Text("Unblock", color = Color(0xFFD7ECFF))
                 }
             },
             dismissButton = {
@@ -186,7 +186,7 @@ private fun PrivacyBanner() {
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
-            containerColor = Color(0xFF00D09C).copy(alpha = 0.1f)
+            containerColor = Color(0xFFD7ECFF).copy(alpha = 0.1f)
         ),
         shape = RoundedCornerShape(12.dp)
     ) {
@@ -199,7 +199,7 @@ private fun PrivacyBanner() {
             Icon(
                 imageVector = Icons.Default.Lock,
                 contentDescription = null,
-                tint = Color(0xFF00D09C),
+                tint = Color(0xFFD7ECFF),
                 modifier = Modifier.size(24.dp)
             )
 
@@ -208,7 +208,7 @@ private fun PrivacyBanner() {
             Column {
                 Text(
                     text = "Privacy by Default",
-                    color = Color(0xFF00D09C),
+                    color = Color(0xFFD7ECFF),
                     fontWeight = FontWeight.Bold,
                     fontSize = 16.sp
                 )
@@ -299,7 +299,7 @@ private fun PrivacyOption(
         Icon(
             imageVector = icon,
             contentDescription = null,
-            tint = if (selected) Color(0xFF00D09C) else Color.Gray,
+            tint = if (selected) Color(0xFFD7ECFF) else Color.Gray,
             modifier = Modifier.size(24.dp)
         )
 
@@ -323,7 +323,7 @@ private fun PrivacyOption(
             Icon(
                 imageVector = Icons.Default.Check,
                 contentDescription = "Selected",
-                tint = Color(0xFF00D09C),
+                tint = Color(0xFFD7ECFF),
                 modifier = Modifier.size(24.dp)
             )
         }
@@ -426,7 +426,7 @@ private fun EmptyBlockedUsers() {
             Icon(
                 imageVector = Icons.Default.Shield,
                 contentDescription = null,
-                tint = Color(0xFF00D09C),
+                tint = Color(0xFFD7ECFF),
                 modifier = Modifier.size(48.dp)
             )
 
@@ -514,7 +514,7 @@ private fun BlockedUserItem(
             TextButton(
                 onClick = onUnblock,
                 colors = ButtonDefaults.textButtonColors(
-                    contentColor = Color(0xFF00D09C)
+                    contentColor = Color(0xFFD7ECFF)
                 )
             ) {
                 Text("Unblock")

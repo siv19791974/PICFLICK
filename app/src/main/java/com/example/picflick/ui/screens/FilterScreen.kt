@@ -198,7 +198,7 @@ fun FilterScreen(
                         modifier = Modifier
                             .size(44.dp)
                             .background(
-                                if (canUpload && !isLoading && bitmap != null) Color(0xFF00D09C) else Color.DarkGray,
+                                if (canUpload && !isLoading && bitmap != null) Color(0xFFD7ECFF) else Color.DarkGray,
                                 CircleShape
                             )
                     ) {
