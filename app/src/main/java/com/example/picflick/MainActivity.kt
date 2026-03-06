@@ -218,6 +218,35 @@ fun MainScreen(
             uploadViewModel.loadDailyUploadCount(uid)
         }
     }
+
+    // Fetch and save FCM token when user is authenticated
+    LaunchedEffect(userProfile?.uid) {
+        userProfile?.uid?.let { uid ->
+            try {
+                com.google.firebase.messaging.FirebaseMessaging.getInstance().token
+                    .addOnCompleteListener { task ->
+                        if (task.isSuccessful) {
+                            val token = task.result
+                            // Save token to Firestore
+                            com.google.firebase.firestore.FirebaseFirestore.getInstance()
+                                .collection("users")
+                                .document(uid)
+                                .update("fcmToken", token)
+                                .addOnSuccessListener {
+                                    android.util.Log.d("FCM", "Token saved on app start: $token")
+                                }
+                                .addOnFailureListener { e ->
+                                    android.util.Log.e("FCM", "Failed to save token on start: ${e.message}")
+                                }
+                        } else {
+                            android.util.Log.e("FCM", "Failed to get token: ${task.exception?.message}")
+                        }
+                    }
+            } catch (e: Exception) {
+                android.util.Log.e("FCM", "Error fetching token: ${e.message}")
+            }
+        }
+    }
     
     val unreadCount = notificationViewModel.unreadCount
 
