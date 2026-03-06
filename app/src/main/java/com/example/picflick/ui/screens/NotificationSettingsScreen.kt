@@ -8,6 +8,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.automirrored.filled.Chat
+import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -117,7 +120,7 @@ fun NotificationSettingsScreen(
                 NotificationToggle(
                     title = "Comments",
                     subtitle = "Someone comments on my photo",
-                    icon = Icons.Default.Chat,
+                    icon = Icons.AutoMirrored.Filled.Chat,
                     checked = preferences.comments,
                     onCheckedChange = { preferences = preferences.copy(comments = it) }
                 )
@@ -411,7 +414,7 @@ private fun QuietHoursSection(
                                 fontWeight = FontWeight.Bold
                             )
                         }
-                        Icon(Icons.Default.ArrowForward, null, tint = Color.Gray)
+                        Icon(Icons.AutoMirrored.Filled.ArrowForward, null, tint = Color.Gray)
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Text("To", color = Color.Gray, fontSize = 12.sp)
                             Text(
@@ -494,7 +497,7 @@ private fun DisplaySettingsSection(
                 DisplayToggle(
                     "Sound",
                     "Play sound for notifications",
-                    Icons.Default.VolumeUp,
+                    Icons.AutoMirrored.Filled.VolumeUp,
                     preferences.notificationSoundEnabled
                 ) {
                     onPreferencesChange(preferences.copy(notificationSoundEnabled = it))
