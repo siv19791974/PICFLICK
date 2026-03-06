@@ -59,6 +59,7 @@ import com.example.picflick.ui.screens.HomeScreen
 import com.example.picflick.ui.screens.LoginScreen
 import com.example.picflick.ui.screens.MyPhotosScreen
 import com.example.picflick.ui.screens.NotificationsScreen
+import com.example.picflick.ui.screens.NotificationSettingsScreen
 import com.example.picflick.ui.screens.ProfileScreen
 import com.example.picflick.ui.screens.SettingsScreen
 import com.example.picflick.ui.screens.PrivacyScreen
@@ -133,6 +134,7 @@ sealed class Screen {
     data object Settings : Screen()
     data object Explore : Screen()
     data object Privacy : Screen()
+    data object NotificationSettings : Screen()
 }
 
 /**
@@ -669,7 +671,7 @@ private fun AuthenticatedContent(
                 onSignOut = onSignOut,
                 onEditProfile = { onScreenChange(Screen.Profile) },
                 onPrivacySettings = { onScreenChange(Screen.Privacy) },
-                onNotificationsSettings = { onScreenChange(Screen.Notifications) },
+                onNotificationsSettings = { onScreenChange(Screen.NotificationSettings) },
                 onHelpSupport = { onScreenChange(Screen.Contact) },
                 onAbout = { onScreenChange(Screen.About) }
             )
@@ -980,6 +982,15 @@ private fun AuthenticatedContent(
             is Screen.Privacy -> PrivacyScreen(
                 userProfile = userProfile,
                 onBack = { onScreenChange(Screen.Settings) }
+            )
+
+            is Screen.NotificationSettings -> NotificationSettingsScreen(
+                userProfile = userProfile,
+                onBack = { onScreenChange(Screen.Settings) },
+                onSavePreferences = { newPreferences ->
+                    // TODO: Save to Firestore via repository
+                    onScreenChange(Screen.Settings)
+                }
             )
     }
 }
