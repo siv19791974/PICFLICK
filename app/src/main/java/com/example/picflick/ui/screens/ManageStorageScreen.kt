@@ -19,6 +19,8 @@ import androidx.compose.material.icons.filled.Upgrade
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -37,6 +39,7 @@ import com.example.picflick.data.getNextTier
 import com.example.picflick.data.getQualityDescription
 import com.example.picflick.data.getStorageLimitGB
 import com.example.picflick.data.getStorageLimitBytes
+import com.example.picflick.viewmodel.BillingViewModel
 
 /**
  * Manage Storage Screen - Full storage dashboard
@@ -46,8 +49,9 @@ import com.example.picflick.data.getStorageLimitBytes
 @Composable
 fun ManageStorageScreen(
     userProfile: UserProfile,
+    billingViewModel: BillingViewModel,
     onBack: () -> Unit,
-    onUpgrade: () -> Unit = {}
+    onUpgrade: (SubscriptionTier) -> Unit = {}
 ) {
     val tier = userProfile.subscriptionTier
     val tierColor = tier.getColor()
@@ -120,6 +124,7 @@ fun ManageStorageScreen(
             if (tier.getNextTier() != null) {
                 UpgradeOptionsCard(
                     currentTier = tier,
+                    billingViewModel = billingViewModel,
                     onUpgrade = onUpgrade
                 )
             }
@@ -431,16 +436,21 @@ private fun TierFeatureRow(
 @Composable
 private fun UpgradeOptionsCard(
     currentTier: SubscriptionTier,
-    onUpgrade: () -> Unit
+    billingViewModel: BillingViewModel,
+    onUpgrade: (SubscriptionTier) -> Unit
 ) {
     val nextTier = currentTier.getNextTier()
+    val products by billingViewModel.products.collectAsState()
+    
+    // Find product for next tier
+    val nextTierProduct = products.find { it.tier == nextTier }
     
     if (nextTier != null) {
         Card(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp)
-                .clickable(onClick = onUpgrade),
+                .clickable { onUpgrade(nextTier) },
             colors = CardDefaults.cardColors(
                 containerColor = Color(0xFFFFF8E1) // Light amber
             ),
@@ -474,8 +484,10 @@ private fun UpgradeOptionsCard(
                 }
                 
                 Column(horizontalAlignment = Alignment.End) {
+                    // Use actual product price if available, otherwise fallback
+                    val price = nextTierProduct?.price ?: "$${nextTier.getMonthlyPrice()}"
                     Text(
-                        text = "$${nextTier.getMonthlyPrice()}",
+                        text = price,
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Bold,
                         color = Color(0xFF1565C0)
