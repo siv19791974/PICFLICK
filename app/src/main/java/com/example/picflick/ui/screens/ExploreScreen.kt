@@ -65,8 +65,15 @@ fun ExploreScreen(
         // Search Bar
         SearchBar(
             query = searchQuery,
-            onQueryChange = { searchQuery = it },
-            onSearch = { /* TODO: Implement search */ },
+            onQueryChange = { 
+                searchQuery = it
+                if (it.isEmpty()) {
+                    viewModel.clearExploreSearch()
+                }
+            },
+            onSearch = { 
+                viewModel.searchExploreFlicks(searchQuery)
+            },
             modifier = Modifier.padding(16.dp)
         )
 
