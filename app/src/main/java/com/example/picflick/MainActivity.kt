@@ -824,6 +824,26 @@ private fun AuthenticatedContent(
                         isFriend = isFriend,
                         isLoading = isLoading,
                         onBack = { onScreenChange(Screen.Home) },
+                        onRefresh = {
+                            // Reload target user profile and photos
+                            target.uid.let { uid ->
+                                isLoading = true
+                                repository.getUserProfile(uid) { result ->
+                                    if (result is com.example.picflick.data.Result.Success<UserProfile>) {
+                                        targetUser = result.data
+                                        // Reload photos
+                                        repository.getUserFlicks(uid) { photosResult ->
+                                            if (photosResult is com.example.picflick.data.Result.Success<List<Flick>>) {
+                                                targetUserPhotos = photosResult.data
+                                            }
+                                            isLoading = false
+                                        }
+                                    } else {
+                                        isLoading = false
+                                    }
+                                }
+                            }
+                        },
                         onPhotoClick = { flick, index ->
                             selectedUserPhoto = flick
                             selectedUserPhotoIndex = index
