@@ -1,7 +1,6 @@
 package com.example.picflick.ui.screens
 
 import androidx.compose.animation.*
-import androidx.compose.animation.core.*
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -11,8 +10,6 @@ import androidx.compose.foundation.gestures.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.foundation.pager.HorizontalPager
-import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -24,32 +21,37 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.foundation.layout.imePadding
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import coil3.compose.AsyncImage
+import net.engawapg.lib.zoomable.rememberZoomState
+import net.engawapg.lib.zoomable.zoomable
 import com.example.picflick.data.Comment
 import com.example.picflick.data.Flick
 import com.example.picflick.data.ReactionType
 import com.example.picflick.data.UserProfile
 import com.example.picflick.data.toEmoji
 import com.example.picflick.repository.FlickRepository
+import com.example.picflick.ui.components.LikeAnimation
+import com.example.picflick.ui.components.DoubleTapHeartAnimation
 import com.example.picflick.ui.components.AnimatedReactionPicker
 import android.content.ContentValues
 import android.content.Context
-import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.os.Build
@@ -59,8 +61,6 @@ import android.view.LayoutInflater
 import android.widget.TextView
 import com.example.picflick.R
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import kotlin.math.absoluteValue
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.Dispatchers
@@ -83,8 +83,12 @@ fun FullScreenPhotoViewer(
     onNavigateToPhoto: (Int) -> Unit = {},
     onUserProfileClick: (String) -> Unit = {},
     onShareToFriend: (String, String) -> Unit = { _, _ -> },
+    onNavigateToFindFriends: () -> Unit = {},
 ) {
     val context = LocalContext.current
+    val configuration = LocalConfiguration.current
+    val screenHeightPx = with(LocalDensity.current) { configuration.screenHeightDp.dp.toPx() }
+    val screenWidthPx = with(LocalDensity.current) { configuration.screenWidthDp.dp.toPx() }
     
     // Helper function to show custom toast with PicFlick logo
     fun showPicFlickToast(message: String) {
@@ -115,22 +119,26 @@ fun FullScreenPhotoViewer(
     var editCaptionText by remember { mutableStateOf(flick.description) }
     var currentDescription by remember { mutableStateOf(flick.description) }
     
+    // Report and block menu state
+    var showMoreMenu by remember { mutableStateOf(false) }
+    var showReportDialog by remember { mutableStateOf(false) }
+    var showBlockConfirmation by remember { mutableStateOf(false) }
+    var selectedReportReason by remember { mutableStateOf("") }
+    
     // UI visibility toggle
     var uiVisible by remember { mutableStateOf(true) }
     
-    // Scale for zoom
-    var scale by remember { mutableFloatStateOf(1f) }
-    var offset by remember { mutableStateOf(Offset.Zero) }
+    // 2D Pager state
+    var currentPageIndex by remember { mutableIntStateOf(currentIndex) }
     
-    // Pager for horizontal swiping
-    val pagerState = rememberPagerState(
-        initialPage = currentIndex,
-        pageCount = { allPhotos.size.coerceAtLeast(1) }
-    )
+    // Filter out photos with empty image URLs to prevent Coil crash
+    val validPhotos = remember(allPhotos) {
+        allPhotos.filter { it.imageUrl.isNotBlank() }
+    }
     
-    // Current flick based on pager
-    val currentFlick = if (allPhotos.isNotEmpty() && pagerState.currentPage in allPhotos.indices) {
-        allPhotos[pagerState.currentPage]
+    // Current flick based on page index
+    val currentFlick = if (validPhotos.isNotEmpty() && currentPageIndex in validPhotos.indices) {
+        validPhotos[currentPageIndex]
     } else flick
     
     // Get user's current reaction
@@ -146,17 +154,24 @@ fun FullScreenPhotoViewer(
     
     // Show share dialog state
     var showShareDialog by remember { mutableStateOf(false) }
-    var friendsList by remember { mutableStateOf<List<UserProfile>>(emptyList()) }
-    var isLoadingFriends by remember { mutableStateOf(false) }
+    
+    // Tagged friends display state
+    var taggedFriendsProfiles by remember { mutableStateOf<List<UserProfile>>(emptyList()) }
+    var isLoadingTaggedFriends by remember { mutableStateOf(false) }
+    
+    // Tag friends dialog state
+    var showTagFriendsDialog by remember { mutableStateOf(false) }
+    var taggedFriends by remember { mutableStateOf<List<String>>(currentFlick.taggedFriends) }
+    var isLoadingTagFriends by remember { mutableStateOf(false) }
     
     // Heart animation state for double tap
-    var showHeartAnimation by remember { mutableStateOf(false) }
+    var showDoubleTapHeart by remember { mutableStateOf(false) }
     var heartAnimationKey by remember { mutableIntStateOf(0) }
-    
-    // Load comments when flick changes
-    LaunchedEffect(currentFlick.id) {
+
+    // Load comments when flick changes - use DisposableEffect to properly manage listener
+    DisposableEffect(currentFlick.id) {
         isLoadingComments = true
-        repository.getComments(currentFlick.id) { result ->
+        val listener = repository.getComments(currentFlick.id) { result ->
             when (result) {
                 is com.example.picflick.data.Result.Success -> {
                     comments = result.data
@@ -165,47 +180,44 @@ fun FullScreenPhotoViewer(
                 else -> isLoadingComments = false
             }
         }
+        onDispose {
+            listener.remove()
+        }
     }
     
-    // Load friends when share dialog opens
-    LaunchedEffect(showShareDialog) {
-        if (showShareDialog && currentUser.following.isNotEmpty()) {
-            isLoadingFriends = true
-            val loadedFriends = mutableListOf<UserProfile>()
+    // Load tagged friends profiles when flick changes
+    LaunchedEffect(currentFlick.id) {
+        if (currentFlick.taggedFriends.isNotEmpty()) {
+            isLoadingTaggedFriends = true
+            val loadedProfiles = mutableListOf<UserProfile>()
             var loadedCount = 0
             
-            currentUser.following.forEach { userId ->
+            currentFlick.taggedFriends.forEach { userId ->
                 repository.getUserProfile(userId) { result ->
                     when (result) {
                         is com.example.picflick.data.Result.Success -> {
-                            loadedFriends.add(result.data)
+                            loadedProfiles.add(result.data)
                         }
                         else -> { /* Skip failed loads */ }
                     }
                     loadedCount++
-                    if (loadedCount >= currentUser.following.size) {
-                        friendsList = loadedFriends
-                        isLoadingFriends = false
+                    if (loadedCount >= currentFlick.taggedFriends.size) {
+                        taggedFriendsProfiles = loadedProfiles.sortedBy { it.displayName }
+                        isLoadingTaggedFriends = false
                     }
                 }
             }
-        } else if (showShareDialog) {
-            friendsList = emptyList()
-            isLoadingFriends = false
+        } else {
+            taggedFriendsProfiles = emptyList()
+            isLoadingTaggedFriends = false
         }
     }
     
     // Handle page changes
-    LaunchedEffect(pagerState.currentPage) {
-        if (allPhotos.isNotEmpty()) {
-            onNavigateToPhoto(pagerState.currentPage)
+    LaunchedEffect(currentPageIndex) {
+        if (validPhotos.isNotEmpty()) {
+            onNavigateToPhoto(currentPageIndex)
         }
-    }
-    
-    // Reset zoom when photo changes
-    LaunchedEffect(pagerState.currentPage) {
-        scale = 1f
-        offset = Offset.Zero
     }
     
     // Edit caption dialog
@@ -280,7 +292,150 @@ fun FullScreenPhotoViewer(
             }
         )
     }
-    
+
+    // REPORT PHOTO DIALOG
+    if (showReportDialog) {
+        val reportReasons = listOf(
+            "Sexual or inappropriate content",
+            "Violence or dangerous content",
+            "Harassment or bullying",
+            "Spam or scam",
+            "Hate speech",
+            "Copyright violation",
+            "Other"
+        )
+
+        AlertDialog(
+            onDismissRequest = { showReportDialog = false },
+            title = { Text("Report Photo", color = Color.White) },
+            text = {
+                Column {
+                    Text(
+                        "Why are you reporting this photo?",
+                        color = Color.Gray,
+                        modifier = Modifier.padding(bottom = 16.dp)
+                    )
+                    reportReasons.forEach { reason ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { selectedReportReason = reason }
+                                .padding(vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            RadioButton(
+                                selected = selectedReportReason == reason,
+                                onClick = { selectedReportReason = reason },
+                                colors = RadioButtonDefaults.colors(
+                                    selectedColor = Color(0xFFD7ECFF)
+                                )
+                            )
+                            Text(
+                                text = reason,
+                                color = Color.White,
+                                modifier = Modifier.padding(start = 8.dp)
+                            )
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        if (selectedReportReason.isNotEmpty()) {
+                            coroutineScope.launch {
+                                val result = repository.reportPhoto(
+                                    flickId = currentFlick.id,
+                                    reporterId = currentUser.uid,
+                                    reason = selectedReportReason,
+                                    details = "Reported from photo viewer"
+                                )
+                                when (result) {
+                                    is com.example.picflick.data.Result.Success -> {
+                                        showPicFlickToast("Report submitted. Thank you!")
+                                    }
+                                    is com.example.picflick.data.Result.Error -> {
+                                        showPicFlickToast("Failed to submit report")
+                                    }
+                                    else -> {}
+                                }
+                            }
+                            showReportDialog = false
+                            selectedReportReason = ""
+                        }
+                    },
+                    enabled = selectedReportReason.isNotEmpty()
+                ) {
+                    Text("Submit Report", color = if (selectedReportReason.isNotEmpty()) Color(0xFFFF6B6B) else Color.Gray)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { 
+                    showReportDialog = false
+                    selectedReportReason = ""
+                }) {
+                    Text("Cancel")
+                }
+            },
+            containerColor = Color(0xFF1C1C1E),
+            titleContentColor = Color.White,
+            textContentColor = Color.White
+        )
+    }
+
+    // BLOCK USER CONFIRMATION DIALOG
+    if (showBlockConfirmation) {
+        AlertDialog(
+            onDismissRequest = { showBlockConfirmation = false },
+            title = { Text("Block User?", color = Color.White) },
+            text = {
+                Text(
+                    "You are about to block ${currentFlick.userName}.\n\n" +
+                    "They will no longer be able to:\n" +
+                    "� See your photos\n" +
+                    "� Message you\n" +
+                    "� Find you in search\n\n" +
+                    "You can unblock them anytime from Privacy Settings.",
+                    color = Color.Gray
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        coroutineScope.launch {
+                            val result = repository.blockUser(
+                                currentUserId = currentUser.uid,
+                                targetUserId = currentFlick.userId
+                            ) { blockResult ->
+                                when (blockResult) {
+                                    is com.example.picflick.data.Result.Success -> {
+                                        showPicFlickToast("User blocked")
+                                        onDismiss() // Close the photo viewer
+                                    }
+                                    is com.example.picflick.data.Result.Error -> {
+                                        showPicFlickToast("Failed to block user")
+                                    }
+                                    else -> {}
+                                }
+                            }
+                        }
+                        showBlockConfirmation = false
+                    }
+                ) {
+                    Text("Block", color = Color.Red)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showBlockConfirmation = false }) {
+                    Text("Cancel")
+                }
+            },
+            containerColor = Color(0xFF1C1C1E),
+            titleContentColor = Color.White,
+            textContentColor = Color.White
+        )
+    }
+
     Dialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(
@@ -296,82 +451,193 @@ fun FullScreenPhotoViewer(
         ) {
             Box(modifier = Modifier.fillMaxSize()) {
                 
-                // OUTER GESTURE HANDLER - Smart pinch vs swipe detection
+                // SIMPLE 2D PAGER - Just direct positioning with Zoomable for pinch
+                var dragX by remember { mutableFloatStateOf(0f) }
+                var dragY by remember { mutableFloatStateOf(0f) }
+                var isDraggingVertically by remember { mutableStateOf(false) }
+                var currentPageIndex by remember { mutableIntStateOf(currentIndex) }
+                
+                // Reset drag when photo changes
+                LaunchedEffect(currentPageIndex) {
+                    dragX = 0f
+                    dragY = 0f
+                    isDraggingVertically = false
+                }
+                
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
                         .pointerInput(Unit) {
-                            detectTransformGestures(
-                                onGesture = { _, pan, zoom, _ ->
-                                    if (zoom != 1f || scale > 1f) {
-                                        scale = (scale * zoom).coerceIn(1f, 5f)
-                                        offset += pan
+                            // SWIPE detection only - pinch handled by Zoomable library
+                            detectDragGestures(
+                                onDragStart = {
+                                    dragX = 0f
+                                    dragY = 0f
+                                    isDraggingVertically = false
+                                },
+                                onDragEnd = {
+                                    // Navigate based on drag direction
+                                    when {
+                                        // Vertical swipe
+                                        isDraggingVertically && kotlin.math.abs(dragY) > 100f -> {
+                                            if (dragY < 0 && currentPageIndex < validPhotos.size - 1) {
+                                                currentPageIndex++ // UP = NEXT
+                                            } else if (dragY > 0 && currentPageIndex > 0) {
+                                                currentPageIndex-- // DOWN = PREV
+                                            }
+                                        }
+                                        // Horizontal swipe
+                                        !isDraggingVertically && kotlin.math.abs(dragX) > 100f -> {
+                                            if (dragX < 0 && currentPageIndex < validPhotos.size - 1) {
+                                                currentPageIndex++ // LEFT = NEXT
+                                            } else if (dragX > 0 && currentPageIndex > 0) {
+                                                currentPageIndex-- // RIGHT = PREV
+                                            }
+                                        }
                                     }
+                                    dragX = 0f
+                                    dragY = 0f
+                                },
+                                onDrag = { change, amount ->
+                                    val absY = kotlin.math.abs(amount.y)
+                                    val absX = kotlin.math.abs(amount.x)
+                                    
+                                    // Detect direction on first real movement
+                                    if (kotlin.math.abs(dragX) < 10f && kotlin.math.abs(dragY) < 10f) {
+                                        isDraggingVertically = absY > absX
+                                    }
+                                    
+                                    // LOCK TO ONE AXIS - no diagonal wobble!
+                                    if (isDraggingVertically) {
+                                        dragY += amount.y
+                                    } else {
+                                        dragX += amount.x
+                                    }
+                                    change.consume()
                                 }
                             )
                         }
                 ) {
-                    HorizontalPager(
-                        state = pagerState,
-                        modifier = Modifier.fillMaxSize(),
-                        pageSpacing = 0.dp,
-                        userScrollEnabled = scale <= 1.01f
-                    ) { page ->
-                        val pageFlick = if (allPhotos.isNotEmpty() && page in allPhotos.indices) {
-                            allPhotos[page]
-                        } else flick
+                    // PLUS SIGN LAYOUT - 5 positions: center + left + right + top + bottom
+                    // Current at center, next at right AND bottom, prev at left AND top
+                    
+                    // Helper to render a photo at a specific position
+                    @Composable
+                    fun PhotoAtPosition(
+                        photo: Flick,
+                        isCurrent: Boolean,
+                        baseX: Float,
+                        baseY: Float
+                    ) {
+                        val finalX = baseX + dragX
+                        val finalY = baseY + dragY
                         
-                        val pageOffset = (
-                            (pagerState.currentPage - page) + 
-                            pagerState.currentPageOffsetFraction
-                        ).coerceIn(-1f, 1f)
+                        // Calculate scale and fade for swipe effect
+                        val dragProgress = kotlin.math.abs(dragX) / screenWidthPx
+                        val verticalProgress = kotlin.math.abs(dragY) / screenHeightPx
+                        val maxProgress = kotlin.math.max(dragProgress, verticalProgress)
+                        val swipeScale = 1f - (maxProgress * 0.25f).coerceIn(0f, 0.25f)
+                        val swipeAlpha = 1f - (maxProgress * 0.5f).coerceIn(0f, 0.5f)
                         
-                        val alpha = 1f - pageOffset.absoluteValue.coerceIn(0f, 1f)
-                        val scaleEffect = 1f - (pageOffset.absoluteValue * 0.1f).coerceIn(0f, 0.1f)
+                        // Zoom state for current photo only
+                        val zoomState = if (isCurrent) rememberZoomState() else null
                         
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
-                                .combinedClickable(
-                                    indication = null,
-                                    interactionSource = remember { MutableInteractionSource() },
-                                    onClick = {
-                                        if (pagerState.currentPage == page) uiVisible = !uiVisible
-                                    },
-                                    onDoubleClick = {
-                                        if (pagerState.currentPage == page) {
-                                            // Trigger heart animation
-                                            heartAnimationKey++
-                                            showHeartAnimation = true
-                                            // Like/unlike
-                                            onReaction(
-                                                if (userReaction == ReactionType.LIKE) null 
-                                                else ReactionType.LIKE
+                                .offset { IntOffset(finalX.toInt(), finalY.toInt()) }
+                                .graphicsLayer {
+                                    scaleX = swipeScale
+                                    scaleY = swipeScale
+                                    alpha = if (isCurrent) swipeAlpha else 1f
+                                }
+                                .then(
+                                    if (isCurrent && zoomState != null) {
+                                        // Current photo: clickable first to catch double-tap, then zoomable
+                                        Modifier
+                                            .combinedClickable(
+                                                indication = null,
+                                                interactionSource = remember { MutableInteractionSource() },
+                                                onClick = { uiVisible = !uiVisible },
+                                                onDoubleClick = {
+                                                    // Double tap to like/unlike - consume gesture
+                                                    heartAnimationKey++
+                                                    showDoubleTapHeart = true
+                                                    // Toggle reaction (like)
+                                                    onReaction(if (userReaction != null) null else ReactionType.LIKE)
+                                                }
                                             )
-                                        }
-                                    }
+                                            .zoomable(zoomState)
+                                    } else Modifier
                                 ),
                             contentAlignment = Alignment.Center
                         ) {
                             AsyncImage(
-                                model = pageFlick.imageUrl,
+                                model = photo.imageUrl,
                                 contentDescription = null,
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .graphicsLayer {
-                                        this.alpha = alpha
-                                        scaleX = scaleEffect
-                                        scaleY = scaleEffect
-                                        if (pagerState.currentPage == page && scale > 1f) {
-                                            scaleX = scale
-                                            scaleY = scale
-                                            translationX = offset.x
-                                            translationY = offset.y
-                                        }
-                                    },
-                                contentScale = ContentScale.Crop
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Fit
                             )
                         }
+                    }
+                    
+                    // 1. CURRENT at CENTER
+                    if (currentPageIndex < validPhotos.size) {
+                        PhotoAtPosition(
+                            photo = validPhotos[currentPageIndex],
+                            isCurrent = true,
+                            baseX = 0f,
+                            baseY = 0f
+                        )
+                    }
+                    
+                    // 2. NEXT at RIGHT (for horizontal swipe)
+                    if (currentPageIndex + 1 < validPhotos.size) {
+                        PhotoAtPosition(
+                            photo = validPhotos[currentPageIndex + 1],
+                            isCurrent = false,
+                            baseX = screenWidthPx,
+                            baseY = 0f
+                        )
+                    }
+                    
+                    // 3. PREV at LEFT (for horizontal swipe)
+                    if (currentPageIndex - 1 >= 0) {
+                        PhotoAtPosition(
+                            photo = validPhotos[currentPageIndex - 1],
+                            isCurrent = false,
+                            baseX = -screenWidthPx,
+                            baseY = 0f
+                        )
+                    }
+                    
+                    // 4. NEXT at BOTTOM (for vertical swipe) - SAME photo as RIGHT
+                    if (currentPageIndex + 1 < validPhotos.size) {
+                        PhotoAtPosition(
+                            photo = validPhotos[currentPageIndex + 1],
+                            isCurrent = false,
+                            baseX = 0f,
+                            baseY = screenHeightPx
+                        )
+                    }
+                    
+                    // BIG HEART ANIMATION FOR DOUBLE-TAP
+                    if (showDoubleTapHeart) {
+                        DoubleTapHeartAnimation(
+                            key = heartAnimationKey,
+                            isLiked = userReaction != null,
+                            onAnimationComplete = { showDoubleTapHeart = false }
+                        )
+                    }
+                    
+                    // 5. PREV at TOP (for vertical swipe) - SAME photo as LEFT
+                    if (currentPageIndex - 1 >= 0) {
+                        PhotoAtPosition(
+                            photo = validPhotos[currentPageIndex - 1],
+                            isCurrent = false,
+                            baseX = 0f,
+                            baseY = -screenHeightPx
+                        )
                     }
                 }
                 
@@ -423,8 +689,7 @@ fun FullScreenPhotoViewer(
                                             CircleShape
                                         )
                                         .clickable { 
-                                            // TODO: Implement tag friends functionality
-                                            showPicFlickToast("Tag Friends - Coming Soon!")
+                                            showTagFriendsDialog = true
                                         },
                                     contentAlignment = Alignment.Center
                                 ) {
@@ -605,6 +870,78 @@ fun FullScreenPhotoViewer(
                                         tint = Color.White,
                                         modifier = Modifier.size(28.dp)
                                     )
+                                }
+                                
+                                // MORE MENU BUTTON - Report & Block
+                                Box(
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(44.dp)
+                                            .background(
+                                                Color.Black.copy(alpha = 0.4f),
+                                                CircleShape
+                                            )
+                                            .clickable { showMoreMenu = true },
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.MoreVert,
+                                            contentDescription = "More options",
+                                            tint = Color.White,
+                                            modifier = Modifier.size(28.dp)
+                                        )
+                                    }
+                                    
+                                    // Dropdown Menu for Report & Block
+                                    DropdownMenu(
+                                        expanded = showMoreMenu,
+                                        onDismissRequest = { showMoreMenu = false },
+                                        modifier = Modifier.background(Color(0xFF1C1C1E))
+                                    ) {
+                                        // REPORT PHOTO Option
+                                        DropdownMenuItem(
+                                            text = { 
+                                                Text(
+                                                    "Report Photo",
+                                                    color = Color(0xFFFF6B6B)
+                                                ) 
+                                            },
+                                            leadingIcon = {
+                                                Icon(
+                                                    Icons.Default.Flag,
+                                                    contentDescription = null,
+                                                    tint = Color(0xFFFF6B6B)
+                                                )
+                                            },
+                                            onClick = {
+                                                showMoreMenu = false
+                                                showReportDialog = true
+                                            }
+                                        )
+                                        
+                                        // BLOCK USER Option
+                                        DropdownMenuItem(
+                                            text = { 
+                                                Text(
+                                                    "Block User",
+                                                    color = Color.White
+                                                ) 
+                                            },
+                                            leadingIcon = {
+                                                Icon(
+                                                    Icons.Default.Block,
+                                                    contentDescription = null,
+                                                    tint = Color.White
+                                                )
+                                            },
+                                            onClick = {
+                                                showMoreMenu = false
+                                                showBlockConfirmation = true
+                                            }
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -813,175 +1150,60 @@ fun FullScreenPhotoViewer(
                     enter = fadeIn(),
                     exit = fadeOut()
                 ) {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        // Backdrop
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .background(Color.Black.copy(alpha = 0.7f))
-                                .clickable { showShareDialog = false }
-                        )
-                        
-                        // Share dialog card
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth(0.85f)
-                                .background(
-                                    Color(0xFF1A1A1A),
-                                    RoundedCornerShape(16.dp)
+                    ShareFriendsDialog(
+                        flick = currentFlick,
+                        currentUser = currentUser,
+                        onDismiss = { showShareDialog = false },
+                        onShareToFriend = onShareToFriend,
+                        onNavigateToFindFriends = onNavigateToFindFriends,
+                        showPicFlickToast = { message -> showPicFlickToast(message) }
+                    )
+                }
+                
+                // TAG FRIENDS DIALOG - Tag existing friends or go to Find Friends
+                AnimatedVisibility(
+                    visible = showTagFriendsDialog,
+                    enter = fadeIn(),
+                    exit = fadeOut()
+                ) {
+                    TagFriendsDialog(
+                        flick = currentFlick,
+                        currentUser = currentUser,
+                        taggedFriends = taggedFriends,
+                        onDismiss = { showTagFriendsDialog = false },
+                        onTagFriendsChanged = { newTaggedFriends ->
+                            taggedFriends = newTaggedFriends
+                        },
+                        onSaveTags = { finalTaggedFriends ->
+                            coroutineScope.launch {
+                                isLoadingTagFriends = true
+                                val result = repository.updateTaggedFriends(
+                                    flickId = currentFlick.id,
+                                    taggedFriends = finalTaggedFriends,
+                                    photoOwnerId = currentUser.uid,
+                                    photoOwnerName = currentUser.displayName,
+                                    photoOwnerPhotoUrl = currentUser.photoUrl
                                 )
-                                .padding(20.dp)
-                        ) {
-                            // Header
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    text = "Share with Friends",
-                                    color = Color.White,
-                                    fontSize = 18.sp,
-                                    fontWeight = FontWeight.Bold
-                                )
-                                
-                                IconButton(
-                                    onClick = { showShareDialog = false }
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Close,
-                                        contentDescription = "Close",
-                                        tint = Color.White
-                                    )
+                                isLoadingTagFriends = false
+                                when (result) {
+                                    is com.example.picflick.data.Result.Success -> {
+                                        showPicFlickToast("Tags updated!")
+                                        showTagFriendsDialog = false
+                                    }
+                                    is com.example.picflick.data.Result.Error -> {
+                                        showPicFlickToast("Failed to update tags")
+                                    }
+                                    else -> {}
                                 }
                             }
-                            
-                            Spacer(modifier = Modifier.height(16.dp))
-                            
-                            // Preview of photo being shared
-                            AsyncImage(
-                                model = currentFlick.imageUrl,
-                                contentDescription = null,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(150.dp)
-                                    .clip(RoundedCornerShape(12.dp)),
-                                contentScale = ContentScale.Crop
-                            )
-                            
-                            Spacer(modifier = Modifier.height(16.dp))
-                            
-                            // Friends list
-                            Text(
-                                text = "Select a friend to share with:",
-                                color = Color.White.copy(alpha = 0.7f),
-                                fontSize = 14.sp
-                            )
-                            
-                            Spacer(modifier = Modifier.height(12.dp))
-                            
-                            if (isLoadingFriends) {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .height(100.dp),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    CircularProgressIndicator(
-                                        color = MaterialTheme.colorScheme.primary
-                                    )
-                                }
-                            } else if (friendsList.isEmpty()) {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(vertical = 32.dp),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Column(
-                                        horizontalAlignment = Alignment.CenterHorizontally
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Default.Person,
-                                            contentDescription = null,
-                                            tint = Color.White.copy(alpha = 0.4f),
-                                            modifier = Modifier.size(48.dp)
-                                        )
-                                        Spacer(modifier = Modifier.height(8.dp))
-                                        Text(
-                                            text = "No friends to share with",
-                                            color = Color.White.copy(alpha = 0.5f),
-                                            fontSize = 14.sp
-                                        )
-                                        Text(
-                                            text = "Follow users to share photos",
-                                            color = Color.White.copy(alpha = 0.4f),
-                                            fontSize = 12.sp
-                                        )
-                                    }
-                                }
-                            } else {
-                                // Friends list
-                                Column(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .heightIn(max = 200.dp)
-                                        .verticalScroll(rememberScrollState())
-                                ) {
-                                    friendsList.forEach { friend ->
-                                        Row(
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .clickable {
-                                                    onShareToFriend(currentFlick.id, friend.uid)
-                                                    showShareDialog = false
-                                                    showPicFlickToast("Shared with ${friend.displayName}")
-                                                }
-                                                .padding(vertical = 8.dp),
-                                            verticalAlignment = Alignment.CenterVertically
-                                        ) {
-                                            AsyncImage(
-                                                model = friend.photoUrl,
-                                                contentDescription = null,
-                                                modifier = Modifier
-                                                    .size(40.dp)
-                                                    .clip(CircleShape)
-                                                    .background(Color.Gray),
-                                                contentScale = ContentScale.Crop
-                                            )
-                                            
-                                            Spacer(modifier = Modifier.width(12.dp))
-                                            
-                                            Column {
-                                                Text(
-                                                    text = friend.displayName,
-                                                    color = Color.White,
-                                                    fontSize = 15.sp,
-                                                    fontWeight = FontWeight.Medium
-                                                )
-                                                Text(
-                                                    text = "Tap to share this photo",
-                                                    color = Color.White.copy(alpha = 0.5f),
-                                                    fontSize = 12.sp
-                                                )
-                                            }
-                                        }
-                                        
-                                        if (friend != friendsList.last()) {
-                                            HorizontalDivider(
-                                            modifier = Modifier.fillMaxWidth(),
-                                            thickness = 1.dp,
-                                            color = Color.White.copy(alpha = 0.1f)
-                                        )
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
+                        },
+                        onNavigateToFindFriends = {
+                            showTagFriendsDialog = false
+                            onNavigateToFindFriends()
+                        },
+                        repository = repository,
+                        showPicFlickToast = { message -> showPicFlickToast(message) }
+                    )
                 }
                 
                 // BOTTOM USER INFO - With gradient transparent box
@@ -1015,122 +1237,191 @@ fun FullScreenPhotoViewer(
                             )
                             .padding(16.dp)
                     ) {
-                        // Profile pic + info row - split into left (name/desc) and right (reactions)
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
+                        // Profile pic + name/description + reactions row
+                        Column(
+                            modifier = Modifier.fillMaxWidth()
                         ) {
-                            // LEFT: Profile pic + Name/Description column
+                            // MAIN ROW: Profile + Name + Reactions
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                                modifier = Modifier.weight(1f)
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                modifier = Modifier.fillMaxWidth()
                             ) {
-                                // Profile picture - USE CURRENT USER'S PHOTO
-                                val profilePhotoUrl = if (currentFlick.userId == currentUser.uid) {
-                                    currentUser.photoUrl // Use current/up-to-date photo for own photos
-                                } else {
-                                    currentFlick.userPhotoUrl // Use stored photo for others
-                                }
-                                
-                                Box(
-                                    modifier = Modifier
-                                        .size(44.dp)
-                                        .clip(CircleShape)
-                                        .background(Color.Gray.copy(alpha = 0.4f))
-                                        .border(2.dp, Color.White.copy(alpha = 0.8f), CircleShape)
-                                        .clickable { onUserProfileClick(currentFlick.userId) },
-                                    contentAlignment = Alignment.Center
+                                // LEFT: Profile pic + name/description
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                    modifier = Modifier.weight(1f)
                                 ) {
-                                    if (profilePhotoUrl.isNotBlank()) {
-                                        AsyncImage(
-                                            model = profilePhotoUrl,
-                                            contentDescription = "View ${currentFlick.userName}'s profile",
-                                            modifier = Modifier.fillMaxSize(),
-                                            contentScale = ContentScale.Crop
-                                        )
+                                    // Profile picture - USE CURRENT USER'S PHOTO
+                                    val profilePhotoUrl = if (currentFlick.userId == currentUser.uid) {
+                                        currentUser.photoUrl // Use current/up-to-date photo for own photos
                                     } else {
-                                        // Fallback - show initial
+                                        currentFlick.userPhotoUrl // Use stored photo for others
+                                    }
+                                    
+                                    Box(
+                                        modifier = Modifier
+                                            .size(44.dp)
+                                            .clip(CircleShape)
+                                            .background(Color.Gray.copy(alpha = 0.4f))
+                                            .border(2.dp, Color.White.copy(alpha = 0.8f), CircleShape)
+                                            .clickable { onUserProfileClick(currentFlick.userId) },
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        if (profilePhotoUrl.isNotBlank()) {
+                                            AsyncImage(
+                                                model = profilePhotoUrl,
+                                                contentDescription = "View ${currentFlick.userName}'s profile",
+                                                modifier = Modifier.fillMaxSize(),
+                                                contentScale = ContentScale.Crop
+                                            )
+                                        } else {
+                                            // Fallback - show initial
+                                            Text(
+                                                text = currentFlick.userName.take(1).uppercase(),
+                                                color = Color.White,
+                                                fontSize = 20.sp,
+                                                fontWeight = FontWeight.Bold
+                                            )
+                                        }
+                                    }
+                                    
+                                    // Name + Description + Time in one column
+                                    Column(
+                                        modifier = Modifier.clickable { onUserProfileClick(currentFlick.userId) }
+                                    ) {
+                                        // Username
                                         Text(
-                                            text = currentFlick.userName.take(1).uppercase(),
+                                            text = currentFlick.userName,
                                             color = Color.White,
-                                            fontSize = 20.sp,
+                                            fontSize = 16.sp,
                                             fontWeight = FontWeight.Bold
                                         )
-                                    }
-                                }
-                                
-                                // Name + Description in column
-                                Column(
-                                    modifier = Modifier.clickable { onUserProfileClick(currentFlick.userId) }
-                                ) {
-                                    // Username
-                                    Text(
-                                        text = currentFlick.userName,
-                                        color = Color.White,
-                                        fontSize = 16.sp,
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                    
-                                    // Description - directly under name
-                                    val descriptionText = currentDescription.ifEmpty { "Add a caption..." }
-                                    val descriptionColor = if (currentDescription.isEmpty()) Color.White.copy(alpha = 0.5f) else Color.White.copy(alpha = 0.85f)
-                                    
-                                    Text(
-                                        text = descriptionText,
-                                        color = descriptionColor,
-                                        fontSize = 13.sp,
-                                        maxLines = 1,
-                                        modifier = if (canDelete) {
-                                            Modifier.clickable { showEditCaption = true }
-                                        } else Modifier
-                                    )
-                                    
-                                    // Timestamp under description
-                                    Text(
-                                        text = formatTimestamp(currentFlick.timestamp),
-                                        color = Color.White.copy(alpha = 0.6f),
-                                        fontSize = 12.sp
-                                    )
-                                }
-                            }
-                            
-                            // RIGHT: All reactions with counts - compact horizontal layout
-                            if (totalReactions > 0) {
-                                Row(
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    reactionCounts.forEach { (reactionType, count) ->
+                                        
+                                        // Description and timestamp in ONE LINE
                                         Row(
                                             verticalAlignment = Alignment.CenterVertically,
-                                            horizontalArrangement = Arrangement.spacedBy(2.dp)
+                                            horizontalArrangement = Arrangement.spacedBy(6.dp)
                                         ) {
+                                            // Description - clickable to edit if owner
+                                            val descriptionText = currentDescription.ifEmpty { "Add a caption..." }
+                                            val descriptionColor = if (currentDescription.isEmpty()) Color.White.copy(alpha = 0.5f) else Color.White.copy(alpha = 0.85f)
+                                            
                                             Text(
-                                                text = reactionType.toEmoji(),
-                                                fontSize = 14.sp
+                                                text = descriptionText,
+                                                color = descriptionColor,
+                                                fontSize = 13.sp,
+                                                maxLines = 1,
+                                                modifier = if (canDelete) {
+                                                    Modifier.clickable { showEditCaption = true }
+                                                } else Modifier
                                             )
+                                            
+                                            // Dot separator
+                                            Box(
+                                                modifier = Modifier
+                                                    .size(3.dp)
+                                                    .background(Color.White.copy(alpha = 0.4f), CircleShape)
+                                            )
+                                            
+                                            // Timestamp
                                             Text(
-                                                text = "$count",
-                                                color = Color.White.copy(alpha = 0.9f),
-                                                fontSize = 11.sp,
-                                                fontWeight = FontWeight.Medium
+                                                text = formatTimestamp(currentFlick.timestamp),
+                                                color = Color.White.copy(alpha = 0.6f),
+                                                fontSize = 12.sp
                                             )
                                         }
                                     }
                                 }
+                                
+                                // RIGHT: Reactions with counts
+                                ReactionCountersRow(
+                                    flick = currentFlick,
+                                    canReact = !canDelete, // Can't react to own photos
+                                    onReactionClick = { showReactionPicker = true }
+                                )
+                            }
+                            
+                            // TAGGED FRIENDS ROW (if any)
+                            if (taggedFriendsProfiles.isNotEmpty()) {
+                                Spacer(modifier = Modifier.height(8.dp))
+                                
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    // Label
+                                    Text(
+                                        text = "with",
+                                        color = Color.White.copy(alpha = 0.6f),
+                                        fontSize = 12.sp
+                                    )
+                                    
+                                    // Profile pics of tagged friends
+                                    Row(
+                                        horizontalArrangement = Arrangement.spacedBy((-8).dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        taggedFriendsProfiles.take(5).forEach { friend ->
+                                            Box(
+                                                modifier = Modifier
+                                                    .size(28.dp)
+                                                    .clip(CircleShape)
+                                                    .border(1.5.dp, Color.White.copy(alpha = 0.8f), CircleShape)
+                                                    .clickable { onUserProfileClick(friend.uid) },
+                                                contentAlignment = Alignment.Center
+                                            ) {
+                                                AsyncImage(
+                                                    model = friend.photoUrl,
+                                                    contentDescription = friend.displayName,
+                                                    modifier = Modifier.fillMaxSize(),
+                                                    contentScale = ContentScale.Crop
+                                                )
+                                            }
+                                        }
+                                        
+                                        // Show "+X more" if more than 5 tagged
+                                        if (taggedFriendsProfiles.size > 5) {
+                                            Box(
+                                                modifier = Modifier
+                                                    .size(28.dp)
+                                                    .clip(CircleShape)
+                                                    .background(Color.Black.copy(alpha = 0.6f))
+                                                    .border(1.5.dp, Color.White.copy(alpha = 0.8f), CircleShape),
+                                                contentAlignment = Alignment.Center
+                                            ) {
+                                                Text(
+                                                    text = "+${taggedFriendsProfiles.size - 5}",
+                                                    color = Color.White,
+                                                    fontSize = 10.sp,
+                                                    fontWeight = FontWeight.Bold
+                                                )
+                                            }
+                                        }
+                                    }
+                                    
+                                    // Names (first 2 names)
+                                    val namesText = if (taggedFriendsProfiles.size <= 2) {
+                                        taggedFriendsProfiles.joinToString(" and ") { it.displayName }
+                                    } else {
+                                        "${taggedFriendsProfiles[0].displayName} and ${taggedFriendsProfiles.size - 1} others"
+                                    }
+                                    
+                                    Text(
+                                        text = namesText,
+                                        color = Color.White.copy(alpha = 0.8f),
+                                        fontSize = 12.sp,
+                                        maxLines = 1,
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .padding(start = 4.dp)
+                                    )
+                                }
                             }
                         }
                     }
-                }
-                
-                // DOUBLE TAP HEART ANIMATION
-                if (showHeartAnimation) {
-                    DoubleTapHeartAnimation(
-                        key = heartAnimationKey,
-                        onAnimationEnd = { showHeartAnimation = false }
-                    )
                 }
                 
                 // REACTION PICKER POPUP
@@ -1146,61 +1437,6 @@ fun FullScreenPhotoViewer(
                 }
             }
         }
-    }
-}
-
-/**
- * Large animated heart for double tap like (Instagram style)
- */
-@Composable
-private fun DoubleTapHeartAnimation(
-    key: Int,
-    onAnimationEnd: () -> Unit
-) {
-    // Reset animation when key changes
-    var animationStarted by remember(key) { mutableStateOf(false) }
-    
-    // Scale animation: starts small, pops large, then fades
-    val scale by animateFloatAsState(
-        targetValue = if (animationStarted) 1.5f else 0f,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessLow
-        ),
-        label = "heart_scale"
-    )
-    
-    // Alpha animation for fade out
-    val alpha by animateFloatAsState(
-        targetValue = if (animationStarted) 0f else 1f,
-        animationSpec = tween(
-            durationMillis = 400,
-            delayMillis = 600,
-            easing = FastOutSlowInEasing
-        ),
-        finishedListener = { onAnimationEnd() },
-        label = "heart_alpha"
-    )
-    
-    LaunchedEffect(key) {
-        delay(50)
-        animationStarted = true
-    }
-    
-    // Full screen centered heart
-    Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text = "❤️",
-            fontSize = 120.sp,
-            modifier = Modifier.graphicsLayer {
-                scaleX = scale.coerceAtLeast(0f)
-                scaleY = scale.coerceAtLeast(0f)
-                this.alpha = if (animationStarted) alpha else 1f
-            }
-        )
     }
 }
 
@@ -1269,6 +1505,655 @@ private fun CompactCommentItem(comment: Comment) {
 }
 
 /**
+ * Reaction counters row - displays all 5 reaction types with counts
+ */
+@Composable
+private fun ReactionCountersRow(
+    flick: Flick,
+    canReact: Boolean,
+    onReactionClick: () -> Unit
+) {
+    val reactionCounts = flick.getReactionCounts()
+    val totalReactions = flick.getTotalReactions()
+    
+    if (totalReactions == 0) {
+        // Show placeholder only if user CAN react (not their own photo)
+        if (canReact) {
+            Text(
+                text = "Be first to react!",
+                color = Color.White.copy(alpha = 0.5f),
+                fontSize = 11.sp,
+                modifier = Modifier.clickable { onReactionClick() }
+            )
+        }
+        return
+    }
+    
+    // Display reactions in a row - only show reactions with count > 0
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.clickable { onReactionClick() }
+    ) {
+        ReactionType.entries.forEach { reactionType ->
+            val count = reactionCounts[reactionType] ?: 0
+            if (count > 0) {
+                ReactionCounterItem(
+                    emoji = reactionType.toEmoji(),
+                    count = count
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Individual reaction counter item - emoji with count
+ */
+@Composable
+private fun ReactionCounterItem(
+    emoji: String,
+    count: Int
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(2.dp)
+    ) {
+        Text(
+            text = emoji,
+            fontSize = 14.sp
+        )
+        Text(
+            text = count.toString(),
+            color = Color.White.copy(alpha = 0.9f),
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Medium
+        )
+    }
+}
+
+/**
+ * Share Friends Dialog - Share photo with friends
+ * Full screen style matching Tag Friends design
+ */
+@Composable
+private fun ShareFriendsDialog(
+    flick: Flick,
+    currentUser: UserProfile,
+    onDismiss: () -> Unit,
+    onShareToFriend: (String, String) -> Unit,
+    onNavigateToFindFriends: () -> Unit,
+    showPicFlickToast: (String) -> Unit
+) {
+    val coroutineScope = rememberCoroutineScope()
+    val repository = remember { FlickRepository.getInstance() }
+    var friendsList by remember { mutableStateOf<List<UserProfile>>(emptyList()) }
+    var isLoadingFriends by remember { mutableStateOf(true) }
+    
+    // Load friends when dialog opens
+    LaunchedEffect(Unit) {
+        if (currentUser.following.isNotEmpty()) {
+            val loadedFriends = mutableListOf<UserProfile>()
+            var loadedCount = 0
+            
+            currentUser.following.forEach { userId ->
+                repository.getUserProfile(userId) { result ->
+                    when (result) {
+                        is com.example.picflick.data.Result.Success -> {
+                            loadedFriends.add(result.data)
+                        }
+                        else -> { /* Skip failed loads */ }
+                    }
+                    loadedCount++
+                    if (loadedCount >= currentUser.following.size) {
+                        friendsList = loadedFriends.sortedBy { it.displayName }
+                        isLoadingFriends = false
+                    }
+                }
+            }
+        } else {
+            friendsList = emptyList()
+            isLoadingFriends = false
+        }
+    }
+    
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(
+            usePlatformDefaultWidth = false,
+            dismissOnBackPress = true,
+            dismissOnClickOutside = true
+        )
+    ) {
+        Surface(
+            modifier = Modifier
+                .fillMaxSize(),
+            shape = RectangleShape,
+            color = Color(0xFF1A1A1A)
+        ) {
+            Column(
+                modifier = Modifier.padding(20.dp)
+            ) {
+                // Header
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Share with Friends",
+                        color = Color.White,
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    
+                    IconButton(onClick = onDismiss) {
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = "Close",
+                            tint = Color.White
+                        )
+                    }
+                }
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                // Preview of photo being shared - TALLER with SQUARE corners and WHITE BORDER
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(180.dp)
+                        .border(3.dp, Color.White.copy(alpha = 0.9f), RectangleShape)
+                        .padding(3.dp)
+                        .background(Color.Black)
+                ) {
+                    AsyncImage(
+                        model = flick.imageUrl,
+                        contentDescription = null,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                }
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                // Currently sharing count
+                Text(
+                    text = "Select a friend to share with:",
+                    color = Color.White.copy(alpha = 0.7f),
+                    fontSize = 14.sp,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+                
+                // Friends list or empty state
+                when {
+                    isLoadingFriends -> {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(150.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator(
+                                color = Color(0xFF87CEEB)
+                            )
+                        }
+                    }
+                    friendsList.isEmpty() -> {
+                        // No friends - show Go to Find Friends button
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 24.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Person,
+                                    contentDescription = null,
+                                    tint = Color.White.copy(alpha = 0.4f),
+                                    modifier = Modifier.size(48.dp)
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(
+                                    text = "No friends yet",
+                                    color = Color.White.copy(alpha = 0.6f),
+                                    fontSize = 14.sp
+                                )
+                                Spacer(modifier = Modifier.height(16.dp))
+                                Button(
+                                    onClick = { 
+                                        onDismiss()
+                                        onNavigateToFindFriends()
+                                    },
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = Color(0xFF87CEEB)
+                                    )
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.PersonAdd,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text("Find Friends")
+                                }
+                            }
+                        }
+                    }
+                    else -> {
+                        // Show friends list with Share button on right
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(max = 280.dp)
+                                .verticalScroll(rememberScrollState())
+                        ) {
+                            friendsList.forEach { friend ->
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 10.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    // LEFT: Profile pic + name
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                        modifier = Modifier.weight(1f)
+                                    ) {
+                                        // Friend photo with white border like profile pic
+                                        Box(
+                                            modifier = Modifier
+                                                .size(44.dp)
+                                                .clip(CircleShape)
+                                                .background(Color.Gray.copy(alpha = 0.4f))
+                                                .border(2.dp, Color.White.copy(alpha = 0.8f), CircleShape),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            AsyncImage(
+                                                model = friend.photoUrl,
+                                                contentDescription = null,
+                                                modifier = Modifier.fillMaxSize(),
+                                                contentScale = ContentScale.Crop
+                                            )
+                                        }
+                                        
+                                        // Friend name
+                                        Text(
+                                            text = friend.displayName,
+                                            color = Color.White,
+                                            fontSize = 16.sp,
+                                            fontWeight = FontWeight.Medium
+                                        )
+                                    }
+                                    
+                                    // RIGHT: Share button
+                                    Button(
+                                        onClick = {
+                                            onShareToFriend(flick.id, friend.uid)
+                                            showPicFlickToast("Shared with ${friend.displayName}")
+                                            onDismiss()
+                                        },
+                                        colors = ButtonDefaults.buttonColors(
+                                            containerColor = Color(0xFF87CEEB)
+                                        ),
+                                        modifier = Modifier.height(36.dp)
+                                    ) {
+                                        Text(
+                                            "Share",
+                                            fontSize = 13.sp,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    }
+                                }
+                                
+                                if (friend != friendsList.last()) {
+                                    HorizontalDivider(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        thickness = 1.dp,
+                                        color = Color.White.copy(alpha = 0.1f)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Tag Friends Dialog - Tag existing friends or navigate to Find Friends
+ * Full screen style with no rounded corners
+ */
+@Composable
+private fun TagFriendsDialog(
+    flick: Flick,
+    currentUser: UserProfile,
+    taggedFriends: List<String>,
+    onDismiss: () -> Unit,
+    onTagFriendsChanged: (List<String>) -> Unit,
+    onSaveTags: (List<String>) -> Unit,
+    onNavigateToFindFriends: () -> Unit,
+    repository: FlickRepository,
+    showPicFlickToast: (String) -> Unit
+) {
+    val coroutineScope = rememberCoroutineScope()
+    var friendsList by remember { mutableStateOf<List<UserProfile>>(emptyList()) }
+    var isLoadingFriends by remember { mutableStateOf(true) }
+    var selectedFriends by remember { mutableStateOf(taggedFriends.toMutableSet()) }
+    var isSaving by remember { mutableStateOf(false) }
+    
+    // Load friends when dialog opens
+    LaunchedEffect(Unit) {
+        if (currentUser.following.isNotEmpty()) {
+            val loadedFriends = mutableListOf<UserProfile>()
+            var loadedCount = 0
+            
+            currentUser.following.forEach { userId ->
+                repository.getUserProfile(userId) { result ->
+                    when (result) {
+                        is com.example.picflick.data.Result.Success -> {
+                            loadedFriends.add(result.data)
+                        }
+                        else -> { /* Skip failed loads */ }
+                    }
+                    loadedCount++
+                    if (loadedCount >= currentUser.following.size) {
+                        friendsList = loadedFriends.sortedBy { it.displayName }
+                        isLoadingFriends = false
+                    }
+                }
+            }
+        } else {
+            friendsList = emptyList()
+            isLoadingFriends = false
+        }
+    }
+    
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(
+            usePlatformDefaultWidth = false,
+            dismissOnBackPress = true,
+            dismissOnClickOutside = true
+        )
+    ) {
+        Surface(
+            modifier = Modifier
+                .fillMaxSize(),
+            shape = RectangleShape,
+            color = Color(0xFF1A1A1A)
+        ) {
+            Column(
+                modifier = Modifier.padding(20.dp)
+            ) {
+                // Header
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Tag Friends",
+                        color = Color.White,
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    
+                    IconButton(onClick = onDismiss) {
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = "Close",
+                            tint = Color.White
+                        )
+                    }
+                }
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                // Preview of photo being tagged - TALLER with SQUARE corners and WHITE BORDER
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(180.dp)
+                        .border(3.dp, Color.White.copy(alpha = 0.9f), RectangleShape)
+                        .padding(3.dp)
+                        .background(Color.Black)
+                ) {
+                    AsyncImage(
+                        model = flick.imageUrl,
+                        contentDescription = null,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                }
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                // Currently tagged count
+                if (selectedFriends.isNotEmpty()) {
+                    Text(
+                        text = "${selectedFriends.size} friend${if (selectedFriends.size > 1) "s" else ""} tagged",
+                        color = Color.White.copy(alpha = 0.7f),
+                        fontSize = 14.sp,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+                }
+                
+                // Friends list or empty state
+                when {
+                    isLoadingFriends -> {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(150.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
+                        }
+                    }
+                    friendsList.isEmpty() -> {
+                        // No friends - show Go to Find Friends button
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 24.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Person,
+                                    contentDescription = null,
+                                    tint = Color.White.copy(alpha = 0.4f),
+                                    modifier = Modifier.size(48.dp)
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(
+                                    text = "No friends yet",
+                                    color = Color.White.copy(alpha = 0.6f),
+                                    fontSize = 14.sp
+                                )
+                                Spacer(modifier = Modifier.height(16.dp))
+                                Button(
+                                    onClick = { 
+                                        onDismiss()
+                                        onNavigateToFindFriends()
+                                    },
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = MaterialTheme.colorScheme.primary
+                                    )
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.PersonAdd,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text("Find Friends")
+                                }
+                            }
+                        }
+                    }
+                    else -> {
+                        // Show friends list with TAG button on right
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(max = 280.dp)
+                                .verticalScroll(rememberScrollState())
+                        ) {
+                            friendsList.forEach { friend ->
+                                val isSelected = selectedFriends.contains(friend.uid)
+                                
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 10.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    // LEFT: Profile pic + name
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                        modifier = Modifier.weight(1f)
+                                    ) {
+                                        // Friend photo with white border like profile pic
+                                        Box(
+                                            modifier = Modifier
+                                                .size(44.dp)
+                                                .clip(CircleShape)
+                                                .background(Color.Gray.copy(alpha = 0.4f))
+                                                .border(2.dp, Color.White.copy(alpha = 0.8f), CircleShape),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            AsyncImage(
+                                                model = friend.photoUrl,
+                                                contentDescription = null,
+                                                modifier = Modifier.fillMaxSize(),
+                                                contentScale = ContentScale.Crop
+                                            )
+                                        }
+                                        
+                                        // Friend name
+                                        Text(
+                                            text = friend.displayName,
+                                            color = Color.White,
+                                            fontSize = 16.sp,
+                                            fontWeight = FontWeight.Medium
+                                        )
+                                    }
+                                    
+                                    // RIGHT: Tag/Untag button
+                                    if (isSelected) {
+                                        // Already tagged - show "Tagged" button (green/primary)
+                                        Button(
+                                            onClick = {
+                                                selectedFriends = selectedFriends.toMutableSet().apply { remove(friend.uid) }
+                                                onTagFriendsChanged(selectedFriends.toList())
+                                            },
+                                            colors = ButtonDefaults.buttonColors(
+                                                containerColor = MaterialTheme.colorScheme.primary
+                                            ),
+                                            modifier = Modifier.height(36.dp)
+                                        ) {
+                                            Text(
+                                                "Tagged",
+                                                fontSize = 13.sp,
+                                                fontWeight = FontWeight.Bold
+                                            )
+                                        }
+                                    } else {
+                                        // Not tagged - show "Tag" outlined button
+                                        OutlinedButton(
+                                            onClick = {
+                                                selectedFriends = selectedFriends.toMutableSet().apply { add(friend.uid) }
+                                                onTagFriendsChanged(selectedFriends.toList())
+                                            },
+                                            colors = ButtonDefaults.outlinedButtonColors(
+                                                contentColor = Color.White
+                                            ),
+                                            modifier = Modifier.height(36.dp),
+                                            border = ButtonDefaults.outlinedButtonBorder.copy(
+                                                width = 1.dp,
+                                                brush = androidx.compose.ui.graphics.SolidColor(Color.White.copy(alpha = 0.5f))
+                                            )
+                                        ) {
+                                            Text(
+                                                "Tag",
+                                                fontSize = 13.sp
+                                            )
+                                        }
+                                    }
+                                }
+                                
+                                if (friend != friendsList.last()) {
+                                    HorizontalDivider(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        thickness = 1.dp,
+                                        color = Color.White.copy(alpha = 0.1f)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                // Action buttons (only show Save if there are friends)
+                if (friendsList.isNotEmpty()) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        OutlinedButton(
+                            onClick = onDismiss,
+                            modifier = Modifier.weight(1f),
+                            colors = ButtonDefaults.outlinedButtonColors(
+                                contentColor = Color.White
+                            )
+                        ) {
+                            Text("Cancel")
+                        }
+                        
+                        Button(
+                            onClick = {
+                                isSaving = true
+                                onSaveTags(selectedFriends.toList())
+                            },
+                            modifier = Modifier.weight(1f),
+                            enabled = !isSaving,
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.primary
+                            )
+                        ) {
+                            if (isSaving) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(18.dp),
+                                    color = Color.White,
+                                    strokeWidth = 2.dp
+                                )
+                            } else {
+                                Text("Save Tags")
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
  * Download image from URL and save to gallery
  */
 private suspend fun downloadImageToGallery(context: Context, imageUrl: String, flickId: String) {
@@ -1325,3 +2210,4 @@ private fun saveBitmapToGallery(context: Context, bitmap: Bitmap, filename: Stri
         }
     }
 }
+// REFRESH

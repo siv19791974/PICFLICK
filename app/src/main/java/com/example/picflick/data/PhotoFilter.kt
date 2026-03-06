@@ -10,5 +10,10 @@ enum class PhotoFilter(val displayName: String, val icon: String) {
     HIGH_CONTRAST("Contrast", "⚡"),
     WARM("Warm", "☀️"),
     COOL("Cool", "❄️"),
-    VINTAGE("Vintage", "📻")
+    VINTAGE("Vintage", "📻"),
+    // NEW FILTERS
+    RETRO("Retro", "🎞️"),
+    NOIR("Noir", "🎬"),
+    FADE("Fade", "🌫️"),
+    VIVID("Vivid", "🌈")
 }

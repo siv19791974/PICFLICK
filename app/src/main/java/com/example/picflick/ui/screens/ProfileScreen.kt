@@ -5,6 +5,10 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.material.ExperimentalMaterialApi
+import androidx.compose.material.pullrefresh.PullRefreshIndicator
+import androidx.compose.material.pullrefresh.pullRefresh
+import androidx.compose.material.pullrefresh.rememberPullRefreshState
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
@@ -39,7 +43,7 @@ import com.example.picflick.ui.theme.PicFlickBackground
 /**
  * Modern Profile screen with enhanced UI
  */
-@OptIn(ExperimentalFoundationApi::class)
+@OptIn(ExperimentalFoundationApi::class, ExperimentalMaterialApi::class)
 @Composable
 fun ProfileScreen(
     userProfile: UserProfile,
@@ -50,7 +54,10 @@ fun ProfileScreen(
     onBack: () -> Unit,
     onPhotoSelected: (Uri) -> Unit = {},
     onBioUpdated: (String) -> Unit = {},
-    onPhotoClick: (Flick, Int) -> Unit = { _, _ -> }
+    onPhotoClick: (Flick, Int) -> Unit = { _, _ -> },
+    onProfilePhotoClick: () -> Unit = {},
+    onRefresh: () -> Unit = {},
+    isLoading: Boolean = false
 ) {
     // Image picker launcher
     val imagePicker = rememberLauncherForActivityResult(
@@ -97,14 +104,25 @@ fun ProfileScreen(
         )
     }
 
-    Column(
+    // Pull-to-refresh state
+    val pullRefreshState = rememberPullRefreshState(
+        refreshing = isLoading,
+        onRefresh = onRefresh
+    )
+
+    Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.Black)
-            .verticalScroll(rememberScrollState()),
-        horizontalAlignment = Alignment.CenterHorizontally
+            .pullRefresh(pullRefreshState)
     ) {
-        // NO BANNER - banner is now in MainActivity's Scaffold topBar!
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black)
+                .verticalScroll(rememberScrollState()),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            // NO BANNER - banner is now in MainActivity's Scaffold topBar!
 
         Spacer(modifier = Modifier.height(24.dp))
 
@@ -115,7 +133,14 @@ fun ProfileScreen(
                 .clip(CircleShape)
                 .background(Color.DarkGray.copy(alpha = 0.3f))
                 .border(3.dp, Color.White.copy(alpha = 0.8f), CircleShape)
-                .clickable { imagePicker.launch("image/*") },
+                .clickable { 
+                    if (userProfile.photoUrl.isNotEmpty()) {
+                        onProfilePhotoClick()
+                    } else {
+                        // If no photo, open image picker
+                        imagePicker.launch("image/*")
+                    }
+                },
             contentAlignment = Alignment.Center
         ) {
             AsyncImage(
@@ -127,22 +152,25 @@ fun ProfileScreen(
             )
 
             // Edit icon overlay - positioned at bottom right
-            Box(
-                modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .offset((-8).dp, (-8).dp)
-                    .size(44.dp)
-                    .background(MaterialTheme.colorScheme.primary, CircleShape)
-                    .border(3.dp, Color.Black, CircleShape)
-                    .clickable { imagePicker.launch("image/*") },
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Edit,
-                    contentDescription = "Change Photo",
-                    tint = Color.White,
-                    modifier = Modifier.size(22.dp)
-                )
+            // Only shown when there's a photo, clicking it opens image picker to change photo
+            if (userProfile.photoUrl.isNotEmpty()) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .offset((-8).dp, (-8).dp)
+                        .size(44.dp)
+                        .background(MaterialTheme.colorScheme.primary, CircleShape)
+                        .border(3.dp, Color.Black, CircleShape)
+                        .clickable { imagePicker.launch("image/*") },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Edit,
+                        contentDescription = "Change Photo",
+                        tint = Color.White,
+                        modifier = Modifier.size(22.dp)
+                    )
+                }
             }
         }
 
@@ -302,7 +330,17 @@ fun ProfileScreen(
         }
 
         Spacer(modifier = Modifier.height(32.dp))
+        }
+        // End of Column
+
+        // PullRefreshIndicator
+        PullRefreshIndicator(
+            refreshing = isLoading,
+            state = pullRefreshState,
+            modifier = Modifier.align(Alignment.TopCenter)
+        )
     }
+    // End of Box (pull-refresh container)
 }
 
 // Photo sizes for dynamic grid
@@ -788,7 +826,7 @@ private fun MyPhotoCard(
         colors = CardDefaults.cardColors(containerColor = Color.Transparent)
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
-            // Photo only - clean, no overlays
+            // Photo
             AsyncImage(
                 model = flick.imageUrl,
                 contentDescription = null,

@@ -108,3 +108,70 @@ fun HeartBurstAnimation(
         }
     }
 }
+
+/**
+ * Big heart animation for double-tap like (Instagram style)
+ */
+@Composable
+fun DoubleTapHeartAnimation(
+    key: Int,
+    isLiked: Boolean,
+    onAnimationComplete: () -> Unit
+) {
+    var animationState by remember(key) { mutableStateOf(0) }
+    
+    LaunchedEffect(key) {
+        animationState = 1 // Start animation
+        kotlinx.coroutines.delay(800) // Animation duration
+        animationState = 2 // Complete
+        onAnimationComplete()
+    }
+    
+    if (animationState > 0) {
+        val scale by animateFloatAsState(
+            targetValue = when (animationState) {
+                1 -> 1.5f // Big heart
+                else -> 0f // Fade out
+            },
+            animationSpec = spring(
+                dampingRatio = Spring.DampingRatioLowBouncy,
+                stiffness = Spring.StiffnessMedium
+            ),
+            label = "double_tap_scale"
+        )
+        
+        val alpha by animateFloatAsState(
+            targetValue = when (animationState) {
+                1 -> 1f
+                else -> 0f
+            },
+            animationSpec = tween(400),
+            label = "double_tap_alpha"
+        )
+        
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            // Big white outline
+            Icon(
+                imageVector = Icons.Default.Favorite,
+                contentDescription = null,
+                tint = Color.White.copy(alpha = alpha * 0.3f),
+                modifier = Modifier
+                    .size(200.dp)
+                    .scale(scale * 1.1f)
+            )
+            
+            // Main red heart
+            Icon(
+                imageVector = Icons.Default.Favorite,
+                contentDescription = if (isLiked) "Liked" else "Unliked",
+                tint = if (isLiked) Color.Red.copy(alpha = alpha) else Color.White.copy(alpha = alpha * 0.5f),
+                modifier = Modifier
+                    .size(180.dp)
+                    .scale(scale)
+            )
+        }
+    }
+}

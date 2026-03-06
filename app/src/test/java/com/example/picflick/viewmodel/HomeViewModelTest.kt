@@ -84,13 +84,14 @@ class HomeViewModelTest {
     @Test
     fun `loadFlicks should set loading to true initially`() {
         // Given
+        val userId = "test_user"
         val callbackSlot = slot<(Result<List<Flick>>) -> Unit>()
-        every { mockRepository.getFlicks(capture(callbackSlot)) } answers {
+        every { mockRepository.getFlicksForUser(userId, capture(callbackSlot)) } answers {
             // Don't call callback yet, just verify loading state
         }
 
-        // When
-        viewModel.loadFlicks()
+        // When - use overload that accepts userId
+        viewModel.loadFlicks(userId)
 
         // Then
         assertTrue(viewModel.isLoading)
@@ -99,13 +100,14 @@ class HomeViewModelTest {
     @Test
     fun `loadFlicks should populate flicks on success`() {
         // Given
+        val userId = "test_user"
         val callbackSlot = slot<(Result<List<Flick>>) -> Unit>()
-        every { mockRepository.getFlicks(capture(callbackSlot)) } answers {
+        every { mockRepository.getFlicksForUser(userId, capture(callbackSlot)) } answers {
             callbackSlot.captured(Result.Success(testFlicks))
         }
 
-        // When
-        viewModel.loadFlicks()
+        // When - use overload that accepts userId
+        viewModel.loadFlicks(userId)
 
         // Then
         assertEquals(2, viewModel.flicks.size)
@@ -118,14 +120,15 @@ class HomeViewModelTest {
     @Test
     fun `loadFlicks should set error message on failure`() {
         // Given
+        val userId = "test_user"
         val errorMessage = "Network error"
         val callbackSlot = slot<(Result<List<Flick>>) -> Unit>()
-        every { mockRepository.getFlicks(capture(callbackSlot)) } answers {
+        every { mockRepository.getFlicksForUser(userId, capture(callbackSlot)) } answers {
             callbackSlot.captured(Result.Error(Exception(errorMessage), errorMessage))
         }
 
-        // When
-        viewModel.loadFlicks()
+        // When - use overload that accepts userId
+        viewModel.loadFlicks(userId)
 
         // Then
         assertTrue(viewModel.flicks.isEmpty())

@@ -1,0 +1,320 @@
+package com.example.picflick.ui.screens
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.ExperimentalMaterialApi
+import androidx.compose.material.pullrefresh.PullRefreshIndicator
+import androidx.compose.material.pullrefresh.pullRefresh
+import androidx.compose.material.pullrefresh.rememberPullRefreshState
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import coil3.compose.AsyncImage
+import com.example.picflick.data.Flick
+import com.example.picflick.data.UserProfile
+import com.example.picflick.ui.theme.PicFlickBackground
+
+/**
+ * Screen for viewing another user's profile
+ * Shows full profile if friends, limited profile if not friends
+ */
+@OptIn(ExperimentalMaterialApi::class)
+@Composable
+fun UserProfileScreen(
+    userProfile: UserProfile, // The user being viewed
+    currentUser: UserProfile, // The logged-in user
+    photos: List<Flick>,
+    isFriend: Boolean,
+    isLoading: Boolean,
+    onBack: () -> Unit,
+    onPhotoClick: (Flick, Int) -> Unit = { _, _ -> },
+    onProfilePhotoClick: () -> Unit = {},
+    onAddFriend: () -> Unit = {},
+    onMessageClick: () -> Unit = {},
+    onRefresh: () -> Unit = {}
+) {
+    // Pull-to-refresh state
+    val pullRefreshState = rememberPullRefreshState(
+        refreshing = isLoading,
+        onRefresh = onRefresh
+    )
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .pullRefresh(pullRefreshState)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black)
+                .verticalScroll(rememberScrollState()),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            // Top bar with back button
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp)
+            ) {
+                IconButton(
+                    onClick = onBack,
+                    modifier = Modifier.align(Alignment.CenterStart)
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = "Back",
+                        tint = Color.White
+                    )
+                }
+
+                Text(
+                    text = if (isFriend) "Friend Profile" else "Profile",
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White,
+                    modifier = Modifier.align(Alignment.Center)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Profile Photo
+            Box(
+                modifier = Modifier
+                    .size(150.dp)
+                    .clip(CircleShape)
+                    .background(Color.DarkGray.copy(alpha = 0.3f))
+                    .border(3.dp, Color.White.copy(alpha = 0.8f), CircleShape)
+                    .clickable { onProfilePhotoClick() },
+                contentAlignment = Alignment.Center
+            ) {
+                if (userProfile.photoUrl.isNotEmpty()) {
+                    AsyncImage(
+                        model = userProfile.photoUrl,
+                        contentDescription = "Profile photo",
+                        modifier = Modifier.fillMaxSize(),
+                        error = painterResource(id = android.R.drawable.ic_menu_myplaces),
+                        contentScale = ContentScale.Crop
+                    )
+                } else {
+                    Icon(
+                        imageVector = Icons.Default.Person,
+                        contentDescription = null,
+                        modifier = Modifier.size(80.dp),
+                        tint = Color.Gray
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+            // Name
+            Text(
+                text = userProfile.displayName,
+                fontSize = 28.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color.White
+            )
+
+            // Bio (shown regardless of friendship status)
+            if (userProfile.bio.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(12.dp))
+                Text(
+                    text = userProfile.bio,
+                    fontSize = 14.sp,
+                    color = Color(0xFF87CEEB), // Light blue
+                    modifier = Modifier.padding(horizontal = 32.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // Action buttons based on friendship status
+            if (!isFriend) {
+                // NOT FRIENDS - Show Add Friend button
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.padding(horizontal = 32.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Person,
+                        contentDescription = null,
+                        modifier = Modifier.size(48.dp),
+                        tint = Color.Gray
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Text(
+                        text = "Not Friends Yet",
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color.Gray
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Text(
+                        text = "Add ${userProfile.displayName} as a friend to see their photos",
+                        fontSize = 14.sp,
+                        color = Color.Gray.copy(alpha = 0.8f),
+                        modifier = Modifier.padding(horizontal = 16.dp)
+                    )
+
+                    Spacer(modifier = Modifier.height(24.dp))
+
+                    Button(
+                        onClick = onAddFriend,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(48.dp),
+                        shape = RoundedCornerShape(24.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Person,
+                            contentDescription = null,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Add Friend")
+                    }
+                }
+            } else {
+                // FRIENDS - Show stats and photos
+                // Stats Row
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
+                    horizontalArrangement = Arrangement.SpaceEvenly
+                ) {
+                    StatItem(
+                        value = photos.size.toString(),
+                        label = "Photos"
+                    )
+                    StatItem(
+                        value = userProfile.followers.size.toString(),
+                        label = "Followers"
+                    )
+                    StatItem(
+                        value = userProfile.following.size.toString(),
+                        label = "Following"
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(32.dp))
+
+                // Photos Grid (only for friends)
+                if (isLoading) {
+                    CircularProgressIndicator(color = Color.White)
+                } else if (photos.isEmpty()) {
+                    Text(
+                        text = "No photos yet",
+                        color = Color.Gray,
+                        fontSize = 16.sp
+                    )
+                } else {
+                    Text(
+                        text = "Photos",
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 8.dp)
+                    )
+
+                    // Photo grid
+                    LazyVerticalGrid(
+                        columns = GridCells.Fixed(3),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(max = 600.dp)
+                            .padding(horizontal = 8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        items(photos) { photo ->
+                            AsyncImage(
+                                model = photo.imageUrl,
+                                contentDescription = null,
+                                modifier = Modifier
+                                    .aspectRatio(1f)
+                                    .clickable {
+                                        onPhotoClick(photo, photos.indexOf(photo))
+                                    },
+                                contentScale = ContentScale.Crop
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Message button for friends
+                Button(
+                    onClick = onMessageClick,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 32.dp)
+                        .height(48.dp),
+                    shape = RoundedCornerShape(24.dp)
+                ) {
+                    Text("Send Message")
+                }
+
+                Spacer(modifier = Modifier.height(32.dp))
+            }
+            // End of if/else friendship block
+        }
+        // End of Column (pull-refresh content)
+
+        // PullRefreshIndicator
+        PullRefreshIndicator(
+            refreshing = isLoading,
+            state = pullRefreshState,
+            modifier = Modifier.align(Alignment.TopCenter)
+        )
+    }
+    // End of Box (pull-refresh container)
+}
+
+@Composable
+private fun StatItem(value: String, label: String) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(
+            text = value,
+            fontSize = 24.sp,
+            fontWeight = FontWeight.Bold,
+            color = Color.White
+        )
+        Text(
+            text = label,
+            fontSize = 14.sp,
+            color = Color.Gray
+        )
+    }
+}

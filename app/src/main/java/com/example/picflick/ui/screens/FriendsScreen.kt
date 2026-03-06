@@ -42,7 +42,8 @@ fun FriendsScreen(
     userProfile: UserProfile,
     viewModel: FriendsViewModel,
     onBack: () -> Unit,
-    onFindFriendsClick: () -> Unit = {}
+    onFindFriendsClick: () -> Unit = {},
+    onProfilePhotoClick: (UserProfile) -> Unit = {}
 ) {
     // Load following users
     LaunchedEffect(userProfile.following) {
@@ -98,7 +99,10 @@ fun FriendsScreen(
                 else -> {
                     LazyColumn {
                         items(viewModel.followingUsers) { friend ->
-                            FriendListItem(friend = friend)
+                            FriendListItem(
+                                friend = friend,
+                                onProfilePhotoClick = { onProfilePhotoClick(friend) }
+                            )
                         }
                     }
                 }
@@ -117,7 +121,10 @@ fun FriendsScreen(
 }
 
 @Composable
-private fun FriendListItem(friend: UserProfile) {
+private fun FriendListItem(
+    friend: UserProfile,
+    onProfilePhotoClick: () -> Unit = {}
+) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -127,14 +134,15 @@ private fun FriendListItem(friend: UserProfile) {
             modifier = Modifier.padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Profile photo
+            // Profile photo - clickable to view full screen
             if (friend.photoUrl.isNotEmpty()) {
                 AsyncImage(
                     model = friend.photoUrl,
                     contentDescription = null,
                     modifier = Modifier
                         .size(48.dp)
-                        .clip(CircleShape),
+                        .clip(CircleShape)
+                        .clickable { onProfilePhotoClick() },
                     contentScale = ContentScale.Crop,
                     error = painterResource(id = android.R.drawable.ic_menu_myplaces)
                 )
