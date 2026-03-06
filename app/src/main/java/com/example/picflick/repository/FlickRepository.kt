@@ -1347,8 +1347,9 @@ class FlickRepository private constructor() {
         preferences: com.example.picflick.data.NotificationPreferences
     ): Result<Unit> {
         return try {
+            // Use set with merge to create or update the field
             db.collection("users").document(userId)
-                .update("notificationPreferences", preferences)
+                .set(mapOf("notificationPreferences" to preferences), com.google.firebase.firestore.SetOptions.merge())
                 .await()
             Result.Success(Unit)
         } catch (e: Exception) {
