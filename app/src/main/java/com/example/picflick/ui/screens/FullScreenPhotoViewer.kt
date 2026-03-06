@@ -1,7 +1,6 @@
-package com.example.picflick.ui.screens
+﻿package com.example.picflick.ui.screens
 
 import androidx.compose.animation.*
-import androidx.compose.animation.core.*
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -60,7 +59,6 @@ import android.view.LayoutInflater
 import android.widget.TextView
 import com.example.picflick.R
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.Dispatchers
@@ -160,10 +158,10 @@ fun FullScreenPhotoViewer(
     
     // Heart animation state for double tap
 
-    // Load comments when flick changes
-    LaunchedEffect(currentFlick.id) {
+    // Load comments when flick changes - use DisposableEffect to properly manage listener
+    DisposableEffect(currentFlick.id) {
         isLoadingComments = true
-        repository.getComments(currentFlick.id) { result ->
+        val listener = repository.getComments(currentFlick.id) { result ->
             when (result) {
                 is com.example.picflick.data.Result.Success -> {
                     comments = result.data
@@ -171,6 +169,9 @@ fun FullScreenPhotoViewer(
                 }
                 else -> isLoadingComments = false
             }
+        }
+        onDispose {
+            listener.remove()
         }
     }
     

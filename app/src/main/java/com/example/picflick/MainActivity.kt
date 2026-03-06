@@ -1,4 +1,4 @@
-package com.example.picflick
+﻿package com.example.picflick
 
 import android.content.Intent
 import android.net.Uri
@@ -58,7 +58,6 @@ import com.example.picflick.ui.screens.NotificationsScreen
 import com.example.picflick.ui.screens.ProfileScreen
 import com.example.picflick.ui.screens.SettingsScreen
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import com.example.picflick.ui.screens.SplashScreen
 import com.example.picflick.ui.screens.UserProfileScreen
