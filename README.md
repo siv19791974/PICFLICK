@@ -38,7 +38,23 @@ A privacy-first social photo sharing app built with Jetpack Compose and Firebase
 
 ## 📱 Screenshots
 
-*(Add screenshots here)*
+<div align="center">
+
+| Home Feed | Photo Viewer | Profile |
+|-----------|--------------|---------|
+| ![Home](screenshots/home.png) | ![Viewer](screenshots/viewer.png) | ![Profile](screenshots/profile.png) |
+
+| Explore | Chat | Notifications |
+|-----------|--------------|---------|
+| ![Explore](screenshots/explore.png) | ![Chat](screenshots/chat.png) | ![Notifications](screenshots/notifications.png) |
+
+</div>
+
+> **Note:** Screenshots will be added soon! Run the app to see these screens in action.
+
+## 🎥 Demo Video
+
+[Watch PicFlick in action](https://youtube.com/your-demo-link)
 
 ## 🚀 Getting Started
 
