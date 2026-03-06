@@ -182,18 +182,6 @@ fun UserProfileScreen(
                     Spacer(modifier = Modifier.width(8.dp))
                     Text("Add Friend")
                 }
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                OutlinedButton(
-                    onClick = onMessageClick,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(48.dp),
-                    shape = RoundedCornerShape(24.dp)
-                ) {
-                    Text("Send Message")
-                }
             }
         } else {
             // FRIENDS - Show stats and photos

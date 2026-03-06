@@ -36,9 +36,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.launch
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.picflick.data.Flick
 import com.example.picflick.data.UserProfile
+import com.example.picflick.data.ChatSession
+import com.example.picflick.repository.ChatRepository
+import com.example.picflick.repository.FlickRepository
 import com.example.picflick.ui.components.BottomNavBar
 import com.example.picflick.ui.components.LogoImage
 import com.example.picflick.ui.components.UploadSourceDialog
@@ -848,7 +852,43 @@ private fun AuthenticatedContent(
                         },
                         onMessageClick = {
                             // Navigate to chat with this user
-                            // TODO: Implement chat navigation
+                            if (isFriend && target != null) {
+                                scope.launch {
+                                    val chatRepository = ChatRepository()
+                                    val result = chatRepository.getOrCreateChatSession(
+                                        userId1 = userProfile.uid,
+                                        userId2 = target.uid,
+                                        user1Name = userProfile.displayName,
+                                        user2Name = target.displayName
+                                    )
+                                    when (result) {
+                                        is com.example.picflick.data.Result.Success<String> -> {
+                                            // Create a ChatSession object for navigation
+                                            val session = ChatSession(
+                                                id = result.data,
+                                                participants = listOf(userProfile.uid, target.uid),
+                                                participantNames = mapOf(
+                                                    userProfile.uid to userProfile.displayName,
+                                                    target.uid to target.displayName
+                                                ),
+                                                lastMessage = "",
+                                                lastTimestamp = System.currentTimeMillis(),
+                                                unreadCount = 0
+                                            )
+                                            onSetSelectedChat(session, target.uid)
+                                            onScreenChange(Screen.ChatDetail)
+                                        }
+                                        is com.example.picflick.data.Result.Error -> {
+                                            Toast.makeText(
+                                                context, 
+                                                result.message ?: "Cannot start chat", 
+                                                Toast.LENGTH_SHORT
+                                            ).show()
+                                        }
+                                        else -> {}
+                                    }
+                                }
+                            }
                         }
                     )
                     
