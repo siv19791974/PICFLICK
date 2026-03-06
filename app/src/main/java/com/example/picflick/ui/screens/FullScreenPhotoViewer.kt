@@ -553,21 +553,21 @@ fun FullScreenPhotoViewer(
                                 }
                                 .then(
                                     if (isCurrent && zoomState != null) {
-                                        // Current photo: zoomable + clickable for UI toggle
+                                        // Current photo: clickable first to catch double-tap, then zoomable
                                         Modifier
-                                            .zoomable(zoomState)
                                             .combinedClickable(
                                                 indication = null,
                                                 interactionSource = remember { MutableInteractionSource() },
                                                 onClick = { uiVisible = !uiVisible },
                                                 onDoubleClick = {
-                                                    // Double tap to like/unlike
+                                                    // Double tap to like/unlike - consume gesture
                                                     heartAnimationKey++
                                                     showDoubleTapHeart = true
                                                     // Toggle reaction (like)
                                                     onReaction(if (userReaction != null) null else ReactionType.LIKE)
                                                 }
                                             )
+                                            .zoomable(zoomState)
                                     } else Modifier
                                 ),
                             contentAlignment = Alignment.Center
