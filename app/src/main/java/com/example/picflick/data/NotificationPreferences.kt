@@ -1,109 +1,94 @@
 package com.example.picflick.data
 
 /**
- * User notification preferences for push and in-app notifications
+ * User notification preferences - simplified unified settings
+ * One toggle controls both push and in-app notifications
  */
 data class NotificationPreferences(
-    // Push Notifications Master Switch
-    val pushNotificationsEnabled: Boolean = true,
-    val pushNewPhotos: Boolean = true,
-    val pushLikes: Boolean = true,
-    val pushReactions: Boolean = true,
-    val pushComments: Boolean = true,
-    val pushFollows: Boolean = true,
-    val pushMessages: Boolean = true,
-    val pushMentions: Boolean = true,
-    val pushStreakReminders: Boolean = true,
-    val pushAchievements: Boolean = true,
-    val pushSystemAnnouncements: Boolean = true,
+    // Master Switch
+    val notificationsEnabled: Boolean = true,
 
-    // In-App Notifications Master Switch
-    val inAppNotificationsEnabled: Boolean = true,
-    val inAppNewPhotos: Boolean = true,
-    val inAppLikes: Boolean = true,
-    val inAppReactions: Boolean = true,
-    val inAppComments: Boolean = true,
-    val inAppFollows: Boolean = true,
-    val inAppMessages: Boolean = true,
-    val inAppMentions: Boolean = true,
-    val inAppStreakReminders: Boolean = true,
-    val inAppAchievements: Boolean = true,
-    val inAppSystemAnnouncements: Boolean = true,
+    // Unified Notification Toggles (controls both push + in-app)
+    val likes: Boolean = true,
+    val reactions: Boolean = true,
+    val comments: Boolean = true,
+    val follows: Boolean = true,
+    val messages: Boolean = true,
+    val newPhotos: Boolean = true,
+    val mentions: Boolean = true,
+    val streakReminders: Boolean = true,
+    val achievements: Boolean = true,
+    val systemAnnouncements: Boolean = true,
 
-    // Quiet Hours / Do Not Disturb
+    // Quiet Hours / Do Not Disturb (only affects push)
     val quietHoursEnabled: Boolean = false,
     val quietHoursStart: Int = 22, // 10 PM
     val quietHoursEnd: Int = 8,    // 8 AM
 
-    // Notification Display Settings
-    val showNotificationPreviews: Boolean = true,  // Show content in notification previews
+    // Display Settings
+    val showNotificationPreviews: Boolean = true,
     val notificationSoundEnabled: Boolean = true,
     val notificationVibrationEnabled: Boolean = true,
-    val groupSimilarNotifications: Boolean = true,   // Group multiple likes into one notification
 
-    // Email Notifications (for important stuff)
+    // Email Notifications
     val emailNotificationsEnabled: Boolean = false,
-    val emailForSecurityAlerts: Boolean = true,    // Always email for security
+    val emailForSecurityAlerts: Boolean = true,
     val emailForAccountChanges: Boolean = true,
     val emailWeeklyDigest: Boolean = false
 ) {
     /**
-     * Check if push notification should be sent for a specific type
+     * Check if push notification should be sent
      */
     fun shouldSendPush(type: NotificationType): Boolean {
-        if (!pushNotificationsEnabled) return false
+        if (!notificationsEnabled) return false
         if (isInQuietHours()) return false
 
         return when (type) {
-            NotificationType.LIKE -> pushLikes
-            NotificationType.REACTION -> pushReactions
-            NotificationType.COMMENT -> pushComments
-            NotificationType.FOLLOW -> pushFollows
-            NotificationType.FRIEND_REQUEST -> pushFollows
-            NotificationType.MESSAGE -> pushMessages
-            NotificationType.PHOTO_ADDED -> pushNewPhotos
-            NotificationType.MENTION -> pushMentions
-            NotificationType.STREAK_REMINDER -> pushStreakReminders
-            NotificationType.ACHIEVEMENT -> pushAchievements
-            NotificationType.SYSTEM -> pushSystemAnnouncements
+            NotificationType.LIKE -> likes
+            NotificationType.REACTION -> reactions
+            NotificationType.COMMENT -> comments
+            NotificationType.FOLLOW -> follows
+            NotificationType.FRIEND_REQUEST -> follows
+            NotificationType.MESSAGE -> messages
+            NotificationType.PHOTO_ADDED -> newPhotos
+            NotificationType.MENTION -> mentions
+            NotificationType.STREAK_REMINDER -> streakReminders
+            NotificationType.ACHIEVEMENT -> achievements
+            NotificationType.SYSTEM -> systemAnnouncements
         }
     }
 
     /**
-     * Check if in quiet hours (Do Not Disturb)
+     * Check if in-app notification should be shown
+     */
+    fun shouldShowInApp(type: NotificationType): Boolean {
+        if (!notificationsEnabled) return false
+
+        return when (type) {
+            NotificationType.LIKE -> likes
+            NotificationType.REACTION -> reactions
+            NotificationType.COMMENT -> comments
+            NotificationType.FOLLOW -> follows
+            NotificationType.FRIEND_REQUEST -> follows
+            NotificationType.MESSAGE -> messages
+            NotificationType.PHOTO_ADDED -> newPhotos
+            NotificationType.MENTION -> mentions
+            NotificationType.STREAK_REMINDER -> streakReminders
+            NotificationType.ACHIEVEMENT -> achievements
+            NotificationType.SYSTEM -> systemAnnouncements
+        }
+    }
+
+    /**
+     * Check if in quiet hours
      */
     fun isInQuietHours(): Boolean {
         if (!quietHoursEnabled) return false
-
         val currentHour = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)
-
         return if (quietHoursStart > quietHoursEnd) {
-            // Crosses midnight (e.g., 22:00 to 08:00)
             currentHour >= quietHoursStart || currentHour < quietHoursEnd
         } else {
-            // Same day (e.g., 01:00 to 06:00)
             currentHour >= quietHoursStart && currentHour < quietHoursEnd
-        }
-    }
-
-    /**
-     * Check if in-app notification should be shown for a specific type
-     */
-    fun shouldShowInApp(type: NotificationType): Boolean {
-        if (!inAppNotificationsEnabled) return false
-
-        return when (type) {
-            NotificationType.LIKE -> inAppLikes
-            NotificationType.REACTION -> inAppReactions
-            NotificationType.COMMENT -> inAppComments
-            NotificationType.FOLLOW -> inAppFollows
-            NotificationType.FRIEND_REQUEST -> inAppFollows
-            NotificationType.MESSAGE -> inAppMessages
-            NotificationType.PHOTO_ADDED -> inAppNewPhotos
-            NotificationType.MENTION -> inAppMentions
-            NotificationType.STREAK_REMINDER -> inAppStreakReminders
-            NotificationType.ACHIEVEMENT -> inAppAchievements
-            NotificationType.SYSTEM -> inAppSystemAnnouncements
         }
     }
 }

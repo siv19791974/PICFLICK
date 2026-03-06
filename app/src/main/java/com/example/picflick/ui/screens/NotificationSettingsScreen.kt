@@ -18,11 +18,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.picflick.data.NotificationPreferences
-import com.example.picflick.data.NotificationType
 import com.example.picflick.data.UserProfile
 
 /**
- * Notification Settings Screen - Granular control over push and in-app notifications
+ * Simplified Notification Settings Screen
+ * One toggle controls both push and in-app notifications
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -75,24 +75,145 @@ fun NotificationSettingsScreen(
                 .fillMaxSize()
                 .padding(padding)
                 .verticalScroll(rememberScrollState())
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            // Push Notifications Section
-            PushNotificationsSection(
-                preferences = preferences,
-                onPreferencesChange = { preferences = it }
+            // Master Switch
+            MasterToggle(
+                title = "Enable Notifications",
+                subtitle = "Receive notifications for activity",
+                checked = preferences.notificationsEnabled,
+                onCheckedChange = {
+                    preferences = preferences.copy(notificationsEnabled = it)
+                }
             )
 
-            HorizontalDivider(
-                color = Color(0xFF2C2C2E),
-                thickness = 0.5.dp,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-            )
+            if (preferences.notificationsEnabled) {
+                // Notification Type Toggles
+                Text(
+                    text = "NOTIFY ME ABOUT",
+                    color = Color.Gray,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(top = 8.dp, bottom = 4.dp)
+                )
 
-            // In-App Notifications Section
-            InAppNotificationsSection(
-                preferences = preferences,
-                onPreferencesChange = { preferences = it }
-            )
+                NotificationToggle(
+                    title = "Likes",
+                    subtitle = "Someone likes my photo",
+                    icon = Icons.Default.Favorite,
+                    checked = preferences.likes,
+                    onCheckedChange = { preferences = preferences.copy(likes = it) }
+                )
+
+                NotificationToggle(
+                    title = "Reactions",
+                    subtitle = "Someone reacts to my photo",
+                    icon = Icons.Default.Mood,
+                    checked = preferences.reactions,
+                    onCheckedChange = { preferences = preferences.copy(reactions = it) }
+                )
+
+                NotificationToggle(
+                    title = "Comments",
+                    subtitle = "Someone comments on my photo",
+                    icon = Icons.Default.Chat,
+                    checked = preferences.comments,
+                    onCheckedChange = { preferences = preferences.copy(comments = it) }
+                )
+
+                NotificationToggle(
+                    title = "New Followers",
+                    subtitle = "Someone follows me",
+                    icon = Icons.Default.PersonAdd,
+                    checked = preferences.follows,
+                    onCheckedChange = { preferences = preferences.copy(follows = it) }
+                )
+
+                NotificationToggle(
+                    title = "Messages",
+                    subtitle = "New chat messages",
+                    icon = Icons.Default.MailOutline,
+                    checked = preferences.messages,
+                    onCheckedChange = { preferences = preferences.copy(messages = it) }
+                )
+
+                NotificationToggle(
+                    title = "New Photos",
+                    subtitle = "Friends post new photos",
+                    icon = Icons.Default.Photo,
+                    checked = preferences.newPhotos,
+                    onCheckedChange = { preferences = preferences.copy(newPhotos = it) }
+                )
+
+                NotificationToggle(
+                    title = "Mentions",
+                    subtitle = "Someone mentions me",
+                    icon = Icons.Default.AlternateEmail,
+                    checked = preferences.mentions,
+                    onCheckedChange = { preferences = preferences.copy(mentions = it) }
+                )
+
+                NotificationToggle(
+                    title = "Streak Reminders",
+                    subtitle = "Daily upload reminders",
+                    icon = Icons.Default.LocalFireDepartment,
+                    checked = preferences.streakReminders,
+                    onCheckedChange = { preferences = preferences.copy(streakReminders = it) }
+                )
+
+                NotificationToggle(
+                    title = "Achievements",
+                    subtitle = "Earn new achievements",
+                    icon = Icons.Default.EmojiEvents,
+                    checked = preferences.achievements,
+                    onCheckedChange = { preferences = preferences.copy(achievements = it) }
+                )
+
+                NotificationToggle(
+                    title = "System Announcements",
+                    subtitle = "Important updates from PicFlick",
+                    icon = Icons.Default.Info,
+                    checked = preferences.systemAnnouncements,
+                    onCheckedChange = { preferences = preferences.copy(systemAnnouncements = it) }
+                )
+
+                HorizontalDivider(
+                    color = Color(0xFF2C2C2E),
+                    thickness = 0.5.dp,
+                    modifier = Modifier.padding(vertical = 8.dp)
+                )
+
+                // Quiet Hours
+                QuietHoursSection(
+                    preferences = preferences,
+                    onPreferencesChange = { preferences = it }
+                )
+
+                HorizontalDivider(
+                    color = Color(0xFF2C2C2E),
+                    thickness = 0.5.dp,
+                    modifier = Modifier.padding(vertical = 8.dp)
+                )
+
+                // Display Settings
+                DisplaySettingsSection(
+                    preferences = preferences,
+                    onPreferencesChange = { preferences = it }
+                )
+
+                HorizontalDivider(
+                    color = Color(0xFF2C2C2E),
+                    thickness = 0.5.dp,
+                    modifier = Modifier.padding(vertical = 8.dp)
+                )
+
+                // Email Notifications
+                EmailSection(
+                    preferences = preferences,
+                    onPreferencesChange = { preferences = it }
+                )
+            }
 
             Spacer(modifier = Modifier.height(32.dp))
         }
@@ -100,319 +221,63 @@ fun NotificationSettingsScreen(
 }
 
 @Composable
-private fun PushNotificationsSection(
-    preferences: NotificationPreferences,
-    onPreferencesChange: (NotificationPreferences) -> Unit
+private fun MasterToggle(
+    title: String,
+    subtitle: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit
 ) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(16.dp)
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = if (checked) Color(0xFFD7ECFF).copy(alpha = 0.1f) else Color(0xFF1C1C1E)
+        ),
+        shape = RoundedCornerShape(16.dp)
     ) {
-        // Header with icon
         Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.padding(bottom = 16.dp)
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+                .clickable { onCheckedChange(!checked) },
+            verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
                 imageVector = Icons.Default.Notifications,
                 contentDescription = null,
-                tint = Color(0xFFD7ECFF),
-                modifier = Modifier.size(24.dp)
+                tint = if (checked) Color(0xFFD7ECFF) else Color.Gray,
+                modifier = Modifier.size(32.dp)
             )
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(
-                text = "PUSH NOTIFICATIONS",
-                color = Color(0xFFD7ECFF),
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Bold
-            )
-        }
 
-        // Master Toggle
-        PreferenceToggle(
-            title = "Enable Push Notifications",
-            subtitle = "Receive notifications when app is closed",
-            icon = Icons.Default.NotificationsActive,
-            checked = preferences.pushNotificationsEnabled,
-            onCheckedChange = {
-                onPreferencesChange(preferences.copy(pushNotificationsEnabled = it))
+            Spacer(modifier = Modifier.width(16.dp))
+
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = title,
+                    color = Color.White,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = subtitle,
+                    color = Color.Gray,
+                    fontSize = 14.sp
+                )
             }
-        )
 
-        if (preferences.pushNotificationsEnabled) {
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Individual toggles
-            Text(
-                text = "Notification Types",
-                color = Color.Gray,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(bottom = 8.dp)
-            )
-
-            PreferenceToggle(
-                title = "New Photos",
-                subtitle = "Friends post new photos",
-                icon = Icons.Default.Photo,
-                checked = preferences.pushNewPhotos,
-                onCheckedChange = {
-                    onPreferencesChange(preferences.copy(pushNewPhotos = it))
-                }
-            )
-
-            PreferenceToggle(
-                title = "Likes",
-                subtitle = "Someone likes your photo",
-                icon = Icons.Default.Favorite,
-                checked = preferences.pushLikes,
-                onCheckedChange = {
-                    onPreferencesChange(preferences.copy(pushLikes = it))
-                }
-            )
-
-            PreferenceToggle(
-                title = "Reactions",
-                subtitle = "Someone reacts to your photo",
-                icon = Icons.Default.Mood,
-                checked = preferences.pushReactions,
-                onCheckedChange = {
-                    onPreferencesChange(preferences.copy(pushReactions = it))
-                }
-            )
-
-            PreferenceToggle(
-                title = "Comments",
-                subtitle = "Someone comments on your photo",
-                icon = Icons.Default.Comment,
-                checked = preferences.pushComments,
-                onCheckedChange = {
-                    onPreferencesChange(preferences.copy(pushComments = it))
-                }
-            )
-
-            PreferenceToggle(
-                title = "New Followers",
-                subtitle = "Someone follows you",
-                icon = Icons.Default.PersonAdd,
-                checked = preferences.pushFollows,
-                onCheckedChange = {
-                    onPreferencesChange(preferences.copy(pushFollows = it))
-                }
-            )
-
-            PreferenceToggle(
-                title = "Messages",
-                subtitle = "New chat messages",
-                icon = Icons.Default.Message,
-                checked = preferences.pushMessages,
-                onCheckedChange = {
-                    onPreferencesChange(preferences.copy(pushMessages = it))
-                }
-            )
-
-            PreferenceToggle(
-                title = "Mentions",
-                subtitle = "Someone mentions you",
-                icon = Icons.Default.AlternateEmail,
-                checked = preferences.pushMentions,
-                onCheckedChange = {
-                    onPreferencesChange(preferences.copy(pushMentions = it))
-                }
-            )
-
-            PreferenceToggle(
-                title = "Streak Reminders",
-                subtitle = "Daily upload reminders",
-                icon = Icons.Default.LocalFireDepartment,
-                checked = preferences.pushStreakReminders,
-                onCheckedChange = {
-                    onPreferencesChange(preferences.copy(pushStreakReminders = it))
-                }
-            )
-
-            PreferenceToggle(
-                title = "Achievements",
-                subtitle = "Earn new achievements",
-                icon = Icons.Default.EmojiEvents,
-                checked = preferences.pushAchievements,
-                onCheckedChange = {
-                    onPreferencesChange(preferences.copy(pushAchievements = it))
-                }
-            )
-
-            PreferenceToggle(
-                title = "System Announcements",
-                subtitle = "Important updates from PicFlick",
-                icon = Icons.Default.Info,
-                checked = preferences.pushSystemAnnouncements,
-                onCheckedChange = {
-                    onPreferencesChange(preferences.copy(pushSystemAnnouncements = it))
-                }
+            Switch(
+                checked = checked,
+                onCheckedChange = onCheckedChange,
+                colors = SwitchDefaults.colors(
+                    checkedThumbColor = Color(0xFFD7ECFF),
+                    checkedTrackColor = Color(0xFFD7ECFF).copy(alpha = 0.5f)
+                )
             )
         }
     }
 }
 
 @Composable
-private fun InAppNotificationsSection(
-    preferences: NotificationPreferences,
-    onPreferencesChange: (NotificationPreferences) -> Unit
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(16.dp)
-    ) {
-        // Header with icon
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.padding(bottom = 16.dp)
-        ) {
-            Icon(
-                imageVector = Icons.Default.Notifications,
-                contentDescription = null,
-                tint = Color(0xFFD7ECFF),
-                modifier = Modifier.size(24.dp)
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(
-                text = "IN-APP NOTIFICATIONS",
-                color = Color(0xFFD7ECFF),
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Bold
-            )
-        }
-
-        // Master Toggle
-        PreferenceToggle(
-            title = "Enable In-App Notifications",
-            subtitle = "Show notifications in the notification bell",
-            icon = Icons.Default.NotificationImportant,
-            checked = preferences.inAppNotificationsEnabled,
-            onCheckedChange = {
-                onPreferencesChange(preferences.copy(inAppNotificationsEnabled = it))
-            }
-        )
-
-        if (preferences.inAppNotificationsEnabled) {
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Individual toggles
-            Text(
-                text = "Notification Types",
-                color = Color.Gray,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(bottom = 8.dp)
-            )
-
-            PreferenceToggle(
-                title = "New Photos",
-                subtitle = "Friends post new photos",
-                icon = Icons.Default.Photo,
-                checked = preferences.inAppNewPhotos,
-                onCheckedChange = {
-                    onPreferencesChange(preferences.copy(inAppNewPhotos = it))
-                }
-            )
-
-            PreferenceToggle(
-                title = "Likes",
-                subtitle = "Someone likes your photo",
-                icon = Icons.Default.Favorite,
-                checked = preferences.inAppLikes,
-                onCheckedChange = {
-                    onPreferencesChange(preferences.copy(inAppLikes = it))
-                }
-            )
-
-            PreferenceToggle(
-                title = "Reactions",
-                subtitle = "Someone reacts to your photo",
-                icon = Icons.Default.Mood,
-                checked = preferences.inAppReactions,
-                onCheckedChange = {
-                    onPreferencesChange(preferences.copy(inAppReactions = it))
-                }
-            )
-
-            PreferenceToggle(
-                title = "Comments",
-                subtitle = "Someone comments on your photo",
-                icon = Icons.Default.Comment,
-                checked = preferences.inAppComments,
-                onCheckedChange = {
-                    onPreferencesChange(preferences.copy(inAppComments = it))
-                }
-            )
-
-            PreferenceToggle(
-                title = "New Followers",
-                subtitle = "Someone follows you",
-                icon = Icons.Default.PersonAdd,
-                checked = preferences.inAppFollows,
-                onCheckedChange = {
-                    onPreferencesChange(preferences.copy(inAppFollows = it))
-                }
-            )
-
-            PreferenceToggle(
-                title = "Messages",
-                subtitle = "New chat messages",
-                icon = Icons.Default.Message,
-                checked = preferences.inAppMessages,
-                onCheckedChange = {
-                    onPreferencesChange(preferences.copy(inAppMessages = it))
-                }
-            )
-
-            PreferenceToggle(
-                title = "Mentions",
-                subtitle = "Someone mentions you",
-                icon = Icons.Default.AlternateEmail,
-                checked = preferences.inAppMentions,
-                onCheckedChange = {
-                    onPreferencesChange(preferences.copy(inAppMentions = it))
-                }
-            )
-
-            PreferenceToggle(
-                title = "Streak Reminders",
-                subtitle = "Daily upload reminders",
-                icon = Icons.Default.LocalFireDepartment,
-                checked = preferences.inAppStreakReminders,
-                onCheckedChange = {
-                    onPreferencesChange(preferences.copy(inAppStreakReminders = it))
-                }
-            )
-
-            PreferenceToggle(
-                title = "Achievements",
-                subtitle = "Earn new achievements",
-                icon = Icons.Default.EmojiEvents,
-                checked = preferences.inAppAchievements,
-                onCheckedChange = {
-                    onPreferencesChange(preferences.copy(inAppAchievements = it))
-                }
-            )
-
-            PreferenceToggle(
-                title = "System Announcements",
-                subtitle = "Important updates from PicFlick",
-                icon = Icons.Default.Info,
-                checked = preferences.inAppSystemAnnouncements,
-                onCheckedChange = {
-                    onPreferencesChange(preferences.copy(inAppSystemAnnouncements = it))
-                }
-            )
-        }
-    }
-}
-
-@Composable
-private fun PreferenceToggle(
+private fun NotificationToggle(
     title: String,
     subtitle: String,
     icon: androidx.compose.ui.graphics.vector.ImageVector,
@@ -422,7 +287,6 @@ private fun PreferenceToggle(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 4.dp)
             .clickable { onCheckedChange(!checked) },
         colors = CardDefaults.cardColors(
             containerColor = Color(0xFF1C1C1E)
@@ -435,13 +299,12 @@ private fun PreferenceToggle(
                 .padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Icon
             Box(
                 modifier = Modifier
                     .size(40.dp)
                     .background(
-                        Color(0xFF2C2C2E),
-                        RoundedCornerShape(8.dp)
+                        if (checked) Color(0xFFD7ECFF).copy(alpha = 0.2f) else Color(0xFF2C2C2E),
+                        RoundedCornerShape(10.dp)
                     ),
                 contentAlignment = Alignment.Center
             ) {
@@ -455,7 +318,6 @@ private fun PreferenceToggle(
 
             Spacer(modifier = Modifier.width(12.dp))
 
-            // Text
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = title,
@@ -470,7 +332,6 @@ private fun PreferenceToggle(
                 )
             }
 
-            // Toggle
             Switch(
                 checked = checked,
                 onCheckedChange = onCheckedChange,
@@ -482,5 +343,288 @@ private fun PreferenceToggle(
                 )
             )
         }
+    }
+}
+
+@Composable
+private fun QuietHoursSection(
+    preferences: NotificationPreferences,
+    onPreferencesChange: (NotificationPreferences) -> Unit
+) {
+    Column {
+        Text(
+            text = "QUIET HOURS",
+            color = Color.Gray,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(bottom = 8.dp)
+        )
+
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = Color(0xFF1C1C1E)),
+            shape = RoundedCornerShape(12.dp)
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Row(
+                    modifier = Modifier.clickable {
+                        onPreferencesChange(preferences.copy(quietHoursEnabled = !preferences.quietHoursEnabled))
+                    },
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        Icons.Default.DoNotDisturb,
+                        null,
+                        tint = if (preferences.quietHoursEnabled) Color(0xFFFF6B6B) else Color.Gray,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("Do Not Disturb", color = Color.White, fontWeight = FontWeight.Medium)
+                        Text("Silence push notifications", color = Color.Gray, fontSize = 13.sp)
+                    }
+                    Switch(
+                        checked = preferences.quietHoursEnabled,
+                        onCheckedChange = {
+                            onPreferencesChange(preferences.copy(quietHoursEnabled = it))
+                        },
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = Color(0xFFFF6B6B),
+                            checkedTrackColor = Color(0xFFFF6B6B).copy(alpha = 0.5f)
+                        )
+                    )
+                }
+
+                if (preferences.quietHoursEnabled) {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceEvenly,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text("From", color = Color.Gray, fontSize = 12.sp)
+                            Text(
+                                formatHour(preferences.quietHoursStart),
+                                color = Color.White,
+                                fontSize = 20.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                        Icon(Icons.Default.ArrowForward, null, tint = Color.Gray)
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text("To", color = Color.Gray, fontSize = 12.sp)
+                            Text(
+                                formatHour(preferences.quietHoursEnd),
+                                color = Color.White,
+                                fontSize = 20.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        QuietPresetButton("Night (10PM-8AM)", preferences.quietHoursStart == 22) {
+                            onPreferencesChange(preferences.copy(quietHoursStart = 22, quietHoursEnd = 8))
+                        }
+                        QuietPresetButton("Work (9AM-5PM)", preferences.quietHoursStart == 9) {
+                            onPreferencesChange(preferences.copy(quietHoursStart = 9, quietHoursEnd = 17))
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+private fun formatHour(hour: Int): String = when {
+    hour == 0 -> "12 AM"
+    hour < 12 -> "$hour AM"
+    hour == 12 -> "12 PM"
+    else -> "${hour - 12} PM"
+}
+
+@Composable
+private fun QuietPresetButton(label: String, isSelected: Boolean, onClick: () -> Unit) {
+    Button(
+        onClick = onClick,
+        colors = ButtonDefaults.buttonColors(
+            containerColor = if (isSelected) Color(0xFFD7ECFF) else Color(0xFF2C2C2E)
+        ),
+        shape = RoundedCornerShape(8.dp),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Text(
+            label,
+            color = if (isSelected) Color.Black else Color.White,
+            fontSize = 12.sp
+        )
+    }
+}
+
+@Composable
+private fun DisplaySettingsSection(
+    preferences: NotificationPreferences,
+    onPreferencesChange: (NotificationPreferences) -> Unit
+) {
+    Column {
+        Text(
+            text = "DISPLAY & SOUND",
+            color = Color.Gray,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(bottom = 8.dp)
+        )
+
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = Color(0xFF1C1C1E)),
+            shape = RoundedCornerShape(12.dp)
+        ) {
+            Column(modifier = Modifier.padding(12.dp)) {
+                DisplayToggle(
+                    "Show Previews",
+                    "Display content in notifications",
+                    Icons.Default.Visibility,
+                    preferences.showNotificationPreviews
+                ) {
+                    onPreferencesChange(preferences.copy(showNotificationPreviews = it))
+                }
+                DisplayToggle(
+                    "Sound",
+                    "Play sound for notifications",
+                    Icons.Default.VolumeUp,
+                    preferences.notificationSoundEnabled
+                ) {
+                    onPreferencesChange(preferences.copy(notificationSoundEnabled = it))
+                }
+                DisplayToggle(
+                    "Vibration",
+                    "Vibrate for notifications",
+                    Icons.Default.Vibration,
+                    preferences.notificationVibrationEnabled
+                ) {
+                    onPreferencesChange(preferences.copy(notificationVibrationEnabled = it))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun DisplayToggle(
+    title: String,
+    subtitle: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onCheckedChange(!checked) }
+            .padding(vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(icon, null, tint = if (checked) Color(0xFFD7ECFF) else Color.Gray, modifier = Modifier.size(20.dp))
+        Spacer(modifier = Modifier.width(12.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(title, color = Color.White, fontWeight = FontWeight.Medium)
+            Text(subtitle, color = Color.Gray, fontSize = 13.sp)
+        }
+        Switch(
+            checked = checked,
+            onCheckedChange = onCheckedChange,
+            colors = SwitchDefaults.colors(
+                checkedThumbColor = Color(0xFFD7ECFF),
+                checkedTrackColor = Color(0xFFD7ECFF).copy(alpha = 0.5f)
+            )
+        )
+    }
+}
+
+@Composable
+private fun EmailSection(
+    preferences: NotificationPreferences,
+    onPreferencesChange: (NotificationPreferences) -> Unit
+) {
+    Column {
+        Text(
+            text = "EMAIL NOTIFICATIONS",
+            color = Color.Gray,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(bottom = 8.dp)
+        )
+
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = Color(0xFF1C1C1E)),
+            shape = RoundedCornerShape(12.dp)
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Row(
+                    modifier = Modifier.clickable {
+                        onPreferencesChange(preferences.copy(emailNotificationsEnabled = !preferences.emailNotificationsEnabled))
+                    },
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(Icons.Default.Email, null, tint = if (preferences.emailNotificationsEnabled) Color(0xFFD7ECFF) else Color.Gray)
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("Enable Email Notifications", color = Color.White, fontWeight = FontWeight.Medium)
+                        Text("Important updates via email", color = Color.Gray, fontSize = 13.sp)
+                    }
+                    Switch(
+                        checked = preferences.emailNotificationsEnabled,
+                        onCheckedChange = {
+                            onPreferencesChange(preferences.copy(emailNotificationsEnabled = it))
+                        },
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = Color(0xFFD7ECFF),
+                            checkedTrackColor = Color(0xFFD7ECFF).copy(alpha = 0.5f)
+                        )
+                    )
+                }
+
+                if (preferences.emailNotificationsEnabled) {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    EmailToggle("Security Alerts", "Login from new devices", preferences.emailForSecurityAlerts) {
+                        onPreferencesChange(preferences.copy(emailForSecurityAlerts = it))
+                    }
+                    EmailToggle("Account Changes", "Profile updates", preferences.emailForAccountChanges) {
+                        onPreferencesChange(preferences.copy(emailForAccountChanges = it))
+                    }
+                    EmailToggle("Weekly Digest", "Summary of your activity", preferences.emailWeeklyDigest) {
+                        onPreferencesChange(preferences.copy(emailWeeklyDigest = it))
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun EmailToggle(title: String, subtitle: String, checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onCheckedChange(!checked) }
+            .padding(vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(title, color = Color.White, fontWeight = FontWeight.Medium)
+            Text(subtitle, color = Color.Gray, fontSize = 13.sp)
+        }
+        Switch(
+            checked = checked,
+            onCheckedChange = onCheckedChange,
+            colors = SwitchDefaults.colors(
+                checkedThumbColor = Color(0xFFD7ECFF),
+                checkedTrackColor = Color(0xFFD7ECFF).copy(alpha = 0.5f)
+            )
+        )
     }
 }
