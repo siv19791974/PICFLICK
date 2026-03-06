@@ -84,7 +84,7 @@ fun ExploreScreen(
             contentColor = Color.White,
             indicator = { tabPositions ->
                 if (selectedTab.ordinal < tabPositions.size) {
-                    TabRowDefaults.Indicator(
+                    TabRowDefaults.SecondaryIndicator(
                         modifier = Modifier.tabIndicatorOffset(tabPositions[selectedTab.ordinal]),
                         color = Color(0xFFD7ECFF)
                     )
