@@ -17,6 +17,8 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.AccountCircle
+import androidx.compose.material.icons.filled.Cloud
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -27,8 +29,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.graphics.Brush
 import coil3.compose.AsyncImage
 import com.example.picflick.data.UserProfile
+import com.example.picflick.data.SubscriptionTier
+import com.example.picflick.data.getColor
+import com.example.picflick.data.getDisplayName
+import com.example.picflick.data.getStorageLimitGB
+import com.example.picflick.data.TierColors
 
 /**
  * Settings screen with user preferences and account options
@@ -40,6 +48,8 @@ fun SettingsScreen(
     onBack: () -> Unit,
     onSignOut: () -> Unit,
     onEditProfile: () -> Unit = {},
+    onManageStorage: () -> Unit = {},
+    onSubscriptionStatus: () -> Unit = {},
     onPrivacySettings: () -> Unit = {},
     onNotificationsSettings: () -> Unit = {},
     onHelpSupport: () -> Unit = {},
@@ -85,8 +95,12 @@ fun SettingsScreen(
                 .padding(padding)
                 .verticalScroll(rememberScrollState())
         ) {
-            // Profile Section Header
-            ProfileHeaderSection(userProfile, onEditProfile)
+            // Profile Section with Storage Meter and Tier Ring
+            ProfileHeaderWithStorage(
+                userProfile = userProfile,
+                onManageStorage = onManageStorage,
+                onSubscriptionStatus = onSubscriptionStatus
+            )
 
             HorizontalDivider(color = Color(0xFF2C2C2E), thickness = 0.5.dp)
 
@@ -97,6 +111,22 @@ fun SettingsScreen(
                     title = "Edit Profile",
                     subtitle = "Change name, bio, photo",
                     onClick = onEditProfile
+                )
+                SettingsItem(
+                    icon = Icons.Default.Cloud,
+                    title = "Manage Storage",
+                    subtitle = getStorageSubtitle(userProfile),
+                    onClick = onManageStorage,
+                    iconBackgroundColor = Color(0xFFE3F2FD),
+                    iconColor = Color(0xFF1565C0)
+                )
+                SettingsItem(
+                    icon = Icons.Default.AccountCircle,
+                    title = "Subscription",
+                    subtitle = getSubscriptionSubtitle(userProfile),
+                    onClick = onSubscriptionStatus,
+                    iconBackgroundColor = userProfile.subscriptionTier.getColor().copy(alpha = 0.2f),
+                    iconColor = userProfile.subscriptionTier.getColor()
                 )
                 SettingsItem(
                     icon = Icons.Default.Lock,
@@ -333,66 +363,340 @@ fun SettingsScreen(
 }
 
 @Composable
-private fun ProfileHeaderSection(
+private fun ProfileHeaderWithStorage(
     userProfile: UserProfile,
-    onEditProfile: () -> Unit
+    onManageStorage: () -> Unit,
+    onSubscriptionStatus: () -> Unit
+) {
+    val tier = userProfile.subscriptionTier
+    val tierColor = tier.getColor()
+    val storageUsed = userProfile.storageUsedBytes
+    val storageLimit = tier.getStorageLimitBytes()
+    val storagePercent = if (storageLimit > 0) {
+        (storageUsed * 100 / storageLimit).toInt()
+    } else 0
+    
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(16.dp)
+    ) {
+        // Top row: Profile Photo with Tier Ring + Name/Storage
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Profile Photo with Tier Color Ring
+            Box(
+                modifier = Modifier
+                    .size(76.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                // Outer ring with tier color
+                Box(
+                    modifier = Modifier
+                        .size(76.dp)
+                        .clip(CircleShape)
+                        .background(
+                            brush = Brush.sweepGradient(
+                                colors = listOf(
+                                    tierColor,
+                                    tier.getDarkColor(),
+                                    tier.getLightColor(),
+                                    tierColor
+                                )
+                            )
+                        )
+                        .padding(3.dp) // Ring thickness
+                ) {
+                    // Inner profile photo
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .clip(CircleShape)
+                            .background(Color(0xFF2C2C2E)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (userProfile.photoUrl.isNotEmpty()) {
+                            AsyncImage(
+                                model = userProfile.photoUrl,
+                                contentDescription = "Profile",
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = androidx.compose.ui.layout.ContentScale.Crop
+                            )
+                        } else {
+                            Text(
+                                text = userProfile.displayName.firstOrNull()?.uppercase() ?: "?",
+                                color = Color.White,
+                                fontSize = 24.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                }
+                
+                // Founder badge overlay
+                if (userProfile.isFounder) {
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.BottomEnd)
+                            .size(20.dp)
+                            .clip(CircleShape)
+                            .background(Color(0xFF6200EA))
+                            .padding(2.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "★",
+                            color = Color.White,
+                            fontSize = 10.sp
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.width(16.dp))
+
+            // Name, Email, and Tier Badge
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = userProfile.displayName,
+                    color = Color.White,
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = userProfile.email,
+                    color = Color.Gray,
+                    fontSize = 14.sp
+                )
+                
+                Spacer(modifier = Modifier.height(4.dp))
+                
+                // Tier Badge Row
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    // Tier Color Dot
+                    Box(
+                        modifier = Modifier
+                            .size(8.dp)
+                            .clip(CircleShape)
+                            .background(tierColor)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    // Tier Name
+                    Text(
+                        text = tier.getDisplayName().uppercase(),
+                        color = tierColor,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    if (userProfile.isFounder) {
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "• FOUNDER",
+                            color = Color(0xFF6200EA),
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+            }
+        }
+        
+        Spacer(modifier = Modifier.height(16.dp))
+        
+        // Storage Progress Bar
+        if (tier != SubscriptionTier.FREE || storageUsed > 0) {
+            StorageProgressBar(
+                usedBytes = storageUsed,
+                totalBytes = storageLimit,
+                percent = storagePercent,
+                tierColor = tierColor,
+                onClick = onManageStorage
+            )
+            
+            Spacer(modifier = Modifier.height(12.dp))
+        }
+        
+        // Quick Actions Row
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceEvenly
+        ) {
+            // Manage Storage Button
+            QuickActionButton(
+                text = "Manage Storage",
+                onClick = onManageStorage,
+                color = Color(0xFF1565C0)
+            )
+            
+            // Subscription Button
+            QuickActionButton(
+                text = "Subscription",
+                onClick = onSubscriptionStatus,
+                color = tierColor
+            )
+        }
+    }
+}
+
+@Composable
+private fun StorageProgressBar(
+    usedBytes: Long,
+    totalBytes: Long,
+    percent: Int,
+    tierColor: Color,
+    onClick: () -> Unit
+) {
+    val usedGB = usedBytes / (1024.0 * 1024.0 * 1024.0)
+    val totalGB = totalBytes / (1024.0 * 1024.0 * 1024.0)
+    
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+    ) {
+        // Storage Text
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(
+                text = "Storage Used",
+                color = Color.Gray,
+                fontSize = 13.sp
+            )
+            Text(
+                text = String.format("%.1f GB / %.0f GB", usedGB, totalGB),
+                color = Color.White,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Medium
+            )
+        }
+        
+        Spacer(modifier = Modifier.height(6.dp))
+        
+        // Progress Bar Background
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(8.dp)
+                .clip(RoundedCornerShape(4.dp))
+                .background(Color(0xFF2C2C2E))
+        ) {
+            // Progress Fill
+            Box(
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .fillMaxWidth(percent / 100f)
+                    .clip(RoundedCornerShape(4.dp))
+                    .background(
+                        brush = Brush.horizontalGradient(
+                            colors = listOf(
+                                tierColor.copy(alpha = 0.7f),
+                                tierColor
+                            )
+                        )
+                    )
+            )
+        }
+        
+        // Percentage Text
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(
+                text = "$percent% full",
+                color = if (percent > 90) Color.Red else Color.Gray,
+                fontSize = 12.sp
+            )
+            if (percent > 80) {
+                Text(
+                    text = "Upgrade for more",
+                    color = Color(0xFF00D09C),
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Medium
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun QuickActionButton(
+    text: String,
+    onClick: () -> Unit,
+    color: Color
+) {
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(8.dp))
+            .background(color.copy(alpha = 0.15f))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 10.dp)
+    ) {
+        Text(
+            text = text,
+            color = color,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.Medium
+        )
+    }
+}
+
+@Composable
+private fun SettingsItem(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    title: String,
+    subtitle: String? = null,
+    onClick: () -> Unit,
+    showArrow: Boolean = true,
+    titleColor: Color = Color.White,
+    iconBackgroundColor: Color = Color(0xFF2C2C2E),
+    iconColor: Color = if (titleColor == Color.Red) Color.Red else Color.White
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(16.dp)
-            .clickable(onClick = onEditProfile),
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Profile Photo
+        // Icon with custom background
         Box(
             modifier = Modifier
-                .size(72.dp)
-                .clip(CircleShape)
-                .background(Color(0xFF2C2C2E)),
+                .size(32.dp)
+                .clip(RoundedCornerShape(8.dp))
+                .background(iconBackgroundColor),
             contentAlignment = Alignment.Center
         ) {
-            if (userProfile.photoUrl.isNotEmpty()) {
-                AsyncImage(
-                    model = userProfile.photoUrl,
-                    contentDescription = "Profile",
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = androidx.compose.ui.layout.ContentScale.Crop
-                )
-            } else {
-                Text(
-                    text = userProfile.displayName.firstOrNull()?.uppercase() ?: "?",
-                    color = Color.White,
-                    fontSize = 28.sp,
-                    fontWeight = FontWeight.Bold
-                )
-            }
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = iconColor,
+                modifier = Modifier.size(18.dp)
+            )
         }
 
         Spacer(modifier = Modifier.width(16.dp))
 
-        // Name & Email
+        // Text
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = userProfile.displayName,
-                color = Color.White,
-                fontSize = 20.sp,
-                fontWeight = FontWeight.Bold
+                text = title,
+                color = titleColor,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Medium
             )
-            Text(
-                text = userProfile.email,
-                color = Color.Gray,
-                fontSize = 14.sp
-            )
+            if (subtitle != null) {
+                Text(
+                    text = subtitle,
+                    color = Color.Gray,
+                    fontSize = 13.sp
+                )
+            }
         }
-
-        // Edit Icon
-        Icon(
-            imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-            contentDescription = "Edit",
-            tint = Color.Gray,
-            modifier = Modifier.size(24.dp)
-        )
     }
 }
 
