@@ -130,7 +130,7 @@ fun ChatsScreen(
                                 onProfilePhotoClick = { onUserProfileClick(otherUserId) }
                             )
 
-                            Divider(
+                            HorizontalDivider(
                                 modifier = Modifier.padding(start = 80.dp),
                                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f),
                                 thickness = 0.5.dp
