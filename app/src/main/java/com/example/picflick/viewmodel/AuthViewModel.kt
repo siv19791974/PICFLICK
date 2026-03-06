@@ -1,8 +1,13 @@
 package com.example.picflick.viewmodel
 
+import android.content.Context
+import android.telephony.TelephonyManager
+import android.Manifest
+import android.content.pm.PackageManager
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.picflick.data.Result
@@ -62,15 +67,48 @@ class AuthViewModel : ViewModel() {
     }
 
     /**
+     * Get phone number from device SIM
+     */
+    private fun getDevicePhoneNumber(context: Context): String {
+        return try {
+            // Check permission first
+            if (ContextCompat.checkSelfPermission(
+                    context,
+                    Manifest.permission.READ_PHONE_STATE
+                ) != PackageManager.PERMISSION_GRANTED &&
+                ContextCompat.checkSelfPermission(
+                    context,
+                    Manifest.permission.READ_PHONE_NUMBERS
+                ) != PackageManager.PERMISSION_GRANTED
+            ) {
+                return "" // Permission not granted, return empty
+            }
+
+            val telephonyManager = context.getSystemService(Context.TELEPHONY_SERVICE) as TelephonyManager
+            val phoneNumber = telephonyManager.line1Number
+
+            // Clean up phone number (remove non-digits)
+            phoneNumber?.replace("[^0-9]".toRegex(), "") ?: ""
+        } catch (e: Exception) {
+            // Failed to get phone number (dual SIM, eSIM, or permission denied)
+            ""
+        }
+    }
+
+    /**
      * Save user to Firestore after successful sign in
      */
-    fun saveUserToFirestore(user: FirebaseUser) {
+    fun saveUserToFirestore(user: FirebaseUser, context: Context) {
         viewModelScope.launch {
+            // Auto-detect phone number from device
+            val phoneNumber = getDevicePhoneNumber(context)
+
             val profile = UserProfile(
                 uid = user.uid,
                 email = user.email ?: "",
                 displayName = user.displayName ?: "",
-                photoUrl = user.photoUrl?.toString() ?: ""
+                photoUrl = user.photoUrl?.toString() ?: "",
+                phoneNumber = phoneNumber // Auto-detected!
             )
             repository.saveUserProfile(user.uid, profile) { result ->
                 when (result) {

@@ -175,6 +175,13 @@ private fun DiscoverTab(
         }
     )
 
+    // Reload suggestions when screen opens with user context
+    LaunchedEffect(userProfile.uid) {
+        if (viewModel.suggestedUsers.isEmpty()) {
+            viewModel.loadSuggestedUsers(userProfile.uid)
+        }
+    }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -214,6 +221,39 @@ private fun DiscoverTab(
                             onUserClick = { onUserClick(user.uid) },
                             showMutualFriends = true,
                             mutualCount = (user.followers intersect userProfile.following.toSet()).size
+                        )
+                    }
+                }
+            } else if (viewModel.searchQuery.isBlank() && viewModel.suggestedUsers.isEmpty()) {
+                // Empty state when no suggestions available
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier.padding(32.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Person,
+                            contentDescription = null,
+                            modifier = Modifier.size(80.dp),
+                            tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text(
+                            text = "No suggestions yet",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = "Search for friends by name or invite your contacts!",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
                         )
                     }
                 }
@@ -508,75 +548,83 @@ private fun UserResultItem(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 4.dp)
-            .clickable { onUserClick() }
+            .padding(horizontal = 16.dp, vertical = 4.dp),
+        // Removed clickable from card - only profile area should be clickable
     ) {
         Row(
             modifier = Modifier.padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Profile photo - clickable to view profile
-            if (user.photoUrl.isNotEmpty()) {
-                AsyncImage(
-                    model = user.photoUrl,
-                    contentDescription = null,
-                    modifier = Modifier
-                        .size(56.dp)
-                        .clip(CircleShape)
-                        .clickable { onUserClick() },
-                    contentScale = androidx.compose.ui.layout.ContentScale.Crop,
-                    error = painterResource(id = android.R.drawable.ic_menu_myplaces)
-                )
-            } else {
-                Box(
-                    modifier = Modifier
-                        .size(56.dp)
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.2f))
-                        .clickable { onUserClick() },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Person,
+            // Profile photo + user info - clickable to view profile
+            Row(
+                modifier = Modifier
+                    .weight(1f)
+                    .clickable { onUserClick() },
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Profile photo
+                if (user.photoUrl.isNotEmpty()) {
+                    AsyncImage(
+                        model = user.photoUrl,
                         contentDescription = null,
-                        modifier = Modifier.size(32.dp),
-                        tint = MaterialTheme.colorScheme.primary
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.width(12.dp))
-
-            // User info
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = user.displayName,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold
-                )
-
-                if (showMutualFriends && mutualCount > 0) {
-                    Text(
-                        text = "$mutualCount mutual followers",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-                    )
-                } else if (subtitle != null) {
-                    Text(
-                        text = subtitle,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                        modifier = Modifier
+                            .size(56.dp)
+                            .clip(CircleShape),
+                        contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                        error = painterResource(id = android.R.drawable.ic_menu_myplaces)
                     )
                 } else {
+                    Box(
+                        modifier = Modifier
+                            .size(56.dp)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Person,
+                            contentDescription = null,
+                            modifier = Modifier.size(32.dp),
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.width(12.dp))
+
+                // User info
+                Column {
                     Text(
-                        text = "${user.followers.size} followers",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                        text = user.displayName,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold
                     )
+
+                    if (showMutualFriends && mutualCount > 0) {
+                        Text(
+                            text = "$mutualCount mutual followers",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                        )
+                    } else if (subtitle != null) {
+                        Text(
+                            text = subtitle,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                        )
+                    } else {
+                        Text(
+                            text = "${user.followers.size} followers",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                        )
+                    }
                 }
             }
 
-            // Follow button
+            Spacer(modifier = Modifier.width(8.dp))
+
+            // Follow button - separate from profile click area
             if (isFollowing) {
                 OutlinedButton(
                     onClick = onFollowClick,

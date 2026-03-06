@@ -454,6 +454,15 @@ class FlickRepository private constructor() {
             batch.update(targetUserRef, "followers", FieldValue.arrayUnion(currentUserId))
 
             batch.commit().await()
+
+            // Create follow notification for target user
+            if (userName != null) {
+                createFollowNotification(
+                    followerId = currentUserId,
+                    followerName = userName,
+                    targetUserId = targetUserId
+                )
+            }
             
             Result.Success(Unit)
         } catch (e: Exception) {
@@ -950,6 +959,30 @@ class FlickRepository private constructor() {
 
                 db.collection("notifications").add(notification)
             }
+    }
+
+    /**
+     * Create notification when someone follows you
+     */
+    private fun createFollowNotification(
+        followerId: String,
+        followerName: String,
+        targetUserId: String
+    ) {
+        val notification = hashMapOf(
+            "id" to UUID.randomUUID().toString(),
+            "userId" to targetUserId,
+            "senderId" to followerId,
+            "senderName" to followerName,
+            "senderPhotoUrl" to "",
+            "type" to "FOLLOW",
+            "title" to "$followerName started following you",
+            "message" to "You have a new follower!",
+            "isRead" to false,
+            "timestamp" to System.currentTimeMillis()
+        )
+
+        db.collection("notifications").add(notification)
     }
 
     /**

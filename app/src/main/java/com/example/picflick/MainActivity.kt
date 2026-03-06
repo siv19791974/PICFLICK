@@ -242,6 +242,34 @@ fun MainScreen(
                             android.util.Log.e("FCM", "Failed to get token: ${task.exception?.message}")
                         }
                     }
+                    
+                // Also save/update phone number on app start (for existing users without phone number)
+                try {
+                    // Check permission before accessing phone number
+                    if (androidx.core.content.ContextCompat.checkSelfPermission(
+                            context,
+                            android.Manifest.permission.READ_PHONE_STATE
+                        ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+                    ) {
+                        val telephonyManager = context.getSystemService(android.content.Context.TELEPHONY_SERVICE) as android.telephony.TelephonyManager
+                        val phoneNumber = telephonyManager.line1Number?.replace("[^0-9]".toRegex(), "")
+                        
+                        if (!phoneNumber.isNullOrEmpty() && userProfile?.phoneNumber.isNullOrEmpty()) {
+                            com.google.firebase.firestore.FirebaseFirestore.getInstance()
+                                .collection("users")
+                                .document(uid)
+                                .update("phoneNumber", phoneNumber)
+                                .addOnSuccessListener {
+                                    android.util.Log.d("Phone", "Phone number saved on app start: $phoneNumber")
+                                }
+                                .addOnFailureListener { e ->
+                                    android.util.Log.e("Phone", "Failed to save phone number: ${e.message}")
+                                }
+                        }
+                    }
+                } catch (e: Exception) {
+                    android.util.Log.e("Phone", "Error getting phone number: ${e.message}")
+                }
             } catch (e: Exception) {
                 android.util.Log.e("FCM", "Error fetching token: ${e.message}")
             }
