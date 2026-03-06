@@ -73,6 +73,7 @@ import com.example.picflick.ui.theme.PicFlickBackground
 import com.example.picflick.ui.theme.PicFlickBannerBackground
 import com.example.picflick.ui.theme.PicFlickTheme
 import com.example.picflick.viewmodel.AuthViewModel
+import com.example.picflick.viewmodel.BillingViewModel
 import com.example.picflick.viewmodel.FriendsViewModel
 import com.example.picflick.viewmodel.HomeViewModel
 import com.example.picflick.viewmodel.ChatViewModel
@@ -147,6 +148,7 @@ sealed class Screen {
 @Composable
 fun MainScreen(
     authViewModel: AuthViewModel = viewModel(),
+    billingViewModel: BillingViewModel = viewModel(),
     homeViewModel: HomeViewModel = viewModel(),
     profileViewModel: ProfileViewModel = viewModel(),
     friendsViewModel: FriendsViewModel = viewModel(),
@@ -160,6 +162,11 @@ fun MainScreen(
     val context = LocalContext.current // Get context for Toast
     val scope = rememberCoroutineScope()
     val repository = com.example.picflick.repository.FlickRepository.getInstance()
+
+    // Initialize billing client
+    LaunchedEffect(Unit) {
+        billingViewModel.initialize(context)
+    }
 
     // State for profile photo upload
     var profilePhotoToUpload by remember { mutableStateOf<Uri?>(null) }
@@ -746,16 +753,33 @@ private fun AuthenticatedContent(
 
             is Screen.ManageStorage -> ManageStorageScreen(
                 userProfile = userProfile,
+                billingViewModel = billingViewModel,
                 onBack = { onScreenChange(Screen.Settings) },
-                onUpgrade = { /* TODO: Implement billing integration */ }
+                onUpgrade = { tier ->
+                    billingViewModel.getProductForTier(tier)?.let { product ->
+                        billingViewModel.purchaseSubscription(this@MainActivity, product)
+                    }
+                }
             )
 
             is Screen.SubscriptionStatus -> SubscriptionStatusScreen(
                 userProfile = userProfile,
+                billingViewModel = billingViewModel,
                 onBack = { onScreenChange(Screen.Settings) },
-                onUpgrade = { /* TODO: Implement billing integration */ },
-                onDowngrade = { /* TODO: Implement billing integration */ },
-                onManagePayment = { /* TODO: Implement payment management */ }
+                onUpgrade = { tier ->
+                    billingViewModel.getProductForTier(tier)?.let { product ->
+                        billingViewModel.purchaseSubscription(this@MainActivity, product)
+                    }
+                },
+                onDowngrade = { tier ->
+                    billingViewModel.getProductForTier(tier)?.let { product ->
+                        billingViewModel.purchaseSubscription(this@MainActivity, product)
+                    }
+                },
+                onManagePayment = {
+                    // TODO: Navigate to payment management screen
+                    Toast.makeText(context, "Payment management coming soon!", Toast.LENGTH_SHORT).show()
+                }
             )
 
             is Screen.Filter -> {

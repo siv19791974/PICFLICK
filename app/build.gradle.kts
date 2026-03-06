@@ -93,6 +93,9 @@ dependencies {
     // Activity Result Contracts
     implementation(libs.androidx.activity.ktx)
     
+    // Google Play Billing
+    implementation(libs.billing.ktx)
+    
     // Testing
     testImplementation(libs.junit)
     testImplementation(libs.mockk)

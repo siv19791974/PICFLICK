@@ -20,6 +20,7 @@ coroutinesTest = "1.8.1"
 credentials = "1.5.0"
 googleid = "1.1.1"
 accompanist = "0.36.0"
+billing = "7.1.1"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -84,6 +85,9 @@ androidx-navigation-compose = { group = "androidx.navigation", name = "navigatio
 
 # Accompanist
 accompanist-swiperefresh = { group = "com.google.accompanist", name = "accompanist-swiperefresh", version.ref = "accompanist" }
+
+# Google Play Billing
+billing-ktx = { group = "com.android.billingclient", name = "billing-ktx", version.ref = "billing" }
 
 # Unit Testing
 mockk = { group = "io.mockk", name = "mockk", version.ref = "mockk" }

@@ -19,6 +19,8 @@ import androidx.compose.material.icons.filled.Upgrade
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -42,6 +44,7 @@ import com.example.picflick.data.getQualityDescription
 import com.example.picflick.data.getStorageLimitGB
 import com.example.picflick.data.getStorageLimitBytes
 import com.example.picflick.data.getYearlyPrice
+import com.example.picflick.viewmodel.BillingViewModel
 
 /**
  * Subscription Status Screen - Financial/tier details
@@ -51,13 +54,34 @@ import com.example.picflick.data.getYearlyPrice
 @Composable
 fun SubscriptionStatusScreen(
     userProfile: UserProfile,
+    billingViewModel: BillingViewModel,
     onBack: () -> Unit,
-    onUpgrade: () -> Unit = {},
-    onDowngrade: () -> Unit = {},
+    onUpgrade: (SubscriptionTier) -> Unit = {},
+    onDowngrade: (SubscriptionTier) -> Unit = {},
     onManagePayment: () -> Unit = {}
 ) {
     val tier = userProfile.subscriptionTier
     val tierColor = tier.getColor()
+    
+    // Collect billing state
+    val products by billingViewModel.products.collectAsState()
+    val isLoading by billingViewModel.isLoading.collectAsState()
+    val billingEvent by billingViewModel.billingEvent.collectAsState()
+    
+    // Handle billing events
+    billingEvent?.let { event ->
+        when (event) {
+            is BillingViewModel.BillingEvent.PurchaseSuccess -> {
+                // Show success message
+                // Could use a Snackbar here
+            }
+            is BillingViewModel.BillingEvent.PurchaseError -> {
+                // Show error message
+            }
+            else -> {}
+        }
+        billingViewModel.clearBillingEvent()
+    }
     
     Scaffold(
         topBar = {
@@ -96,7 +120,8 @@ fun SubscriptionStatusScreen(
                 userProfile = userProfile,
                 tier = tier,
                 tierColor = tierColor,
-                onManagePayment = onManagePayment
+                onManagePayment = onManagePayment,
+                products = products
             )
             
             Spacer(modifier = Modifier.height(16.dp))
@@ -112,7 +137,10 @@ fun SubscriptionStatusScreen(
             // All Tiers Comparison
             AllTiersCard(
                 currentTier = tier,
-                onUpgrade = onUpgrade
+                billingViewModel = billingViewModel,
+                products = products,
+                onUpgrade = onUpgrade,
+                onDowngrade = onDowngrade
             )
             
             Spacer(modifier = Modifier.height(16.dp))
@@ -121,6 +149,16 @@ fun SubscriptionStatusScreen(
             if (userProfile.isFounder) {
                 FounderCard(tier = tier)
                 Spacer(modifier = Modifier.height(16.dp))
+            }
+            
+            // Loading indicator
+            if (isLoading) {
+                Box(
+                    modifier = Modifier.fillMaxWidth(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator()
+                }
             }
             
             Spacer(modifier = Modifier.height(32.dp))
@@ -133,8 +171,12 @@ private fun CurrentSubscriptionCard(
     userProfile: UserProfile,
     tier: SubscriptionTier,
     tierColor: Color,
-    onManagePayment: () -> Unit
+    onManagePayment: () -> Unit,
+    products: List<BillingViewModel.SubscriptionProduct>
 ) {
+    // Find product for current tier
+    val currentProduct = products.find { it.tier == tier }
+    
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -191,8 +233,10 @@ private fun CurrentSubscriptionCard(
                             fontWeight = FontWeight.Medium
                         )
                     } else if (tier != SubscriptionTier.FREE) {
+                        // Use actual product price if available
+                        val price = currentProduct?.price ?: "$${tier.getMonthlyPrice()}"
                         Text(
-                            text = "$${tier.getMonthlyPrice()}/month",
+                            text = "$price/month",
                             fontSize = 16.sp,
                             color = Color.Gray
                         )
@@ -231,6 +275,11 @@ private fun CurrentSubscriptionCard(
                 text = "${tier.getQualityDescription()} photo quality"
             )
             
+            BenefitRow(
+                icon = Icons.Default.Photo,
+                text = "${userProfile.totalPhotos} stored"
+            )
+            
             if (tier == SubscriptionTier.FREE) {
                 Spacer(modifier = Modifier.height(16.dp))
                 
@@ -263,7 +312,7 @@ private fun CurrentSubscriptionCard(
                             color = Color.Gray
                         )
                         Text(
-                            text = "•••• 4242 (Visa ending)",
+                            text = "Google Play Billing",
                             fontSize = 15.sp,
                             fontWeight = FontWeight.Medium,
                             color = Color(0xFF424242)
@@ -271,7 +320,7 @@ private fun CurrentSubscriptionCard(
                     }
                     
                     Text(
-                        text = "Update",
+                        text = "Manage",
                         fontSize = 14.sp,
                         color = Color(0xFF1565C0),
                         fontWeight = FontWeight.Medium
@@ -436,7 +485,10 @@ private fun UsageProgressRow(
 @Composable
 private fun AllTiersCard(
     currentTier: SubscriptionTier,
-    onUpgrade: () -> Unit
+    billingViewModel: BillingViewModel,
+    products: List<BillingViewModel.SubscriptionProduct>,
+    onUpgrade: (SubscriptionTier) -> Unit,
+    onDowngrade: (SubscriptionTier) -> Unit
 ) {
     Card(
         modifier = Modifier
@@ -461,10 +513,14 @@ private fun AllTiersCard(
             
             // List all tiers
             SubscriptionTier.values().forEach { tier ->
+                val product = products.find { it.tier == tier }
+                
                 TierComparisonRow(
                     tier = tier,
+                    product = product,
                     isCurrent = tier == currentTier,
-                    onUpgrade = if (tier > currentTier) onUpgrade else null
+                    onUpgrade = if (tier > currentTier) { -> onUpgrade(tier) } else null,
+                    onDowngrade = if (tier < currentTier) { -> onDowngrade(tier) } else null
                 )
                 
                 if (tier != SubscriptionTier.ULTRA) {
@@ -481,8 +537,10 @@ private fun AllTiersCard(
 @Composable
 private fun TierComparisonRow(
     tier: SubscriptionTier,
+    product: BillingViewModel.SubscriptionProduct?,
     isCurrent: Boolean,
-    onUpgrade: (() -> Unit)?
+    onUpgrade: (() -> Unit)?,
+    onDowngrade: (() -> Unit)?
 ) {
     val tierColor = tier.getColor()
     
@@ -537,34 +595,67 @@ private fun TierComparisonRow(
             )
         }
         
-        // Price or Upgrade Button
-        if (tier == SubscriptionTier.FREE) {
-            Text(
-                text = "Free",
-                fontSize = 15.sp,
-                color = Color.Gray
-            )
-        } else if (isCurrent) {
-            Text(
-                text = "$${tier.getMonthlyPrice()}",
-                fontSize = 15.sp,
-                fontWeight = FontWeight.Medium,
-                color = Color(0xFF424242)
-            )
-        } else if (onUpgrade != null) {
-            Box(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(6.dp))
-                    .background(tierColor.copy(alpha = 0.15f))
-                    .clickable(onClick = onUpgrade)
-                    .padding(horizontal = 12.dp, vertical = 6.dp)
-            ) {
+        // Price or Action Button
+        when {
+            tier == SubscriptionTier.FREE -> {
                 Text(
-                    text = "Upgrade",
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = tierColor
+                    text = "Free",
+                    fontSize = 15.sp,
+                    color = Color.Gray
                 )
+            }
+            isCurrent -> {
+                // Use actual product price if available
+                val price = product?.price ?: "$${tier.getMonthlyPrice()}"
+                Text(
+                    text = price,
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = Color(0xFF424242)
+                )
+            }
+            onUpgrade != null -> {
+                // Upgrade button
+                val price = product?.price ?: "$${tier.getMonthlyPrice()}"
+                Column(horizontalAlignment = Alignment.End) {
+                    Text(
+                        text = price,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = tierColor
+                    )
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(tierColor.copy(alpha = 0.15f))
+                            .clickable(onClick = onUpgrade)
+                            .padding(horizontal = 10.dp, vertical = 4.dp)
+                    ) {
+                        Text(
+                            text = "Upgrade",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = tierColor
+                        )
+                    }
+                }
+            }
+            onDowngrade != null -> {
+                // Downgrade button
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(Color(0xFFEEEEEE))
+                        .clickable(onClick = onDowngrade)
+                        .padding(horizontal = 10.dp, vertical = 4.dp)
+                ) {
+                    Text(
+                        text = "Downgrade",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = Color.Gray
+                    )
+                }
             }
         }
     }
@@ -583,7 +674,7 @@ private fun FounderCard(tier: SubscriptionTier) {
     ) {
         Row(
             modifier = Modifier.padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.Top
         ) {
             Box(
                 modifier = Modifier
