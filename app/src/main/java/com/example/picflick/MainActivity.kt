@@ -702,16 +702,60 @@ private fun AuthenticatedContent(
                 }
             }
 
-            is Screen.Explore -> ExploreScreen(
-                userProfile = userProfile,
-                viewModel = homeViewModel,
-                onPhotoClick = { flick: Flick ->
-                    // TODO: Navigate to full screen photo viewer
-                },
-                onUserClick = { userId: String ->
-                    onScreenChange(Screen.UserProfile(userId))
+            is Screen.Explore -> {
+                // State for fullscreen photo viewer
+                var selectedPhoto by remember { mutableStateOf<Flick?>(null) }
+                var selectedPhotoIndex by remember { mutableIntStateOf(0) }
+                
+                ExploreScreen(
+                    userProfile = userProfile,
+                    viewModel = homeViewModel,
+                    onPhotoClick = { flick: Flick ->
+                        selectedPhoto = flick
+                        selectedPhotoIndex = homeViewModel.exploreFlicks.indexOf(flick)
+                    },
+                    onUserClick = { userId: String ->
+                        onScreenChange(Screen.UserProfile(userId))
+                    }
+                )
+                
+                // FullScreenPhotoViewer when photo selected
+                selectedPhoto?.let { flick ->
+                    FullScreenPhotoViewer(
+                        flick = flick,
+                        currentUser = userProfile,
+                        onDismiss = { selectedPhoto = null },
+                        onReaction = { reactionType ->
+                            homeViewModel.toggleReaction(flick, userProfile.uid, userProfile.displayName, userProfile.photoUrl, reactionType)
+                        },
+                        onShareClick = {
+                            val shareIntent = Intent().apply {
+                                action = Intent.ACTION_SEND
+                                type = "text/plain"
+                                putExtra(Intent.EXTRA_TEXT, "Check out this photo on PicFlick: ${flick.imageUrl}")
+                            }
+                            context.startActivity(Intent.createChooser(shareIntent, "Share Photo"))
+                        },
+                        onDeleteClick = { /* Can't delete from Explore */ },
+                        canDelete = false,
+                        onCaptionUpdated = { /* Can't edit from Explore */ },
+                        allPhotos = homeViewModel.exploreFlicks,
+                        currentIndex = selectedPhotoIndex,
+                        onNavigateToPhoto = { index ->
+                            selectedPhotoIndex = index
+                            selectedPhoto = homeViewModel.exploreFlicks.getOrNull(index)
+                        },
+                        onUserProfileClick = { userId ->
+                            selectedPhoto = null
+                            onScreenChange(Screen.UserProfile(userId))
+                        },
+                        onNavigateToFindFriends = {
+                            selectedPhoto = null
+                            onScreenChange(Screen.FindFriends)
+                        }
+                    )
                 }
-            )
+            }
 
             is Screen.UserProfile -> {
                 // State for viewing user's photos in profile
