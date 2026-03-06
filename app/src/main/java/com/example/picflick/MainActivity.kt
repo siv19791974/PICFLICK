@@ -527,7 +527,12 @@ private fun AuthenticatedContent(
                             )
                             selectedPhotoIndex = 0
                         }
-                    }
+                    },
+                    onRefresh = {
+                        // Reload user photos and stats
+                        profileViewModel.loadUserPhotos(userProfile.uid)
+                    },
+                    isLoading = profileViewModel.isLoading
                 )
                 
                 // FullScreenPhotoViewer when photo selected

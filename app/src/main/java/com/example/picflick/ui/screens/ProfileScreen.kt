@@ -5,6 +5,10 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.material.ExperimentalMaterialApi
+import androidx.compose.material.pullrefresh.PullRefreshIndicator
+import androidx.compose.material.pullrefresh.pullRefresh
+import androidx.compose.material.pullrefresh.rememberPullRefreshState
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
@@ -39,7 +43,7 @@ import com.example.picflick.ui.theme.PicFlickBackground
 /**
  * Modern Profile screen with enhanced UI
  */
-@OptIn(ExperimentalFoundationApi::class)
+@OptIn(ExperimentalFoundationApi::class, ExperimentalMaterialApi::class)
 @Composable
 fun ProfileScreen(
     userProfile: UserProfile,
@@ -51,7 +55,9 @@ fun ProfileScreen(
     onPhotoSelected: (Uri) -> Unit = {},
     onBioUpdated: (String) -> Unit = {},
     onPhotoClick: (Flick, Int) -> Unit = { _, _ -> },
-    onProfilePhotoClick: () -> Unit = {}
+    onProfilePhotoClick: () -> Unit = {},
+    onRefresh: () -> Unit = {},
+    isLoading: Boolean = false
 ) {
     // Image picker launcher
     val imagePicker = rememberLauncherForActivityResult(
@@ -98,14 +104,25 @@ fun ProfileScreen(
         )
     }
 
-    Column(
+    // Pull-to-refresh state
+    val pullRefreshState = rememberPullRefreshState(
+        refreshing = isLoading,
+        onRefresh = onRefresh
+    )
+
+    Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.Black)
-            .verticalScroll(rememberScrollState()),
-        horizontalAlignment = Alignment.CenterHorizontally
+            .pullRefresh(pullRefreshState)
     ) {
-        // NO BANNER - banner is now in MainActivity's Scaffold topBar!
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black)
+                .verticalScroll(rememberScrollState()),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            // NO BANNER - banner is now in MainActivity's Scaffold topBar!
 
         Spacer(modifier = Modifier.height(24.dp))
 
@@ -313,7 +330,17 @@ fun ProfileScreen(
         }
 
         Spacer(modifier = Modifier.height(32.dp))
+        }
+        // End of Column
+
+        // PullRefreshIndicator
+        PullRefreshIndicator(
+            refreshing = isLoading,
+            state = pullRefreshState,
+            modifier = Modifier.align(Alignment.TopCenter)
+        )
     }
+    // End of Box (pull-refresh container)
 }
 
 // Photo sizes for dynamic grid
