@@ -49,6 +49,8 @@ fun SettingsScreen(
     var showSignOutDialog by remember { mutableStateOf(false) }
     var showDeleteAccountDialog by remember { mutableStateOf(false) }
     var showClearCacheDialog by remember { mutableStateOf(false) }
+    var showAppearanceDialog by remember { mutableStateOf(false) }
+    var isDarkMode by remember { mutableStateOf(false) }
     var cacheSize by remember { mutableStateOf("24 MB") }
 
     Scaffold(
@@ -117,8 +119,8 @@ fun SettingsScreen(
                 SettingsItem(
                     icon = Icons.Default.Menu,
                     title = "Appearance",
-                    subtitle = "Dark mode (coming soon)",
-                    onClick = { /* TODO */ },
+                    subtitle = if (isDarkMode) "Dark mode (active)" else "Light mode",
+                    onClick = { showAppearanceDialog = true },
                     showArrow = false
                 )
                 SettingsItem(
@@ -252,6 +254,75 @@ fun SettingsScreen(
             dismissButton = {
                 TextButton(onClick = { showClearCacheDialog = false }) {
                     Text("Cancel")
+                }
+            },
+            containerColor = Color(0xFF1C1C1E),
+            titleContentColor = Color.White,
+            textContentColor = Color.White
+        )
+    }
+
+    // Appearance Settings Dialog
+    if (showAppearanceDialog) {
+        AlertDialog(
+            onDismissRequest = { showAppearanceDialog = false },
+            title = { Text("Appearance") },
+            text = {
+                Column {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { 
+                                isDarkMode = false
+                                showAppearanceDialog = false
+                            }
+                            .padding(vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "☀️ Light Mode",
+                            modifier = Modifier.weight(1f),
+                            color = Color.White
+                        )
+                        if (!isDarkMode) {
+                            Text("✓", color = Color(0xFF00D09C))
+                        }
+                    }
+                    
+                    HorizontalDivider(color = Color(0xFF2C2C2E))
+                    
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { 
+                                isDarkMode = true
+                                showAppearanceDialog = false
+                            }
+                            .padding(vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "🌙 Dark Mode",
+                            modifier = Modifier.weight(1f),
+                            color = Color.White
+                        )
+                        if (isDarkMode) {
+                            Text("✓", color = Color(0xFF00D09C))
+                        }
+                    }
+                    
+                    Text(
+                        text = "Note: Full dark mode support coming in next update",
+                        fontSize = 12.sp,
+                        color = Color.Gray,
+                        modifier = Modifier.padding(top = 16.dp)
+                    )
+                }
+            },
+            confirmButton = {},
+            dismissButton = {
+                TextButton(onClick = { showAppearanceDialog = false }) {
+                    Text("Close")
                 }
             },
             containerColor = Color(0xFF1C1C1E),
