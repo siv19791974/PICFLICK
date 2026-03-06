@@ -548,6 +548,39 @@ class FlickRepository private constructor() {
     }
 
     /**
+     * Block a user - they can't see your content or interact with you
+     */
+    fun blockUser(currentUserId: String, targetUserId: String, onResult: (Result<Unit>) -> Unit) {
+        val batch = db.batch()
+
+        val currentUserRef = db.collection("users").document(currentUserId)
+        val targetUserRef = db.collection("users").document(targetUserId)
+
+        // Add to blocked users list
+        batch.update(currentUserRef, "blockedUsers", FieldValue.arrayUnion(targetUserId))
+
+        // Unfollow each other (can't follow a blocked user)
+        batch.update(currentUserRef, "following", FieldValue.arrayRemove(targetUserId))
+        batch.update(currentUserRef, "followers", FieldValue.arrayRemove(targetUserId))
+        batch.update(targetUserRef, "following", FieldValue.arrayRemove(currentUserId))
+        batch.update(targetUserRef, "followers", FieldValue.arrayRemove(currentUserId))
+
+        batch.commit()
+            .addOnSuccessListener { onResult(Result.Success(Unit)) }
+            .addOnFailureListener { e -> onResult(Result.Error(e, "Failed to block user")) }
+    }
+
+    /**
+     * Unblock a user
+     */
+    fun unblockUser(currentUserId: String, targetUserId: String, onResult: (Result<Unit>) -> Unit) {
+        db.collection("users").document(currentUserId)
+            .update("blockedUsers", FieldValue.arrayRemove(targetUserId))
+            .addOnSuccessListener { onResult(Result.Success(Unit)) }
+            .addOnFailureListener { e -> onResult(Result.Error(e, "Failed to unblock user")) }
+    }
+
+    /**
      * Get following users
      */
     fun getFollowingUsers(userId: String, onResult: (Result<List<UserProfile>>) -> Unit) {

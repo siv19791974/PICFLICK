@@ -57,6 +57,7 @@ import com.example.picflick.ui.screens.MyPhotosScreen
 import com.example.picflick.ui.screens.NotificationsScreen
 import com.example.picflick.ui.screens.ProfileScreen
 import com.example.picflick.ui.screens.SettingsScreen
+import com.example.picflick.ui.screens.PrivacyScreen
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.ui.unit.sp
 import com.example.picflick.ui.screens.SplashScreen
@@ -127,6 +128,7 @@ sealed class Screen {
     data object Filter : Screen()
     data object Settings : Screen()
     data object Explore : Screen()
+    data object Privacy : Screen()
 }
 
 /**
@@ -662,7 +664,7 @@ private fun AuthenticatedContent(
                 onBack = { onScreenChange(Screen.Home) },
                 onSignOut = onSignOut,
                 onEditProfile = { onScreenChange(Screen.Profile) },
-                onPrivacySettings = { /* TODO */ },
+                onPrivacySettings = { onScreenChange(Screen.Privacy) },
                 onNotificationsSettings = { onScreenChange(Screen.Notifications) },
                 onHelpSupport = { onScreenChange(Screen.Contact) },
                 onAbout = { onScreenChange(Screen.About) }
@@ -934,5 +936,10 @@ private fun AuthenticatedContent(
                     }
                 }
             }
+
+            is Screen.Privacy -> PrivacyScreen(
+                userProfile = userProfile,
+                onBack = { onScreenChange(Screen.Settings) }
+            )
     }
 }

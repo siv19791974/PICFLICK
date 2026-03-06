@@ -11,6 +11,7 @@ data class UserProfile(
     val bio: String = "",
     val followers: List<String> = emptyList(),
     val following: List<String> = emptyList(),
+    val blockedUsers: List<String> = emptyList(), // Users this person has blocked
     val totalLikes: Int = 0,
     val totalViews: Int = 0
 )
