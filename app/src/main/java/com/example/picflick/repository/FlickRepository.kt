@@ -890,10 +890,10 @@ class FlickRepository private constructor() {
     suspend fun createStreakReminderNotification(userId: String, userName: String, currentStreak: Int): Result<Unit> {
         return try {
             val motivationalMessages = listOf(
-                "Don't break your $currentStreak-day streak! Share a photo today ­ƒöÑ",
-                "Your $currentStreak-day streak is at risk! Post now to keep it alive ÔÜí",
-                "Keep the flame burning! $currentStreak days and counting ­ƒöÑ",
-                "One photo away from day ${currentStreak + 1}! Don't stop now ­ƒÜÇ"
+                "Don't break your $currentStreak-day streak! Share a photo today ï¿½ï¿½ï¿½ï¿½",
+                "Your $currentStreak-day streak is at risk! Post now to keep it alive ï¿½ï¿½ï¿½",
+                "Keep the flame burning! $currentStreak days and counting ï¿½ï¿½ï¿½ï¿½",
+                "One photo away from day ${currentStreak + 1}! Don't stop now ï¿½ï¿½ï¿½ï¿½"
             )
             
             val randomMessage = motivationalMessages.random()
@@ -905,7 +905,7 @@ class FlickRepository private constructor() {
                 "senderName" to "PicFlick",
                 "senderPhotoUrl" to "",
                 "type" to "STREAK_REMINDER",
-                "title" to "­ƒöÑ Streak Alert!",
+                "title" to "ï¿½ï¿½ï¿½ï¿½ Streak Alert!",
                 "message" to randomMessage,
                 "isRead" to false,
                 "timestamp" to System.currentTimeMillis(),
@@ -964,12 +964,12 @@ class FlickRepository private constructor() {
                 "senderName" to "PicFlick",
                 "senderPhotoUrl" to "",
                 "type" to "ACHIEVEMENT",
-                "title" to "­ƒÅå Achievement Unlocked!",
-                "message" to "Congratulations $userName! You earned the ­ƒô© Photographer achievement for uploading your first photo!",
+                "title" to "ï¿½ï¿½ï¿½ï¿½ Achievement Unlocked!",
+                "message" to "Congratulations $userName! You earned the ï¿½ï¿½ï¿½ï¿½ Photographer achievement for uploading your first photo!",
                 "isRead" to false,
                 "timestamp" to System.currentTimeMillis(),
                 "achievementType" to "PHOTOGRAPHER",
-                "emoji" to "­ƒô©"
+                "emoji" to "ï¿½ï¿½ï¿½ï¿½"
             )
 
             db.collection("notifications").add(notification).await()
@@ -991,12 +991,12 @@ class FlickRepository private constructor() {
                 "senderName" to "PicFlick",
                 "senderPhotoUrl" to "",
                 "type" to "ACHIEVEMENT",
-                "title" to "­ƒÅå Achievement Unlocked!",
-                "message" to "Keep it up $userName! You earned the ­ƒöÑ Active achievement for uploading $photoCount photos!",
+                "title" to "ï¿½ï¿½ï¿½ï¿½ Achievement Unlocked!",
+                "message" to "Keep it up $userName! You earned the ï¿½ï¿½ï¿½ï¿½ Active achievement for uploading $photoCount photos!",
                 "isRead" to false,
                 "timestamp" to System.currentTimeMillis(),
                 "achievementType" to "ACTIVE",
-                "emoji" to "­ƒöÑ",
+                "emoji" to "ï¿½ï¿½ï¿½ï¿½",
                 "photoCount" to photoCount
             )
 
@@ -1336,6 +1336,23 @@ class FlickRepository private constructor() {
             Result.Success(flicks.zip(reportCounts))
         } catch (e: Exception) {
             Result.Error(e, "Failed to get reported photos")
+        }
+    }
+
+    /**
+     * Save user notification preferences to Firestore
+     */
+    suspend fun saveNotificationPreferences(
+        userId: String,
+        preferences: com.example.picflick.data.NotificationPreferences
+    ): Result<Unit> {
+        return try {
+            db.collection("users").document(userId)
+                .update("notificationPreferences", preferences)
+                .await()
+            Result.Success(Unit)
+        } catch (e: Exception) {
+            Result.Error(e, "Failed to save notification preferences")
         }
     }
 }

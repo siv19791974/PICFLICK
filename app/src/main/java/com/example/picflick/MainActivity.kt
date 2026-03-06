@@ -988,8 +988,22 @@ private fun AuthenticatedContent(
                 userProfile = userProfile,
                 onBack = { onScreenChange(Screen.Settings) },
                 onSavePreferences = { newPreferences ->
-                    // TODO: Save to Firestore via repository
-                    onScreenChange(Screen.Settings)
+                    scope.launch {
+                        val result = repository.saveNotificationPreferences(
+                            userId = userProfile.uid,
+                            preferences = newPreferences
+                        )
+                        when (result) {
+                            is com.example.picflick.data.Result.Success -> {
+                                Toast.makeText(context, "Notification settings saved!", Toast.LENGTH_SHORT).show()
+                            }
+                            is com.example.picflick.data.Result.Error -> {
+                                Toast.makeText(context, "Failed to save settings", Toast.LENGTH_SHORT).show()
+                            }
+                            else -> {}
+                        }
+                        onScreenChange(Screen.Settings)
+                    }
                 }
             )
     }
