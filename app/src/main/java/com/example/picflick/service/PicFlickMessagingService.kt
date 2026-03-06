@@ -10,6 +10,8 @@ import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.example.picflick.MainActivity
 import com.example.picflick.R
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
 
@@ -26,7 +28,23 @@ class PicFlickMessagingService : FirebaseMessagingService() {
     override fun onNewToken(token: String) {
         super.onNewToken(token)
         Log.d("FCM", "New token: $token")
-        // TODO: Send token to server to register device
+        
+        // Save token to Firestore for the current user
+        val userId = FirebaseAuth.getInstance().currentUser?.uid
+        if (userId != null) {
+            FirebaseFirestore.getInstance()
+                .collection("users")
+                .document(userId)
+                .update("fcmToken", token)
+                .addOnSuccessListener {
+                    Log.d("FCM", "Token saved to Firestore successfully")
+                }
+                .addOnFailureListener { e ->
+                    Log.e("FCM", "Failed to save token: ${e.message}")
+                }
+        } else {
+            Log.w("FCM", "No user logged in, cannot save token")
+        }
     }
 
     override fun onMessageReceived(remoteMessage: RemoteMessage) {
