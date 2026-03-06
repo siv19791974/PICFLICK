@@ -301,33 +301,13 @@ fun FullScreenPhotoViewer(
                 var dragX by remember { mutableFloatStateOf(0f) }
                 var dragY by remember { mutableFloatStateOf(0f) }
                 var isDraggingVertically by remember { mutableStateOf(false) }
-                var isSettling by remember { mutableStateOf(false) }
                 var currentPageIndex by remember { mutableIntStateOf(currentIndex) }
-                
-                // Spring animation for smooth snap-back when releasing without navigation
-                val animatedDragX by animateFloatAsState(
-                    targetValue = if (isSettling) 0f else dragX,
-                    animationSpec = spring(
-                        dampingRatio = Spring.DampingRatioMediumBouncy,
-                        stiffness = Spring.StiffnessMedium
-                    ),
-                    label = "dragX"
-                )
-                val animatedDragY by animateFloatAsState(
-                    targetValue = if (isSettling) 0f else dragY,
-                    animationSpec = spring(
-                        dampingRatio = Spring.DampingRatioMediumBouncy,
-                        stiffness = Spring.StiffnessMedium
-                    ),
-                    label = "dragY"
-                )
                 
                 // Reset drag when photo changes
                 LaunchedEffect(currentPageIndex) {
                     dragX = 0f
                     dragY = 0f
                     isDraggingVertically = false
-                    isSettling = false
                 }
                 
                 Box(
@@ -337,23 +317,15 @@ fun FullScreenPhotoViewer(
                             // SWIPE detection only - pinch handled by Zoomable library
                             detectDragGestures(
                                 onDragStart = {
-                                dragX = 0f
-                                dragY = 0f
-                                isDraggingVertically = false
-                                isSettling = false
-                            },
+                                    dragX = 0f
+                                    dragY = 0f
+                                    isDraggingVertically = false
+                                },
                                 onDragEnd = {
-                                val threshold = 100f
-                                val shouldNavigate = when {
-                                    isDraggingVertically -> kotlin.math.abs(dragY) > threshold
-                                    else -> kotlin.math.abs(dragX) > threshold
-                                }
-                                
-                                if (shouldNavigate) {
                                     // Navigate based on drag direction
                                     when {
                                         // Vertical swipe
-                                        isDraggingVertically && kotlin.math.abs(dragY) > threshold -> {
+                                        isDraggingVertically && kotlin.math.abs(dragY) > 100f -> {
                                             if (dragY < 0 && currentPageIndex < validPhotos.size - 1) {
                                                 currentPageIndex++ // UP = NEXT
                                             } else if (dragY > 0 && currentPageIndex > 0) {
@@ -361,7 +333,7 @@ fun FullScreenPhotoViewer(
                                             }
                                         }
                                         // Horizontal swipe
-                                        !isDraggingVertically && kotlin.math.abs(dragX) > threshold -> {
+                                        !isDraggingVertically && kotlin.math.abs(dragX) > 100f -> {
                                             if (dragX < 0 && currentPageIndex < validPhotos.size - 1) {
                                                 currentPageIndex++ // LEFT = NEXT
                                             } else if (dragX > 0 && currentPageIndex > 0) {
@@ -371,14 +343,7 @@ fun FullScreenPhotoViewer(
                                     }
                                     dragX = 0f
                                     dragY = 0f
-                                    isSettling = false
-                                } else {
-                                    // Snap back smoothly
-                                    isSettling = true
-                                    dragX = 0f
-                                    dragY = 0f
-                                }
-                            },
+                                },
                                 onDrag = { change, amount ->
                                     val absY = kotlin.math.abs(amount.y)
                                     val absX = kotlin.math.abs(amount.x)
@@ -402,14 +367,6 @@ fun FullScreenPhotoViewer(
                     // PLUS SIGN LAYOUT - 5 positions: center + left + right + top + bottom
                     // Current at center, next at right AND bottom, prev at left AND top
                     
-                    // Calculate animation progress with easing for polish
-                    val dragProgress = kotlin.math.abs(animatedDragX) / screenWidthPx
-                    val verticalProgress = kotlin.math.abs(animatedDragY) / screenHeightPx
-                    val maxProgress = kotlin.math.max(dragProgress, verticalProgress)
-                    
-                    // Smooth easing curve for natural feel
-                    val easedProgress = androidx.compose.animation.core.FastOutSlowInEasing.transform(maxProgress)
-                    
                     // Helper to render a photo at a specific position
                     @Composable
                     fun PhotoAtPosition(
@@ -418,31 +375,15 @@ fun FullScreenPhotoViewer(
                         baseX: Float,
                         baseY: Float
                     ) {
-                        // Parallax: background photos move slower for depth
-                        val parallaxFactor = if (isCurrent) 1f else 0.7f
-                        val finalX = baseX + (animatedDragX * parallaxFactor)
-                        val finalY = baseY + (animatedDragY * parallaxFactor)
+                        val finalX = baseX + dragX
+                        val finalY = baseY + dragY
                         
-                        // Current photo: scales down and fades slightly while dragging
-                        // Background photos: subtle scale based on distance from center
-                        val distanceFromCenter = kotlin.math.sqrt(
-                            (finalX / screenWidthPx) * (finalX / screenWidthPx) +
-                            (finalY / screenHeightPx) * (finalY / screenHeightPx)
-                        )
-                        
-                        val swipeScale = if (isCurrent) {
-                            1f - (easedProgress * 0.15f).coerceIn(0f, 0.15f)
-                        } else {
-                            // Background photos scale up slightly as they approach center
-                            0.92f + ((1f - distanceFromCenter) * 0.08f).coerceIn(0f, 0.08f)
-                        }
-                        
-                        val swipeAlpha = if (isCurrent) {
-                            1f - (easedProgress * 0.3f).coerceIn(0f, 0.3f)
-                        } else {
-                            // Background photos fade in as they approach center
-                            0.7f + ((1f - distanceFromCenter) * 0.3f).coerceIn(0f, 0.3f)
-                        }
+                        // Calculate scale and fade for swipe effect
+                        val dragProgress = kotlin.math.abs(dragX) / screenWidthPx
+                        val verticalProgress = kotlin.math.abs(dragY) / screenHeightPx
+                        val maxProgress = kotlin.math.max(dragProgress, verticalProgress)
+                        val swipeScale = 1f - (maxProgress * 0.25f).coerceIn(0f, 0.25f)
+                        val swipeAlpha = 1f - (maxProgress * 0.5f).coerceIn(0f, 0.5f)
                         
                         // Zoom state for current photo only
                         val zoomState = if (isCurrent) rememberZoomState() else null
@@ -454,7 +395,7 @@ fun FullScreenPhotoViewer(
                                 .graphicsLayer {
                                     scaleX = swipeScale
                                     scaleY = swipeScale
-                                    alpha = swipeAlpha
+                                    alpha = if (isCurrent) swipeAlpha else 1f
                                 }
                                 .then(
                                     if (isCurrent && zoomState != null) {
@@ -1257,61 +1198,6 @@ fun FullScreenPhotoViewer(
     }
 }
 
-/**
- * Large animated heart for double tap like (Instagram style)
- */
-@Composable
-private fun DoubleTapHeartAnimation(
-    key: Int,
-    onAnimationEnd: () -> Unit
-) {
-    // Reset animation when key changes
-    var animationStarted by remember(key) { mutableStateOf(false) }
-    
-    // Scale animation: starts small, pops large, then fades
-    val scale by animateFloatAsState(
-        targetValue = if (animationStarted) 1.5f else 0f,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessLow
-        ),
-        label = "heart_scale"
-    )
-    
-    // Alpha animation for fade out
-    val alpha by animateFloatAsState(
-        targetValue = if (animationStarted) 0f else 1f,
-        animationSpec = tween(
-            durationMillis = 400,
-            delayMillis = 600,
-            easing = FastOutSlowInEasing
-        ),
-        finishedListener = { onAnimationEnd() },
-        label = "heart_alpha"
-    )
-    
-    LaunchedEffect(key) {
-        delay(50)
-        animationStarted = true
-    }
-    
-    // Full screen centered heart
-    Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text = "❤️",
-            fontSize = 120.sp,
-            modifier = Modifier.graphicsLayer {
-                scaleX = scale.coerceAtLeast(0f)
-                scaleY = scale.coerceAtLeast(0f)
-                this.alpha = if (animationStarted) alpha else 1f
-            }
-        )
-    }
-}
-
 // Format timestamp
 private fun formatTimestamp(timestamp: Long): String {
     if (timestamp == 0L) return ""
@@ -2080,3 +1966,4 @@ private fun saveBitmapToGallery(context: Context, bitmap: Bitmap, filename: Stri
         }
     }
 }
+// REFRESH
