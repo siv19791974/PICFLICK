@@ -6,10 +6,14 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.android.billingclient.api.*
 import com.example.picflick.data.SubscriptionTier
+import com.google.firebase.functions.FirebaseFunctions
+import com.google.firebase.functions.ktx.functions
+import com.google.firebase.ktx.Firebase
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 
 /**
  * Data class representing a subscription product
@@ -42,6 +46,7 @@ sealed class BillingEvent {
 class BillingViewModel : ViewModel() {
 
     private var billingClient: BillingClient? = null
+    private val functions: FirebaseFunctions = Firebase.functions
 
     // Product IDs for each subscription tier
     companion object {
@@ -308,8 +313,52 @@ class BillingViewModel : ViewModel() {
 
         billingClient?.acknowledgePurchase(params) { billingResult ->
             if (billingResult.responseCode == BillingClient.BillingResponseCode.OK) {
-                // Purchase acknowledged - grant entitlement
-                queryPurchases() // Refresh
+                // Purchase acknowledged - validate with server
+                validatePurchaseWithServer(purchase)
+            }
+        }
+    }
+
+    /**
+     * Validate purchase with Firebase Cloud Function
+     * This verifies the purchase with Google Play API server-side
+     */
+    private fun validatePurchaseWithServer(purchase: Purchase) {
+        viewModelScope.launch {
+            try {
+                _isLoading.value = true
+                
+                val data = hashMapOf(
+                    "purchaseToken" to purchase.purchaseToken,
+                    "productId" to purchase.products.firstOrNull(),
+                    "packageName" to "com.example.picflick"
+                )
+                
+                val result = functions
+                    .getHttpsCallable("validatePurchase")
+                    .call(data)
+                    .await()
+                
+                val resultData = result.data as? Map<String, Any>
+                
+                if (resultData?.get("success") == true) {
+                    _billingEvent.value = BillingEvent.PurchaseSuccess(purchase)
+                    // Refresh purchases to get updated tier
+                    queryPurchases()
+                } else {
+                    val errorMsg = resultData?.get("error") as? String ?: "Validation failed"
+                    _billingEvent.value = BillingEvent.PurchaseError(
+                        BillingClient.BillingResponseCode.ERROR,
+                        errorMsg
+                    )
+                }
+            } catch (e: Exception) {
+                _billingEvent.value = BillingEvent.PurchaseError(
+                    BillingClient.BillingResponseCode.ERROR,
+                    "Server validation error: ${e.message}"
+                )
+            } finally {
+                _isLoading.value = false
             }
         }
     }
