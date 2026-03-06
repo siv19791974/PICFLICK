@@ -117,6 +117,12 @@ fun FullScreenPhotoViewer(
     var editCaptionText by remember { mutableStateOf(flick.description) }
     var currentDescription by remember { mutableStateOf(flick.description) }
     
+    // Report and block menu state
+    var showMoreMenu by remember { mutableStateOf(false) }
+    var showReportDialog by remember { mutableStateOf(false) }
+    var showBlockConfirmation by remember { mutableStateOf(false) }
+    var selectedReportReason by remember { mutableStateOf("") }
+    
     // UI visibility toggle
     var uiVisible by remember { mutableStateOf(true) }
     
@@ -282,7 +288,150 @@ fun FullScreenPhotoViewer(
             }
         )
     }
-    
+
+    // REPORT PHOTO DIALOG
+    if (showReportDialog) {
+        val reportReasons = listOf(
+            "Sexual or inappropriate content",
+            "Violence or dangerous content",
+            "Harassment or bullying",
+            "Spam or scam",
+            "Hate speech",
+            "Copyright violation",
+            "Other"
+        )
+
+        AlertDialog(
+            onDismissRequest = { showReportDialog = false },
+            title = { Text("Report Photo", color = Color.White) },
+            text = {
+                Column {
+                    Text(
+                        "Why are you reporting this photo?",
+                        color = Color.Gray,
+                        modifier = Modifier.padding(bottom = 16.dp)
+                    )
+                    reportReasons.forEach { reason ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { selectedReportReason = reason }
+                                .padding(vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            RadioButton(
+                                selected = selectedReportReason == reason,
+                                onClick = { selectedReportReason = reason },
+                                colors = RadioButtonDefaults.colors(
+                                    selectedColor = Color(0xFF00D09C)
+                                )
+                            )
+                            Text(
+                                text = reason,
+                                color = Color.White,
+                                modifier = Modifier.padding(start = 8.dp)
+                            )
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        if (selectedReportReason.isNotEmpty()) {
+                            coroutineScope.launch {
+                                val result = repository.reportPhoto(
+                                    flickId = currentFlick.id,
+                                    reporterId = currentUser.uid,
+                                    reason = selectedReportReason,
+                                    details = "Reported from photo viewer"
+                                )
+                                when (result) {
+                                    is com.example.picflick.data.Result.Success -> {
+                                        showPicFlickToast("Report submitted. Thank you!")
+                                    }
+                                    is com.example.picflick.data.Result.Error -> {
+                                        showPicFlickToast("Failed to submit report")
+                                    }
+                                    else -> {}
+                                }
+                            }
+                            showReportDialog = false
+                            selectedReportReason = ""
+                        }
+                    },
+                    enabled = selectedReportReason.isNotEmpty()
+                ) {
+                    Text("Submit Report", color = if (selectedReportReason.isNotEmpty()) Color(0xFFFF6B6B) else Color.Gray)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { 
+                    showReportDialog = false
+                    selectedReportReason = ""
+                }) {
+                    Text("Cancel")
+                }
+            },
+            containerColor = Color(0xFF1C1C1E),
+            titleContentColor = Color.White,
+            textContentColor = Color.White
+        )
+    }
+
+    // BLOCK USER CONFIRMATION DIALOG
+    if (showBlockConfirmation) {
+        AlertDialog(
+            onDismissRequest = { showBlockConfirmation = false },
+            title = { Text("Block User?", color = Color.White) },
+            text = {
+                Text(
+                    "You are about to block ${currentFlick.userName}.\n\n" +
+                    "They will no longer be able to:\n" +
+                    "• See your photos\n" +
+                    "• Message you\n" +
+                    "• Find you in search\n\n" +
+                    "You can unblock them anytime from Privacy Settings.",
+                    color = Color.Gray
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        coroutineScope.launch {
+                            val result = repository.blockUser(
+                                currentUserId = currentUser.uid,
+                                targetUserId = currentFlick.userId
+                            ) { blockResult ->
+                                when (blockResult) {
+                                    is com.example.picflick.data.Result.Success -> {
+                                        showPicFlickToast("User blocked")
+                                        onDismiss() // Close the photo viewer
+                                    }
+                                    is com.example.picflick.data.Result.Error -> {
+                                        showPicFlickToast("Failed to block user")
+                                    }
+                                    else -> {}
+                                }
+                            }
+                        }
+                        showBlockConfirmation = false
+                    }
+                ) {
+                    Text("Block", color = Color.Red)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showBlockConfirmation = false }) {
+                    Text("Cancel")
+                }
+            },
+            containerColor = Color(0xFF1C1C1E),
+            titleContentColor = Color.White,
+            textContentColor = Color.White
+        )
+    }
+
     Dialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(
@@ -701,6 +850,78 @@ fun FullScreenPhotoViewer(
                                         tint = Color.White,
                                         modifier = Modifier.size(28.dp)
                                     )
+                                }
+                                
+                                // MORE MENU BUTTON - Report & Block
+                                Box(
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(44.dp)
+                                            .background(
+                                                Color.Black.copy(alpha = 0.4f),
+                                                CircleShape
+                                            )
+                                            .clickable { showMoreMenu = true },
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.MoreVert,
+                                            contentDescription = "More options",
+                                            tint = Color.White,
+                                            modifier = Modifier.size(28.dp)
+                                        )
+                                    }
+                                    
+                                    // Dropdown Menu for Report & Block
+                                    DropdownMenu(
+                                        expanded = showMoreMenu,
+                                        onDismissRequest = { showMoreMenu = false },
+                                        modifier = Modifier.background(Color(0xFF1C1C1E))
+                                    ) {
+                                        // REPORT PHOTO Option
+                                        DropdownMenuItem(
+                                            text = { 
+                                                Text(
+                                                    "Report Photo",
+                                                    color = Color(0xFFFF6B6B)
+                                                ) 
+                                            },
+                                            leadingIcon = {
+                                                Icon(
+                                                    Icons.Default.Flag,
+                                                    contentDescription = null,
+                                                    tint = Color(0xFFFF6B6B)
+                                                )
+                                            },
+                                            onClick = {
+                                                showMoreMenu = false
+                                                showReportDialog = true
+                                            }
+                                        )
+                                        
+                                        // BLOCK USER Option
+                                        DropdownMenuItem(
+                                            text = { 
+                                                Text(
+                                                    "Block User",
+                                                    color = Color.White
+                                                ) 
+                                            },
+                                            leadingIcon = {
+                                                Icon(
+                                                    Icons.Default.Block,
+                                                    contentDescription = null,
+                                                    tint = Color.White
+                                                )
+                                            },
+                                            onClick = {
+                                                showMoreMenu = false
+                                                showBlockConfirmation = true
+                                            }
+                                        )
+                                    }
                                 }
                             }
                         }

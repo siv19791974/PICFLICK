@@ -1284,4 +1284,58 @@ class FlickRepository private constructor() {
             Result.Error(e, "Failed to get leaderboard")
         }
     }
+
+    /**
+     * Report a photo for inappropriate content
+     * Reports are stored for admin review
+     */
+    suspend fun reportPhoto(
+        flickId: String,
+        reporterId: String,
+        reason: String,
+        details: String = ""
+    ): Result<Unit> {
+        return try {
+            val report = hashMapOf(
+                "flickId" to flickId,
+                "reporterId" to reporterId,
+                "reason" to reason,
+                "details" to details,
+                "timestamp" to System.currentTimeMillis(),
+                "status" to "pending" // pending, reviewed, action_taken
+            )
+
+            db.collection("reports").add(report).await()
+
+            // Also increment report count on the flick for auto-moderation
+            db.collection("flicks").document(flickId)
+                .update("reportCount", FieldValue.increment(1))
+                .await()
+
+            Result.Success(Unit)
+        } catch (e: Exception) {
+            Result.Error(e, "Failed to submit report")
+        }
+    }
+
+    /**
+     * Get reported photos (for admin use)
+     */
+    suspend fun getReportedPhotos(): Result<List<Pair<Flick, Int>>> {
+        return try {
+            // Get flicks with reportCount > 0
+            val snapshot = db.collection("flicks")
+                .whereGreaterThan("reportCount", 0)
+                .orderBy("reportCount", Query.Direction.DESCENDING)
+                .get()
+                .await()
+
+            val flicks = snapshot.toObjects(Flick::class.java)
+            val reportCounts = flicks.map { it.reportCount }
+
+            Result.Success(flicks.zip(reportCounts))
+        } catch (e: Exception) {
+            Result.Error(e, "Failed to get reported photos")
+        }
+    }
 }
