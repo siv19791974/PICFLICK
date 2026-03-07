@@ -1,4 +1,4 @@
-package com.example.picflick.data
+package com.picflick.app.data
 
 /**
  * Data class representing a photo flick/post in the PicFlick app

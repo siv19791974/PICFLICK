@@ -1,4 +1,4 @@
-package com.example.picflick.ui.theme
+package com.picflick.app.ui.theme
 
 import androidx.compose.material3.Typography
 import androidx.compose.ui.text.TextStyle

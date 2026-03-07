@@ -1,4 +1,4 @@
-package com.example.picflick.ui.theme
+package com.picflick.app.ui.theme
 
 import android.app.Activity
 import android.os.Build
