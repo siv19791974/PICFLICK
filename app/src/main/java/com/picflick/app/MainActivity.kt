@@ -163,7 +163,7 @@ fun MainScreen(
     val userProfile = authViewModel.userProfile
     val context = LocalContext.current // Get context for Toast
     val scope = rememberCoroutineScope()
-    val repository = com.app.picflick.repository.FlickRepository.getInstance()
+    val repository = com.picflick.app.repository.FlickRepository.getInstance()
     
     // Capture billingViewModel to fix scope issues in when blocks
     val billingViewModelInstance = billingViewModel
@@ -193,12 +193,12 @@ fun MainScreen(
                         val result = repository.uploadFlickImage(uid, imageBytes)
                         
                         when (result) {
-                            is com.app.picflick.data.Result.Success -> {
+                            is com.picflick.app.data.Result.Success -> {
                                 // Update profile with new photo URL
                                 authViewModel.updateProfilePhoto(result.data)
                                 Toast.makeText(context, "Profile photo updated!", Toast.LENGTH_SHORT).show()
                             }
-                            is com.app.picflick.data.Result.Error -> {
+                            is com.picflick.app.data.Result.Error -> {
                                 Toast.makeText(context, "Failed to upload: ${result.message}", Toast.LENGTH_SHORT).show()
                             }
                             else -> {}
@@ -218,7 +218,7 @@ fun MainScreen(
     var selectedPhotoUri by remember { mutableStateOf<Uri?>(null) }
     
     // State for selected chat (for navigation to ChatDetail)
-    var selectedChatSession by remember { mutableStateOf<com.app.picflick.data.ChatSession?>(null) }
+    var selectedChatSession by remember { mutableStateOf<com.picflick.app.data.ChatSession?>(null) }
     var selectedOtherUserId by remember { mutableStateOf<String>("") }
 
     // Load notifications when user is authenticated
@@ -521,16 +521,16 @@ private fun AuthenticatedContent(
     chatViewModel: ChatViewModel,
     uploadViewModel: UploadViewModel,
     authViewModel: AuthViewModel,
-    selectedChatSession: com.app.picflick.data.ChatSession?,
+    selectedChatSession: com.picflick.app.data.ChatSession?,
     selectedOtherUserId: String,
-    onSetSelectedChat: (com.app.picflick.data.ChatSession, String) -> Unit,
+    onSetSelectedChat: (com.picflick.app.data.ChatSession, String) -> Unit,
     onSignOut: () -> Unit,
     selectedPhotoUri: Uri?,
     onPhotoSelected: (Uri) -> Unit
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    val repository = com.app.picflick.repository.FlickRepository.getInstance()
+    val repository = com.picflick.app.repository.FlickRepository.getInstance()
     
     // Capture billingViewModel locally for use in when blocks
     val bvm = billingViewModel
@@ -919,13 +919,13 @@ private fun AuthenticatedContent(
                     // Load target user's profile
                     repository.getUserProfile(targetUserId) { result ->
                         when (result) {
-                            is com.app.picflick.data.Result.Success<UserProfile> -> {
+                            is com.picflick.app.data.Result.Success<UserProfile> -> {
                                 targetUser = result.data
                                 // If friends, load their photos
                                 if (userProfile.following.contains(targetUserId)) {
                                     repository.getUserFlicks(targetUserId) { photosResult ->
                                         when (photosResult) {
-                                            is com.app.picflick.data.Result.Success<List<Flick>> -> {
+                                            is com.picflick.app.data.Result.Success<List<Flick>> -> {
                                                 targetUserPhotos = photosResult.data
                                                 isLoading = false
                                             }
@@ -959,11 +959,11 @@ private fun AuthenticatedContent(
                             target.uid.let { uid ->
                                 isLoading = true
                                 repository.getUserProfile(uid) { result ->
-                                    if (result is com.app.picflick.data.Result.Success<UserProfile>) {
+                                    if (result is com.picflick.app.data.Result.Success<UserProfile>) {
                                         targetUser = result.data
                                         // Reload photos
                                         repository.getUserFlicks(uid) { photosResult ->
-                                            if (photosResult is com.app.picflick.data.Result.Success<List<Flick>>) {
+                                            if (photosResult is com.picflick.app.data.Result.Success<List<Flick>>) {
                                                 targetUserPhotos = photosResult.data
                                             }
                                             isLoading = false
@@ -1014,7 +1014,7 @@ private fun AuthenticatedContent(
                                         user2Name = target.displayName
                                     )
                                     when (result) {
-                                        is com.app.picflick.data.Result.Success<String> -> {
+                                        is com.picflick.app.data.Result.Success<String> -> {
                                             // Create a ChatSession object for navigation
                                             val session = ChatSession(
                                                 id = result.data,
@@ -1030,7 +1030,7 @@ private fun AuthenticatedContent(
                                             onSetSelectedChat(session, target.uid)
                                             onScreenChange(Screen.ChatDetail)
                                         }
-                                        is com.app.picflick.data.Result.Error -> {
+                                        is com.picflick.app.data.Result.Error -> {
                                             Toast.makeText(
                                                 context, 
                                                 result.message ?: "Cannot start chat", 

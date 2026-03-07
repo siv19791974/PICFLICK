@@ -1,4 +1,4 @@
-package com.app.picflick.ui.screens
+package com.picflick.app.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -25,9 +25,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
-import com.app.picflick.data.Flick
-import com.app.picflick.data.UserProfile
-import com.app.picflick.viewmodel.HomeViewModel
+import com.picflick.app.data.Flick
+import com.picflick.app.data.UserProfile
+import com.picflick.app.viewmodel.HomeViewModel
 
 /**
  * Explore page for discovering trending and popular photos

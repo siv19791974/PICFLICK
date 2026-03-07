@@ -8,10 +8,10 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.app.picflick.data.Flick
-import com.app.picflick.data.PhotoFilter
-import com.app.picflick.data.UserProfile
-import com.app.picflick.repository.FlickRepository
+import com.picflick.app.data.Flick
+import com.picflick.app.data.PhotoFilter
+import com.picflick.app.data.UserProfile
+import com.picflick.app.repository.FlickRepository
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.storage.FirebaseStorage
 import kotlinx.coroutines.launch

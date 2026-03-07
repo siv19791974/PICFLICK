@@ -1377,7 +1377,7 @@ class FlickRepository private constructor() {
      */
     suspend fun saveNotificationPreferences(
         userId: String,
-        preferences: com.app.picflick.data.NotificationPreferences
+        preferences: com.picflick.app.data.NotificationPreferences
     ): Result<Unit> {
         return try {
             // Use set with merge to create or update the field
