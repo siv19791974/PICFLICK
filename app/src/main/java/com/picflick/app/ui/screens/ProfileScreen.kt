@@ -1,4 +1,4 @@
-package com.app.picflick.ui.screens
+package com.picflick.app.ui.screens
 
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -35,9 +35,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
-import com.app.picflick.data.Flick
-import com.app.picflick.data.UserProfile
-import com.app.picflick.ui.theme.PicFlickBackground
+import com.picflick.app.data.Flick
+import com.picflick.app.data.UserProfile
+import com.picflick.app.ui.theme.PicFlickBackground
 
 /**
  * Modern Profile screen with enhanced UI

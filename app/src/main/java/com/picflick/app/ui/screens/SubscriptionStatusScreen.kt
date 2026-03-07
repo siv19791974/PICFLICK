@@ -1,4 +1,4 @@
-package com.app.picflick.ui.screens
+package com.picflick.app.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -26,20 +26,20 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.app.picflick.data.SubscriptionTier
-import com.app.picflick.data.UserProfile
-import com.app.picflick.data.getColor
-import com.app.picflick.data.getDailyUploadLimit
-import com.app.picflick.data.getDarkColor
-import com.app.picflick.data.getDisplayName
-import com.app.picflick.data.getLightColor
-import com.app.picflick.data.getMonthlyPrice
-import com.app.picflick.data.getQualityDescription
-import com.app.picflick.data.getStorageLimitGB
-import com.app.picflick.data.getStorageLimitBytes
-import com.app.picflick.viewmodel.BillingEvent
-import com.app.picflick.viewmodel.BillingViewModel
-import com.app.picflick.viewmodel.SubscriptionProduct
+import com.picflick.app.data.SubscriptionTier
+import com.picflick.app.data.UserProfile
+import com.picflick.app.data.getColor
+import com.picflick.app.data.getDailyUploadLimit
+import com.picflick.app.data.getDarkColor
+import com.picflick.app.data.getDisplayName
+import com.picflick.app.data.getLightColor
+import com.picflick.app.data.getMonthlyPrice
+import com.picflick.app.data.getQualityDescription
+import com.picflick.app.data.getStorageLimitGB
+import com.picflick.app.data.getStorageLimitBytes
+import com.picflick.app.viewmodel.BillingEvent
+import com.picflick.app.viewmodel.BillingViewModel
+import com.picflick.app.viewmodel.SubscriptionProduct
 
 /**
  * Subscription Status Screen - Financial/tier details

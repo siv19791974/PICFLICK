@@ -23,10 +23,10 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
-import com.app.picflick.data.UserProfile
-import com.app.picflick.ui.components.ListItemShimmer
-import com.app.picflick.ui.theme.PicFlickBackground
-import com.app.picflick.viewmodel.FriendsViewModel
+import com.picflick.app.data.UserProfile
+import com.picflick.app.ui.components.ListItemShimmer
+import com.picflick.app.ui.theme.PicFlickBackground
+import com.picflick.app.viewmodel.FriendsViewModel
 
 /**
  * Screen showing list of friends the user is following

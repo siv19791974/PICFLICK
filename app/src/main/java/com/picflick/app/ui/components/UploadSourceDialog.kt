@@ -1,4 +1,4 @@
-package com.app.picflick.ui.components
+package com.picflick.app.ui.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable

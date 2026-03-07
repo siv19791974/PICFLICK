@@ -10,9 +10,9 @@ import androidx.compose.runtime.setValue
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.app.picflick.data.Result
-import com.app.picflick.data.UserProfile
-import com.app.picflick.repository.FlickRepository
+import com.picflick.app.data.Result
+import com.picflick.app.data.UserProfile
+import com.picflick.app.repository.FlickRepository
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
 import kotlinx.coroutines.launch

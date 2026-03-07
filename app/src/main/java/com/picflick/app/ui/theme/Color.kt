@@ -1,4 +1,4 @@
-package com.app.picflick.ui.theme
+package com.picflick.app.ui.theme
 
 import androidx.compose.ui.graphics.Color
 

@@ -6,9 +6,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.app.picflick.data.Notification
-import com.app.picflick.data.Result
-import com.app.picflick.repository.FlickRepository
+import com.picflick.app.data.Notification
+import com.picflick.app.data.Result
+import com.picflick.app.repository.FlickRepository
 import kotlinx.coroutines.launch
 
 /**
