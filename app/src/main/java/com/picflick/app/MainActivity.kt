@@ -42,6 +42,8 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.picflick.app.data.Flick
 import com.picflick.app.data.UserProfile
 import com.picflick.app.data.ChatSession
+import com.picflick.app.data.PhotoFilter
+import com.picflick.app.data.NotificationPreferences
 import com.picflick.app.data.SubscriptionTier
 import com.picflick.app.repository.ChatRepository
 import com.picflick.app.ui.components.BottomNavBar
