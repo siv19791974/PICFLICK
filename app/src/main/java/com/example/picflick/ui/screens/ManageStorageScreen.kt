@@ -37,11 +37,13 @@ import com.example.picflick.data.getDarkColor
 import com.example.picflick.data.getDisplayName
 import com.example.picflick.data.getImageQuality
 import com.example.picflick.data.getLightColor
+import com.example.picflick.data.getMonthlyPrice
 import com.example.picflick.data.getNextTier
 import com.example.picflick.data.getQualityDescription
 import com.example.picflick.data.getStorageLimitGB
 import com.example.picflick.data.getStorageLimitBytes
 import com.example.picflick.viewmodel.BillingViewModel
+import com.example.picflick.viewmodel.SubscriptionProduct
 
 /**
  * Manage Storage Screen - Full storage dashboard
@@ -442,10 +444,10 @@ private fun UpgradeOptionsCard(
     onUpgrade: (SubscriptionTier) -> Unit
 ) {
     val nextTier = currentTier.getNextTier()
-    val products by billingViewModel.products.collectAsState()
+    val products: List<SubscriptionProduct> by billingViewModel.products.collectAsState()
     
     // Find product for next tier
-    val nextTierProduct = products.find { it.tier == nextTier }
+    val nextTierProduct: SubscriptionProduct? = products.find { it.tier == nextTier }
     
     if (nextTier != null) {
         Card(
@@ -487,9 +489,11 @@ private fun UpgradeOptionsCard(
                 
                 Column(horizontalAlignment = Alignment.End) {
                     // Use actual product price if available, otherwise fallback
-                    val price = nextTierProduct?.price ?: "$${nextTier.getMonthlyPrice()}"
+                    val priceText = nextTierProduct?.price 
+                        ?: nextTier?.getMonthlyPrice()?.let { "$${it}" } 
+                        ?: "N/A"
                     Text(
-                        text = price,
+                        text = priceText,
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Bold,
                         color = Color(0xFF1565C0)

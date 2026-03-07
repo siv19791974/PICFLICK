@@ -21,6 +21,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import kotlinx.coroutines.flow.StateFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -44,7 +45,9 @@ import com.example.picflick.data.getQualityDescription
 import com.example.picflick.data.getStorageLimitGB
 import com.example.picflick.data.getStorageLimitBytes
 import com.example.picflick.data.getYearlyPrice
+import com.example.picflick.viewmodel.BillingEvent
 import com.example.picflick.viewmodel.BillingViewModel
+import com.example.picflick.viewmodel.SubscriptionProduct
 
 /**
  * Subscription Status Screen - Financial/tier details
@@ -63,19 +66,19 @@ fun SubscriptionStatusScreen(
     val tier = userProfile.subscriptionTier
     val tierColor = tier.getColor()
     
-    // Collect billing state
-    val products by billingViewModel.products.collectAsState()
-    val isLoading by billingViewModel.isLoading.collectAsState()
-    val billingEvent by billingViewModel.billingEvent.collectAsState()
+    // Collect billing state with explicit types
+    val products: List<SubscriptionProduct> by billingViewModel.products.collectAsState()
+    val isLoading: Boolean by billingViewModel.isLoading.collectAsState()
+    val billingEvent: BillingEvent? by billingViewModel.billingEvent.collectAsState()
     
     // Handle billing events
-    billingEvent?.let { event ->
+    billingEvent?.let { event: BillingEvent ->
         when (event) {
-            is BillingViewModel.BillingEvent.PurchaseSuccess -> {
+            is BillingEvent.PurchaseSuccess -> {
                 // Show success message
                 // Could use a Snackbar here
             }
-            is BillingViewModel.BillingEvent.PurchaseError -> {
+            is BillingEvent.PurchaseError -> {
                 // Show error message
             }
             else -> {}
@@ -172,7 +175,7 @@ private fun CurrentSubscriptionCard(
     tier: SubscriptionTier,
     tierColor: Color,
     onManagePayment: () -> Unit,
-    products: List<BillingViewModel.SubscriptionProduct>
+    products: List<SubscriptionProduct>
 ) {
     // Find product for current tier
     val currentProduct = products.find { it.tier == tier }
@@ -486,7 +489,7 @@ private fun UsageProgressRow(
 private fun AllTiersCard(
     currentTier: SubscriptionTier,
     billingViewModel: BillingViewModel,
-    products: List<BillingViewModel.SubscriptionProduct>,
+    products: List<SubscriptionProduct>,
     onUpgrade: (SubscriptionTier) -> Unit,
     onDowngrade: (SubscriptionTier) -> Unit
 ) {
@@ -512,7 +515,7 @@ private fun AllTiersCard(
             Spacer(modifier = Modifier.height(12.dp))
             
             // List all tiers
-            SubscriptionTier.values().forEach { tier ->
+            SubscriptionTier.entries.forEach { tier ->
                 val product = products.find { it.tier == tier }
                 
                 TierComparisonRow(
@@ -537,7 +540,7 @@ private fun AllTiersCard(
 @Composable
 private fun TierComparisonRow(
     tier: SubscriptionTier,
-    product: BillingViewModel.SubscriptionProduct?,
+    product: SubscriptionProduct?,
     isCurrent: Boolean,
     onUpgrade: (() -> Unit)?,
     onDowngrade: (() -> Unit)?
