@@ -1,4 +1,4 @@
-package com.example.picflick.data
+package com.picflick.app.data
 
 /**
  * Data class representing a single chat message (WhatsApp-style)

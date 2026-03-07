@@ -1,4 +1,4 @@
-package com.example.picflick.ui.screens
+package com.picflick.app.ui.screens
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background

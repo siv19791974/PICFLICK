@@ -1,4 +1,4 @@
-package com.example.picflick
+package com.picflick.app
 
 import android.app.Activity
 import android.content.Intent
