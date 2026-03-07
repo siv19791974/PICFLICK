@@ -9,16 +9,53 @@
       "client_info": {
         "mobilesdk_app_id": "1:830332240569:android:250a2708021e2467abd168",
         "android_client_info": {
+          "package_name": "com.example.picflick"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "830332240569-mb7tlp00mootfl2m6g0n46soci6eh86f.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.picflick",
+            "certificate_hash": "4792ea62bbc6c349fe9a072b32952084c5a4d4be"
+          }
+        },
+        {
+          "client_id": "830332240569-pko9aotmkb9qn86ao98ml20drrihe4l4.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDqqPDIAYplc_S4Z_30AVI2QR-p09Gd4eA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "830332240569-pko9aotmkb9qn86ao98ml20drrihe4l4.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:830332240569:android:777667ee8ec9cdc6abd168",
+        "android_client_info": {
           "package_name": "com.picflick.app"
         }
       },
       "oauth_client": [
         {
-          "client_id": "830332240569-pv8piuimckecgbve65h8vgln79aq015g.apps.googleusercontent.com",
+          "client_id": "830332240569-r6675lhe6tkev77u2qvv0lh46rva8q61.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
             "package_name": "com.picflick.app",
-            "certificate_hash": "087f4ce53e143cad4945133212c3dfa2eedc2205"
+            "certificate_hash": "4792ea62bbc6c349fe9a072b32952084c5a4d4be"
           }
         },
         {
