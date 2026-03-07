@@ -43,3 +43,4 @@ fun ReactionType.toColor(): Long = when (this) {
     ReactionType.WOW -> 0xFFFF9800 // Orange
     ReactionType.FIRE -> 0xFFFF5722 // Deep Orange
 }
+

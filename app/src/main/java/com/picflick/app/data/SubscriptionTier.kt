@@ -197,3 +197,4 @@ fun SubscriptionTier.getPreviousTier(): SubscriptionTier? {
         SubscriptionTier.ULTRA -> SubscriptionTier.PRO
     }
 }
+

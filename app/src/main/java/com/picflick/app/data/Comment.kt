@@ -12,3 +12,4 @@ data class Comment(
     val text: String = "",
     val timestamp: Long = 0
 )
+

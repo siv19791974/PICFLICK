@@ -13,3 +13,4 @@ data class ChatMessage(
     val senderName: String = "",
     val senderPhotoUrl: String = ""
 )
+

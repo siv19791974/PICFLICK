@@ -33,3 +33,4 @@ enum class NotificationType {
     ACHIEVEMENT,    // Achievement unlocked
     SYSTEM          // System announcements
 }
+

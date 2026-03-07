@@ -58,3 +58,4 @@ data class Flick(
     val likes: List<String> 
         get() = reactions.filter { it.value == ReactionType.LIKE.name }.keys.toList()
 }
+
