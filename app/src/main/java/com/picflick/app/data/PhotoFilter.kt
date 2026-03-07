@@ -17,3 +17,4 @@ enum class PhotoFilter(val displayName: String, val icon: String) {
     FADE("Fade", "🌫️"),
     VIVID("Vivid", "🌈")
 }
+

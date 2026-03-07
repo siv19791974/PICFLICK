@@ -1,4 +1,4 @@
-package com.app.picflick.data
+package com.picflick.app.data
 
 /**
  * Sealed class representing different states of UI operations
@@ -8,3 +8,4 @@ sealed class Result<out T> {
     data class Error(val exception: Throwable, val message: String = exception.localizedMessage ?: "Unknown error") : Result<Nothing>()
     data object Loading : Result<Nothing>()
 }
+

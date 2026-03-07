@@ -13,3 +13,4 @@ data class ChatSession(
     val lastSenderId: String = "",
     val unreadCount: Int = 0
 )
+
