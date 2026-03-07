@@ -480,6 +480,7 @@ fun MainScreen(
                     currentScreen = currentScreen,
                     onScreenChange = { currentScreen = it },
                     userProfile = userProfile,
+                    billingViewModel = billingViewModel,
                     homeViewModel = homeViewModel,
                     profileViewModel = profileViewModel,
                     friendsViewModel = friendsViewModel,
@@ -513,6 +514,7 @@ private fun AuthenticatedContent(
     currentScreen: Screen,
     onScreenChange: (Screen) -> Unit,
     userProfile: UserProfile,
+    billingViewModel: BillingViewModel,
     homeViewModel: HomeViewModel,
     profileViewModel: ProfileViewModel,
     friendsViewModel: FriendsViewModel,
@@ -530,6 +532,9 @@ private fun AuthenticatedContent(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val repository = com.example.picflick.repository.FlickRepository.getInstance()
+    
+    // Capture billingViewModel locally for use in when blocks
+    val bvm = billingViewModel
     
     // Direct screen switching - NO animation (fixes banner position shift)
     when (currentScreen) {
@@ -759,15 +764,14 @@ private fun AuthenticatedContent(
 
             is Screen.ManageStorage -> {
                 val activity = context as? Activity
-                val bvm = billingViewModelInstance
                 ManageStorageScreen(
                     userProfile = userProfile,
                     billingViewModel = bvm,
                     onBack = { onScreenChange(Screen.Settings) },
                     onUpgrade = { tier: SubscriptionTier ->
                         activity?.let { act: Activity ->
-                            val product: BillingViewModel.SubscriptionProduct? = bvm.getProductForTier(tier)
-                            product?.let { p: BillingViewModel.SubscriptionProduct ->
+                            val product: SubscriptionProduct? = bvm.getProductForTier(tier)
+                            product?.let { p: SubscriptionProduct ->
                                 bvm.purchaseSubscription(act, p)
                             }
                         }
@@ -777,23 +781,22 @@ private fun AuthenticatedContent(
 
             is Screen.SubscriptionStatus -> {
                 val activity = context as? Activity
-                val bvm = billingViewModelInstance
                 SubscriptionStatusScreen(
                     userProfile = userProfile,
                     billingViewModel = bvm,
                     onBack = { onScreenChange(Screen.Settings) },
                     onUpgrade = { tier: SubscriptionTier ->
                         activity?.let { act: Activity ->
-                            val product: BillingViewModel.SubscriptionProduct? = bvm.getProductForTier(tier)
-                            product?.let { p: BillingViewModel.SubscriptionProduct ->
+                            val product: SubscriptionProduct? = bvm.getProductForTier(tier)
+                            product?.let { p: SubscriptionProduct ->
                                 bvm.purchaseSubscription(act, p)
                             }
                         }
                     },
                     onDowngrade = { tier: SubscriptionTier ->
                         activity?.let { act: Activity ->
-                            val product: BillingViewModel.SubscriptionProduct? = bvm.getProductForTier(tier)
-                            product?.let { p: BillingViewModel.SubscriptionProduct ->
+                            val product: SubscriptionProduct? = bvm.getProductForTier(tier)
+                            product?.let { p: SubscriptionProduct ->
                                 bvm.purchaseSubscription(act, p)
                             }
                         }
