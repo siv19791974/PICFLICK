@@ -1,5 +1,6 @@
 package com.example.picflick
 
+import android.app.Activity
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
@@ -751,36 +752,47 @@ private fun AuthenticatedContent(
                 onAbout = { onScreenChange(Screen.About) }
             )
 
-            is Screen.ManageStorage -> ManageStorageScreen(
-                userProfile = userProfile,
-                billingViewModel = billingViewModel,
-                onBack = { onScreenChange(Screen.Settings) },
-                onUpgrade = { tier ->
-                    billingViewModel.getProductForTier(tier)?.let { product ->
-                        billingViewModel.purchaseSubscription(this@MainActivity, product)
+            is Screen.ManageStorage -> {
+                val activity = context as? Activity
+                ManageStorageScreen(
+                    userProfile = userProfile,
+                    billingViewModel = billingViewModel,
+                    onBack = { onScreenChange(Screen.Settings) },
+                    onUpgrade = { tier ->
+                        activity?.let { act ->
+                            billingViewModel.getProductForTier(tier)?.let { product ->
+                                billingViewModel.purchaseSubscription(act, product)
+                            }
+                        }
                     }
-                }
-            )
+                )
+            }
 
-            is Screen.SubscriptionStatus -> SubscriptionStatusScreen(
-                userProfile = userProfile,
-                billingViewModel = billingViewModel,
-                onBack = { onScreenChange(Screen.Settings) },
-                onUpgrade = { tier ->
-                    billingViewModel.getProductForTier(tier)?.let { product ->
-                        billingViewModel.purchaseSubscription(this@MainActivity, product)
+            is Screen.SubscriptionStatus -> {
+                val activity = context as? Activity
+                SubscriptionStatusScreen(
+                    userProfile = userProfile,
+                    billingViewModel = billingViewModel,
+                    onBack = { onScreenChange(Screen.Settings) },
+                    onUpgrade = { tier ->
+                        activity?.let { act ->
+                            billingViewModel.getProductForTier(tier)?.let { product ->
+                                billingViewModel.purchaseSubscription(act, product)
+                            }
+                        }
+                    },
+                    onDowngrade = { tier ->
+                        activity?.let { act ->
+                            billingViewModel.getProductForTier(tier)?.let { product ->
+                                billingViewModel.purchaseSubscription(act, product)
+                            }
+                        }
+                    },
+                    onManagePayment = {
+                        Toast.makeText(context, "Payment management coming soon!", Toast.LENGTH_SHORT).show()
                     }
-                },
-                onDowngrade = { tier ->
-                    billingViewModel.getProductForTier(tier)?.let { product ->
-                        billingViewModel.purchaseSubscription(this@MainActivity, product)
-                    }
-                },
-                onManagePayment = {
-                    // TODO: Navigate to payment management screen
-                    Toast.makeText(context, "Payment management coming soon!", Toast.LENGTH_SHORT).show()
-                }
-            )
+                )
+            }
 
             is Screen.Filter -> {
                 selectedPhotoUri?.let { uri ->

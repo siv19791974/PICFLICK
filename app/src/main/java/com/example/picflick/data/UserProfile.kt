@@ -26,4 +26,24 @@ data class UserProfile(
     val lastUploadResetDate: String = "", // Date string for tracking daily resets
     val isFounder: Boolean = false, // Early tester status
     val joinedAt: Long = System.currentTimeMillis()
-)
+) {
+    /**
+     * Get the current subscription tier
+     */
+    fun getTier(): SubscriptionTier = subscriptionTier
+    
+    /**
+     * Calculate storage used in GB
+     */
+    fun calculateStorageUsedGB(): Float = (storageUsedBytes / (1024f * 1024f * 1024f))
+    
+    /**
+     * Check if user has active subscription (not expired)
+     */
+    fun hasActiveSubscription(): Boolean {
+        if (isFounder) return true // Founders always have access
+        if (subscriptionTier == SubscriptionTier.FREE) return false
+        if (subscriptionExpiryDate == 0L) return true // Lifetime
+        return System.currentTimeMillis() < subscriptionExpiryDate
+    }
+}
