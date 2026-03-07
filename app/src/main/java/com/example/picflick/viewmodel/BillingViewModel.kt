@@ -46,7 +46,7 @@ sealed class BillingEvent {
 class BillingViewModel : ViewModel() {
 
     private var billingClient: BillingClient? = null
-    private val functions = Firebase.functions
+    private lateinit var functions: FirebaseFunctions
 
     // Product IDs for each subscription tier
     companion object {
@@ -85,6 +85,9 @@ class BillingViewModel : ViewModel() {
      */
     fun initialize(context: Context) {
         if (billingClient != null) return
+
+        // Initialize Firebase Functions
+        functions = FirebaseFunctions.getInstance()
 
         billingClient = BillingClient.newBuilder(context)
             .setListener(purchasesUpdatedListener)
