@@ -1,4 +1,4 @@
-package com.app.picflick.data
+package com.picflick.app.data
 
 import org.junit.Assert.*
 import org.junit.Test

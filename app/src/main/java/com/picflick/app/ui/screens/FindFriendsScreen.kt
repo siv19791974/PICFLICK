@@ -1,4 +1,4 @@
-package com.app.picflick.ui.screens
+package com.picflick.app.ui.screens
 
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -33,10 +33,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import coil3.compose.AsyncImage
-import com.app.picflick.data.UserProfile
-import com.app.picflick.ui.components.FullScreenLoading
-import com.app.picflick.ui.theme.PicFlickBackground
-import com.app.picflick.viewmodel.FriendsViewModel
+import com.picflick.app.data.UserProfile
+import com.picflick.app.ui.components.FullScreenLoading
+import com.picflick.app.ui.theme.PicFlickBackground
+import com.picflick.app.viewmodel.FriendsViewModel
 
 /**
  * Comprehensive screen for finding friends, inviting contacts, and following users

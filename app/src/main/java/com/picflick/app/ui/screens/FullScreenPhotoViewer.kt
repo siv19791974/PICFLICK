@@ -1,4 +1,4 @@
-package com.app.picflick.ui.screens
+package com.picflick.app.ui.screens
 
 import androidx.compose.animation.*
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -41,14 +41,14 @@ import androidx.compose.ui.window.DialogProperties
 import coil3.compose.AsyncImage
 import net.engawapg.lib.zoomable.rememberZoomState
 import net.engawapg.lib.zoomable.zoomable
-import com.app.picflick.data.Comment
-import com.app.picflick.data.Flick
-import com.app.picflick.data.ReactionType
-import com.app.picflick.data.UserProfile
-import com.app.picflick.data.toEmoji
-import com.app.picflick.repository.FlickRepository
-import com.app.picflick.ui.components.DoubleTapHeartAnimation
-import com.app.picflick.ui.components.AnimatedReactionPicker
+import com.picflick.app.data.Comment
+import com.picflick.app.data.Flick
+import com.picflick.app.data.ReactionType
+import com.picflick.app.data.UserProfile
+import com.picflick.app.data.toEmoji
+import com.picflick.app.repository.FlickRepository
+import com.picflick.app.ui.components.DoubleTapHeartAnimation
+import com.picflick.app.ui.components.AnimatedReactionPicker
 import android.content.ContentValues
 import android.content.Context
 import android.graphics.Bitmap

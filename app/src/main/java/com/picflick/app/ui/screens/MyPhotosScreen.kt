@@ -1,4 +1,4 @@
-package com.app.picflick.ui.screens
+package com.picflick.app.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -20,11 +20,11 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
-import com.app.picflick.data.Flick
-import com.app.picflick.data.UserProfile
-import com.app.picflick.ui.components.*
-import com.app.picflick.ui.theme.PicFlickBackground
-import com.app.picflick.viewmodel.ProfileViewModel
+import com.picflick.app.data.Flick
+import com.picflick.app.data.UserProfile
+import com.picflick.app.ui.components.*
+import com.picflick.app.ui.theme.PicFlickBackground
+import com.picflick.app.viewmodel.ProfileViewModel
 
 /**
  * Screen showing current user's photos - MATCHES HOMESCREEN EXACTLY

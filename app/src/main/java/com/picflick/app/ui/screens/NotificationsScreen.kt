@@ -1,4 +1,4 @@
-package com.app.picflick.ui.screens
+package com.picflick.app.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -33,10 +33,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
-import com.app.picflick.data.Notification
-import com.app.picflick.data.NotificationType
-import com.app.picflick.data.UserProfile
-import com.app.picflick.viewmodel.NotificationViewModel
+import com.picflick.app.data.Notification
+import com.picflick.app.data.NotificationType
+import com.picflick.app.data.UserProfile
+import com.picflick.app.viewmodel.NotificationViewModel
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale

@@ -17,7 +17,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import com.app.picflick.data.ReactionType
+import com.picflick.app.data.ReactionType
 
 /**
  * Animated reaction picker that shows on long press

@@ -1,4 +1,4 @@
-package com.app.picflick
+package com.picflick.app
 
 import org.junit.Test
 

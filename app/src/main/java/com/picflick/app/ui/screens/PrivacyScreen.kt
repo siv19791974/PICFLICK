@@ -20,8 +20,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
-import com.app.picflick.data.UserProfile
-import com.app.picflick.repository.FlickRepository
+import com.picflick.app.data.UserProfile
+import com.picflick.app.repository.FlickRepository
 
 /**
  * Privacy Settings Screen - Privacy by Default

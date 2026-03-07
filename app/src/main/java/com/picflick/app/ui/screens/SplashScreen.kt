@@ -1,4 +1,4 @@
-package com.app.picflick.ui.screens
+package com.picflick.app.ui.screens
 
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
@@ -13,8 +13,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.app.picflick.ui.components.LogoImage
-import com.app.picflick.ui.theme.PicFlickBackground
+import com.picflick.app.ui.components.LogoImage
+import com.picflick.app.ui.theme.PicFlickBackground
 import kotlinx.coroutines.delay
 
 /**
