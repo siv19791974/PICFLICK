@@ -1,4 +1,4 @@
-package com.example.picflick.data
+package com.picflick.app.data
 
 /**
  * Enum representing available photo filters
