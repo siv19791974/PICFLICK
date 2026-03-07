@@ -1,5 +1,7 @@
 package com.picflick.app.data
 
+import com.picflick.app.data.NotificationType
+
 /**
  * User notification preferences - simplified unified settings
  * One toggle controls both push and in-app notifications
