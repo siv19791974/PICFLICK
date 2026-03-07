@@ -76,6 +76,7 @@ import com.example.picflick.ui.theme.PicFlickBannerBackground
 import com.example.picflick.ui.theme.PicFlickTheme
 import com.example.picflick.viewmodel.AuthViewModel
 import com.example.picflick.viewmodel.BillingViewModel
+import com.example.picflick.viewmodel.SubscriptionProduct
 import com.example.picflick.viewmodel.FriendsViewModel
 import com.example.picflick.viewmodel.HomeViewModel
 import com.example.picflick.viewmodel.ChatViewModel
@@ -765,8 +766,8 @@ private fun AuthenticatedContent(
                     onBack = { onScreenChange(Screen.Settings) },
                     onUpgrade = { tier: SubscriptionTier ->
                         activity?.let { act: Activity ->
-                            val product = bvm.getProductForTier(tier)
-                            product?.let { p ->
+                            val product: BillingViewModel.SubscriptionProduct? = bvm.getProductForTier(tier)
+                            product?.let { p: BillingViewModel.SubscriptionProduct ->
                                 bvm.purchaseSubscription(act, p)
                             }
                         }
@@ -783,16 +784,16 @@ private fun AuthenticatedContent(
                     onBack = { onScreenChange(Screen.Settings) },
                     onUpgrade = { tier: SubscriptionTier ->
                         activity?.let { act: Activity ->
-                            val product = bvm.getProductForTier(tier)
-                            product?.let { p ->
+                            val product: BillingViewModel.SubscriptionProduct? = bvm.getProductForTier(tier)
+                            product?.let { p: BillingViewModel.SubscriptionProduct ->
                                 bvm.purchaseSubscription(act, p)
                             }
                         }
                     },
                     onDowngrade = { tier: SubscriptionTier ->
                         activity?.let { act: Activity ->
-                            val product = bvm.getProductForTier(tier)
-                            product?.let { p ->
+                            val product: BillingViewModel.SubscriptionProduct? = bvm.getProductForTier(tier)
+                            product?.let { p: BillingViewModel.SubscriptionProduct ->
                                 bvm.purchaseSubscription(act, p)
                             }
                         }
