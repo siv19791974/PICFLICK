@@ -74,6 +74,7 @@ dependencies {
     implementation(libs.firebase.firestore)
     implementation(libs.firebase.storage)
     implementation(libs.firebase.messaging)
+    implementation(libs.firebase.functions)
 
     // Credential Manager (Modern Google Sign In)
     implementation(libs.androidx.credentials)
