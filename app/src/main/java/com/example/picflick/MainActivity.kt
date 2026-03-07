@@ -165,12 +165,9 @@ fun MainScreen(
     val scope = rememberCoroutineScope()
     val repository = com.example.picflick.repository.FlickRepository.getInstance()
     
-    // Capture billingViewModel to avoid scope issues in nested lambdas
-    val billingVM = remember { billingViewModel }
-    
-    // Initialize billing client
+    // Initialize billing client directly
     LaunchedEffect(Unit) {
-        billingVM.initialize(context)
+        billingViewModel.initialize(context)
     }
     
     // State for profile photo upload
@@ -760,13 +757,13 @@ private fun AuthenticatedContent(
                 val activity = context as? Activity
                 ManageStorageScreen(
                     userProfile = userProfile,
-                    billingViewModel = billingVM,
+                    billingViewModel = billingViewModel,
                     onBack = { onScreenChange(Screen.Settings) },
                     onUpgrade = { tier: SubscriptionTier ->
                         activity?.let { act: Activity ->
-                            val product = billingVM.getProductForTier(tier)
+                            val product = billingViewModel.getProductForTier(tier)
                             product?.let { p ->
-                                billingVM.purchaseSubscription(act, p)
+                                billingViewModel.purchaseSubscription(act, p)
                             }
                         }
                     }
@@ -777,21 +774,21 @@ private fun AuthenticatedContent(
                 val activity = context as? Activity
                 SubscriptionStatusScreen(
                     userProfile = userProfile,
-                    billingViewModel = billingVM,
+                    billingViewModel = billingViewModel,
                     onBack = { onScreenChange(Screen.Settings) },
                     onUpgrade = { tier: SubscriptionTier ->
                         activity?.let { act: Activity ->
-                            val product = billingVM.getProductForTier(tier)
+                            val product = billingViewModel.getProductForTier(tier)
                             product?.let { p ->
-                                billingVM.purchaseSubscription(act, p)
+                                billingViewModel.purchaseSubscription(act, p)
                             }
                         }
                     },
                     onDowngrade = { tier: SubscriptionTier ->
                         activity?.let { act: Activity ->
-                            val product = billingVM.getProductForTier(tier)
+                            val product = billingViewModel.getProductForTier(tier)
                             product?.let { p ->
-                                billingVM.purchaseSubscription(act, p)
+                                billingViewModel.purchaseSubscription(act, p)
                             }
                         }
                     },
