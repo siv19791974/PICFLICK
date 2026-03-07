@@ -758,15 +758,16 @@ private fun AuthenticatedContent(
 
             is Screen.ManageStorage -> {
                 val activity = context as? Activity
+                val bvm = billingViewModelInstance
                 ManageStorageScreen(
                     userProfile = userProfile,
-                    billingViewModel = billingViewModelInstance,
+                    billingViewModel = bvm,
                     onBack = { onScreenChange(Screen.Settings) },
                     onUpgrade = { tier: SubscriptionTier ->
                         activity?.let { act: Activity ->
-                            val product = billingViewModelInstance.getProductForTier(tier)
+                            val product = bvm.getProductForTier(tier)
                             product?.let { p ->
-                                billingViewModelInstance.purchaseSubscription(act, p)
+                                bvm.purchaseSubscription(act, p)
                             }
                         }
                     }
@@ -775,23 +776,24 @@ private fun AuthenticatedContent(
 
             is Screen.SubscriptionStatus -> {
                 val activity = context as? Activity
+                val bvm = billingViewModelInstance
                 SubscriptionStatusScreen(
                     userProfile = userProfile,
-                    billingViewModel = billingViewModelInstance,
+                    billingViewModel = bvm,
                     onBack = { onScreenChange(Screen.Settings) },
                     onUpgrade = { tier: SubscriptionTier ->
                         activity?.let { act: Activity ->
-                            val product = billingViewModelInstance.getProductForTier(tier)
+                            val product = bvm.getProductForTier(tier)
                             product?.let { p ->
-                                billingViewModelInstance.purchaseSubscription(act, p)
+                                bvm.purchaseSubscription(act, p)
                             }
                         }
                     },
                     onDowngrade = { tier: SubscriptionTier ->
                         activity?.let { act: Activity ->
-                            val product = billingViewModelInstance.getProductForTier(tier)
+                            val product = bvm.getProductForTier(tier)
                             product?.let { p ->
-                                billingViewModelInstance.purchaseSubscription(act, p)
+                                bvm.purchaseSubscription(act, p)
                             }
                         }
                     },
