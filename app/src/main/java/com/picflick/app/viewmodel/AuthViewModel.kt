@@ -171,7 +171,7 @@ class AuthViewModel : ViewModel() {
     /**
      * Update user notification preferences
      */
-    fun updateNotificationPreferences(preferences: com.app.picflick.data.NotificationPreferences) {
+    fun updateNotificationPreferences(preferences: com.picflick.app.data.NotificationPreferences) {
         viewModelScope.launch {
             userProfile?.let { profile ->
                 val updatedProfile = profile.copy(notificationPreferences = preferences)

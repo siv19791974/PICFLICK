@@ -131,7 +131,7 @@ class UploadViewModel : ViewModel() {
                 // Use repository to create flick - this sends notifications!
                 val result = flickRepository.createFlick(flick, userProfile.photoUrl)
                 
-                if (result is com.app.picflick.data.Result.Error) {
+                if (result is com.picflick.app.data.Result.Error) {
                     throw Exception(result.message)
                 }
                 
