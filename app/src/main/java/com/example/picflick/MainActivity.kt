@@ -42,6 +42,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.picflick.data.Flick
 import com.example.picflick.data.UserProfile
 import com.example.picflick.data.ChatSession
+import com.example.picflick.data.SubscriptionTier
 import com.example.picflick.repository.ChatRepository
 import com.example.picflick.repository.FlickRepository
 import com.example.picflick.ui.components.BottomNavBar
@@ -163,12 +164,7 @@ fun MainScreen(
     val context = LocalContext.current // Get context for Toast
     val scope = rememberCoroutineScope()
     val repository = com.example.picflick.repository.FlickRepository.getInstance()
-
-    // Initialize billing client
-    LaunchedEffect(Unit) {
-        billingViewModel.initialize(context)
-    }
-
+    
     // State for profile photo upload
     var profilePhotoToUpload by remember { mutableStateOf<Uri?>(null) }
     
@@ -756,12 +752,12 @@ private fun AuthenticatedContent(
                 val activity = context as? Activity
                 ManageStorageScreen(
                     userProfile = userProfile,
-                    billingViewModel = billingViewModel,
+                    billingViewModel = billingVM,
                     onBack = { onScreenChange(Screen.Settings) },
-                    onUpgrade = { tier ->
+                    onUpgrade = { tier: SubscriptionTier ->
                         activity?.let { act ->
-                            billingViewModel.getProductForTier(tier)?.let { product ->
-                                billingViewModel.purchaseSubscription(act, product)
+                            billingVM.getProductForTier(tier)?.let { product ->
+                                billingVM.purchaseSubscription(act, product)
                             }
                         }
                     }
@@ -772,19 +768,19 @@ private fun AuthenticatedContent(
                 val activity = context as? Activity
                 SubscriptionStatusScreen(
                     userProfile = userProfile,
-                    billingViewModel = billingViewModel,
+                    billingViewModel = billingVM,
                     onBack = { onScreenChange(Screen.Settings) },
-                    onUpgrade = { tier ->
+                    onUpgrade = { tier: SubscriptionTier ->
                         activity?.let { act ->
-                            billingViewModel.getProductForTier(tier)?.let { product ->
-                                billingViewModel.purchaseSubscription(act, product)
+                            billingVM.getProductForTier(tier)?.let { product ->
+                                billingVM.purchaseSubscription(act, product)
                             }
                         }
                     },
-                    onDowngrade = { tier ->
+                    onDowngrade = { tier: SubscriptionTier ->
                         activity?.let { act ->
-                            billingViewModel.getProductForTier(tier)?.let { product ->
-                                billingViewModel.purchaseSubscription(act, product)
+                            billingVM.getProductForTier(tier)?.let { product ->
+                                billingVM.purchaseSubscription(act, product)
                             }
                         }
                     },
