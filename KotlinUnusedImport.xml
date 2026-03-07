@@ -3,11 +3,11 @@
   <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/MainActivity.kt</file>
   <line>56</line>
   <module>PICFLICK.app.main</module>
-  <package>com.example.picflick</package>
+  <package>com.app.picflick</package>
   <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/MainActivity.kt" />
   <problem_class id="KotlinUnusedImport" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused import directive</problem_class>
   <description>Unused import directive</description>
-  <highlighted_element>import com.example.picflick.ui.theme.PicFlickBannerBackground</highlighted_element>
+  <highlighted_element>import com.app.picflick.ui.theme.PicFlickBannerBackground</highlighted_element>
   <language>kotlin</language>
   <offset>0</offset>
   <length>61</length>
@@ -16,7 +16,7 @@
   <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/data/Notification.kt</file>
   <line>3</line>
   <module>PICFLICK.app.main</module>
-  <package>com.example.picflick.data</package>
+  <package>com.app.picflick.data</package>
   <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/data/Notification.kt" />
   <problem_class id="KotlinUnusedImport" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused import directive</problem_class>
   <description>Unused import directive</description>
@@ -29,7 +29,7 @@
   <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/components/ButtonComponents.kt</file>
   <line>15</line>
   <module>PICFLICK.app.main</module>
-  <package>com.example.picflick.ui.components</package>
+  <package>com.app.picflick.ui.components</package>
   <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/components/ButtonComponents.kt" />
   <problem_class id="KotlinUnusedImport" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused import directive</problem_class>
   <description>Unused import directive</description>
@@ -42,7 +42,7 @@
   <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/components/ReactionPicker.kt</file>
   <line>3</line>
   <module>PICFLICK.app.main</module>
-  <package>com.example.picflick.ui.components</package>
+  <package>com.app.picflick.ui.components</package>
   <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/components/ReactionPicker.kt" />
   <problem_class id="KotlinUnusedImport" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused import directive</problem_class>
   <description>Unused import directive</description>
@@ -55,11 +55,11 @@
   <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/components/ReactionPicker.kt</file>
   <line>26</line>
   <module>PICFLICK.app.main</module>
-  <package>com.example.picflick.ui.components</package>
+  <package>com.app.picflick.ui.components</package>
   <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/components/ReactionPicker.kt" />
   <problem_class id="KotlinUnusedImport" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused import directive</problem_class>
   <description>Unused import directive</description>
-  <highlighted_element>import com.example.picflick.data.toEmoji</highlighted_element>
+  <highlighted_element>import com.app.picflick.data.toEmoji</highlighted_element>
   <language>kotlin</language>
   <offset>0</offset>
   <length>40</length>
@@ -68,7 +68,7 @@
   <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/components/ShimmerLoading.kt</file>
   <line>13</line>
   <module>PICFLICK.app.main</module>
-  <package>com.example.picflick.ui.components</package>
+  <package>com.app.picflick.ui.components</package>
   <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/components/ShimmerLoading.kt" />
   <problem_class id="KotlinUnusedImport" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused import directive</problem_class>
   <description>Unused import directive</description>
@@ -81,11 +81,11 @@
   <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/screens/AboutScreen.kt</file>
   <line>13</line>
   <module>PICFLICK.app.main</module>
-  <package>com.example.picflick.ui.screens</package>
+  <package>com.app.picflick.ui.screens</package>
   <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/screens/AboutScreen.kt" />
   <problem_class id="KotlinUnusedImport" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused import directive</problem_class>
   <description>Unused import directive</description>
-  <highlighted_element>import com.example.picflick.ui.components.LogoImage</highlighted_element>
+  <highlighted_element>import com.app.picflick.ui.components.LogoImage</highlighted_element>
   <language>kotlin</language>
   <offset>0</offset>
   <length>51</length>
@@ -94,11 +94,11 @@
   <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/screens/AboutScreen.kt</file>
   <line>15</line>
   <module>PICFLICK.app.main</module>
-  <package>com.example.picflick.ui.screens</package>
+  <package>com.app.picflick.ui.screens</package>
   <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/screens/AboutScreen.kt" />
   <problem_class id="KotlinUnusedImport" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused import directive</problem_class>
   <description>Unused import directive</description>
-  <highlighted_element>import com.example.picflick.ui.theme.PicFlickBannerBackground</highlighted_element>
+  <highlighted_element>import com.app.picflick.ui.theme.PicFlickBannerBackground</highlighted_element>
   <language>kotlin</language>
   <offset>0</offset>
   <length>61</length>
@@ -107,7 +107,7 @@
   <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/screens/ChatsScreen.kt</file>
   <line>9</line>
   <module>PICFLICK.app.main</module>
-  <package>com.example.picflick.ui.screens</package>
+  <package>com.app.picflick.ui.screens</package>
   <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/screens/ChatsScreen.kt" />
   <problem_class id="KotlinUnusedImport" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused import directive</problem_class>
   <description>Unused import directive</description>
@@ -120,11 +120,11 @@
   <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/screens/ContactScreen.kt</file>
   <line>17</line>
   <module>PICFLICK.app.main</module>
-  <package>com.example.picflick.ui.screens</package>
+  <package>com.app.picflick.ui.screens</package>
   <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/screens/ContactScreen.kt" />
   <problem_class id="KotlinUnusedImport" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused import directive</problem_class>
   <description>Unused import directive</description>
-  <highlighted_element>import com.example.picflick.ui.components.LogoImage</highlighted_element>
+  <highlighted_element>import com.app.picflick.ui.components.LogoImage</highlighted_element>
   <language>kotlin</language>
   <offset>0</offset>
   <length>51</length>
@@ -133,11 +133,11 @@
   <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/screens/ContactScreen.kt</file>
   <line>19</line>
   <module>PICFLICK.app.main</module>
-  <package>com.example.picflick.ui.screens</package>
+  <package>com.app.picflick.ui.screens</package>
   <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/screens/ContactScreen.kt" />
   <problem_class id="KotlinUnusedImport" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused import directive</problem_class>
   <description>Unused import directive</description>
-  <highlighted_element>import com.example.picflick.ui.theme.PicFlickBannerBackground</highlighted_element>
+  <highlighted_element>import com.app.picflick.ui.theme.PicFlickBannerBackground</highlighted_element>
   <language>kotlin</language>
   <offset>0</offset>
   <length>61</length>
@@ -146,7 +146,7 @@
   <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/screens/FilterScreen.kt</file>
   <line>7</line>
   <module>PICFLICK.app.main</module>
-  <package>com.example.picflick.ui.screens</package>
+  <package>com.app.picflick.ui.screens</package>
   <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/screens/FilterScreen.kt" />
   <problem_class id="KotlinUnusedImport" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused import directive</problem_class>
   <description>Unused import directive</description>
@@ -159,7 +159,7 @@
   <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/screens/FilterScreen.kt</file>
   <line>8</line>
   <module>PICFLICK.app.main</module>
-  <package>com.example.picflick.ui.screens</package>
+  <package>com.app.picflick.ui.screens</package>
   <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/screens/FilterScreen.kt" />
   <problem_class id="KotlinUnusedImport" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused import directive</problem_class>
   <description>Unused import directive</description>
@@ -172,7 +172,7 @@
   <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/screens/FilterScreen.kt</file>
   <line>36</line>
   <module>PICFLICK.app.main</module>
-  <package>com.example.picflick.ui.screens</package>
+  <package>com.app.picflick.ui.screens</package>
   <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/screens/FilterScreen.kt" />
   <problem_class id="KotlinUnusedImport" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused import directive</problem_class>
   <description>Unused import directive</description>
@@ -185,7 +185,7 @@
   <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/screens/FindFriendsScreen.kt</file>
   <line>5</line>
   <module>PICFLICK.app.main</module>
-  <package>com.example.picflick.ui.screens</package>
+  <package>com.app.picflick.ui.screens</package>
   <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/screens/FindFriendsScreen.kt" />
   <problem_class id="KotlinUnusedImport" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused import directive</problem_class>
   <description>Unused import directive</description>
@@ -198,7 +198,7 @@
   <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/screens/FindFriendsScreen.kt</file>
   <line>8</line>
   <module>PICFLICK.app.main</module>
-  <package>com.example.picflick.ui.screens</package>
+  <package>com.app.picflick.ui.screens</package>
   <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/screens/FindFriendsScreen.kt" />
   <problem_class id="KotlinUnusedImport" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused import directive</problem_class>
   <description>Unused import directive</description>
@@ -211,7 +211,7 @@
   <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/screens/FindFriendsScreen.kt</file>
   <line>17</line>
   <module>PICFLICK.app.main</module>
-  <package>com.example.picflick.ui.screens</package>
+  <package>com.app.picflick.ui.screens</package>
   <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/screens/FindFriendsScreen.kt" />
   <problem_class id="KotlinUnusedImport" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused import directive</problem_class>
   <description>Unused import directive</description>
@@ -224,7 +224,7 @@
   <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/screens/FindFriendsScreen.kt</file>
   <line>19</line>
   <module>PICFLICK.app.main</module>
-  <package>com.example.picflick.ui.screens</package>
+  <package>com.app.picflick.ui.screens</package>
   <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/screens/FindFriendsScreen.kt" />
   <problem_class id="KotlinUnusedImport" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused import directive</problem_class>
   <description>Unused import directive</description>
@@ -237,7 +237,7 @@
   <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/screens/FindFriendsScreen.kt</file>
   <line>20</line>
   <module>PICFLICK.app.main</module>
-  <package>com.example.picflick.ui.screens</package>
+  <package>com.app.picflick.ui.screens</package>
   <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/screens/FindFriendsScreen.kt" />
   <problem_class id="KotlinUnusedImport" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused import directive</problem_class>
   <description>Unused import directive</description>
@@ -250,11 +250,11 @@
   <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/screens/FindFriendsScreen.kt</file>
   <line>37</line>
   <module>PICFLICK.app.main</module>
-  <package>com.example.picflick.ui.screens</package>
+  <package>com.app.picflick.ui.screens</package>
   <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/screens/FindFriendsScreen.kt" />
   <problem_class id="KotlinUnusedImport" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused import directive</problem_class>
   <description>Unused import directive</description>
-  <highlighted_element>import com.example.picflick.R</highlighted_element>
+  <highlighted_element>import com.app.picflick.R</highlighted_element>
   <language>kotlin</language>
   <offset>0</offset>
   <length>29</length>
@@ -263,7 +263,7 @@
   <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/screens/FindFriendsScreen.kt</file>
   <line>42</line>
   <module>PICFLICK.app.main</module>
-  <package>com.example.picflick.ui.screens</package>
+  <package>com.app.picflick.ui.screens</package>
   <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/screens/FindFriendsScreen.kt" />
   <problem_class id="KotlinUnusedImport" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused import directive</problem_class>
   <description>Unused import directive</description>
@@ -276,7 +276,7 @@
   <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/screens/FriendsScreen.kt</file>
   <line>3</line>
   <module>PICFLICK.app.main</module>
-  <package>com.example.picflick.ui.screens</package>
+  <package>com.app.picflick.ui.screens</package>
   <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/screens/FriendsScreen.kt" />
   <problem_class id="KotlinUnusedImport" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused import directive</problem_class>
   <description>Unused import directive</description>
@@ -289,7 +289,7 @@
   <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/screens/FriendsScreen.kt</file>
   <line>5</line>
   <module>PICFLICK.app.main</module>
-  <package>com.example.picflick.ui.screens</package>
+  <package>com.app.picflick.ui.screens</package>
   <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/screens/FriendsScreen.kt" />
   <problem_class id="KotlinUnusedImport" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused import directive</problem_class>
   <description>Unused import directive</description>
@@ -302,7 +302,7 @@
   <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/screens/FriendsScreen.kt</file>
   <line>12</line>
   <module>PICFLICK.app.main</module>
-  <package>com.example.picflick.ui.screens</package>
+  <package>com.app.picflick.ui.screens</package>
   <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/screens/FriendsScreen.kt" />
   <problem_class id="KotlinUnusedImport" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused import directive</problem_class>
   <description>Unused import directive</description>
@@ -315,11 +315,11 @@
   <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/screens/FriendsScreen.kt</file>
   <line>24</line>
   <module>PICFLICK.app.main</module>
-  <package>com.example.picflick.ui.screens</package>
+  <package>com.app.picflick.ui.screens</package>
   <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/screens/FriendsScreen.kt" />
   <problem_class id="KotlinUnusedImport" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused import directive</problem_class>
   <description>Unused import directive</description>
-  <highlighted_element>import com.example.picflick.R</highlighted_element>
+  <highlighted_element>import com.app.picflick.R</highlighted_element>
   <language>kotlin</language>
   <offset>0</offset>
   <length>29</length>
@@ -328,11 +328,11 @@
   <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/screens/FriendsScreen.kt</file>
   <line>27</line>
   <module>PICFLICK.app.main</module>
-  <package>com.example.picflick.ui.screens</package>
+  <package>com.app.picflick.ui.screens</package>
   <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/screens/FriendsScreen.kt" />
   <problem_class id="KotlinUnusedImport" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused import directive</problem_class>
   <description>Unused import directive</description>
-  <highlighted_element>import com.example.picflick.ui.components.LogoImage</highlighted_element>
+  <highlighted_element>import com.app.picflick.ui.components.LogoImage</highlighted_element>
   <language>kotlin</language>
   <offset>0</offset>
   <length>51</length>
@@ -341,11 +341,11 @@
   <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/screens/FriendsScreen.kt</file>
   <line>29</line>
   <module>PICFLICK.app.main</module>
-  <package>com.example.picflick.ui.screens</package>
+  <package>com.app.picflick.ui.screens</package>
   <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/screens/FriendsScreen.kt" />
   <problem_class id="KotlinUnusedImport" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused import directive</problem_class>
   <description>Unused import directive</description>
-  <highlighted_element>import com.example.picflick.ui.theme.PicFlickBannerBackground</highlighted_element>
+  <highlighted_element>import com.app.picflick.ui.theme.PicFlickBannerBackground</highlighted_element>
   <language>kotlin</language>
   <offset>0</offset>
   <length>61</length>
@@ -354,7 +354,7 @@
   <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/screens/HomeScreen.kt</file>
   <line>5</line>
   <module>PICFLICK.app.main</module>
-  <package>com.example.picflick.ui.screens</package>
+  <package>com.app.picflick.ui.screens</package>
   <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/screens/HomeScreen.kt" />
   <problem_class id="KotlinUnusedImport" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused import directive</problem_class>
   <description>Unused import directive</description>
@@ -367,7 +367,7 @@
   <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/screens/HomeScreen.kt</file>
   <line>17</line>
   <module>PICFLICK.app.main</module>
-  <package>com.example.picflick.ui.screens</package>
+  <package>com.app.picflick.ui.screens</package>
   <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/screens/HomeScreen.kt" />
   <problem_class id="KotlinUnusedImport" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused import directive</problem_class>
   <description>Unused import directive</description>
@@ -380,7 +380,7 @@
   <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/screens/HomeScreen.kt</file>
   <line>27</line>
   <module>PICFLICK.app.main</module>
-  <package>com.example.picflick.ui.screens</package>
+  <package>com.app.picflick.ui.screens</package>
   <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/screens/HomeScreen.kt" />
   <problem_class id="KotlinUnusedImport" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused import directive</problem_class>
   <description>Unused import directive</description>
@@ -393,7 +393,7 @@
   <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/screens/HomeScreen.kt</file>
   <line>28</line>
   <module>PICFLICK.app.main</module>
-  <package>com.example.picflick.ui.screens</package>
+  <package>com.app.picflick.ui.screens</package>
   <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/screens/HomeScreen.kt" />
   <problem_class id="KotlinUnusedImport" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused import directive</problem_class>
   <description>Unused import directive</description>
@@ -406,7 +406,7 @@
   <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/screens/HomeScreen.kt</file>
   <line>29</line>
   <module>PICFLICK.app.main</module>
-  <package>com.example.picflick.ui.screens</package>
+  <package>com.app.picflick.ui.screens</package>
   <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/screens/HomeScreen.kt" />
   <problem_class id="KotlinUnusedImport" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused import directive</problem_class>
   <description>Unused import directive</description>
@@ -419,11 +419,11 @@
   <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/screens/HomeScreen.kt</file>
   <line>35</line>
   <module>PICFLICK.app.main</module>
-  <package>com.example.picflick.ui.screens</package>
+  <package>com.app.picflick.ui.screens</package>
   <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/screens/HomeScreen.kt" />
   <problem_class id="KotlinUnusedImport" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused import directive</problem_class>
   <description>Unused import directive</description>
-  <highlighted_element>import com.example.picflick.ui.components.LogoImage</highlighted_element>
+  <highlighted_element>import com.app.picflick.ui.components.LogoImage</highlighted_element>
   <language>kotlin</language>
   <offset>0</offset>
   <length>51</length>
@@ -432,11 +432,11 @@
   <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/screens/HomeScreen.kt</file>
   <line>38</line>
   <module>PICFLICK.app.main</module>
-  <package>com.example.picflick.ui.screens</package>
+  <package>com.app.picflick.ui.screens</package>
   <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/screens/HomeScreen.kt" />
   <problem_class id="KotlinUnusedImport" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused import directive</problem_class>
   <description>Unused import directive</description>
-  <highlighted_element>import com.example.picflick.ui.theme.PicFlickBannerBackground</highlighted_element>
+  <highlighted_element>import com.app.picflick.ui.theme.PicFlickBannerBackground</highlighted_element>
   <language>kotlin</language>
   <offset>0</offset>
   <length>61</length>
@@ -445,7 +445,7 @@
   <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/screens/HomeScreen.kt</file>
   <line>40</line>
   <module>PICFLICK.app.main</module>
-  <package>com.example.picflick.ui.screens</package>
+  <package>com.app.picflick.ui.screens</package>
   <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/screens/HomeScreen.kt" />
   <problem_class id="KotlinUnusedImport" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused import directive</problem_class>
   <description>Unused import directive</description>
@@ -458,7 +458,7 @@
   <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/screens/HomeScreen.kt</file>
   <line>41</line>
   <module>PICFLICK.app.main</module>
-  <package>com.example.picflick.ui.screens</package>
+  <package>com.app.picflick.ui.screens</package>
   <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/screens/HomeScreen.kt" />
   <problem_class id="KotlinUnusedImport" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused import directive</problem_class>
   <description>Unused import directive</description>
@@ -471,7 +471,7 @@
   <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/screens/MyPhotosScreen.kt</file>
   <line>5</line>
   <module>PICFLICK.app.main</module>
-  <package>com.example.picflick.ui.screens</package>
+  <package>com.app.picflick.ui.screens</package>
   <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/screens/MyPhotosScreen.kt" />
   <problem_class id="KotlinUnusedImport" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused import directive</problem_class>
   <description>Unused import directive</description>
@@ -484,7 +484,7 @@
   <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/screens/MyPhotosScreen.kt</file>
   <line>6</line>
   <module>PICFLICK.app.main</module>
-  <package>com.example.picflick.ui.screens</package>
+  <package>com.app.picflick.ui.screens</package>
   <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/screens/MyPhotosScreen.kt" />
   <problem_class id="KotlinUnusedImport" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused import directive</problem_class>
   <description>Unused import directive</description>
@@ -497,7 +497,7 @@
   <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/screens/MyPhotosScreen.kt</file>
   <line>7</line>
   <module>PICFLICK.app.main</module>
-  <package>com.example.picflick.ui.screens</package>
+  <package>com.app.picflick.ui.screens</package>
   <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/screens/MyPhotosScreen.kt" />
   <problem_class id="KotlinUnusedImport" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused import directive</problem_class>
   <description>Unused import directive</description>
@@ -510,7 +510,7 @@
   <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/screens/MyPhotosScreen.kt</file>
   <line>15</line>
   <module>PICFLICK.app.main</module>
-  <package>com.example.picflick.ui.screens</package>
+  <package>com.app.picflick.ui.screens</package>
   <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/screens/MyPhotosScreen.kt" />
   <problem_class id="KotlinUnusedImport" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused import directive</problem_class>
   <description>Unused import directive</description>
@@ -523,7 +523,7 @@
   <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/screens/MyPhotosScreen.kt</file>
   <line>16</line>
   <module>PICFLICK.app.main</module>
-  <package>com.example.picflick.ui.screens</package>
+  <package>com.app.picflick.ui.screens</package>
   <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/screens/MyPhotosScreen.kt" />
   <problem_class id="KotlinUnusedImport" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused import directive</problem_class>
   <description>Unused import directive</description>
@@ -536,7 +536,7 @@
   <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/screens/MyPhotosScreen.kt</file>
   <line>21</line>
   <module>PICFLICK.app.main</module>
-  <package>com.example.picflick.ui.screens</package>
+  <package>com.app.picflick.ui.screens</package>
   <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/screens/MyPhotosScreen.kt" />
   <problem_class id="KotlinUnusedImport" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused import directive</problem_class>
   <description>Unused import directive</description>
@@ -549,7 +549,7 @@
   <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/screens/MyPhotosScreen.kt</file>
   <line>23</line>
   <module>PICFLICK.app.main</module>
-  <package>com.example.picflick.ui.screens</package>
+  <package>com.app.picflick.ui.screens</package>
   <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/screens/MyPhotosScreen.kt" />
   <problem_class id="KotlinUnusedImport" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused import directive</problem_class>
   <description>Unused import directive</description>
@@ -562,7 +562,7 @@
   <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/screens/MyPhotosScreen.kt</file>
   <line>25</line>
   <module>PICFLICK.app.main</module>
-  <package>com.example.picflick.ui.screens</package>
+  <package>com.app.picflick.ui.screens</package>
   <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/screens/MyPhotosScreen.kt" />
   <problem_class id="KotlinUnusedImport" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused import directive</problem_class>
   <description>Unused import directive</description>
@@ -575,7 +575,7 @@
   <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/screens/MyPhotosScreen.kt</file>
   <line>26</line>
   <module>PICFLICK.app.main</module>
-  <package>com.example.picflick.ui.screens</package>
+  <package>com.app.picflick.ui.screens</package>
   <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/screens/MyPhotosScreen.kt" />
   <problem_class id="KotlinUnusedImport" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused import directive</problem_class>
   <description>Unused import directive</description>
@@ -588,11 +588,11 @@
   <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/screens/MyPhotosScreen.kt</file>
   <line>31</line>
   <module>PICFLICK.app.main</module>
-  <package>com.example.picflick.ui.screens</package>
+  <package>com.app.picflick.ui.screens</package>
   <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/screens/MyPhotosScreen.kt" />
   <problem_class id="KotlinUnusedImport" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused import directive</problem_class>
   <description>Unused import directive</description>
-  <highlighted_element>import com.example.picflick.data.Comment</highlighted_element>
+  <highlighted_element>import com.app.picflick.data.Comment</highlighted_element>
   <language>kotlin</language>
   <offset>0</offset>
   <length>40</length>
@@ -601,11 +601,11 @@
   <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/screens/MyPhotosScreen.kt</file>
   <line>34</line>
   <module>PICFLICK.app.main</module>
-  <package>com.example.picflick.ui.screens</package>
+  <package>com.app.picflick.ui.screens</package>
   <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/screens/MyPhotosScreen.kt" />
   <problem_class id="KotlinUnusedImport" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused import directive</problem_class>
   <description>Unused import directive</description>
-  <highlighted_element>import com.example.picflick.repository.FlickRepository</highlighted_element>
+  <highlighted_element>import com.app.picflick.repository.FlickRepository</highlighted_element>
   <language>kotlin</language>
   <offset>0</offset>
   <length>54</length>
@@ -614,11 +614,11 @@
   <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/screens/MyPhotosScreen.kt</file>
   <line>36</line>
   <module>PICFLICK.app.main</module>
-  <package>com.example.picflick.ui.screens</package>
+  <package>com.app.picflick.ui.screens</package>
   <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/screens/MyPhotosScreen.kt" />
   <problem_class id="KotlinUnusedImport" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused import directive</problem_class>
   <description>Unused import directive</description>
-  <highlighted_element>import com.example.picflick.ui.theme.PicFlickBannerBackground</highlighted_element>
+  <highlighted_element>import com.app.picflick.ui.theme.PicFlickBannerBackground</highlighted_element>
   <language>kotlin</language>
   <offset>0</offset>
   <length>61</length>
@@ -627,7 +627,7 @@
   <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/screens/MyPhotosScreen.kt</file>
   <line>41</line>
   <module>PICFLICK.app.main</module>
-  <package>com.example.picflick.ui.screens</package>
+  <package>com.app.picflick.ui.screens</package>
   <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/screens/MyPhotosScreen.kt" />
   <problem_class id="KotlinUnusedImport" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused import directive</problem_class>
   <description>Unused import directive</description>
@@ -640,7 +640,7 @@
   <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/screens/NotificationsScreen.kt</file>
   <line>12</line>
   <module>PICFLICK.app.main</module>
-  <package>com.example.picflick.ui.screens</package>
+  <package>com.app.picflick.ui.screens</package>
   <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/screens/NotificationsScreen.kt" />
   <problem_class id="KotlinUnusedImport" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused import directive</problem_class>
   <description>Unused import directive</description>
@@ -653,7 +653,7 @@
   <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/screens/NotificationsScreen.kt</file>
   <line>13</line>
   <module>PICFLICK.app.main</module>
-  <package>com.example.picflick.ui.screens</package>
+  <package>com.app.picflick.ui.screens</package>
   <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/screens/NotificationsScreen.kt" />
   <problem_class id="KotlinUnusedImport" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused import directive</problem_class>
   <description>Unused import directive</description>
@@ -666,7 +666,7 @@
   <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/theme/Theme.kt</file>
   <line>3</line>
   <module>PICFLICK.app.main</module>
-  <package>com.example.picflick.ui.theme</package>
+  <package>com.app.picflick.ui.theme</package>
   <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/theme/Theme.kt" />
   <problem_class id="KotlinUnusedImport" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused import directive</problem_class>
   <description>Unused import directive</description>
@@ -679,7 +679,7 @@
   <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/viewmodel/UploadViewModel.kt</file>
   <line>15</line>
   <module>PICFLICK.app.main</module>
-  <package>com.example.picflick.viewmodel</package>
+  <package>com.app.picflick.viewmodel</package>
   <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/viewmodel/UploadViewModel.kt" />
   <problem_class id="KotlinUnusedImport" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused import directive</problem_class>
   <description>Unused import directive</description>
@@ -692,7 +692,7 @@
   <file>file://$PROJECT_DIR$/app/src/test/java/com/example/picflick/viewmodel/HomeViewModelTest.kt</file>
   <line>16</line>
   <module>PICFLICK.app.unitTest</module>
-  <package>com.example.picflick.viewmodel</package>
+  <package>com.app.picflick.viewmodel</package>
   <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/test/java/com/example/picflick/viewmodel/HomeViewModelTest.kt" />
   <problem_class id="KotlinUnusedImport" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused import directive</problem_class>
   <description>Unused import directive</description>
@@ -705,7 +705,7 @@
   <file>file://$PROJECT_DIR$/app/src/test/java/com/example/picflick/viewmodel/ProfileViewModelTest.kt</file>
   <line>16</line>
   <module>PICFLICK.app.unitTest</module>
-  <package>com.example.picflick.viewmodel</package>
+  <package>com.app.picflick.viewmodel</package>
   <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/test/java/com/example/picflick/viewmodel/ProfileViewModelTest.kt" />
   <problem_class id="KotlinUnusedImport" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused import directive</problem_class>
   <description>Unused import directive</description>

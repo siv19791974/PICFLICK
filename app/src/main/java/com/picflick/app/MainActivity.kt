@@ -39,50 +39,49 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.picflick.data.Flick
-import com.example.picflick.data.UserProfile
-import com.example.picflick.data.ChatSession
-import com.example.picflick.data.SubscriptionTier
-import com.example.picflick.repository.ChatRepository
-import com.example.picflick.repository.FlickRepository
-import com.example.picflick.ui.components.BottomNavBar
-import com.example.picflick.ui.components.LogoImage
-import com.example.picflick.ui.components.UploadSourceDialog
-import com.example.picflick.ui.screens.AboutScreen
-import com.example.picflick.ui.screens.ChatDetailScreen
-import com.example.picflick.ui.screens.ChatsScreen
-import com.example.picflick.ui.screens.ContactScreen
-import com.example.picflick.ui.screens.ExploreScreen
-import com.example.picflick.ui.screens.FilterScreen
-import com.example.picflick.ui.screens.FindFriendsScreen
-import com.example.picflick.ui.screens.FriendsScreen
-import com.example.picflick.ui.screens.FullScreenPhotoViewer
-import com.example.picflick.ui.screens.HomeScreen
-import com.example.picflick.ui.screens.LoginScreen
-import com.example.picflick.ui.screens.ManageStorageScreen
-import com.example.picflick.ui.screens.MyPhotosScreen
-import com.example.picflick.ui.screens.NotificationsScreen
-import com.example.picflick.ui.screens.NotificationSettingsScreen
-import com.example.picflick.ui.screens.ProfileScreen
-import com.example.picflick.ui.screens.SettingsScreen
-import com.example.picflick.ui.screens.PrivacyScreen
+import com.picflick.app.data.Flick
+import com.picflick.app.data.UserProfile
+import com.picflick.app.data.ChatSession
+import com.picflick.app.data.SubscriptionTier
+import com.picflick.app.repository.ChatRepository
+import com.picflick.app.ui.components.BottomNavBar
+import com.picflick.app.ui.components.LogoImage
+import com.picflick.app.ui.components.UploadSourceDialog
+import com.picflick.app.ui.screens.AboutScreen
+import com.picflick.app.ui.screens.ChatDetailScreen
+import com.picflick.app.ui.screens.ChatsScreen
+import com.picflick.app.ui.screens.ContactScreen
+import com.picflick.app.ui.screens.ExploreScreen
+import com.picflick.app.ui.screens.FilterScreen
+import com.picflick.app.ui.screens.FindFriendsScreen
+import com.picflick.app.ui.screens.FriendsScreen
+import com.picflick.app.ui.screens.FullScreenPhotoViewer
+import com.picflick.app.ui.screens.HomeScreen
+import com.picflick.app.ui.screens.LoginScreen
+import com.picflick.app.ui.screens.ManageStorageScreen
+import com.picflick.app.ui.screens.MyPhotosScreen
+import com.picflick.app.ui.screens.NotificationsScreen
+import com.picflick.app.ui.screens.NotificationSettingsScreen
+import com.picflick.app.ui.screens.ProfileScreen
+import com.picflick.app.ui.screens.SettingsScreen
+import com.picflick.app.ui.screens.PrivacyScreen
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.ui.unit.sp
-import com.example.picflick.ui.screens.SplashScreen
-import com.example.picflick.ui.screens.SubscriptionStatusScreen
-import com.example.picflick.ui.screens.UserProfileScreen
-import com.example.picflick.ui.theme.PicFlickBackground
-import com.example.picflick.ui.theme.PicFlickBannerBackground
-import com.example.picflick.ui.theme.PicFlickTheme
-import com.example.picflick.viewmodel.AuthViewModel
-import com.example.picflick.viewmodel.BillingViewModel
-import com.example.picflick.viewmodel.SubscriptionProduct
-import com.example.picflick.viewmodel.FriendsViewModel
-import com.example.picflick.viewmodel.HomeViewModel
-import com.example.picflick.viewmodel.ChatViewModel
-import com.example.picflick.viewmodel.NotificationViewModel
-import com.example.picflick.viewmodel.ProfileViewModel
-import com.example.picflick.viewmodel.UploadViewModel
+import com.picflick.app.ui.screens.SplashScreen
+import com.picflick.app.ui.screens.SubscriptionStatusScreen
+import com.picflick.app.ui.screens.UserProfileScreen
+import com.picflick.app.ui.theme.PicFlickBackground
+import com.picflick.app.ui.theme.PicFlickBannerBackground
+import com.picflick.app.ui.theme.PicFlickTheme
+import com.picflick.app.viewmodel.AuthViewModel
+import com.picflick.app.viewmodel.BillingViewModel
+import com.picflick.app.viewmodel.SubscriptionProduct
+import com.picflick.app.viewmodel.FriendsViewModel
+import com.picflick.app.viewmodel.HomeViewModel
+import com.picflick.app.viewmodel.ChatViewModel
+import com.picflick.app.viewmodel.NotificationViewModel
+import com.picflick.app.viewmodel.ProfileViewModel
+import com.picflick.app.viewmodel.UploadViewModel
 
 /**
  * Main Activity - Entry point for the PicFlick app
@@ -164,7 +163,7 @@ fun MainScreen(
     val userProfile = authViewModel.userProfile
     val context = LocalContext.current // Get context for Toast
     val scope = rememberCoroutineScope()
-    val repository = com.example.picflick.repository.FlickRepository.getInstance()
+    val repository = com.app.picflick.repository.FlickRepository.getInstance()
     
     // Capture billingViewModel to fix scope issues in when blocks
     val billingViewModelInstance = billingViewModel
@@ -194,12 +193,12 @@ fun MainScreen(
                         val result = repository.uploadFlickImage(uid, imageBytes)
                         
                         when (result) {
-                            is com.example.picflick.data.Result.Success -> {
+                            is com.app.picflick.data.Result.Success -> {
                                 // Update profile with new photo URL
                                 authViewModel.updateProfilePhoto(result.data)
                                 Toast.makeText(context, "Profile photo updated!", Toast.LENGTH_SHORT).show()
                             }
-                            is com.example.picflick.data.Result.Error -> {
+                            is com.app.picflick.data.Result.Error -> {
                                 Toast.makeText(context, "Failed to upload: ${result.message}", Toast.LENGTH_SHORT).show()
                             }
                             else -> {}
@@ -219,7 +218,7 @@ fun MainScreen(
     var selectedPhotoUri by remember { mutableStateOf<Uri?>(null) }
     
     // State for selected chat (for navigation to ChatDetail)
-    var selectedChatSession by remember { mutableStateOf<com.example.picflick.data.ChatSession?>(null) }
+    var selectedChatSession by remember { mutableStateOf<com.app.picflick.data.ChatSession?>(null) }
     var selectedOtherUserId by remember { mutableStateOf<String>("") }
 
     // Load notifications when user is authenticated
@@ -522,16 +521,16 @@ private fun AuthenticatedContent(
     chatViewModel: ChatViewModel,
     uploadViewModel: UploadViewModel,
     authViewModel: AuthViewModel,
-    selectedChatSession: com.example.picflick.data.ChatSession?,
+    selectedChatSession: com.app.picflick.data.ChatSession?,
     selectedOtherUserId: String,
-    onSetSelectedChat: (com.example.picflick.data.ChatSession, String) -> Unit,
+    onSetSelectedChat: (com.app.picflick.data.ChatSession, String) -> Unit,
     onSignOut: () -> Unit,
     selectedPhotoUri: Uri?,
     onPhotoSelected: (Uri) -> Unit
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    val repository = com.example.picflick.repository.FlickRepository.getInstance()
+    val repository = com.app.picflick.repository.FlickRepository.getInstance()
     
     // Capture billingViewModel locally for use in when blocks
     val bvm = billingViewModel
@@ -920,13 +919,13 @@ private fun AuthenticatedContent(
                     // Load target user's profile
                     repository.getUserProfile(targetUserId) { result ->
                         when (result) {
-                            is com.example.picflick.data.Result.Success<UserProfile> -> {
+                            is com.app.picflick.data.Result.Success<UserProfile> -> {
                                 targetUser = result.data
                                 // If friends, load their photos
                                 if (userProfile.following.contains(targetUserId)) {
                                     repository.getUserFlicks(targetUserId) { photosResult ->
                                         when (photosResult) {
-                                            is com.example.picflick.data.Result.Success<List<Flick>> -> {
+                                            is com.app.picflick.data.Result.Success<List<Flick>> -> {
                                                 targetUserPhotos = photosResult.data
                                                 isLoading = false
                                             }
@@ -960,11 +959,11 @@ private fun AuthenticatedContent(
                             target.uid.let { uid ->
                                 isLoading = true
                                 repository.getUserProfile(uid) { result ->
-                                    if (result is com.example.picflick.data.Result.Success<UserProfile>) {
+                                    if (result is com.app.picflick.data.Result.Success<UserProfile>) {
                                         targetUser = result.data
                                         // Reload photos
                                         repository.getUserFlicks(uid) { photosResult ->
-                                            if (photosResult is com.example.picflick.data.Result.Success<List<Flick>>) {
+                                            if (photosResult is com.app.picflick.data.Result.Success<List<Flick>>) {
                                                 targetUserPhotos = photosResult.data
                                             }
                                             isLoading = false
@@ -1015,7 +1014,7 @@ private fun AuthenticatedContent(
                                         user2Name = target.displayName
                                     )
                                     when (result) {
-                                        is com.example.picflick.data.Result.Success<String> -> {
+                                        is com.app.picflick.data.Result.Success<String> -> {
                                             // Create a ChatSession object for navigation
                                             val session = ChatSession(
                                                 id = result.data,
@@ -1031,7 +1030,7 @@ private fun AuthenticatedContent(
                                             onSetSelectedChat(session, target.uid)
                                             onScreenChange(Screen.ChatDetail)
                                         }
-                                        is com.example.picflick.data.Result.Error -> {
+                                        is com.app.picflick.data.Result.Error -> {
                                             Toast.makeText(
                                                 context, 
                                                 result.message ?: "Cannot start chat", 

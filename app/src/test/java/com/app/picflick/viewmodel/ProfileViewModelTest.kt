@@ -1,8 +1,8 @@
-package com.example.picflick.viewmodel
+package com.app.picflick.viewmodel
 
-import com.example.picflick.data.Flick
-import com.example.picflick.data.Result
-import com.example.picflick.repository.FlickRepository
+import com.app.picflick.data.Flick
+import com.app.picflick.data.Result
+import com.app.picflick.repository.FlickRepository
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.mockkObject
@@ -13,7 +13,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.resetMain
-import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.*

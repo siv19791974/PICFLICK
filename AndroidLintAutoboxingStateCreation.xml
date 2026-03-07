@@ -3,7 +3,7 @@
   <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/screens/FindFriendsScreen.kt</file>
   <line>57</line>
   <module>PICFLICK.app.main</module>
-  <package>com.example.picflick.ui.screens</package>
+  <package>com.app.picflick.ui.screens</package>
   <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/screens/FindFriendsScreen.kt" />
   <problem_class id="AndroidLintAutoboxingStateCreation" severity="WEAK WARNING" attribute_key="INFO_ATTRIBUTES">State&lt;T&gt; will autobox values assigned to this state. Use a specialized state type instead.</problem_class>
   <hints />
@@ -17,7 +17,7 @@
   <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/viewmodel/ChatViewModel.kt</file>
   <line>42</line>
   <module>PICFLICK.app.main</module>
-  <package>com.example.picflick.viewmodel</package>
+  <package>com.app.picflick.viewmodel</package>
   <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/viewmodel/ChatViewModel.kt" />
   <problem_class id="AndroidLintAutoboxingStateCreation" severity="WEAK WARNING" attribute_key="INFO_ATTRIBUTES">State&lt;T&gt; will autobox values assigned to this state. Use a specialized state type instead.</problem_class>
   <hints />
@@ -31,7 +31,7 @@
   <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/viewmodel/NotificationViewModel.kt</file>
   <line>24</line>
   <module>PICFLICK.app.main</module>
-  <package>com.example.picflick.viewmodel</package>
+  <package>com.app.picflick.viewmodel</package>
   <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/viewmodel/NotificationViewModel.kt" />
   <problem_class id="AndroidLintAutoboxingStateCreation" severity="WEAK WARNING" attribute_key="INFO_ATTRIBUTES">State&lt;T&gt; will autobox values assigned to this state. Use a specialized state type instead.</problem_class>
   <hints />
@@ -45,7 +45,7 @@
   <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/viewmodel/ProfileViewModel.kt</file>
   <line>28</line>
   <module>PICFLICK.app.main</module>
-  <package>com.example.picflick.viewmodel</package>
+  <package>com.app.picflick.viewmodel</package>
   <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/viewmodel/ProfileViewModel.kt" />
   <problem_class id="AndroidLintAutoboxingStateCreation" severity="WEAK WARNING" attribute_key="INFO_ATTRIBUTES">State&lt;T&gt; will autobox values assigned to this state. Use a specialized state type instead.</problem_class>
   <hints />

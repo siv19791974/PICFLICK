@@ -1,4 +1,4 @@
-package com.example.picflick.data
+package com.app.picflick.data
 
 /**
  * Sealed class representing different states of UI operations

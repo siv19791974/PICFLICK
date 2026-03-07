@@ -20,8 +20,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
-import com.example.picflick.data.UserProfile
-import com.example.picflick.repository.FlickRepository
+import com.app.picflick.data.UserProfile
+import com.app.picflick.repository.FlickRepository
 
 /**
  * Privacy Settings Screen - Privacy by Default
@@ -53,7 +53,7 @@ fun PrivacyScreen(
 
         userProfile.blockedUsers.forEach { blockedId ->
             repository.getUserProfile(blockedId) { result ->
-                if (result is com.example.picflick.data.Result.Success) {
+                if (result is com.app.picflick.data.Result.Success) {
                     loadedProfiles.add(result.data)
                 }
                 completed++
@@ -159,7 +159,7 @@ fun PrivacyScreen(
                 TextButton(
                     onClick = {
                         repository.unblockUser(userProfile.uid, user.uid) { result ->
-                            if (result is com.example.picflick.data.Result.Success) {
+                            if (result is com.app.picflick.data.Result.Success) {
                                 blockedUsers = blockedUsers.filter { it.uid != user.uid }
                             }
                         }

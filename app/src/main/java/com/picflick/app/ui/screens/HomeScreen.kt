@@ -1,4 +1,4 @@
-package com.example.picflick.ui.screens
+package com.app.picflick.ui.screens
 
 import android.content.Intent
 import android.net.Uri
@@ -36,15 +36,15 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.FileProvider
 import coil3.compose.AsyncImage
-import com.example.picflick.data.Flick
-import com.example.picflick.data.ReactionType
-import com.example.picflick.data.UserProfile
-import com.example.picflick.data.toEmoji
-import com.example.picflick.ui.components.AnimatedReactionPicker
-import com.example.picflick.ui.components.ErrorMessage
-import com.example.picflick.ui.components.PhotoGridShimmer
-import com.example.picflick.ui.theme.PicFlickBackground
-import com.example.picflick.viewmodel.HomeViewModel
+import com.app.picflick.data.Flick
+import com.app.picflick.data.ReactionType
+import com.app.picflick.data.UserProfile
+import com.app.picflick.data.toEmoji
+import com.app.picflick.ui.components.AnimatedReactionPicker
+import com.app.picflick.ui.components.ErrorMessage
+import com.app.picflick.ui.components.PhotoGridShimmer
+import com.app.picflick.ui.theme.PicFlickBackground
+import com.app.picflick.viewmodel.HomeViewModel
 import java.io.File
 import kotlinx.coroutines.delay
 

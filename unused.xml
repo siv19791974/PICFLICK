@@ -3,8 +3,8 @@
   <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/MainActivity.kt</file>
   <line>366</line>
   <module>PICFLICK.app.main</module>
-  <package>com.example.picflick</package>
-  <entry_point TYPE="method" FQNAME="com.example.picflick.MainActivityKt void AuthenticatedContent(com.example.picflick.Screen currentScreen, kotlin.jvm.functions.Function1&lt;? super com.example.picflick.Screen,kotlin.Unit&gt; onScreenChange, com.example.picflick.data.UserProfile userProfile, com.example.picflick.viewmodel.HomeViewModel homeViewModel, com.example.picflick.viewmodel.ProfileViewModel profileViewModel, com.example.picflick.viewmodel.FriendsViewModel friendsViewModel, com.example.picflick.viewmodel.NotificationViewModel notificationViewModel, com.example.picflick.viewmodel.ChatViewModel chatViewModel, com.example.picflick.viewmodel.UploadViewModel uploadViewModel, com.example.picflick.data.ChatSession selectedChatSession, java.lang.String selectedOtherUserId, kotlin.jvm.functions.Function2&lt;? super com.example.picflick.data.ChatSession,? super java.lang.String,kotlin.Unit&gt; onSetSelectedChat, kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onSignOut, android.net.Uri selectedPhotoUri, kotlin.jvm.functions.Function1&lt;? super android.net.Uri,kotlin.Unit&gt; onPhotoSelected)" />
+  <package>com.app.picflick</package>
+  <entry_point TYPE="method" FQNAME="com.app.picflick.MainActivityKt void AuthenticatedContent(com.app.picflick.Screen currentScreen, kotlin.jvm.functions.Function1&lt;? super com.app.picflick.Screen,kotlin.Unit&gt; onScreenChange, com.app.picflick.data.UserProfile userProfile, com.app.picflick.viewmodel.HomeViewModel homeViewModel, com.app.picflick.viewmodel.ProfileViewModel profileViewModel, com.app.picflick.viewmodel.FriendsViewModel friendsViewModel, com.app.picflick.viewmodel.NotificationViewModel notificationViewModel, com.app.picflick.viewmodel.ChatViewModel chatViewModel, com.app.picflick.viewmodel.UploadViewModel uploadViewModel, com.app.picflick.data.ChatSession selectedChatSession, java.lang.String selectedOtherUserId, kotlin.jvm.functions.Function2&lt;? super com.app.picflick.data.ChatSession,? super java.lang.String,kotlin.Unit&gt; onSetSelectedChat, kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onSignOut, android.net.Uri selectedPhotoUri, kotlin.jvm.functions.Function1&lt;? super android.net.Uri,kotlin.Unit&gt; onPhotoSelected)" />
   <problem_class id="unused" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused declaration</problem_class>
   <hints>
     <hint value="notificationViewModel" />
@@ -19,8 +19,8 @@
   <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/components/BottomNavBar.kt</file>
   <line>20</line>
   <module>PICFLICK.app.main</module>
-  <package>com.example.picflick.ui.components</package>
-  <entry_point TYPE="method" FQNAME="com.example.picflick.ui.components.BottomNavBarKt void BottomNavBar(java.lang.String currentRoute, kotlin.jvm.functions.Function1&lt;? super java.lang.String,kotlin.Unit&gt; onNavigate, int unreadNotifications)" />
+  <package>com.app.picflick.ui.components</package>
+  <entry_point TYPE="method" FQNAME="com.app.picflick.ui.components.BottomNavBarKt void BottomNavBar(java.lang.String currentRoute, kotlin.jvm.functions.Function1&lt;? super java.lang.String,kotlin.Unit&gt; onNavigate, int unreadNotifications)" />
   <problem_class id="unused" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused declaration</problem_class>
   <hints>
     <hint value="unreadNotifications" />
@@ -35,8 +35,8 @@
   <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/components/ReactionPicker.kt</file>
   <line>132</line>
   <module>PICFLICK.app.main</module>
-  <package>com.example.picflick.ui.components</package>
-  <entry_point TYPE="method" FQNAME="com.example.picflick.ui.components.ReactionPickerKt void ReactionBar(java.util.Map&lt;com.example.picflick.data.ReactionType,java.lang.Integer&gt; reactionCounts, com.example.picflick.data.ReactionType userReaction, int totalCount, kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onShowPicker, androidx.compose.ui.Modifier modifier)" />
+  <package>com.app.picflick.ui.components</package>
+  <entry_point TYPE="method" FQNAME="com.app.picflick.ui.components.ReactionPickerKt void ReactionBar(java.util.Map&lt;com.app.picflick.data.ReactionType,java.lang.Integer&gt; reactionCounts, com.app.picflick.data.ReactionType userReaction, int totalCount, kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onShowPicker, androidx.compose.ui.Modifier modifier)" />
   <problem_class id="unused" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused declaration</problem_class>
   <hints>
     <hint value="userReaction" />
@@ -51,8 +51,8 @@
   <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/screens/ChatsScreen.kt</file>
   <line>40</line>
   <module>PICFLICK.app.main</module>
-  <package>com.example.picflick.ui.screens</package>
-  <entry_point TYPE="method" FQNAME="com.example.picflick.ui.screens.ChatsScreenKt void ChatsScreen(com.example.picflick.data.UserProfile userProfile, com.example.picflick.viewmodel.ChatViewModel viewModel, kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onBack, kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onNavigateHome, kotlin.jvm.functions.Function2&lt;? super com.example.picflick.data.ChatSession,? super java.lang.String,kotlin.Unit&gt; onChatClick)" />
+  <package>com.app.picflick.ui.screens</package>
+  <entry_point TYPE="method" FQNAME="com.app.picflick.ui.screens.ChatsScreenKt void ChatsScreen(com.app.picflick.data.UserProfile userProfile, com.app.picflick.viewmodel.ChatViewModel viewModel, kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onBack, kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onNavigateHome, kotlin.jvm.functions.Function2&lt;? super com.app.picflick.data.ChatSession,? super java.lang.String,kotlin.Unit&gt; onChatClick)" />
   <problem_class id="unused" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused declaration</problem_class>
   <hints>
     <hint value="onNavigateHome" />
@@ -67,8 +67,8 @@
   <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/screens/ChatsScreen.kt</file>
   <line>130</line>
   <module>PICFLICK.app.main</module>
-  <package>com.example.picflick.ui.screens</package>
-  <entry_point TYPE="method" FQNAME="com.example.picflick.ui.screens.ChatsScreenKt void ChatListItem(com.example.picflick.data.ChatSession session, java.lang.String otherUserId, java.lang.String otherUserName, java.lang.String otherUserPhoto, java.lang.String currentUserId, kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onClick)" />
+  <package>com.app.picflick.ui.screens</package>
+  <entry_point TYPE="method" FQNAME="com.app.picflick.ui.screens.ChatsScreenKt void ChatListItem(com.app.picflick.data.ChatSession session, java.lang.String otherUserId, java.lang.String otherUserName, java.lang.String otherUserPhoto, java.lang.String currentUserId, kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onClick)" />
   <problem_class id="unused" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused declaration</problem_class>
   <hints>
     <hint value="otherUserId" />
@@ -83,8 +83,8 @@
   <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/screens/FilterScreen.kt</file>
   <line>54</line>
   <module>PICFLICK.app.main</module>
-  <package>com.example.picflick.ui.screens</package>
-  <entry_point TYPE="method" FQNAME="com.example.picflick.ui.screens.FilterScreenKt void FilterScreen(android.net.Uri photoUri, com.example.picflick.data.UserProfile currentUser, java.util.List&lt;com.example.picflick.data.UserProfile&gt; friends, int dailyUploadCount, int maxDailyUploads, kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onBack, kotlin.jvm.functions.Function3&lt;? super android.net.Uri,? super com.example.picflick.data.PhotoFilter,? super java.util.List&lt;java.lang.String&gt;,kotlin.Unit&gt; onUpload)" />
+  <package>com.app.picflick.ui.screens</package>
+  <entry_point TYPE="method" FQNAME="com.app.picflick.ui.screens.FilterScreenKt void FilterScreen(android.net.Uri photoUri, com.app.picflick.data.UserProfile currentUser, java.util.List&lt;com.app.picflick.data.UserProfile&gt; friends, int dailyUploadCount, int maxDailyUploads, kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onBack, kotlin.jvm.functions.Function3&lt;? super android.net.Uri,? super com.app.picflick.data.PhotoFilter,? super java.util.List&lt;java.lang.String&gt;,kotlin.Unit&gt; onUpload)" />
   <problem_class id="unused" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused declaration</problem_class>
   <hints>
     <hint value="currentUser" />
@@ -99,8 +99,8 @@
   <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/screens/FindFriendsScreen.kt</file>
   <line>52</line>
   <module>PICFLICK.app.main</module>
-  <package>com.example.picflick.ui.screens</package>
-  <entry_point TYPE="method" FQNAME="com.example.picflick.ui.screens.FindFriendsScreenKt void FindFriendsScreen(com.example.picflick.viewmodel.FriendsViewModel viewModel, com.example.picflick.data.UserProfile userProfile, kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onBack, kotlin.jvm.functions.Function1&lt;? super java.lang.String,kotlin.Unit&gt; onNavigateToProfile)" />
+  <package>com.app.picflick.ui.screens</package>
+  <entry_point TYPE="method" FQNAME="com.app.picflick.ui.screens.FindFriendsScreenKt void FindFriendsScreen(com.app.picflick.viewmodel.FriendsViewModel viewModel, com.app.picflick.data.UserProfile userProfile, kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onBack, kotlin.jvm.functions.Function1&lt;? super java.lang.String,kotlin.Unit&gt; onNavigateToProfile)" />
   <problem_class id="unused" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused declaration</problem_class>
   <hints>
     <hint value="onBack" />
@@ -115,8 +115,8 @@
   <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/screens/FindFriendsScreen.kt</file>
   <line>324</line>
   <module>PICFLICK.app.main</module>
-  <package>com.example.picflick.ui.screens</package>
-  <entry_point TYPE="method" FQNAME="com.example.picflick.ui.screens.FindFriendsScreenKt void InviteTab(com.example.picflick.data.UserProfile userProfile, boolean hasContactPermission, kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onRequestPermission)" />
+  <package>com.app.picflick.ui.screens</package>
+  <entry_point TYPE="method" FQNAME="com.app.picflick.ui.screens.FindFriendsScreenKt void InviteTab(com.app.picflick.data.UserProfile userProfile, boolean hasContactPermission, kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onRequestPermission)" />
   <problem_class id="unused" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused declaration</problem_class>
   <hints>
     <hint value="hasContactPermission" />
@@ -131,8 +131,8 @@
   <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/screens/FindFriendsScreen.kt</file>
   <line>325</line>
   <module>PICFLICK.app.main</module>
-  <package>com.example.picflick.ui.screens</package>
-  <entry_point TYPE="method" FQNAME="com.example.picflick.ui.screens.FindFriendsScreenKt void InviteTab(com.example.picflick.data.UserProfile userProfile, boolean hasContactPermission, kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onRequestPermission)" />
+  <package>com.app.picflick.ui.screens</package>
+  <entry_point TYPE="method" FQNAME="com.app.picflick.ui.screens.FindFriendsScreenKt void InviteTab(com.app.picflick.data.UserProfile userProfile, boolean hasContactPermission, kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onRequestPermission)" />
   <problem_class id="unused" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused declaration</problem_class>
   <hints>
     <hint value="onRequestPermission" />
@@ -147,8 +147,8 @@
   <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/screens/FriendsScreen.kt</file>
   <line>42</line>
   <module>PICFLICK.app.main</module>
-  <package>com.example.picflick.ui.screens</package>
-  <entry_point TYPE="method" FQNAME="com.example.picflick.ui.screens.FriendsScreenKt void FriendsScreen(com.example.picflick.data.UserProfile userProfile, com.example.picflick.viewmodel.FriendsViewModel viewModel, kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onBack, kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onFindFriendsClick)" />
+  <package>com.app.picflick.ui.screens</package>
+  <entry_point TYPE="method" FQNAME="com.app.picflick.ui.screens.FriendsScreenKt void FriendsScreen(com.app.picflick.data.UserProfile userProfile, com.app.picflick.viewmodel.FriendsViewModel viewModel, kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onBack, kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onFindFriendsClick)" />
   <problem_class id="unused" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused declaration</problem_class>
   <hints>
     <hint value="onBack" />
@@ -163,8 +163,8 @@
   <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/screens/HomeScreen.kt</file>
   <line>53</line>
   <module>PICFLICK.app.main</module>
-  <package>com.example.picflick.ui.screens</package>
-  <entry_point TYPE="method" FQNAME="com.example.picflick.ui.screens.HomeScreenKt void HomeScreen(com.example.picflick.data.UserProfile userProfile, com.example.picflick.viewmodel.HomeViewModel viewModel, kotlin.jvm.functions.Function1&lt;? super java.lang.String,kotlin.Unit&gt; onNavigate, kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onSignOut)" />
+  <package>com.app.picflick.ui.screens</package>
+  <entry_point TYPE="method" FQNAME="com.app.picflick.ui.screens.HomeScreenKt void HomeScreen(com.app.picflick.data.UserProfile userProfile, com.app.picflick.viewmodel.HomeViewModel viewModel, kotlin.jvm.functions.Function1&lt;? super java.lang.String,kotlin.Unit&gt; onNavigate, kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onSignOut)" />
   <problem_class id="unused" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused declaration</problem_class>
   <hints>
     <hint value="onNavigate" />
@@ -179,8 +179,8 @@
   <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/screens/HomeScreen.kt</file>
   <line>54</line>
   <module>PICFLICK.app.main</module>
-  <package>com.example.picflick.ui.screens</package>
-  <entry_point TYPE="method" FQNAME="com.example.picflick.ui.screens.HomeScreenKt void HomeScreen(com.example.picflick.data.UserProfile userProfile, com.example.picflick.viewmodel.HomeViewModel viewModel, kotlin.jvm.functions.Function1&lt;? super java.lang.String,kotlin.Unit&gt; onNavigate, kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onSignOut)" />
+  <package>com.app.picflick.ui.screens</package>
+  <entry_point TYPE="method" FQNAME="com.app.picflick.ui.screens.HomeScreenKt void HomeScreen(com.app.picflick.data.UserProfile userProfile, com.app.picflick.viewmodel.HomeViewModel viewModel, kotlin.jvm.functions.Function1&lt;? super java.lang.String,kotlin.Unit&gt; onNavigate, kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onSignOut)" />
   <problem_class id="unused" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused declaration</problem_class>
   <hints>
     <hint value="onSignOut" />
@@ -195,8 +195,8 @@
   <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/screens/HomeScreen.kt</file>
   <line>388</line>
   <module>PICFLICK.app.main</module>
-  <package>com.example.picflick.ui.screens</package>
-  <entry_point TYPE="method" FQNAME="com.example.picflick.ui.screens.HomeScreenKt void FlickCard(com.example.picflick.data.Flick flick, java.lang.String userId, kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onLikeClick, kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onPhotoClick)" />
+  <package>com.app.picflick.ui.screens</package>
+  <entry_point TYPE="method" FQNAME="com.app.picflick.ui.screens.HomeScreenKt void FlickCard(com.app.picflick.data.Flick flick, java.lang.String userId, kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onLikeClick, kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onPhotoClick)" />
   <problem_class id="unused" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused declaration</problem_class>
   <hints>
     <hint value="userId" />
@@ -211,8 +211,8 @@
   <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/screens/HomeScreen.kt</file>
   <line>389</line>
   <module>PICFLICK.app.main</module>
-  <package>com.example.picflick.ui.screens</package>
-  <entry_point TYPE="method" FQNAME="com.example.picflick.ui.screens.HomeScreenKt void FlickCard(com.example.picflick.data.Flick flick, java.lang.String userId, kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onLikeClick, kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onPhotoClick)" />
+  <package>com.app.picflick.ui.screens</package>
+  <entry_point TYPE="method" FQNAME="com.app.picflick.ui.screens.HomeScreenKt void FlickCard(com.app.picflick.data.Flick flick, java.lang.String userId, kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onLikeClick, kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onPhotoClick)" />
   <problem_class id="unused" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused declaration</problem_class>
   <hints>
     <hint value="onLikeClick" />
@@ -227,8 +227,8 @@
   <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/screens/ProfileScreen.kt</file>
   <line>38</line>
   <module>PICFLICK.app.main</module>
-  <package>com.example.picflick.ui.screens</package>
-  <entry_point TYPE="method" FQNAME="com.example.picflick.ui.screens.ProfileScreenKt void ProfileScreen(com.example.picflick.data.UserProfile userProfile, int photoCount, kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onBack, kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onSignOut, kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onMyPhotosClick, kotlin.jvm.functions.Function1&lt;? super android.net.Uri,kotlin.Unit&gt; onPhotoSelected)" />
+  <package>com.app.picflick.ui.screens</package>
+  <entry_point TYPE="method" FQNAME="com.app.picflick.ui.screens.ProfileScreenKt void ProfileScreen(com.app.picflick.data.UserProfile userProfile, int photoCount, kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onBack, kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onSignOut, kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onMyPhotosClick, kotlin.jvm.functions.Function1&lt;? super android.net.Uri,kotlin.Unit&gt; onPhotoSelected)" />
   <problem_class id="unused" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused declaration</problem_class>
   <hints>
     <hint value="onBack" />
@@ -243,8 +243,8 @@
   <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/viewmodel/FriendsViewModel.kt</file>
   <line>219</line>
   <module>PICFLICK.app.main</module>
-  <package>com.example.picflick.viewmodel</package>
-  <entry_point TYPE="method" FQNAME="com.example.picflick.viewmodel.FriendsViewModel void followUser(java.lang.String currentUserId, com.example.picflick.data.UserProfile targetUser, com.example.picflick.data.UserProfile currentUser)" />
+  <package>com.app.picflick.viewmodel</package>
+  <entry_point TYPE="method" FQNAME="com.app.picflick.viewmodel.FriendsViewModel void followUser(java.lang.String currentUserId, com.app.picflick.data.UserProfile targetUser, com.app.picflick.data.UserProfile currentUser)" />
   <problem_class id="unused" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused declaration</problem_class>
   <hints>
     <hint value="currentUser" />
@@ -259,8 +259,8 @@
   <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/viewmodel/UploadViewModel.kt</file>
   <line>96</line>
   <module>PICFLICK.app.main</module>
-  <package>com.example.picflick.viewmodel</package>
-  <entry_point TYPE="method" FQNAME="com.example.picflick.viewmodel.UploadViewModel void uploadPhoto(android.content.Context context, android.net.Uri photoUri, com.example.picflick.data.UserProfile userProfile, com.example.picflick.data.PhotoFilter filter, java.util.List&lt;java.lang.String&gt; taggedFriends, java.lang.String description)" />
+  <package>com.app.picflick.viewmodel</package>
+  <entry_point TYPE="method" FQNAME="com.app.picflick.viewmodel.UploadViewModel void uploadPhoto(android.content.Context context, android.net.Uri photoUri, com.app.picflick.data.UserProfile userProfile, com.app.picflick.data.PhotoFilter filter, java.util.List&lt;java.lang.String&gt; taggedFriends, java.lang.String description)" />
   <problem_class id="unused" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused declaration</problem_class>
   <hints>
     <hint value="filter" />

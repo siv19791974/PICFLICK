@@ -3,7 +3,7 @@
   <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/screens/FilterScreen.kt</file>
   <line>573</line>
   <module>PICFLICK.app.main</module>
-  <package>com.example.picflick.ui.screens</package>
+  <package>com.app.picflick.ui.screens</package>
   <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/screens/FilterScreen.kt" />
   <problem_class id="AndroidLintUseKtx" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Use KTX extension function</problem_class>
   <hints />

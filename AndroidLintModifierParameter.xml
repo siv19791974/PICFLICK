@@ -3,7 +3,7 @@
   <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/components/ErrorComponents.kt</file>
   <line>31</line>
   <module>PICFLICK.app.main</module>
-  <package>com.example.picflick.ui.components</package>
+  <package>com.app.picflick.ui.components</package>
   <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/components/ErrorComponents.kt" />
   <problem_class id="AndroidLintModifierParameter" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Guidelines for Modifier parameters in a Composable function</problem_class>
   <hints />
@@ -17,7 +17,7 @@
   <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/components/ShimmerLoading.kt</file>
   <line>22</line>
   <module>PICFLICK.app.main</module>
-  <package>com.example.picflick.ui.components</package>
+  <package>com.app.picflick.ui.components</package>
   <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/components/ShimmerLoading.kt" />
   <problem_class id="AndroidLintModifierParameter" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Guidelines for Modifier parameters in a Composable function</problem_class>
   <hints />

@@ -3,8 +3,8 @@
   <file>file://$PROJECT_DIR$/app/src/test/java/com/example/picflick/data/ResultTest.kt</file>
   <line>68</line>
   <module>PICFLICK.app.unitTest</module>
-  <package>com.example.picflick.data</package>
-  <entry_point TYPE="method" FQNAME="com.example.picflick.data.ResultTest void Result types should be distinguishable()" />
+  <package>com.app.picflick.data</package>
+  <entry_point TYPE="method" FQNAME="com.app.picflick.data.ResultTest void Result types should be distinguishable()" />
   <problem_class id="KotlinConstantConditions" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Constant conditions</problem_class>
   <description>Condition 'success is Result.Success' is always true</description>
   <highlighted_element>success is Result.Success</highlighted_element>
@@ -16,8 +16,8 @@
   <file>file://$PROJECT_DIR$/app/src/test/java/com/example/picflick/data/ResultTest.kt</file>
   <line>69</line>
   <module>PICFLICK.app.unitTest</module>
-  <package>com.example.picflick.data</package>
-  <entry_point TYPE="method" FQNAME="com.example.picflick.data.ResultTest void Result types should be distinguishable()" />
+  <package>com.app.picflick.data</package>
+  <entry_point TYPE="method" FQNAME="com.app.picflick.data.ResultTest void Result types should be distinguishable()" />
   <problem_class id="KotlinConstantConditions" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Constant conditions</problem_class>
   <description>Condition 'error is Result.Error' is always true</description>
   <highlighted_element>error is Result.Error</highlighted_element>

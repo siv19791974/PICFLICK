@@ -7,10 +7,10 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.picflick.data.Flick
-import com.example.picflick.data.ReactionType
-import com.example.picflick.data.Result
-import com.example.picflick.repository.FlickRepository
+import com.picflick.app.data.Flick
+import com.picflick.app.data.ReactionType
+import com.picflick.app.data.Result
+import com.picflick.app.repository.FlickRepository
 import kotlinx.coroutines.launch
 
 /**

@@ -1,4 +1,4 @@
-package com.example.picflick.ui.screens
+package com.app.picflick.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -23,11 +23,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
-import com.example.picflick.data.ChatMessage
-import com.example.picflick.data.ChatSession
-import com.example.picflick.data.UserProfile
-import com.example.picflick.ui.theme.PicFlickBannerBackground
-import com.example.picflick.viewmodel.ChatViewModel
+import com.picflick.app.data.ChatMessage
+import com.picflick.app.data.ChatSession
+import com.picflick.app.data.UserProfile
+import com.picflick.app.ui.theme.PicFlickBannerBackground
+import com.picflick.app.viewmodel.ChatViewModel
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*

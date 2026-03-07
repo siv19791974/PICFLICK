@@ -1,4 +1,4 @@
-package com.example.picflick
+package com.app.picflick
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi

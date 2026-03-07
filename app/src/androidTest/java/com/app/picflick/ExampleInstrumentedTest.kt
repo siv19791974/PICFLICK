@@ -1,4 +1,4 @@
-package com.example.picflick
+package com.app.picflick
 
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.ext.junit.runners.AndroidJUnit4

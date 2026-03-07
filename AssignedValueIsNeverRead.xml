@@ -3,8 +3,8 @@
   <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/MainActivity.kt</file>
   <line>209</line>
   <module>PICFLICK.app.main</module>
-  <package>com.example.picflick</package>
-  <entry_point TYPE="method" FQNAME="com.example.picflick.MainActivityKt void MainScreen(com.example.picflick.viewmodel.AuthViewModel authViewModel, com.example.picflick.viewmodel.HomeViewModel homeViewModel, com.example.picflick.viewmodel.ProfileViewModel profileViewModel, com.example.picflick.viewmodel.FriendsViewModel friendsViewModel, com.example.picflick.viewmodel.NotificationViewModel notificationViewModel, com.example.picflick.viewmodel.ChatViewModel chatViewModel, com.example.picflick.viewmodel.UploadViewModel uploadViewModel)" />
+  <package>com.app.picflick</package>
+  <entry_point TYPE="method" FQNAME="com.app.picflick.MainActivityKt void MainScreen(com.app.picflick.viewmodel.AuthViewModel authViewModel, com.app.picflick.viewmodel.HomeViewModel homeViewModel, com.app.picflick.viewmodel.ProfileViewModel profileViewModel, com.app.picflick.viewmodel.FriendsViewModel friendsViewModel, com.app.picflick.viewmodel.NotificationViewModel notificationViewModel, com.app.picflick.viewmodel.ChatViewModel chatViewModel, com.app.picflick.viewmodel.UploadViewModel uploadViewModel)" />
   <problem_class id="AssignedValueIsNeverRead" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">Assigned value is never read</problem_class>
   <description>Assigned value is never read</description>
   <highlighted_element>showUploadSourceDialog</highlighted_element>
@@ -16,8 +16,8 @@
   <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/MainActivity.kt</file>
   <line>211</line>
   <module>PICFLICK.app.main</module>
-  <package>com.example.picflick</package>
-  <entry_point TYPE="method" FQNAME="com.example.picflick.MainActivityKt void MainScreen(com.example.picflick.viewmodel.AuthViewModel authViewModel, com.example.picflick.viewmodel.HomeViewModel homeViewModel, com.example.picflick.viewmodel.ProfileViewModel profileViewModel, com.example.picflick.viewmodel.FriendsViewModel friendsViewModel, com.example.picflick.viewmodel.NotificationViewModel notificationViewModel, com.example.picflick.viewmodel.ChatViewModel chatViewModel, com.example.picflick.viewmodel.UploadViewModel uploadViewModel)" />
+  <package>com.app.picflick</package>
+  <entry_point TYPE="method" FQNAME="com.app.picflick.MainActivityKt void MainScreen(com.app.picflick.viewmodel.AuthViewModel authViewModel, com.app.picflick.viewmodel.HomeViewModel homeViewModel, com.app.picflick.viewmodel.ProfileViewModel profileViewModel, com.app.picflick.viewmodel.FriendsViewModel friendsViewModel, com.app.picflick.viewmodel.NotificationViewModel notificationViewModel, com.app.picflick.viewmodel.ChatViewModel chatViewModel, com.app.picflick.viewmodel.UploadViewModel uploadViewModel)" />
   <problem_class id="AssignedValueIsNeverRead" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">Assigned value is never read</problem_class>
   <description>Assigned value is never read</description>
   <highlighted_element>showUploadSourceDialog</highlighted_element>
@@ -29,8 +29,8 @@
   <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/MainActivity.kt</file>
   <line>216</line>
   <module>PICFLICK.app.main</module>
-  <package>com.example.picflick</package>
-  <entry_point TYPE="method" FQNAME="com.example.picflick.MainActivityKt void MainScreen(com.example.picflick.viewmodel.AuthViewModel authViewModel, com.example.picflick.viewmodel.HomeViewModel homeViewModel, com.example.picflick.viewmodel.ProfileViewModel profileViewModel, com.example.picflick.viewmodel.FriendsViewModel friendsViewModel, com.example.picflick.viewmodel.NotificationViewModel notificationViewModel, com.example.picflick.viewmodel.ChatViewModel chatViewModel, com.example.picflick.viewmodel.UploadViewModel uploadViewModel)" />
+  <package>com.app.picflick</package>
+  <entry_point TYPE="method" FQNAME="com.app.picflick.MainActivityKt void MainScreen(com.app.picflick.viewmodel.AuthViewModel authViewModel, com.app.picflick.viewmodel.HomeViewModel homeViewModel, com.app.picflick.viewmodel.ProfileViewModel profileViewModel, com.app.picflick.viewmodel.FriendsViewModel friendsViewModel, com.app.picflick.viewmodel.NotificationViewModel notificationViewModel, com.app.picflick.viewmodel.ChatViewModel chatViewModel, com.app.picflick.viewmodel.UploadViewModel uploadViewModel)" />
   <problem_class id="AssignedValueIsNeverRead" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">Assigned value is never read</problem_class>
   <description>Assigned value is never read</description>
   <highlighted_element>showUploadSourceDialog</highlighted_element>
@@ -42,8 +42,8 @@
   <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/MainActivity.kt</file>
   <line>252</line>
   <module>PICFLICK.app.main</module>
-  <package>com.example.picflick</package>
-  <entry_point TYPE="method" FQNAME="com.example.picflick.MainActivityKt void MainScreen(com.example.picflick.viewmodel.AuthViewModel authViewModel, com.example.picflick.viewmodel.HomeViewModel homeViewModel, com.example.picflick.viewmodel.ProfileViewModel profileViewModel, com.example.picflick.viewmodel.FriendsViewModel friendsViewModel, com.example.picflick.viewmodel.NotificationViewModel notificationViewModel, com.example.picflick.viewmodel.ChatViewModel chatViewModel, com.example.picflick.viewmodel.UploadViewModel uploadViewModel)" />
+  <package>com.app.picflick</package>
+  <entry_point TYPE="method" FQNAME="com.app.picflick.MainActivityKt void MainScreen(com.app.picflick.viewmodel.AuthViewModel authViewModel, com.app.picflick.viewmodel.HomeViewModel homeViewModel, com.app.picflick.viewmodel.ProfileViewModel profileViewModel, com.app.picflick.viewmodel.FriendsViewModel friendsViewModel, com.app.picflick.viewmodel.NotificationViewModel notificationViewModel, com.app.picflick.viewmodel.ChatViewModel chatViewModel, com.app.picflick.viewmodel.UploadViewModel uploadViewModel)" />
   <problem_class id="AssignedValueIsNeverRead" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">Assigned value is never read</problem_class>
   <description>Assigned value is never read</description>
   <highlighted_element>currentScreen</highlighted_element>
@@ -55,8 +55,8 @@
   <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/MainActivity.kt</file>
   <line>303</line>
   <module>PICFLICK.app.main</module>
-  <package>com.example.picflick</package>
-  <entry_point TYPE="method" FQNAME="com.example.picflick.MainActivityKt void MainScreen(com.example.picflick.viewmodel.AuthViewModel authViewModel, com.example.picflick.viewmodel.HomeViewModel homeViewModel, com.example.picflick.viewmodel.ProfileViewModel profileViewModel, com.example.picflick.viewmodel.FriendsViewModel friendsViewModel, com.example.picflick.viewmodel.NotificationViewModel notificationViewModel, com.example.picflick.viewmodel.ChatViewModel chatViewModel, com.example.picflick.viewmodel.UploadViewModel uploadViewModel)" />
+  <package>com.app.picflick</package>
+  <entry_point TYPE="method" FQNAME="com.app.picflick.MainActivityKt void MainScreen(com.app.picflick.viewmodel.AuthViewModel authViewModel, com.app.picflick.viewmodel.HomeViewModel homeViewModel, com.app.picflick.viewmodel.ProfileViewModel profileViewModel, com.app.picflick.viewmodel.FriendsViewModel friendsViewModel, com.app.picflick.viewmodel.NotificationViewModel notificationViewModel, com.app.picflick.viewmodel.ChatViewModel chatViewModel, com.app.picflick.viewmodel.UploadViewModel uploadViewModel)" />
   <problem_class id="AssignedValueIsNeverRead" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">Assigned value is never read</problem_class>
   <description>Assigned value is never read</description>
   <highlighted_element>showUploadSourceDialog</highlighted_element>
@@ -68,8 +68,8 @@
   <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/screens/FilterScreen.kt</file>
   <line>323</line>
   <module>PICFLICK.app.main</module>
-  <package>com.example.picflick.ui.screens</package>
-  <entry_point TYPE="method" FQNAME="com.example.picflick.ui.screens.FilterScreenKt void FilterScreen(android.net.Uri photoUri, com.example.picflick.data.UserProfile currentUser, java.util.List&lt;com.example.picflick.data.UserProfile&gt; friends, int dailyUploadCount, int maxDailyUploads, kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onBack, kotlin.jvm.functions.Function3&lt;? super android.net.Uri,? super com.example.picflick.data.PhotoFilter,? super java.util.List&lt;java.lang.String&gt;,kotlin.Unit&gt; onUpload)" />
+  <package>com.app.picflick.ui.screens</package>
+  <entry_point TYPE="method" FQNAME="com.app.picflick.ui.screens.FilterScreenKt void FilterScreen(android.net.Uri photoUri, com.app.picflick.data.UserProfile currentUser, java.util.List&lt;com.app.picflick.data.UserProfile&gt; friends, int dailyUploadCount, int maxDailyUploads, kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onBack, kotlin.jvm.functions.Function3&lt;? super android.net.Uri,? super com.app.picflick.data.PhotoFilter,? super java.util.List&lt;java.lang.String&gt;,kotlin.Unit&gt; onUpload)" />
   <problem_class id="AssignedValueIsNeverRead" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">Assigned value is never read</problem_class>
   <description>Assigned value is never read</description>
   <highlighted_element>showFriendPicker</highlighted_element>
@@ -81,8 +81,8 @@
   <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/screens/FullScreenPhotoViewer.kt</file>
   <line>127</line>
   <module>PICFLICK.app.main</module>
-  <package>com.example.picflick.ui.screens</package>
-  <entry_point TYPE="method" FQNAME="com.example.picflick.ui.screens.FullScreenPhotoViewerKt void FullScreenPhotoViewer(com.example.picflick.data.Flick flick, com.example.picflick.data.UserProfile currentUser, kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onDismiss, kotlin.jvm.functions.Function1&lt;? super com.example.picflick.data.ReactionType,kotlin.Unit&gt; onReaction, kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onShareClick, kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onDeleteClick, boolean canDelete, kotlin.jvm.functions.Function1&lt;? super java.lang.String,kotlin.Unit&gt; onCaptionUpdated, java.util.List&lt;com.example.picflick.data.Flick&gt; allPhotos, int currentIndex, kotlin.jvm.functions.Function1&lt;? super java.lang.Integer,kotlin.Unit&gt; onNavigateToPhoto)" />
+  <package>com.app.picflick.ui.screens</package>
+  <entry_point TYPE="method" FQNAME="com.app.picflick.ui.screens.FullScreenPhotoViewerKt void FullScreenPhotoViewer(com.app.picflick.data.Flick flick, com.app.picflick.data.UserProfile currentUser, kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onDismiss, kotlin.jvm.functions.Function1&lt;? super com.app.picflick.data.ReactionType,kotlin.Unit&gt; onReaction, kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onShareClick, kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onDeleteClick, boolean canDelete, kotlin.jvm.functions.Function1&lt;? super java.lang.String,kotlin.Unit&gt; onCaptionUpdated, java.util.List&lt;com.app.picflick.data.Flick&gt; allPhotos, int currentIndex, kotlin.jvm.functions.Function1&lt;? super java.lang.Integer,kotlin.Unit&gt; onNavigateToPhoto)" />
   <problem_class id="AssignedValueIsNeverRead" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">Assigned value is never read</problem_class>
   <description>Assigned value is never read</description>
   <highlighted_element>showEditCaption</highlighted_element>
@@ -94,8 +94,8 @@
   <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/screens/FullScreenPhotoViewer.kt</file>
   <line>144</line>
   <module>PICFLICK.app.main</module>
-  <package>com.example.picflick.ui.screens</package>
-  <entry_point TYPE="method" FQNAME="com.example.picflick.ui.screens.FullScreenPhotoViewerKt void FullScreenPhotoViewer(com.example.picflick.data.Flick flick, com.example.picflick.data.UserProfile currentUser, kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onDismiss, kotlin.jvm.functions.Function1&lt;? super com.example.picflick.data.ReactionType,kotlin.Unit&gt; onReaction, kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onShareClick, kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onDeleteClick, boolean canDelete, kotlin.jvm.functions.Function1&lt;? super java.lang.String,kotlin.Unit&gt; onCaptionUpdated, java.util.List&lt;com.example.picflick.data.Flick&gt; allPhotos, int currentIndex, kotlin.jvm.functions.Function1&lt;? super java.lang.Integer,kotlin.Unit&gt; onNavigateToPhoto)" />
+  <package>com.app.picflick.ui.screens</package>
+  <entry_point TYPE="method" FQNAME="com.app.picflick.ui.screens.FullScreenPhotoViewerKt void FullScreenPhotoViewer(com.app.picflick.data.Flick flick, com.app.picflick.data.UserProfile currentUser, kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onDismiss, kotlin.jvm.functions.Function1&lt;? super com.app.picflick.data.ReactionType,kotlin.Unit&gt; onReaction, kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onShareClick, kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onDeleteClick, boolean canDelete, kotlin.jvm.functions.Function1&lt;? super java.lang.String,kotlin.Unit&gt; onCaptionUpdated, java.util.List&lt;com.app.picflick.data.Flick&gt; allPhotos, int currentIndex, kotlin.jvm.functions.Function1&lt;? super java.lang.Integer,kotlin.Unit&gt; onNavigateToPhoto)" />
   <problem_class id="AssignedValueIsNeverRead" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">Assigned value is never read</problem_class>
   <description>Assigned value is never read</description>
   <highlighted_element>showEditCaption</highlighted_element>
@@ -107,8 +107,8 @@
   <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/screens/FullScreenPhotoViewer.kt</file>
   <line>152</line>
   <module>PICFLICK.app.main</module>
-  <package>com.example.picflick.ui.screens</package>
-  <entry_point TYPE="method" FQNAME="com.example.picflick.ui.screens.FullScreenPhotoViewerKt void FullScreenPhotoViewer(com.example.picflick.data.Flick flick, com.example.picflick.data.UserProfile currentUser, kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onDismiss, kotlin.jvm.functions.Function1&lt;? super com.example.picflick.data.ReactionType,kotlin.Unit&gt; onReaction, kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onShareClick, kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onDeleteClick, boolean canDelete, kotlin.jvm.functions.Function1&lt;? super java.lang.String,kotlin.Unit&gt; onCaptionUpdated, java.util.List&lt;com.example.picflick.data.Flick&gt; allPhotos, int currentIndex, kotlin.jvm.functions.Function1&lt;? super java.lang.Integer,kotlin.Unit&gt; onNavigateToPhoto)" />
+  <package>com.app.picflick.ui.screens</package>
+  <entry_point TYPE="method" FQNAME="com.app.picflick.ui.screens.FullScreenPhotoViewerKt void FullScreenPhotoViewer(com.app.picflick.data.Flick flick, com.app.picflick.data.UserProfile currentUser, kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onDismiss, kotlin.jvm.functions.Function1&lt;? super com.app.picflick.data.ReactionType,kotlin.Unit&gt; onReaction, kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onShareClick, kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onDeleteClick, boolean canDelete, kotlin.jvm.functions.Function1&lt;? super java.lang.String,kotlin.Unit&gt; onCaptionUpdated, java.util.List&lt;com.app.picflick.data.Flick&gt; allPhotos, int currentIndex, kotlin.jvm.functions.Function1&lt;? super java.lang.Integer,kotlin.Unit&gt; onNavigateToPhoto)" />
   <problem_class id="AssignedValueIsNeverRead" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">Assigned value is never read</problem_class>
   <description>Assigned value is never read</description>
   <highlighted_element>showEditCaption</highlighted_element>
@@ -120,8 +120,8 @@
   <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/screens/FullScreenPhotoViewer.kt</file>
   <line>162</line>
   <module>PICFLICK.app.main</module>
-  <package>com.example.picflick.ui.screens</package>
-  <entry_point TYPE="method" FQNAME="com.example.picflick.ui.screens.FullScreenPhotoViewerKt void FullScreenPhotoViewer(com.example.picflick.data.Flick flick, com.example.picflick.data.UserProfile currentUser, kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onDismiss, kotlin.jvm.functions.Function1&lt;? super com.example.picflick.data.ReactionType,kotlin.Unit&gt; onReaction, kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onShareClick, kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onDeleteClick, boolean canDelete, kotlin.jvm.functions.Function1&lt;? super java.lang.String,kotlin.Unit&gt; onCaptionUpdated, java.util.List&lt;com.example.picflick.data.Flick&gt; allPhotos, int currentIndex, kotlin.jvm.functions.Function1&lt;? super java.lang.Integer,kotlin.Unit&gt; onNavigateToPhoto)" />
+  <package>com.app.picflick.ui.screens</package>
+  <entry_point TYPE="method" FQNAME="com.app.picflick.ui.screens.FullScreenPhotoViewerKt void FullScreenPhotoViewer(com.app.picflick.data.Flick flick, com.app.picflick.data.UserProfile currentUser, kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onDismiss, kotlin.jvm.functions.Function1&lt;? super com.app.picflick.data.ReactionType,kotlin.Unit&gt; onReaction, kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onShareClick, kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onDeleteClick, boolean canDelete, kotlin.jvm.functions.Function1&lt;? super java.lang.String,kotlin.Unit&gt; onCaptionUpdated, java.util.List&lt;com.app.picflick.data.Flick&gt; allPhotos, int currentIndex, kotlin.jvm.functions.Function1&lt;? super java.lang.Integer,kotlin.Unit&gt; onNavigateToPhoto)" />
   <problem_class id="AssignedValueIsNeverRead" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">Assigned value is never read</problem_class>
   <description>Assigned value is never read</description>
   <highlighted_element>showDeleteConfirmation</highlighted_element>
@@ -133,8 +133,8 @@
   <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/screens/FullScreenPhotoViewer.kt</file>
   <line>169</line>
   <module>PICFLICK.app.main</module>
-  <package>com.example.picflick.ui.screens</package>
-  <entry_point TYPE="method" FQNAME="com.example.picflick.ui.screens.FullScreenPhotoViewerKt void FullScreenPhotoViewer(com.example.picflick.data.Flick flick, com.example.picflick.data.UserProfile currentUser, kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onDismiss, kotlin.jvm.functions.Function1&lt;? super com.example.picflick.data.ReactionType,kotlin.Unit&gt; onReaction, kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onShareClick, kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onDeleteClick, boolean canDelete, kotlin.jvm.functions.Function1&lt;? super java.lang.String,kotlin.Unit&gt; onCaptionUpdated, java.util.List&lt;com.example.picflick.data.Flick&gt; allPhotos, int currentIndex, kotlin.jvm.functions.Function1&lt;? super java.lang.Integer,kotlin.Unit&gt; onNavigateToPhoto)" />
+  <package>com.app.picflick.ui.screens</package>
+  <entry_point TYPE="method" FQNAME="com.app.picflick.ui.screens.FullScreenPhotoViewerKt void FullScreenPhotoViewer(com.app.picflick.data.Flick flick, com.app.picflick.data.UserProfile currentUser, kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onDismiss, kotlin.jvm.functions.Function1&lt;? super com.app.picflick.data.ReactionType,kotlin.Unit&gt; onReaction, kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onShareClick, kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onDeleteClick, boolean canDelete, kotlin.jvm.functions.Function1&lt;? super java.lang.String,kotlin.Unit&gt; onCaptionUpdated, java.util.List&lt;com.app.picflick.data.Flick&gt; allPhotos, int currentIndex, kotlin.jvm.functions.Function1&lt;? super java.lang.Integer,kotlin.Unit&gt; onNavigateToPhoto)" />
   <problem_class id="AssignedValueIsNeverRead" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">Assigned value is never read</problem_class>
   <description>Assigned value is never read</description>
   <highlighted_element>showDeleteConfirmation</highlighted_element>
@@ -146,8 +146,8 @@
   <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/screens/FullScreenPhotoViewer.kt</file>
   <line>176</line>
   <module>PICFLICK.app.main</module>
-  <package>com.example.picflick.ui.screens</package>
-  <entry_point TYPE="method" FQNAME="com.example.picflick.ui.screens.FullScreenPhotoViewerKt void FullScreenPhotoViewer(com.example.picflick.data.Flick flick, com.example.picflick.data.UserProfile currentUser, kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onDismiss, kotlin.jvm.functions.Function1&lt;? super com.example.picflick.data.ReactionType,kotlin.Unit&gt; onReaction, kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onShareClick, kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onDeleteClick, boolean canDelete, kotlin.jvm.functions.Function1&lt;? super java.lang.String,kotlin.Unit&gt; onCaptionUpdated, java.util.List&lt;com.example.picflick.data.Flick&gt; allPhotos, int currentIndex, kotlin.jvm.functions.Function1&lt;? super java.lang.Integer,kotlin.Unit&gt; onNavigateToPhoto)" />
+  <package>com.app.picflick.ui.screens</package>
+  <entry_point TYPE="method" FQNAME="com.app.picflick.ui.screens.FullScreenPhotoViewerKt void FullScreenPhotoViewer(com.app.picflick.data.Flick flick, com.app.picflick.data.UserProfile currentUser, kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onDismiss, kotlin.jvm.functions.Function1&lt;? super com.app.picflick.data.ReactionType,kotlin.Unit&gt; onReaction, kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onShareClick, kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onDeleteClick, boolean canDelete, kotlin.jvm.functions.Function1&lt;? super java.lang.String,kotlin.Unit&gt; onCaptionUpdated, java.util.List&lt;com.app.picflick.data.Flick&gt; allPhotos, int currentIndex, kotlin.jvm.functions.Function1&lt;? super java.lang.Integer,kotlin.Unit&gt; onNavigateToPhoto)" />
   <problem_class id="AssignedValueIsNeverRead" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">Assigned value is never read</problem_class>
   <description>Assigned value is never read</description>
   <highlighted_element>showDeleteConfirmation</highlighted_element>
@@ -159,8 +159,8 @@
   <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/screens/FullScreenPhotoViewer.kt</file>
   <line>331</line>
   <module>PICFLICK.app.main</module>
-  <package>com.example.picflick.ui.screens</package>
-  <entry_point TYPE="method" FQNAME="com.example.picflick.ui.screens.FullScreenPhotoViewerKt void FullScreenPhotoViewer(com.example.picflick.data.Flick flick, com.example.picflick.data.UserProfile currentUser, kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onDismiss, kotlin.jvm.functions.Function1&lt;? super com.example.picflick.data.ReactionType,kotlin.Unit&gt; onReaction, kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onShareClick, kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onDeleteClick, boolean canDelete, kotlin.jvm.functions.Function1&lt;? super java.lang.String,kotlin.Unit&gt; onCaptionUpdated, java.util.List&lt;com.example.picflick.data.Flick&gt; allPhotos, int currentIndex, kotlin.jvm.functions.Function1&lt;? super java.lang.Integer,kotlin.Unit&gt; onNavigateToPhoto)" />
+  <package>com.app.picflick.ui.screens</package>
+  <entry_point TYPE="method" FQNAME="com.app.picflick.ui.screens.FullScreenPhotoViewerKt void FullScreenPhotoViewer(com.app.picflick.data.Flick flick, com.app.picflick.data.UserProfile currentUser, kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onDismiss, kotlin.jvm.functions.Function1&lt;? super com.app.picflick.data.ReactionType,kotlin.Unit&gt; onReaction, kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onShareClick, kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onDeleteClick, boolean canDelete, kotlin.jvm.functions.Function1&lt;? super java.lang.String,kotlin.Unit&gt; onCaptionUpdated, java.util.List&lt;com.app.picflick.data.Flick&gt; allPhotos, int currentIndex, kotlin.jvm.functions.Function1&lt;? super java.lang.Integer,kotlin.Unit&gt; onNavigateToPhoto)" />
   <problem_class id="AssignedValueIsNeverRead" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">Assigned value is never read</problem_class>
   <description>Assigned value is never read</description>
   <highlighted_element>showEditCaption</highlighted_element>
@@ -172,8 +172,8 @@
   <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/screens/FullScreenPhotoViewer.kt</file>
   <line>357</line>
   <module>PICFLICK.app.main</module>
-  <package>com.example.picflick.ui.screens</package>
-  <entry_point TYPE="method" FQNAME="com.example.picflick.ui.screens.FullScreenPhotoViewerKt void FullScreenPhotoViewer(com.example.picflick.data.Flick flick, com.example.picflick.data.UserProfile currentUser, kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onDismiss, kotlin.jvm.functions.Function1&lt;? super com.example.picflick.data.ReactionType,kotlin.Unit&gt; onReaction, kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onShareClick, kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onDeleteClick, boolean canDelete, kotlin.jvm.functions.Function1&lt;? super java.lang.String,kotlin.Unit&gt; onCaptionUpdated, java.util.List&lt;com.example.picflick.data.Flick&gt; allPhotos, int currentIndex, kotlin.jvm.functions.Function1&lt;? super java.lang.Integer,kotlin.Unit&gt; onNavigateToPhoto)" />
+  <package>com.app.picflick.ui.screens</package>
+  <entry_point TYPE="method" FQNAME="com.app.picflick.ui.screens.FullScreenPhotoViewerKt void FullScreenPhotoViewer(com.app.picflick.data.Flick flick, com.app.picflick.data.UserProfile currentUser, kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onDismiss, kotlin.jvm.functions.Function1&lt;? super com.app.picflick.data.ReactionType,kotlin.Unit&gt; onReaction, kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onShareClick, kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onDeleteClick, boolean canDelete, kotlin.jvm.functions.Function1&lt;? super java.lang.String,kotlin.Unit&gt; onCaptionUpdated, java.util.List&lt;com.app.picflick.data.Flick&gt; allPhotos, int currentIndex, kotlin.jvm.functions.Function1&lt;? super java.lang.Integer,kotlin.Unit&gt; onNavigateToPhoto)" />
   <problem_class id="AssignedValueIsNeverRead" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">Assigned value is never read</problem_class>
   <description>Assigned value is never read</description>
   <highlighted_element>showDeleteConfirmation</highlighted_element>
@@ -185,8 +185,8 @@
   <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/screens/HomeScreen.kt</file>
   <line>183</line>
   <module>PICFLICK.app.main</module>
-  <package>com.example.picflick.ui.screens</package>
-  <entry_point TYPE="method" FQNAME="com.example.picflick.ui.screens.HomeScreenKt void HomeScreen(com.example.picflick.data.UserProfile userProfile, com.example.picflick.viewmodel.HomeViewModel viewModel, kotlin.jvm.functions.Function1&lt;? super java.lang.String,kotlin.Unit&gt; onNavigate, kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onSignOut)" />
+  <package>com.app.picflick.ui.screens</package>
+  <entry_point TYPE="method" FQNAME="com.app.picflick.ui.screens.HomeScreenKt void HomeScreen(com.app.picflick.data.UserProfile userProfile, com.app.picflick.viewmodel.HomeViewModel viewModel, kotlin.jvm.functions.Function1&lt;? super java.lang.String,kotlin.Unit&gt; onNavigate, kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onSignOut)" />
   <problem_class id="AssignedValueIsNeverRead" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">Assigned value is never read</problem_class>
   <description>Assigned value is never read</description>
   <highlighted_element>selectedFlick</highlighted_element>
@@ -198,8 +198,8 @@
   <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/screens/HomeScreen.kt</file>
   <line>188</line>
   <module>PICFLICK.app.main</module>
-  <package>com.example.picflick.ui.screens</package>
-  <entry_point TYPE="method" FQNAME="com.example.picflick.ui.screens.HomeScreenKt void HomeScreen(com.example.picflick.data.UserProfile userProfile, com.example.picflick.viewmodel.HomeViewModel viewModel, kotlin.jvm.functions.Function1&lt;? super java.lang.String,kotlin.Unit&gt; onNavigate, kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onSignOut)" />
+  <package>com.app.picflick.ui.screens</package>
+  <entry_point TYPE="method" FQNAME="com.app.picflick.ui.screens.HomeScreenKt void HomeScreen(com.app.picflick.data.UserProfile userProfile, com.app.picflick.viewmodel.HomeViewModel viewModel, kotlin.jvm.functions.Function1&lt;? super java.lang.String,kotlin.Unit&gt; onNavigate, kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onSignOut)" />
   <problem_class id="AssignedValueIsNeverRead" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">Assigned value is never read</problem_class>
   <description>Assigned value is never read</description>
   <highlighted_element>selectedFlick</highlighted_element>
@@ -211,8 +211,8 @@
   <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/screens/HomeScreen.kt</file>
   <line>212</line>
   <module>PICFLICK.app.main</module>
-  <package>com.example.picflick.ui.screens</package>
-  <entry_point TYPE="method" FQNAME="com.example.picflick.ui.screens.HomeScreenKt void HomeScreen(com.example.picflick.data.UserProfile userProfile, com.example.picflick.viewmodel.HomeViewModel viewModel, kotlin.jvm.functions.Function1&lt;? super java.lang.String,kotlin.Unit&gt; onNavigate, kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onSignOut)" />
+  <package>com.app.picflick.ui.screens</package>
+  <entry_point TYPE="method" FQNAME="com.app.picflick.ui.screens.HomeScreenKt void HomeScreen(com.app.picflick.data.UserProfile userProfile, com.app.picflick.viewmodel.HomeViewModel viewModel, kotlin.jvm.functions.Function1&lt;? super java.lang.String,kotlin.Unit&gt; onNavigate, kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onSignOut)" />
   <problem_class id="AssignedValueIsNeverRead" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">Assigned value is never read</problem_class>
   <description>Assigned value is never read</description>
   <highlighted_element>selectedFlickIndex</highlighted_element>
@@ -224,8 +224,8 @@
   <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/screens/HomeScreen.kt</file>
   <line>213</line>
   <module>PICFLICK.app.main</module>
-  <package>com.example.picflick.ui.screens</package>
-  <entry_point TYPE="method" FQNAME="com.example.picflick.ui.screens.HomeScreenKt void HomeScreen(com.example.picflick.data.UserProfile userProfile, com.example.picflick.viewmodel.HomeViewModel viewModel, kotlin.jvm.functions.Function1&lt;? super java.lang.String,kotlin.Unit&gt; onNavigate, kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onSignOut)" />
+  <package>com.app.picflick.ui.screens</package>
+  <entry_point TYPE="method" FQNAME="com.app.picflick.ui.screens.HomeScreenKt void HomeScreen(com.app.picflick.data.UserProfile userProfile, com.app.picflick.viewmodel.HomeViewModel viewModel, kotlin.jvm.functions.Function1&lt;? super java.lang.String,kotlin.Unit&gt; onNavigate, kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onSignOut)" />
   <problem_class id="AssignedValueIsNeverRead" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">Assigned value is never read</problem_class>
   <description>Assigned value is never read</description>
   <highlighted_element>selectedFlick</highlighted_element>
@@ -237,8 +237,8 @@
   <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/screens/MyPhotosScreen.kt</file>
   <line>125</line>
   <module>PICFLICK.app.main</module>
-  <package>com.example.picflick.ui.screens</package>
-  <entry_point TYPE="method" FQNAME="com.example.picflick.ui.screens.MyPhotosScreenKt void MyPhotosScreen(com.example.picflick.viewmodel.ProfileViewModel viewModel, java.lang.String userId, com.example.picflick.data.UserProfile currentUser, kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onBack)" />
+  <package>com.app.picflick.ui.screens</package>
+  <entry_point TYPE="method" FQNAME="com.app.picflick.ui.screens.MyPhotosScreenKt void MyPhotosScreen(com.app.picflick.viewmodel.ProfileViewModel viewModel, java.lang.String userId, com.app.picflick.data.UserProfile currentUser, kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onBack)" />
   <problem_class id="AssignedValueIsNeverRead" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">Assigned value is never read</problem_class>
   <description>Assigned value is never read</description>
   <highlighted_element>selectedPhoto</highlighted_element>
@@ -250,8 +250,8 @@
   <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/screens/MyPhotosScreen.kt</file>
   <line>127</line>
   <module>PICFLICK.app.main</module>
-  <package>com.example.picflick.ui.screens</package>
-  <entry_point TYPE="method" FQNAME="com.example.picflick.ui.screens.MyPhotosScreenKt void MyPhotosScreen(com.example.picflick.viewmodel.ProfileViewModel viewModel, java.lang.String userId, com.example.picflick.data.UserProfile currentUser, kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onBack)" />
+  <package>com.app.picflick.ui.screens</package>
+  <entry_point TYPE="method" FQNAME="com.app.picflick.ui.screens.MyPhotosScreenKt void MyPhotosScreen(com.app.picflick.viewmodel.ProfileViewModel viewModel, java.lang.String userId, com.app.picflick.data.UserProfile currentUser, kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onBack)" />
   <problem_class id="AssignedValueIsNeverRead" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">Assigned value is never read</problem_class>
   <description>Assigned value is never read</description>
   <highlighted_element>selectedPhoto</highlighted_element>

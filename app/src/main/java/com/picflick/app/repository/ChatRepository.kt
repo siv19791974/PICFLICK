@@ -1,8 +1,8 @@
 package com.picflick.app.repository
 
-import com.example.picflick.data.ChatMessage
-import com.example.picflick.data.ChatSession
-import com.example.picflick.data.Result
+import com.app.picflick.data.ChatMessage
+import com.app.picflick.data.ChatSession
+import com.app.picflick.data.Result
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 import kotlinx.coroutines.channels.awaitClose

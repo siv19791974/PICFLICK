@@ -27,8 +27,8 @@
   <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/MainActivity.kt</file>
   <line>177</line>
   <module>PICFLICK.app.main</module>
-  <package>com.example.picflick</package>
-  <entry_point TYPE="method" FQNAME="com.example.picflick.MainActivityKt void MainScreen(com.example.picflick.viewmodel.AuthViewModel authViewModel, com.example.picflick.viewmodel.HomeViewModel homeViewModel, com.example.picflick.viewmodel.ProfileViewModel profileViewModel, com.example.picflick.viewmodel.FriendsViewModel friendsViewModel, com.example.picflick.viewmodel.NotificationViewModel notificationViewModel, com.example.picflick.viewmodel.ChatViewModel chatViewModel, com.example.picflick.viewmodel.UploadViewModel uploadViewModel)" />
+  <package>com.app.picflick</package>
+  <entry_point TYPE="method" FQNAME="com.app.picflick.MainActivityKt void MainScreen(com.app.picflick.viewmodel.AuthViewModel authViewModel, com.app.picflick.viewmodel.HomeViewModel homeViewModel, com.app.picflick.viewmodel.ProfileViewModel profileViewModel, com.app.picflick.viewmodel.FriendsViewModel friendsViewModel, com.app.picflick.viewmodel.NotificationViewModel notificationViewModel, com.app.picflick.viewmodel.ChatViewModel chatViewModel, com.app.picflick.viewmodel.UploadViewModel uploadViewModel)" />
   <problem_class id="SpellCheckingInspection" severity="TYPO" attribute_key="TYPO">Spelling</problem_class>
   <description>Typo: In word 'fileprovider'</description>
   <highlighted_element>fileprovider</highlighted_element>
@@ -40,8 +40,8 @@
   <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/screens/HomeScreen.kt</file>
   <line>161</line>
   <module>PICFLICK.app.main</module>
-  <package>com.example.picflick.ui.screens</package>
-  <entry_point TYPE="method" FQNAME="com.example.picflick.ui.screens.HomeScreenKt void HomeScreen(com.example.picflick.data.UserProfile userProfile, com.example.picflick.viewmodel.HomeViewModel viewModel, kotlin.jvm.functions.Function1&lt;? super java.lang.String,kotlin.Unit&gt; onNavigate, kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onSignOut)" />
+  <package>com.app.picflick.ui.screens</package>
+  <entry_point TYPE="method" FQNAME="com.app.picflick.ui.screens.HomeScreenKt void HomeScreen(com.app.picflick.data.UserProfile userProfile, com.app.picflick.viewmodel.HomeViewModel viewModel, kotlin.jvm.functions.Function1&lt;? super java.lang.String,kotlin.Unit&gt; onNavigate, kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onSignOut)" />
   <problem_class id="SpellCheckingInspection" severity="TYPO" attribute_key="TYPO">Spelling</problem_class>
   <description>Typo: In word 'fileprovider'</description>
   <highlighted_element>fileprovider</highlighted_element>
@@ -53,8 +53,8 @@
   <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/viewmodel/ChatViewModel.kt</file>
   <line>70</line>
   <module>PICFLICK.app.main</module>
-  <package>com.example.picflick.viewmodel</package>
-  <entry_point TYPE="method" FQNAME="com.example.picflick.viewmodel.ChatViewModel void loadMessages(java.lang.String chatId)" />
+  <package>com.app.picflick.viewmodel</package>
+  <entry_point TYPE="method" FQNAME="com.app.picflick.viewmodel.ChatViewModel void loadMessages(java.lang.String chatId)" />
   <problem_class id="SpellCheckingInspection" severity="TYPO" attribute_key="TYPO">Spelling</problem_class>
   <description>Typo: In word 'msgs'</description>
   <highlighted_element>msgs</highlighted_element>

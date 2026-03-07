@@ -1,6 +1,5 @@
 package com.picflick.app.ui.components
 
-import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -18,7 +17,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import com.example.picflick.data.ReactionType
+import com.app.picflick.data.ReactionType
 
 /**
  * Animated reaction picker that shows on long press

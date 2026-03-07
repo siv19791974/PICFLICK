@@ -8,10 +8,10 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.picflick.data.Flick
-import com.example.picflick.data.PhotoFilter
-import com.example.picflick.data.UserProfile
-import com.example.picflick.repository.FlickRepository
+import com.app.picflick.data.Flick
+import com.app.picflick.data.PhotoFilter
+import com.app.picflick.data.UserProfile
+import com.app.picflick.repository.FlickRepository
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.storage.FirebaseStorage
 import kotlinx.coroutines.launch
@@ -131,7 +131,7 @@ class UploadViewModel : ViewModel() {
                 // Use repository to create flick - this sends notifications!
                 val result = flickRepository.createFlick(flick, userProfile.photoUrl)
                 
-                if (result is com.example.picflick.data.Result.Error) {
+                if (result is com.app.picflick.data.Result.Error) {
                     throw Exception(result.message)
                 }
                 

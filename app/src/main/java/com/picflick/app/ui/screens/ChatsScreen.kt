@@ -1,4 +1,4 @@
-package com.example.picflick.ui.screens
+package com.app.picflick.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.pullrefresh.PullRefreshIndicator
 import androidx.compose.material.pullrefresh.pullRefresh
@@ -26,10 +25,10 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
-import com.example.picflick.data.ChatSession
-import com.example.picflick.data.UserProfile
-import com.example.picflick.ui.theme.PicFlickBackground
-import com.example.picflick.viewmodel.ChatViewModel
+import com.app.picflick.data.ChatSession
+import com.app.picflick.data.UserProfile
+import com.app.picflick.ui.theme.PicFlickBackground
+import com.app.picflick.viewmodel.ChatViewModel
 import java.text.SimpleDateFormat
 import java.util.*
 
