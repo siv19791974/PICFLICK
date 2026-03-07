@@ -1,4 +1,4 @@
-package com.example.picflick.viewmodel
+package com.picflick.app.viewmodel
 
 import android.content.Context
 import android.net.Uri

@@ -1,4 +1,4 @@
-package com.example.picflick.ui.components
+package com.picflick.app.ui.components
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons

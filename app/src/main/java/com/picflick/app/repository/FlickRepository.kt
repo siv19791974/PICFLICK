@@ -1,4 +1,4 @@
-package com.example.picflick.repository
+package com.picflick.app.repository
 
 import com.example.picflick.data.*
 import com.google.firebase.firestore.FieldValue

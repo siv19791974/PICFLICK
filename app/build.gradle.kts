@@ -6,11 +6,11 @@ plugins {
 }
 
 android {
-    namespace = "com.example.picflick"
+    namespace = "com.picflick.app"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.example.picflick"
+        applicationId = "com.picflick.app"
         minSdk = 24
         targetSdk = 35
         versionCode = 1

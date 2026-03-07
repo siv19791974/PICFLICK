@@ -1,4 +1,4 @@
-package com.example.picflick.data
+package com.picflick.app.data
 
 /**
  * Data class representing a user profile in the PicFlick app

@@ -1,4 +1,4 @@
-package com.example.picflick.service
+package com.picflick.app.service
 
 import android.app.NotificationChannel
 import android.app.NotificationManager
