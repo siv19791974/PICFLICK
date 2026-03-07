@@ -165,12 +165,9 @@ fun MainScreen(
     val scope = rememberCoroutineScope()
     val repository = com.example.picflick.repository.FlickRepository.getInstance()
     
-    // Capture billingViewModel locally to avoid scope issues
-    val billingVM = billingViewModel
-    
     // Initialize billing client
     LaunchedEffect(Unit) {
-        billingVM.initialize(context)
+        billingViewModel.initialize(context)
     }
     
     // State for profile photo upload
@@ -757,7 +754,6 @@ private fun AuthenticatedContent(
             )
 
             is Screen.ManageStorage -> {
-                val billingViewModel = billingVM
                 val activity = context as? Activity
                 ManageStorageScreen(
                     userProfile = userProfile,
@@ -775,7 +771,6 @@ private fun AuthenticatedContent(
             }
 
             is Screen.SubscriptionStatus -> {
-                val billingViewModel = billingVM
                 val activity = context as? Activity
                 SubscriptionStatusScreen(
                     userProfile = userProfile,
