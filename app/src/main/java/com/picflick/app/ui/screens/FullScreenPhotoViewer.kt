@@ -1,5 +1,6 @@
 package com.picflick.app.ui.screens
 
+import com.picflick.app.R
 import androidx.compose.animation.*
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -171,7 +172,7 @@ fun FullScreenPhotoViewer(
         isLoadingComments = true
         val listener = repository.getComments(currentFlick.id) { result ->
             when (result) {
-                is com.app.picflick.data.Result.Success -> {
+                is com.picflick.app.data.Result.Success -> {
                     comments = result.data
                     isLoadingComments = false
                 }
@@ -193,7 +194,7 @@ fun FullScreenPhotoViewer(
             currentFlick.taggedFriends.forEach { userId ->
                 repository.getUserProfile(userId) { result ->
                     when (result) {
-                        is com.app.picflick.data.Result.Success -> {
+                        is com.picflick.app.data.Result.Success -> {
                             loadedProfiles.add(result.data)
                         }
                         else -> { /* Skip failed loads */ }
@@ -264,12 +265,12 @@ fun FullScreenPhotoViewer(
                     onClick = {
                         repository.deleteFlick(currentFlick.id) { result ->
                             when (result) {
-                                is com.app.picflick.data.Result.Success -> {
+                                is com.picflick.app.data.Result.Success -> {
                                     showPicFlickToast("Photo Deleted")
                                     onDeleteClick()
                                     onDismiss()
                                 }
-                                is com.app.picflick.data.Result.Error -> {
+                                is com.picflick.app.data.Result.Error -> {
                                     showPicFlickToast("Failed to delete photo")
                                 }
                                 else -> {
@@ -349,10 +350,10 @@ fun FullScreenPhotoViewer(
                                     details = "Reported from photo viewer"
                                 )
                                 when (result) {
-                                    is com.app.picflick.data.Result.Success -> {
+                                    is com.picflick.app.data.Result.Success -> {
                                         showPicFlickToast("Report submitted. Thank you!")
                                     }
-                                    is com.app.picflick.data.Result.Error -> {
+                                    is com.picflick.app.data.Result.Error -> {
                                         showPicFlickToast("Failed to submit report")
                                     }
                                     else -> {}
@@ -406,11 +407,11 @@ fun FullScreenPhotoViewer(
                                 targetUserId = currentFlick.userId
                             ) { blockResult ->
                                 when (blockResult) {
-                                    is com.app.picflick.data.Result.Success -> {
+                                    is com.picflick.app.data.Result.Success -> {
                                         showPicFlickToast("User blocked")
                                         onDismiss() // Close the photo viewer
                                     }
-                                    is com.app.picflick.data.Result.Error -> {
+                                    is com.picflick.app.data.Result.Error -> {
                                         showPicFlickToast("Failed to block user")
                                     }
                                     else -> {}
@@ -1184,11 +1185,11 @@ fun FullScreenPhotoViewer(
                                 )
                                 isLoadingTagFriends = false
                                 when (result) {
-                                    is com.app.picflick.data.Result.Success -> {
+                                    is com.picflick.app.data.Result.Success -> {
                                         showPicFlickToast("Tags updated!")
                                         showTagFriendsDialog = false
                                     }
-                                    is com.app.picflick.data.Result.Error -> {
+                                    is com.picflick.app.data.Result.Error -> {
                                         showPicFlickToast("Failed to update tags")
                                     }
                                     else -> {}
@@ -1597,7 +1598,7 @@ private fun ShareFriendsDialog(
             currentUser.following.forEach { userId ->
                 repository.getUserProfile(userId) { result ->
                     when (result) {
-                        is com.app.picflick.data.Result.Success -> {
+                        is com.picflick.app.data.Result.Success -> {
                             loadedFriends.add(result.data)
                         }
                         else -> { /* Skip failed loads */ }
@@ -1856,7 +1857,7 @@ private fun TagFriendsDialog(
             currentUser.following.forEach { userId ->
                 repository.getUserProfile(userId) { result ->
                     when (result) {
-                        is com.app.picflick.data.Result.Success -> {
+                        is com.picflick.app.data.Result.Success -> {
                             loadedFriends.add(result.data)
                         }
                         else -> { /* Skip failed loads */ }
