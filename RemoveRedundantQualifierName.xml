@@ -3,11 +3,11 @@
   <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/repository/FlickRepository.kt</file>
   <line>261</line>
   <module>PICFLICK.app.main</module>
-  <package>com.example.picflick.repository</package>
-  <entry_point TYPE="method" FQNAME="com.example.picflick.repository.FlickRepository void toggleLike(java.lang.String flickId, java.lang.String userId, java.lang.String userName, java.lang.String userPhotoUrl, boolean isLiked, kotlin.jvm.functions.Function1&lt;? super com.example.picflick.data.Result&lt;kotlin.Unit&gt;,kotlin.Unit&gt; onResult)" />
+  <package>com.app.picflick.repository</package>
+  <entry_point TYPE="method" FQNAME="com.app.picflick.repository.FlickRepository void toggleLike(java.lang.String flickId, java.lang.String userId, java.lang.String userName, java.lang.String userPhotoUrl, boolean isLiked, kotlin.jvm.functions.Function1&lt;? super com.app.picflick.data.Result&lt;kotlin.Unit&gt;,kotlin.Unit&gt; onResult)" />
   <problem_class id="RemoveRedundantQualifierName" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Redundant qualifier name</problem_class>
   <description>Remove redundant qualifier name</description>
-  <highlighted_element>com.example.picflick.data</highlighted_element>
+  <highlighted_element>com.app.picflick.data</highlighted_element>
   <language>kotlin</language>
   <offset>50</offset>
   <length>25</length>
@@ -16,11 +16,11 @@
   <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/repository/FlickRepository.kt</file>
   <line>274</line>
   <module>PICFLICK.app.main</module>
-  <package>com.example.picflick.repository</package>
-  <entry_point TYPE="method" FQNAME="com.example.picflick.repository.FlickRepository void toggleReaction(java.lang.String flickId, java.lang.String userId, java.lang.String userName, java.lang.String userPhotoUrl, com.example.picflick.data.ReactionType reactionType, kotlin.jvm.functions.Function1&lt;? super com.example.picflick.data.Result&lt;kotlin.Unit&gt;,kotlin.Unit&gt; onResult)" />
+  <package>com.app.picflick.repository</package>
+  <entry_point TYPE="method" FQNAME="com.app.picflick.repository.FlickRepository void toggleReaction(java.lang.String flickId, java.lang.String userId, java.lang.String userName, java.lang.String userPhotoUrl, com.app.picflick.data.ReactionType reactionType, kotlin.jvm.functions.Function1&lt;? super com.app.picflick.data.Result&lt;kotlin.Unit&gt;,kotlin.Unit&gt; onResult)" />
   <problem_class id="RemoveRedundantQualifierName" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Redundant qualifier name</problem_class>
   <description>Remove redundant qualifier name</description>
-  <highlighted_element>com.example.picflick.data</highlighted_element>
+  <highlighted_element>com.app.picflick.data</highlighted_element>
   <language>kotlin</language>
   <offset>22</offset>
   <length>25</length>
@@ -29,11 +29,11 @@
   <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/repository/FlickRepository.kt</file>
   <line>385</line>
   <module>PICFLICK.app.main</module>
-  <package>com.example.picflick.repository</package>
-  <entry_point TYPE="method" FQNAME="com.example.picflick.repository.FlickRepository void createLikeNotification(java.lang.String flickId, java.lang.String likerId, java.lang.String likerName, java.lang.String likerPhotoUrl)" />
+  <package>com.app.picflick.repository</package>
+  <entry_point TYPE="method" FQNAME="com.app.picflick.repository.FlickRepository void createLikeNotification(java.lang.String flickId, java.lang.String likerId, java.lang.String likerName, java.lang.String likerPhotoUrl)" />
   <problem_class id="RemoveRedundantQualifierName" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Redundant qualifier name</problem_class>
   <description>Remove redundant qualifier name</description>
-  <highlighted_element>com.example.picflick.data</highlighted_element>
+  <highlighted_element>com.app.picflick.data</highlighted_element>
   <language>kotlin</language>
   <offset>27</offset>
   <length>25</length>
@@ -42,8 +42,8 @@
   <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/service/PicFlickMessagingService.kt</file>
   <line>45</line>
   <module>PICFLICK.app.main</module>
-  <package>com.example.picflick.service</package>
-  <entry_point TYPE="method" FQNAME="com.example.picflick.service.PicFlickMessagingService void showNotification(java.lang.String title, java.lang.String message, java.util.Map&lt;java.lang.String,java.lang.String&gt; data)" />
+  <package>com.app.picflick.service</package>
+  <entry_point TYPE="method" FQNAME="com.app.picflick.service.PicFlickMessagingService void showNotification(java.lang.String title, java.lang.String message, java.util.Map&lt;java.lang.String,java.lang.String&gt; data)" />
   <problem_class id="RemoveRedundantQualifierName" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Redundant qualifier name</problem_class>
   <description>Remove redundant qualifier name</description>
   <highlighted_element>Context</highlighted_element>

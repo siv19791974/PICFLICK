@@ -1,6 +1,6 @@
 package com.picflick.app.repository
 
-import com.example.picflick.data.*
+import com.picflick.app.data.*
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ListenerRegistration
@@ -1377,7 +1377,7 @@ class FlickRepository private constructor() {
      */
     suspend fun saveNotificationPreferences(
         userId: String,
-        preferences: com.example.picflick.data.NotificationPreferences
+        preferences: com.app.picflick.data.NotificationPreferences
     ): Result<Unit> {
         return try {
             // Use set with merge to create or update the field

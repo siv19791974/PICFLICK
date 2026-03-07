@@ -1,4 +1,4 @@
-package com.example.picflick.ui.components
+package com.app.picflick.ui.components
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.padding
@@ -12,11 +12,10 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
-import com.example.picflick.R
+import com.app.picflick.R
 
 /**
  * Google Sign In button with loading state

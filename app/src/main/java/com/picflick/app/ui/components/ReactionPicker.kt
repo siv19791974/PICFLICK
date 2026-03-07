@@ -1,4 +1,4 @@
-package com.example.picflick.ui.components
+package com.app.picflick.ui.components
 
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
@@ -21,9 +21,8 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.picflick.data.ReactionType
-import com.example.picflick.data.toEmoji
-import com.example.picflick.data.toEmoji
+import com.app.picflick.data.ReactionType
+import com.app.picflick.data.toEmoji
 
 /**
  * Animated reaction picker - shows on long press or tap

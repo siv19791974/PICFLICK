@@ -10,9 +10,9 @@ import androidx.compose.runtime.setValue
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.picflick.data.Result
-import com.example.picflick.data.UserProfile
-import com.example.picflick.repository.FlickRepository
+import com.app.picflick.data.Result
+import com.app.picflick.data.UserProfile
+import com.app.picflick.repository.FlickRepository
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
 import kotlinx.coroutines.launch
@@ -171,7 +171,7 @@ class AuthViewModel : ViewModel() {
     /**
      * Update user notification preferences
      */
-    fun updateNotificationPreferences(preferences: com.example.picflick.data.NotificationPreferences) {
+    fun updateNotificationPreferences(preferences: com.app.picflick.data.NotificationPreferences) {
         viewModelScope.launch {
             userProfile?.let { profile ->
                 val updatedProfile = profile.copy(notificationPreferences = preferences)

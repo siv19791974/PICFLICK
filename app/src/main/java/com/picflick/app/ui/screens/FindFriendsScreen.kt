@@ -1,11 +1,9 @@
-package com.example.picflick.ui.screens
+package com.app.picflick.ui.screens
 
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.provider.ContactsContract
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.*
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.pullrefresh.PullRefreshIndicator
 import androidx.compose.material.pullrefresh.pullRefresh
@@ -18,10 +16,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Email
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Share
@@ -38,12 +33,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import coil3.compose.AsyncImage
-import com.example.picflick.R
-import com.example.picflick.data.UserProfile
-import com.example.picflick.ui.components.FullScreenLoading
-import com.example.picflick.ui.theme.PicFlickBackground
-import com.example.picflick.viewmodel.FriendsViewModel
-import kotlinx.coroutines.launch
+import com.app.picflick.data.UserProfile
+import com.app.picflick.ui.components.FullScreenLoading
+import com.app.picflick.ui.theme.PicFlickBackground
+import com.app.picflick.viewmodel.FriendsViewModel
 
 /**
  * Comprehensive screen for finding friends, inviting contacts, and following users

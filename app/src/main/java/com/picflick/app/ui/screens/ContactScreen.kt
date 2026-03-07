@@ -1,4 +1,4 @@
-package com.example.picflick.ui.screens
+package com.app.picflick.ui.screens
 
 import android.content.Intent
 import androidx.compose.foundation.background
@@ -14,9 +14,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
-import com.example.picflick.ui.components.LogoImage
-import com.example.picflick.ui.theme.PicFlickBackground
-import com.example.picflick.ui.theme.PicFlickBannerBackground
+import com.app.picflick.ui.theme.PicFlickBackground
 
 /**
  * Contact screen for sending feedback

@@ -5,10 +5,8 @@ import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.android.billingclient.api.*
-import com.example.picflick.data.SubscriptionTier
-import com.google.firebase.Firebase
+import com.app.picflick.data.SubscriptionTier
 import com.google.firebase.functions.FirebaseFunctions
-import com.google.firebase.functions.ktx.functions
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow

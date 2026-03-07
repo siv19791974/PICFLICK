@@ -8,8 +8,8 @@ import android.content.Intent
 import android.os.Build
 import android.util.Log
 import androidx.core.app.NotificationCompat
-import com.example.picflick.MainActivity
-import com.example.picflick.R
+import com.picflick.app.MainActivity
+import com.picflick.app.R
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.messaging.FirebaseMessagingService

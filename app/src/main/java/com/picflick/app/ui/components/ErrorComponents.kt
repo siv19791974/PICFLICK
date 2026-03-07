@@ -1,4 +1,4 @@
-package com.example.picflick.ui.components
+package com.app.picflick.ui.components
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column

@@ -1,4 +1,4 @@
-package com.example.picflick.ui.screens
+package com.app.picflick.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -30,9 +30,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
-import com.example.picflick.data.Flick
-import com.example.picflick.data.UserProfile
-import com.example.picflick.ui.theme.PicFlickBackground
+import com.app.picflick.data.Flick
+import com.app.picflick.data.UserProfile
 
 /**
  * Screen for viewing another user's profile

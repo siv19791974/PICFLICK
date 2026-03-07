@@ -31,15 +31,14 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.graphics.Brush
 import coil3.compose.AsyncImage
-import com.example.picflick.data.UserProfile
-import com.example.picflick.data.SubscriptionTier
-import com.example.picflick.data.getColor
-import com.example.picflick.data.getDarkColor
-import com.example.picflick.data.getDisplayName
-import com.example.picflick.data.getLightColor
-import com.example.picflick.data.getStorageLimitBytes
-import com.example.picflick.data.getStorageLimitGB
-import com.example.picflick.data.TierColors
+import com.app.picflick.data.UserProfile
+import com.app.picflick.data.SubscriptionTier
+import com.app.picflick.data.getColor
+import com.app.picflick.data.getDarkColor
+import com.app.picflick.data.getDisplayName
+import com.app.picflick.data.getLightColor
+import com.app.picflick.data.getStorageLimitBytes
+import com.app.picflick.data.getStorageLimitGB
 
 /**
  * Settings screen with user preferences and account options

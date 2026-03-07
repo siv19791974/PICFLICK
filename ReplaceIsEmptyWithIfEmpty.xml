@@ -3,8 +3,8 @@
   <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/repository/FlickRepository.kt</file>
   <line>517</line>
   <module>PICFLICK.app.main</module>
-  <package>com.example.picflick.repository</package>
-  <entry_point TYPE="method" FQNAME="com.example.picflick.repository.FlickRepository java.lang.Object createPhotoAddedNotifications(com.example.picflick.data.Flick flick, java.lang.String userPhotoUrl, kotlin.coroutines.Continuation&lt;? super kotlin.Unit&gt; $completion)" />
+  <package>com.app.picflick.repository</package>
+  <entry_point TYPE="method" FQNAME="com.app.picflick.repository.FlickRepository java.lang.Object createPhotoAddedNotifications(com.app.picflick.data.Flick flick, java.lang.String userPhotoUrl, kotlin.coroutines.Continuation&lt;? super kotlin.Unit&gt; $completion)" />
   <problem_class id="ReplaceIsEmptyWithIfEmpty" severity="WEAK WARNING" attribute_key="INFO_ATTRIBUTES">'if' condition can be replaced with lambda call</problem_class>
   <description>Replace with 'ifBlank {...}'</description>
   <highlighted_element>if (flick.description.isNotBlank()) flick.description else &quot;Check it out!&quot;</highlighted_element>

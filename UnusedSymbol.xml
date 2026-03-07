@@ -3,8 +3,8 @@
   <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/data/Flick.kt</file>
   <line>26</line>
   <module>PICFLICK.app.main</module>
-  <package>com.example.picflick.data</package>
-  <entry_point TYPE="method" FQNAME="com.example.picflick.data.Flick int getReactionCount(com.example.picflick.data.ReactionType type)" />
+  <package>com.app.picflick.data</package>
+  <entry_point TYPE="method" FQNAME="com.app.picflick.data.Flick int getReactionCount(com.app.picflick.data.ReactionType type)" />
   <problem_class id="UnusedSymbol" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused symbol</problem_class>
   <description>Function &quot;getReactionCount&quot; is never used</description>
   <highlighted_element>getReactionCount</highlighted_element>
@@ -16,8 +16,8 @@
   <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/data/Flick.kt</file>
   <line>38</line>
   <module>PICFLICK.app.main</module>
-  <package>com.example.picflick.data</package>
-  <entry_point TYPE="method" FQNAME="com.example.picflick.data.Flick boolean hasUserReacted(java.lang.String userId)" />
+  <package>com.app.picflick.data</package>
+  <entry_point TYPE="method" FQNAME="com.app.picflick.data.Flick boolean hasUserReacted(java.lang.String userId)" />
   <problem_class id="UnusedSymbol" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused symbol</problem_class>
   <description>Function &quot;hasUserReacted&quot; is never used</description>
   <highlighted_element>hasUserReacted</highlighted_element>
@@ -29,8 +29,8 @@
   <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/data/ReactionType.kt</file>
   <line>39</line>
   <module>PICFLICK.app.main</module>
-  <package>com.example.picflick.data</package>
-  <entry_point TYPE="method" FQNAME="com.example.picflick.data.ReactionTypeKt long toColor(com.example.picflick.data.ReactionType $this$toColor)" />
+  <package>com.app.picflick.data</package>
+  <entry_point TYPE="method" FQNAME="com.app.picflick.data.ReactionTypeKt long toColor(com.app.picflick.data.ReactionType $this$toColor)" />
   <problem_class id="UnusedSymbol" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused symbol</problem_class>
   <description>Function &quot;toColor&quot; is never used</description>
   <highlighted_element>toColor</highlighted_element>
@@ -42,8 +42,8 @@
   <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/repository/FlickRepository.kt</file>
   <line>34</line>
   <module>PICFLICK.app.main</module>
-  <package>com.example.picflick.repository</package>
-  <entry_point TYPE="field" FQNAME="com.example.picflick.repository.FlickRepository currentUserProfile" />
+  <package>com.app.picflick.repository</package>
+  <entry_point TYPE="field" FQNAME="com.app.picflick.repository.FlickRepository currentUserProfile" />
   <problem_class id="UnusedSymbol" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused symbol</problem_class>
   <description>Property &quot;currentUserProfile&quot; is never used</description>
   <highlighted_element>currentUserProfile</highlighted_element>
@@ -55,8 +55,8 @@
   <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/repository/FlickRepository.kt</file>
   <line>372</line>
   <module>PICFLICK.app.main</module>
-  <package>com.example.picflick.repository</package>
-  <entry_point TYPE="method" FQNAME="com.example.picflick.repository.FlickRepository void createLikeNotification(java.lang.String flickId, java.lang.String likerId, java.lang.String likerName, java.lang.String likerPhotoUrl)" />
+  <package>com.app.picflick.repository</package>
+  <entry_point TYPE="method" FQNAME="com.app.picflick.repository.FlickRepository void createLikeNotification(java.lang.String flickId, java.lang.String likerId, java.lang.String likerName, java.lang.String likerPhotoUrl)" />
   <problem_class id="UnusedSymbol" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused symbol</problem_class>
   <description>Function &quot;createLikeNotification&quot; is never used</description>
   <highlighted_element>createLikeNotification</highlighted_element>
@@ -68,8 +68,8 @@
   <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/repository/FlickRepository.kt</file>
   <line>644</line>
   <module>PICFLICK.app.main</module>
-  <package>com.example.picflick.repository</package>
-  <entry_point TYPE="method" FQNAME="com.example.picflick.repository.FlickRepository java.lang.Object deleteFlick(java.lang.String flickId, kotlin.coroutines.Continuation&lt;? super com.example.picflick.data.Result&lt;kotlin.Unit&gt;&gt; $completion)" />
+  <package>com.app.picflick.repository</package>
+  <entry_point TYPE="method" FQNAME="com.app.picflick.repository.FlickRepository java.lang.Object deleteFlick(java.lang.String flickId, kotlin.coroutines.Continuation&lt;? super com.app.picflick.data.Result&lt;kotlin.Unit&gt;&gt; $completion)" />
   <problem_class id="UnusedSymbol" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused symbol</problem_class>
   <description>Function &quot;deleteFlick&quot; is never used</description>
   <highlighted_element>deleteFlick</highlighted_element>
@@ -81,8 +81,8 @@
   <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/repository/FlickRepository.kt</file>
   <line>707</line>
   <module>PICFLICK.app.main</module>
-  <package>com.example.picflick.repository</package>
-  <entry_point TYPE="method" FQNAME="com.example.picflick.repository.FlickRepository java.lang.Object createNotification(com.example.picflick.data.Notification notification, kotlin.coroutines.Continuation&lt;? super com.example.picflick.data.Result&lt;kotlin.Unit&gt;&gt; $completion)" />
+  <package>com.app.picflick.repository</package>
+  <entry_point TYPE="method" FQNAME="com.app.picflick.repository.FlickRepository java.lang.Object createNotification(com.app.picflick.data.Notification notification, kotlin.coroutines.Continuation&lt;? super com.app.picflick.data.Result&lt;kotlin.Unit&gt;&gt; $completion)" />
   <problem_class id="UnusedSymbol" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused symbol</problem_class>
   <description>Function &quot;createNotification&quot; is never used</description>
   <highlighted_element>createNotification</highlighted_element>
@@ -94,8 +94,8 @@
   <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/components/ButtonComponents.kt</file>
   <line>25</line>
   <module>PICFLICK.app.main</module>
-  <package>com.example.picflick.ui.components</package>
-  <entry_point TYPE="method" FQNAME="com.example.picflick.ui.components.ButtonComponentsKt void GoogleSignInButton(boolean isLoading, kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onClick, androidx.compose.ui.Modifier modifier, boolean enabled)" />
+  <package>com.app.picflick.ui.components</package>
+  <entry_point TYPE="method" FQNAME="com.app.picflick.ui.components.ButtonComponentsKt void GoogleSignInButton(boolean isLoading, kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onClick, androidx.compose.ui.Modifier modifier, boolean enabled)" />
   <problem_class id="UnusedSymbol" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused symbol</problem_class>
   <description>Function &quot;GoogleSignInButton&quot; is never used</description>
   <highlighted_element>GoogleSignInButton</highlighted_element>
@@ -107,8 +107,8 @@
   <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/components/ButtonComponents.kt</file>
   <line>63</line>
   <module>PICFLICK.app.main</module>
-  <package>com.example.picflick.ui.components</package>
-  <entry_point TYPE="method" FQNAME="com.example.picflick.ui.components.ButtonComponentsKt void LoadingButton(java.lang.String text, boolean isLoading, kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onClick, androidx.compose.ui.Modifier modifier, boolean enabled, androidx.compose.ui.graphics.vector.ImageVector icon)" />
+  <package>com.app.picflick.ui.components</package>
+  <entry_point TYPE="method" FQNAME="com.app.picflick.ui.components.ButtonComponentsKt void LoadingButton(java.lang.String text, boolean isLoading, kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onClick, androidx.compose.ui.Modifier modifier, boolean enabled, androidx.compose.ui.graphics.vector.ImageVector icon)" />
   <problem_class id="UnusedSymbol" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused symbol</problem_class>
   <description>Function &quot;LoadingButton&quot; is never used</description>
   <highlighted_element>LoadingButton</highlighted_element>
@@ -120,8 +120,8 @@
   <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/components/ErrorComponents.kt</file>
   <line>69</line>
   <module>PICFLICK.app.main</module>
-  <package>com.example.picflick.ui.components</package>
-  <entry_point TYPE="method" FQNAME="com.example.picflick.ui.components.ErrorComponentsKt void EmptyState(java.lang.String message, androidx.compose.ui.Modifier modifier)" />
+  <package>com.app.picflick.ui.components</package>
+  <entry_point TYPE="method" FQNAME="com.app.picflick.ui.components.ErrorComponentsKt void EmptyState(java.lang.String message, androidx.compose.ui.Modifier modifier)" />
   <problem_class id="UnusedSymbol" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused symbol</problem_class>
   <description>Function &quot;EmptyState&quot; is never used</description>
   <highlighted_element>EmptyState</highlighted_element>
@@ -133,8 +133,8 @@
   <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/components/LikeAnimation.kt</file>
   <line>19</line>
   <module>PICFLICK.app.main</module>
-  <package>com.example.picflick.ui.components</package>
-  <entry_point TYPE="method" FQNAME="com.example.picflick.ui.components.LikeAnimationKt void LikeAnimation(boolean isLiked, androidx.compose.ui.Modifier modifier)" />
+  <package>com.app.picflick.ui.components</package>
+  <entry_point TYPE="method" FQNAME="com.app.picflick.ui.components.LikeAnimationKt void LikeAnimation(boolean isLiked, androidx.compose.ui.Modifier modifier)" />
   <problem_class id="UnusedSymbol" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused symbol</problem_class>
   <description>Function &quot;LikeAnimation&quot; is never used</description>
   <highlighted_element>LikeAnimation</highlighted_element>
@@ -146,8 +146,8 @@
   <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/components/LikeAnimation.kt</file>
   <line>57</line>
   <module>PICFLICK.app.main</module>
-  <package>com.example.picflick.ui.components</package>
-  <entry_point TYPE="method" FQNAME="com.example.picflick.ui.components.LikeAnimationKt void HeartBurstAnimation(boolean trigger, kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onComplete)" />
+  <package>com.app.picflick.ui.components</package>
+  <entry_point TYPE="method" FQNAME="com.app.picflick.ui.components.LikeAnimationKt void HeartBurstAnimation(boolean trigger, kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onComplete)" />
   <problem_class id="UnusedSymbol" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused symbol</problem_class>
   <description>Function &quot;HeartBurstAnimation&quot; is never used</description>
   <highlighted_element>HeartBurstAnimation</highlighted_element>
@@ -159,8 +159,8 @@
   <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/components/LogoComponents.kt</file>
   <line>34</line>
   <module>PICFLICK.app.main</module>
-  <package>com.example.picflick.ui.components</package>
-  <entry_point TYPE="method" FQNAME="com.example.picflick.ui.components.LogoComponentsKt void SmallLogoImage(androidx.compose.ui.Modifier modifier)" />
+  <package>com.app.picflick.ui.components</package>
+  <entry_point TYPE="method" FQNAME="com.app.picflick.ui.components.LogoComponentsKt void SmallLogoImage(androidx.compose.ui.Modifier modifier)" />
   <problem_class id="UnusedSymbol" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused symbol</problem_class>
   <description>Function &quot;SmallLogoImage&quot; is never used</description>
   <highlighted_element>SmallLogoImage</highlighted_element>
@@ -172,8 +172,8 @@
   <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/components/LogoComponents.kt</file>
   <line>42</line>
   <module>PICFLICK.app.main</module>
-  <package>com.example.picflick.ui.components</package>
-  <entry_point TYPE="method" FQNAME="com.example.picflick.ui.components.LogoComponentsKt void MediumLogoImage(androidx.compose.ui.Modifier modifier)" />
+  <package>com.app.picflick.ui.components</package>
+  <entry_point TYPE="method" FQNAME="com.app.picflick.ui.components.LogoComponentsKt void MediumLogoImage(androidx.compose.ui.Modifier modifier)" />
   <problem_class id="UnusedSymbol" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused symbol</problem_class>
   <description>Function &quot;MediumLogoImage&quot; is never used</description>
   <highlighted_element>MediumLogoImage</highlighted_element>
@@ -185,8 +185,8 @@
   <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/components/LogoComponents.kt</file>
   <line>50</line>
   <module>PICFLICK.app.main</module>
-  <package>com.example.picflick.ui.components</package>
-  <entry_point TYPE="method" FQNAME="com.example.picflick.ui.components.LogoComponentsKt void LargeLogoImage(androidx.compose.ui.Modifier modifier)" />
+  <package>com.app.picflick.ui.components</package>
+  <entry_point TYPE="method" FQNAME="com.app.picflick.ui.components.LogoComponentsKt void LargeLogoImage(androidx.compose.ui.Modifier modifier)" />
   <problem_class id="UnusedSymbol" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused symbol</problem_class>
   <description>Function &quot;LargeLogoImage&quot; is never used</description>
   <highlighted_element>LargeLogoImage</highlighted_element>
@@ -198,8 +198,8 @@
   <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/components/ReactionPicker.kt</file>
   <line>130</line>
   <module>PICFLICK.app.main</module>
-  <package>com.example.picflick.ui.components</package>
-  <entry_point TYPE="method" FQNAME="com.example.picflick.ui.components.ReactionPickerKt void ReactionBar(java.util.Map&lt;com.example.picflick.data.ReactionType,java.lang.Integer&gt; reactionCounts, com.example.picflick.data.ReactionType userReaction, int totalCount, kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onShowPicker, androidx.compose.ui.Modifier modifier)" />
+  <package>com.app.picflick.ui.components</package>
+  <entry_point TYPE="method" FQNAME="com.app.picflick.ui.components.ReactionPickerKt void ReactionBar(java.util.Map&lt;com.app.picflick.data.ReactionType,java.lang.Integer&gt; reactionCounts, com.app.picflick.data.ReactionType userReaction, int totalCount, kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onShowPicker, androidx.compose.ui.Modifier modifier)" />
   <problem_class id="UnusedSymbol" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused symbol</problem_class>
   <description>Function &quot;ReactionBar&quot; is never used</description>
   <highlighted_element>ReactionBar</highlighted_element>
@@ -211,8 +211,8 @@
   <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/components/ReactionPicker.kt</file>
   <line>188</line>
   <module>PICFLICK.app.main</module>
-  <package>com.example.picflick.ui.components</package>
-  <entry_point TYPE="method" FQNAME="com.example.picflick.ui.components.ReactionPickerKt void AnimatedReactionButton(com.example.picflick.data.ReactionType currentReaction, kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onClick, kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onLongPress, androidx.compose.ui.Modifier modifier)" />
+  <package>com.app.picflick.ui.components</package>
+  <entry_point TYPE="method" FQNAME="com.app.picflick.ui.components.ReactionPickerKt void AnimatedReactionButton(com.app.picflick.data.ReactionType currentReaction, kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onClick, kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onLongPress, androidx.compose.ui.Modifier modifier)" />
   <problem_class id="UnusedSymbol" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused symbol</problem_class>
   <description>Function &quot;AnimatedReactionButton&quot; is never used</description>
   <highlighted_element>AnimatedReactionButton</highlighted_element>
@@ -224,8 +224,8 @@
   <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/components/ShimmerLoading.kt</file>
   <line>150</line>
   <module>PICFLICK.app.main</module>
-  <package>com.example.picflick.ui.components</package>
-  <entry_point TYPE="method" FQNAME="com.example.picflick.ui.components.ShimmerLoadingKt void ProfileShimmer(androidx.compose.ui.Modifier modifier)" />
+  <package>com.app.picflick.ui.components</package>
+  <entry_point TYPE="method" FQNAME="com.app.picflick.ui.components.ShimmerLoadingKt void ProfileShimmer(androidx.compose.ui.Modifier modifier)" />
   <problem_class id="UnusedSymbol" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused symbol</problem_class>
   <description>Function &quot;ProfileShimmer&quot; is never used</description>
   <highlighted_element>ProfileShimmer</highlighted_element>
@@ -237,8 +237,8 @@
   <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/components/TopBar.kt</file>
   <line>30</line>
   <module>PICFLICK.app.main</module>
-  <package>com.example.picflick.ui.components</package>
-  <entry_point TYPE="method" FQNAME="com.example.picflick.ui.components.TopBarKt void TopBarWithBackButton(java.lang.String title, kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onBackClick, androidx.compose.ui.Modifier modifier)" />
+  <package>com.app.picflick.ui.components</package>
+  <entry_point TYPE="method" FQNAME="com.app.picflick.ui.components.TopBarKt void TopBarWithBackButton(java.lang.String title, kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onBackClick, androidx.compose.ui.Modifier modifier)" />
   <problem_class id="UnusedSymbol" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused symbol</problem_class>
   <description>Function &quot;TopBarWithBackButton&quot; is never used</description>
   <highlighted_element>TopBarWithBackButton</highlighted_element>
@@ -250,8 +250,8 @@
   <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/ui/components/TopBar.kt</file>
   <line>75</line>
   <module>PICFLICK.app.main</module>
-  <package>com.example.picflick.ui.components</package>
-  <entry_point TYPE="method" FQNAME="com.example.picflick.ui.components.TopBarKt void SimpleTopBar(java.lang.String title, androidx.compose.ui.Modifier modifier)" />
+  <package>com.app.picflick.ui.components</package>
+  <entry_point TYPE="method" FQNAME="com.app.picflick.ui.components.TopBarKt void SimpleTopBar(java.lang.String title, androidx.compose.ui.Modifier modifier)" />
   <problem_class id="UnusedSymbol" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused symbol</problem_class>
   <description>Function &quot;SimpleTopBar&quot; is never used</description>
   <highlighted_element>SimpleTopBar</highlighted_element>
@@ -263,8 +263,8 @@
   <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/viewmodel/AuthViewModel.kt</file>
   <line>82</line>
   <module>PICFLICK.app.main</module>
-  <package>com.example.picflick.viewmodel</package>
-  <entry_point TYPE="method" FQNAME="com.example.picflick.viewmodel.AuthViewModel void updateProfilePhoto(java.lang.String photoUrl)" />
+  <package>com.app.picflick.viewmodel</package>
+  <entry_point TYPE="method" FQNAME="com.app.picflick.viewmodel.AuthViewModel void updateProfilePhoto(java.lang.String photoUrl)" />
   <problem_class id="UnusedSymbol" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused symbol</problem_class>
   <description>Function &quot;updateProfilePhoto&quot; is never used</description>
   <highlighted_element>updateProfilePhoto</highlighted_element>
@@ -276,8 +276,8 @@
   <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/viewmodel/AuthViewModel.kt</file>
   <line>104</line>
   <module>PICFLICK.app.main</module>
-  <package>com.example.picflick.viewmodel</package>
-  <entry_point TYPE="method" FQNAME="com.example.picflick.viewmodel.AuthViewModel void clearError()" />
+  <package>com.app.picflick.viewmodel</package>
+  <entry_point TYPE="method" FQNAME="com.app.picflick.viewmodel.AuthViewModel void clearError()" />
   <problem_class id="UnusedSymbol" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused symbol</problem_class>
   <description>Function &quot;clearError&quot; is never used</description>
   <highlighted_element>clearError</highlighted_element>
@@ -289,8 +289,8 @@
   <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/viewmodel/ChatViewModel.kt</file>
   <line>117</line>
   <module>PICFLICK.app.main</module>
-  <package>com.example.picflick.viewmodel</package>
-  <entry_point TYPE="method" FQNAME="com.example.picflick.viewmodel.ChatViewModel void startChat(java.lang.String userId, java.lang.String otherUserId, java.lang.String userName, java.lang.String otherUserName, kotlin.jvm.functions.Function1&lt;? super java.lang.String,kotlin.Unit&gt; onChatReady)" />
+  <package>com.app.picflick.viewmodel</package>
+  <entry_point TYPE="method" FQNAME="com.app.picflick.viewmodel.ChatViewModel void startChat(java.lang.String userId, java.lang.String otherUserId, java.lang.String userName, java.lang.String otherUserName, kotlin.jvm.functions.Function1&lt;? super java.lang.String,kotlin.Unit&gt; onChatReady)" />
   <problem_class id="UnusedSymbol" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused symbol</problem_class>
   <description>Function &quot;startChat&quot; is never used</description>
   <highlighted_element>startChat</highlighted_element>
@@ -302,8 +302,8 @@
   <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/viewmodel/ChatViewModel.kt</file>
   <line>164</line>
   <module>PICFLICK.app.main</module>
-  <package>com.example.picflick.viewmodel</package>
-  <entry_point TYPE="method" FQNAME="com.example.picflick.viewmodel.ChatViewModel void clearError()" />
+  <package>com.app.picflick.viewmodel</package>
+  <entry_point TYPE="method" FQNAME="com.app.picflick.viewmodel.ChatViewModel void clearError()" />
   <problem_class id="UnusedSymbol" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused symbol</problem_class>
   <description>Function &quot;clearError&quot; is never used</description>
   <highlighted_element>clearError</highlighted_element>
@@ -315,8 +315,8 @@
   <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/viewmodel/ChatViewModel.kt</file>
   <line>171</line>
   <module>PICFLICK.app.main</module>
-  <package>com.example.picflick.viewmodel</package>
-  <entry_point TYPE="method" FQNAME="com.example.picflick.viewmodel.ChatViewModel void clearCurrentChat()" />
+  <package>com.app.picflick.viewmodel</package>
+  <entry_point TYPE="method" FQNAME="com.app.picflick.viewmodel.ChatViewModel void clearCurrentChat()" />
   <problem_class id="UnusedSymbol" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused symbol</problem_class>
   <description>Function &quot;clearCurrentChat&quot; is never used</description>
   <highlighted_element>clearCurrentChat</highlighted_element>
@@ -328,8 +328,8 @@
   <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/viewmodel/HomeViewModel.kt</file>
   <line>142</line>
   <module>PICFLICK.app.main</module>
-  <package>com.example.picflick.viewmodel</package>
-  <entry_point TYPE="method" FQNAME="com.example.picflick.viewmodel.HomeViewModel void searchFlicks(java.lang.String query)" />
+  <package>com.app.picflick.viewmodel</package>
+  <entry_point TYPE="method" FQNAME="com.app.picflick.viewmodel.HomeViewModel void searchFlicks(java.lang.String query)" />
   <problem_class id="UnusedSymbol" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused symbol</problem_class>
   <description>Function &quot;searchFlicks&quot; is never used</description>
   <highlighted_element>searchFlicks</highlighted_element>
@@ -341,8 +341,8 @@
   <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/viewmodel/HomeViewModel.kt</file>
   <line>165</line>
   <module>PICFLICK.app.main</module>
-  <package>com.example.picflick.viewmodel</package>
-  <entry_point TYPE="method" FQNAME="com.example.picflick.viewmodel.HomeViewModel void clearSearch()" />
+  <package>com.app.picflick.viewmodel</package>
+  <entry_point TYPE="method" FQNAME="com.app.picflick.viewmodel.HomeViewModel void clearSearch()" />
   <problem_class id="UnusedSymbol" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused symbol</problem_class>
   <description>Function &quot;clearSearch&quot; is never used</description>
   <highlighted_element>clearSearch</highlighted_element>
@@ -354,8 +354,8 @@
   <file>file://$PROJECT_DIR$/app/src/main/java/com/example/picflick/viewmodel/NotificationViewModel.kt</file>
   <line>128</line>
   <module>PICFLICK.app.main</module>
-  <package>com.example.picflick.viewmodel</package>
-  <entry_point TYPE="method" FQNAME="com.example.picflick.viewmodel.NotificationViewModel void clearError()" />
+  <package>com.app.picflick.viewmodel</package>
+  <entry_point TYPE="method" FQNAME="com.app.picflick.viewmodel.NotificationViewModel void clearError()" />
   <problem_class id="UnusedSymbol" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused symbol</problem_class>
   <description>Function &quot;clearError&quot; is never used</description>
   <highlighted_element>clearError</highlighted_element>
@@ -367,8 +367,8 @@
   <file>file://$PROJECT_DIR$/app/src/test/java/com/example/picflick/MainDispatcherRule.kt</file>
   <line>17</line>
   <module>PICFLICK.app.unitTest</module>
-  <package>com.example.picflick</package>
-  <entry_point TYPE="class" FQNAME="com.example.picflick.MainDispatcherRule" />
+  <package>com.app.picflick</package>
+  <entry_point TYPE="class" FQNAME="com.app.picflick.MainDispatcherRule" />
   <problem_class id="UnusedSymbol" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused symbol</problem_class>
   <description>Class &quot;MainDispatcherRule&quot; is never used</description>
   <highlighted_element>MainDispatcherRule</highlighted_element>

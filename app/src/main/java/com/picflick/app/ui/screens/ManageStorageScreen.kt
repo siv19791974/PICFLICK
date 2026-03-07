@@ -1,4 +1,4 @@
-package com.example.picflick.ui.screens
+package com.app.picflick.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -11,7 +11,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Photo
 import androidx.compose.material.icons.filled.Storage
@@ -29,21 +28,20 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.picflick.data.SubscriptionTier
-import com.example.picflick.data.UserProfile
-import com.example.picflick.data.getColor
-import com.example.picflick.data.getDailyUploadLimit
-import com.example.picflick.data.getDarkColor
-import com.example.picflick.data.getDisplayName
-import com.example.picflick.data.getImageQuality
-import com.example.picflick.data.getLightColor
-import com.example.picflick.data.getMonthlyPrice
-import com.example.picflick.data.getNextTier
-import com.example.picflick.data.getQualityDescription
-import com.example.picflick.data.getStorageLimitGB
-import com.example.picflick.data.getStorageLimitBytes
-import com.example.picflick.viewmodel.BillingViewModel
-import com.example.picflick.viewmodel.SubscriptionProduct
+import com.app.picflick.data.SubscriptionTier
+import com.app.picflick.data.UserProfile
+import com.app.picflick.data.getColor
+import com.app.picflick.data.getDailyUploadLimit
+import com.app.picflick.data.getDarkColor
+import com.app.picflick.data.getDisplayName
+import com.app.picflick.data.getLightColor
+import com.app.picflick.data.getMonthlyPrice
+import com.app.picflick.data.getNextTier
+import com.app.picflick.data.getQualityDescription
+import com.app.picflick.data.getStorageLimitGB
+import com.app.picflick.data.getStorageLimitBytes
+import com.app.picflick.viewmodel.BillingViewModel
+import com.app.picflick.viewmodel.SubscriptionProduct
 
 /**
  * Manage Storage Screen - Full storage dashboard

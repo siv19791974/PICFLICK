@@ -1,4 +1,4 @@
-package com.example.picflick.ui.screens
+package com.app.picflick.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -10,9 +10,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.example.picflick.ui.components.LogoImage
-import com.example.picflick.ui.theme.PicFlickBackground
-import com.example.picflick.ui.theme.PicFlickBannerBackground
+import com.picflick.app.ui.theme.PicFlickBackground
 
 /**
  * About screen with app information

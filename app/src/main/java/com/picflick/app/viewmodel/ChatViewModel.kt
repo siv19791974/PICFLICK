@@ -5,10 +5,10 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.picflick.data.ChatMessage
-import com.example.picflick.data.ChatSession
-import com.example.picflick.data.Result
-import com.example.picflick.repository.ChatRepository
+import com.app.picflick.data.ChatMessage
+import com.app.picflick.data.ChatSession
+import com.app.picflick.data.Result
+import com.app.picflick.repository.ChatRepository
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 

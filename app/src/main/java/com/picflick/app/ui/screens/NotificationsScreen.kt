@@ -1,4 +1,4 @@
-package com.example.picflick.ui.screens
+package com.app.picflick.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -13,8 +13,6 @@ import androidx.compose.material.pullrefresh.pullRefresh
 import androidx.compose.material.pullrefresh.rememberPullRefreshState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.AccountCircle
-import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Info
@@ -35,10 +33,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
-import com.example.picflick.data.Notification
-import com.example.picflick.data.NotificationType
-import com.example.picflick.data.UserProfile
-import com.example.picflick.viewmodel.NotificationViewModel
+import com.app.picflick.data.Notification
+import com.app.picflick.data.NotificationType
+import com.app.picflick.data.UserProfile
+import com.app.picflick.viewmodel.NotificationViewModel
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale

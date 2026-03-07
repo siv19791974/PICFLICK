@@ -1,4 +1,4 @@
-package com.example.picflick.ui.components
+package com.app.picflick.ui.components
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -8,7 +8,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
-import com.example.picflick.R
+import com.app.picflick.R
 
 /**
  * Reusable logo component with proper cropping to remove transparent padding

@@ -1,8 +1,8 @@
-package com.example.picflick.viewmodel
+package com.app.picflick.viewmodel
 
-import com.example.picflick.data.Result
-import com.example.picflick.data.UserProfile
-import com.example.picflick.repository.FlickRepository
+import com.app.picflick.data.Result
+import com.app.picflick.data.UserProfile
+import com.app.picflick.repository.FlickRepository
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every

@@ -1,10 +1,9 @@
-package com.example.picflick.ui.screens
+package com.app.picflick.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -14,7 +13,6 @@ import androidx.compose.material.pullrefresh.pullRefresh
 import androidx.compose.material.pullrefresh.rememberPullRefreshState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
-import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.runtime.*
@@ -27,10 +25,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
-import com.example.picflick.data.Flick
-import com.example.picflick.data.UserProfile
-import com.example.picflick.ui.components.*
-import com.example.picflick.viewmodel.HomeViewModel
+import com.app.picflick.data.Flick
+import com.app.picflick.data.UserProfile
+import com.app.picflick.viewmodel.HomeViewModel
 
 /**
  * Explore page for discovering trending and popular photos

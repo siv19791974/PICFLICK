@@ -1,6 +1,5 @@
 package com.picflick.app.ui.screens
 
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -13,7 +12,6 @@ import androidx.compose.material.pullrefresh.PullRefreshIndicator
 import androidx.compose.material.pullrefresh.pullRefresh
 import androidx.compose.material.pullrefresh.rememberPullRefreshState
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
@@ -25,13 +23,10 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
-import com.example.picflick.R
-import com.example.picflick.data.UserProfile
-import com.example.picflick.ui.components.ListItemShimmer
-import com.example.picflick.ui.components.LogoImage
-import com.example.picflick.ui.theme.PicFlickBackground
-import com.example.picflick.ui.theme.PicFlickBannerBackground
-import com.example.picflick.viewmodel.FriendsViewModel
+import com.app.picflick.data.UserProfile
+import com.app.picflick.ui.components.ListItemShimmer
+import com.app.picflick.ui.theme.PicFlickBackground
+import com.app.picflick.viewmodel.FriendsViewModel
 
 /**
  * Screen showing list of friends the user is following
