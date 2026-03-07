@@ -46,7 +46,7 @@ sealed class BillingEvent {
 class BillingViewModel : ViewModel() {
 
     private var billingClient: BillingClient? = null
-    private val functions: FirebaseFunctions = Firebase.functions
+    private val functions = Firebase.functions
 
     // Product IDs for each subscription tier
     companion object {
