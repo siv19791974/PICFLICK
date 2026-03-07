@@ -37,8 +37,8 @@ import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.allowHardware
 import coil3.toBitmap
-import com.app.picflick.data.PhotoFilter
-import com.app.picflick.data.UserProfile
+import com.picflick.app.data.PhotoFilter
+import com.picflick.app.data.UserProfile
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext

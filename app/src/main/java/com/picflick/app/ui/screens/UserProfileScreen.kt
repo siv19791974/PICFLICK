@@ -30,8 +30,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
-import com.app.picflick.data.Flick
-import com.app.picflick.data.UserProfile
+import com.picflick.app.data.Flick
+import com.picflick.app.data.UserProfile
 
 /**
  * Screen for viewing another user's profile

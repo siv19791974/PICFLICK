@@ -1,4 +1,4 @@
-package com.app.picflick.data
+package com.picflick.app.data
 
 /**
  * Enum representing different reaction types for photos

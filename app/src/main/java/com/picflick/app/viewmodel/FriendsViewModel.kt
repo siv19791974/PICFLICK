@@ -8,9 +8,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.app.picflick.data.Result
-import com.app.picflick.data.UserProfile
-import com.app.picflick.repository.FlickRepository
+import com.picflick.app.data.Result
+import com.picflick.app.data.UserProfile
+import com.picflick.app.repository.FlickRepository
 import kotlinx.coroutines.launch
 
 /**
