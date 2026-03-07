@@ -783,3 +783,24 @@ private fun SettingsItem(
         }
     }
 }
+
+/**
+ * Get storage subtitle text for the Manage Storage settings item
+ */
+private fun getStorageSubtitle(userProfile: UserProfile): String {
+    val usedGB = userProfile.calculateStorageUsedGB()
+    val totalGB = userProfile.getTier().getStorageLimitGB()
+    return "$usedGB GB / $totalGB GB used"
+}
+
+/**
+ * Get subscription subtitle text for the Subscription settings item
+ */
+private fun getSubscriptionSubtitle(userProfile: UserProfile): String {
+    val tier = userProfile.getTier()
+    return if (userProfile.isFounder) {
+        "${tier.getDisplayName()} - Founder (Free)"
+    } else {
+        tier.getDisplayName()
+    }
+}

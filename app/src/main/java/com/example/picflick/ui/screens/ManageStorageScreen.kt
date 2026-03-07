@@ -33,8 +33,10 @@ import com.example.picflick.data.SubscriptionTier
 import com.example.picflick.data.UserProfile
 import com.example.picflick.data.getColor
 import com.example.picflick.data.getDailyUploadLimit
+import com.example.picflick.data.getDarkColor
 import com.example.picflick.data.getDisplayName
 import com.example.picflick.data.getImageQuality
+import com.example.picflick.data.getLightColor
 import com.example.picflick.data.getNextTier
 import com.example.picflick.data.getQualityDescription
 import com.example.picflick.data.getStorageLimitGB
