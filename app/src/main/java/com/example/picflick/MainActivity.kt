@@ -165,6 +165,14 @@ fun MainScreen(
     val scope = rememberCoroutineScope()
     val repository = com.example.picflick.repository.FlickRepository.getInstance()
     
+    // Capture billingViewModel locally to avoid scope issues
+    val billingVM = billingViewModel
+    
+    // Initialize billing client
+    LaunchedEffect(Unit) {
+        billingVM.initialize(context)
+    }
+    
     // State for profile photo upload
     var profilePhotoToUpload by remember { mutableStateOf<Uri?>(null) }
     
