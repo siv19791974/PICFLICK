@@ -490,7 +490,7 @@ private fun UpgradeOptionsCard(
                 Column(horizontalAlignment = Alignment.End) {
                     // Use actual product price if available, otherwise fallback
                                         val priceText = nextTierProduct?.price
-                        ?: nextTier?.getMonthlyPrice()?.let { "€${it}" }
+                        ?: nextTier?.getMonthlyPrice()?.let { "$${it}" }
                         ?: "N/A"
                     Text(
                         text = priceText,
