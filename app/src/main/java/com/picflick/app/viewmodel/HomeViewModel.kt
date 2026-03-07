@@ -1,4 +1,4 @@
-package com.example.picflick.viewmodel
+package com.picflick.app.viewmodel
 
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf

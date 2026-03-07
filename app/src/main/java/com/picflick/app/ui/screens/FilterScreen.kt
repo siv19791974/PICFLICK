@@ -1,4 +1,4 @@
-package com.example.picflick.ui.screens
+package com.picflick.app.ui.screens
 
 import android.graphics.Bitmap
 import android.graphics.ColorMatrix

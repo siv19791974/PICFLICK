@@ -1,4 +1,4 @@
-package com.example.picflick.ui.components
+package com.picflick.app.ui.components
 
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*

@@ -1,4 +1,4 @@
-package com.example.picflick.ui.components
+package com.picflick.app.ui.components
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
