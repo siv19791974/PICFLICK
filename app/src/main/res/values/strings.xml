@@ -1,5 +1,5 @@
 <resources>
     <string name="app_name">PICFLICK</string>
     <!-- Web Client ID for Google Sign-In - Should be moved to local.properties in production -->
-    <string name="default_web_client_id" translatable="false">830332240569-r6675lhe6tkev77u2qvv0lh46rva8q61.apps.googleusercontent.com</string>
+    <string name="default_web_client_id" translatable="false">830332240569-pko9aotmkb9qn86ao98ml20drrihe4l4.apps.googleusercontent.com</string>
 </resources>
