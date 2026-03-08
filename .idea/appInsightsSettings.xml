@@ -8,8 +8,8 @@
             <InsightsFilterSettings>
               <option name="connection">
                 <ConnectionSetting>
-                  <option name="appId" value="com.example.picflick" />
-                  <option name="mobileSdkAppId" value="1:830332240569:android:250a2708021e2467abd168" />
+                  <option name="appId" value="com.picflick.app" />
+                  <option name="mobileSdkAppId" value="1:830332240569:android:777667ee8ec9cdc6abd168" />
                   <option name="projectId" value="picflick-4793175b" />
                   <option name="projectNumber" value="830332240569" />
                 </ConnectionSetting>
