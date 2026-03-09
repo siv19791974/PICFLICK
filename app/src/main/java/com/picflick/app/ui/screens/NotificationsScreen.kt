@@ -36,6 +36,8 @@ import coil3.compose.AsyncImage
 import com.picflick.app.data.Notification
 import com.picflick.app.data.NotificationType
 import com.picflick.app.data.UserProfile
+import com.picflick.app.ui.theme.isDarkModeBackground
+import com.picflick.app.ui.theme.ThemeManager
 import com.picflick.app.viewmodel.NotificationViewModel
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -58,6 +60,7 @@ fun NotificationsScreen(
     val unreadCount = viewModel.unreadCount
     val isLoading = viewModel.isLoading
     val errorMessage = viewModel.errorMessage
+    val isDarkMode = ThemeManager.isDarkMode.value
 
     // Load notifications
     LaunchedEffect(userProfile.uid) {
@@ -73,7 +76,7 @@ fun NotificationsScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.Black)
+            .background(isDarkModeBackground(isDarkMode))
     ) {
         // Header with back button, title, and mark all read
         Row(
@@ -90,7 +93,7 @@ fun NotificationsScreen(
                 modifier = Modifier
                     .size(36.dp)
                     .clickable { onBack() },
-                tint = Color.LightGray
+                tint = if (isDarkMode) Color.LightGray else Color.DarkGray
             )
 
             // Title with badge
@@ -99,7 +102,7 @@ fun NotificationsScreen(
                     text = "Notifications",
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Color.White
+                    color = if (isDarkMode) Color.White else Color.Black
                 )
                 if (unreadCount > 0) {
                     Badge(
@@ -119,7 +122,7 @@ fun NotificationsScreen(
             ) {
                 Text(
                     text = "Mark all read",
-                    color = if (unreadCount > 0) Color(0xFF4FC3F7) else Color.Gray
+                    color = if (unreadCount > 0) Color(0xFF4FC3F7) else if (isDarkMode) Color.Gray else Color.DarkGray
                 )
             }
         }
@@ -136,7 +139,7 @@ fun NotificationsScreen(
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center
                     ) {
-                        CircularProgressIndicator(color = Color.White)
+                        CircularProgressIndicator(color = if (isDarkMode) Color.White else Color.Black)
                     }
                 }
 
@@ -150,19 +153,19 @@ fun NotificationsScreen(
                                 imageVector = Icons.Default.Notifications,
                                 contentDescription = null,
                                 modifier = Modifier.size(80.dp),
-                                tint = Color.Gray
+                                tint = if (isDarkMode) Color.Gray else Color.DarkGray
                             )
                             Spacer(modifier = Modifier.height(16.dp))
                             Text(
                                 text = "No notifications yet",
                                 fontSize = 18.sp,
-                                color = Color.Gray
+                                color = if (isDarkMode) Color.Gray else Color.DarkGray
                             )
                             Spacer(modifier = Modifier.height(8.dp))
                             Text(
                                 text = "When someone likes, comments, or follows you,\nit will appear here",
                                 fontSize = 14.sp,
-                                color = Color.DarkGray,
+                                color = if (isDarkMode) Color.DarkGray else Color.Gray,
                                 textAlign = androidx.compose.ui.text.style.TextAlign.Center
                             )
                         }
@@ -178,6 +181,7 @@ fun NotificationsScreen(
                     items(notifications, key = { it.id }) { notification ->
                         NotificationItem(
                             notification = notification,
+                            isDarkMode = isDarkMode,
                             onClick = {
                                 if (!notification.isRead) {
                                     viewModel.markAsRead(notification.id)
@@ -235,14 +239,15 @@ fun NotificationsScreen(
 @Composable
 private fun NotificationItem(
     notification: Notification,
+    isDarkMode: Boolean,
     onClick: () -> Unit,
     onDelete: () -> Unit,
     onUserProfileClick: (String) -> Unit = {}
 ) {
-    val backgroundColor = if (notification.isRead) {
-        Color(0xFF1A1A1A) // Dark grey for read
+    val backgroundColor = if (isDarkMode) {
+        if (notification.isRead) Color(0xFF1A1A1A) else Color(0xFF2D2D2D)
     } else {
-        Color(0xFF2D2D2D) // Slightly lighter for unread
+        if (notification.isRead) Color(0xFFF5F5F5) else Color.White
     }
 
     Card(
@@ -268,7 +273,7 @@ private fun NotificationItem(
                     modifier = Modifier
                         .size(50.dp)
                         .clip(CircleShape)
-                        .background(Color.Gray),
+                        .background(if (isDarkMode) Color.Gray else Color.LightGray),
                     contentScale = ContentScale.Crop
                 )
 
@@ -287,7 +292,7 @@ private fun NotificationItem(
                         imageVector = getNotificationIcon(notification.type),
                         contentDescription = null,
                         modifier = Modifier.size(12.dp),
-                        tint = Color.White
+                        tint = if (isDarkMode) Color.White else Color.Black
                     )
                 }
             }
@@ -302,7 +307,7 @@ private fun NotificationItem(
                     text = notification.title,
                     fontSize = 14.sp,
                     fontWeight = if (notification.isRead) FontWeight.Normal else FontWeight.Bold,
-                    color = Color.White,
+                    color = if (isDarkMode) Color.White else Color.Black,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -312,7 +317,7 @@ private fun NotificationItem(
                 Text(
                     text = notification.message,
                     fontSize = 13.sp,
-                    color = Color.LightGray,
+                    color = if (isDarkMode) Color.LightGray else Color.DarkGray,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -322,7 +327,7 @@ private fun NotificationItem(
                 Text(
                     text = formatTimestamp(notification.timestamp),
                     fontSize = 11.sp,
-                    color = Color.Gray
+                    color = if (isDarkMode) Color.Gray else Color.DarkGray
                 )
             }
 
