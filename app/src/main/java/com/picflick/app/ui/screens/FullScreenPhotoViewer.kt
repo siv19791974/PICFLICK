@@ -178,6 +178,7 @@ fun FullScreenPhotoViewer(
     // Heart animation state for double tap
     var showDoubleTapHeart by remember { mutableStateOf(false) }
     var heartAnimationKey by remember { mutableIntStateOf(0) }
+    var isLikingAction by remember { mutableStateOf(true) } // true = like (red), false = unlike (white)
 
     // Load comments when flick changes - use DisposableEffect to properly manage listener
     DisposableEffect(currentFlick.id) {
@@ -598,7 +599,9 @@ fun FullScreenPhotoViewer(
                                 .pointerInput(Unit) {
                                     detectTapGestures(
                                         onTap = { uiVisible = !uiVisible },
-                                        onDoubleTap = { 
+                                        onDoubleTap = {
+                                            // Determine if we're liking or unliking
+                                            isLikingAction = userReaction == null
                                             heartAnimationKey++
                                             showDoubleTapHeart = true
                                             onReaction(if (userReaction != null) null else ReactionType.LIKE)
@@ -671,7 +674,7 @@ fun FullScreenPhotoViewer(
                     if (showDoubleTapHeart) {
                         DoubleTapHeartAnimation(
                             key = heartAnimationKey,
-                            isLiked = userReaction != null,
+                            isLiked = isLikingAction, // true = red heart (liking), false = white heart (unliking)
                             onAnimationComplete = { showDoubleTapHeart = false }
                         )
                     }
