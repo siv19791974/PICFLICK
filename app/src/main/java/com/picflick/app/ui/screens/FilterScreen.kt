@@ -161,8 +161,13 @@ fun FilterScreen(
                         Box(
                             modifier = Modifier
                                 .background(
-                                    if (isLimitReached) Color.Red else if (isDarkMode) Color(0xFF1C1C1E) else Color(0xFF87CEEB),
+                                    if (isLimitReached) Color.Red else if (isDarkMode) Color(0xFF2C2C2E) else Color.White,
                                     RoundedCornerShape(20.dp)
+                                )
+                                .border(
+                                    width = if (isLimitReached) 0.dp else 2.dp,
+                                    color = if (isLimitReached) Color.Transparent else if (isDarkMode) Color.Gray else Color(0xFF1565C0),
+                                    shape = RoundedCornerShape(20.dp)
                                 )
                                 .padding(horizontal = 16.dp, vertical = 8.dp)
                         ) {
@@ -172,7 +177,7 @@ fun FilterScreen(
                                 } else {
                                     "$remainingUploads PHOTOS REMAINING TODAY"
                                 },
-                                color = if (isDarkMode) Color.White else Color.Black,
+                                color = if (isLimitReached) Color.White else if (isDarkMode) Color.White else Color(0xFF1565C0),
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Bold
                             )
@@ -180,12 +185,12 @@ fun FilterScreen(
                     }
                 },
                 navigationIcon = {
-                    // Camera icon (revert to camera)
+                    // Close/Camera icon
                     IconButton(
                         onClick = onNavigateToCamera,
                         modifier = Modifier
                             .size(44.dp)
-                            .background(if (isDarkMode) Color.Black.copy(alpha = 0.6f) else Color.White.copy(alpha = 0.6f), CircleShape)
+                            .background(if (isDarkMode) Color(0xFF2C2C2E) else Color.White, CircleShape)
                     ) {
                         Icon(
                             imageVector = Icons.Default.Close,
@@ -206,24 +211,22 @@ fun FilterScreen(
                             .size(44.dp)
                             .background(
                                 if (canUpload && !isLoading && bitmap != null) {
-                                    if (isDarkMode) Color(0xFF1565C0) else Color(0xFFD7ECFF)
-                                } else Color.DarkGray,
+                                    if (isDarkMode) Color(0xFF4CAF50) else Color(0xFF1565C0) // Green in dark, Blue in light
+                                } else Color.Gray,
                                 CircleShape
                             )
                     ) {
                         if (isUploading) {
                             CircularProgressIndicator(
                                 modifier = Modifier.size(24.dp),
-                                color = if (isDarkMode) Color.White else Color.Black,
+                                color = Color.White,
                                 strokeWidth = 2.dp
                             )
                         } else {
                             Icon(
                                 imageVector = Icons.Default.Check,
                                 contentDescription = "Upload",
-                                tint = if (canUpload && !isLoading && bitmap != null) {
-                                    if (isDarkMode) Color.White else Color.Black
-                                } else Color.White,
+                                tint = Color.White,
                                 modifier = Modifier.size(24.dp)
                             )
                         }
@@ -234,12 +237,12 @@ fun FilterScreen(
                 )
             )
         },
-        containerColor = if (isDarkMode) Color.Black else Color(0xFFD7ECFF)
+        containerColor = if (isDarkMode) Color.Black else Color.White
     ) { padding ->
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(if (isDarkMode) Color.Black else Color(0xFFD7ECFF))
+                .background(if (isDarkMode) Color.Black else Color(0xFFF5F5F5)) // Light gray in light mode
                 .padding(padding)
         ) {
             if (isLoading) {
@@ -307,7 +310,7 @@ fun FilterScreen(
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .background(if (isDarkMode) Color.Black else Color(0xFFE3F2FD))
+                                .background(if (isDarkMode) Color(0xFF1C1C1E) else Color.White) // White panel in light mode
                                 .padding(vertical = 16.dp)
                         ) {
                             // Filter Icons (simplified - no text)

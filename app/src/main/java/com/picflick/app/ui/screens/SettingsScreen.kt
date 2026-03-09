@@ -299,7 +299,12 @@ fun SettingsScreen(
     if (showAppearanceDialog) {
         AlertDialog(
             onDismissRequest = { showAppearanceDialog = false },
-            title = { Text("Appearance") },
+            title = { 
+                Text(
+                    "Appearance",
+                    color = if (isDarkMode) Color.White else Color.Black
+                ) 
+            },
             text = {
                 Column {
                     Row(
@@ -320,14 +325,14 @@ fun SettingsScreen(
                         Text(
                             text = "☀️ Light Mode",
                             modifier = Modifier.weight(1f),
-                            color = Color.White
+                            color = if (isDarkMode) Color.White else Color.Black
                         )
                         if (!isDarkMode) {
                             Text("✓", color = Color(0xFF00D09C))
                         }
                     }
                     
-                    HorizontalDivider(color = Color(0xFF2C2C2E))
+                    HorizontalDivider(color = if (isDarkMode) Color(0xFF2C2C2E) else Color.LightGray)
                     
                     Row(
                         modifier = Modifier
@@ -347,7 +352,7 @@ fun SettingsScreen(
                         Text(
                             text = "🌙 Dark Mode",
                             modifier = Modifier.weight(1f),
-                            color = Color.White
+                            color = if (isDarkMode) Color.White else Color.Black
                         )
                         if (isDarkMode) {
                             Text("✓", color = Color(0xFF00D09C))
@@ -357,24 +362,18 @@ fun SettingsScreen(
                     Text(
                         text = "Theme will be applied immediately",
                         fontSize = 12.sp,
-                        color = Color.Gray,
-                        modifier = Modifier.padding(top = 16.dp)
+                        color = if (isDarkMode) Color.Gray else Color.DarkGray,
+                        modifier = Modifier.padding(top = 8.dp)
                     )
                 }
             },
-            confirmButton = {
-                TextButton(onClick = { showAppearanceDialog = false }) {
-                    Text("OK", color = Color(0xFFD7ECFF))
-                }
-            },
+            confirmButton = {},
             dismissButton = {
                 TextButton(onClick = { showAppearanceDialog = false }) {
-                    Text("Close")
+                    Text("Cancel", color = if (isDarkMode) Color.White else Color.Black)
                 }
             },
-            containerColor = if (isDarkMode) Color(0xFF1C1C1E) else Color.White,
-            titleContentColor = if (isDarkMode) Color.White else Color.Black,
-            textContentColor = if (isDarkMode) Color.White else Color.Black
+            containerColor = if (isDarkMode) Color(0xFF1C1C1E) else Color.White
         )
     }
 }
