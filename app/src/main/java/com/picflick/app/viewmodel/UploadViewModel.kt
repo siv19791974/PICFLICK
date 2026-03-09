@@ -18,6 +18,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import java.util.Calendar
 import java.util.UUID
+import com.picflick.app.data.getDailyUploadLimit
 
 /**
  * ViewModel for handling photo upload with filters and daily limits
@@ -41,10 +42,6 @@ class UploadViewModel : ViewModel() {
         private set
     var isLoadingUploadCount by mutableStateOf(true)
         private set
-    
-    companion object {
-        const val MAX_DAILY_UPLOADS = 5
-    }
 
     /**
      * Load today's upload count for a user
@@ -100,9 +97,10 @@ class UploadViewModel : ViewModel() {
     ) {
         viewModelScope.launch {
             try {
-                // Check daily limit
-                if (dailyUploadCount >= MAX_DAILY_UPLOADS) {
-                    uploadError = "Daily upload limit reached (5/5). Try again tomorrow!"
+                // Check daily limit based on subscription tier
+                val dailyLimit = userProfile.subscriptionTier.getDailyUploadLimit()
+                if (dailyUploadCount >= dailyLimit) {
+                    uploadError = "Daily upload limit reached (${dailyUploadCount}/${dailyLimit}). Try again tomorrow!"
                     return@launch
                 }
                 
