@@ -1,0 +1,202 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">PICFLICK</string>
+    
+    <string name="default_web_client_id" translatable="false">830332240569-pko9aotmkb9qn86ao98ml20drrihe4l4.apps.googleusercontent.com</string>
+    
+    <!-- ==================== LOGIN SCREEN ==================== -->
+    <string name="login_welcome_title">Willkommen bei PicFlick</string>
+    <string name="login_welcome_subtitle">Teilen Sie Fotos mit Freunden</string>
+    <string name="login_sign_in_button">Mit Google anmelden</string>
+    <string name="login_logo_content_desc">PicFlick Logo</string>
+    
+    <string name="login_error_firebase_auth">Firebase-Authentifizierung fehlgeschlagen</string>
+    <string name="login_error_parse_token">Google ID-Token konnte nicht analysiert werden</string>
+    <string name="login_error_unsupported_credential">Nicht unterst\u00fctzer Anmeldeinformationstyp</string>
+    <string name="login_error_sign_in_failed">Anmeldung fehlgeschlagen</string>
+    <string name="login_error_unexpected">Unerwarteter Fehler</string>
+    
+    <!-- ==================== NAVIGATION & COMMON ==================== -->
+    <string name="nav_back">Zur\u00fcck</string>
+    <string name="nav_settings">Einstellungen</string>
+    <string name="nav_notifications">Benachrichtigungen</string>
+    <string name="nav_profile">Profil</string>
+    <string name="nav_home">Startseite</string>
+    <string name="nav_chats">Chats</string>
+    <string name="nav_friends">Freunde</string>
+    <string name="nav_upload">Hochladen</string>
+    
+    <!-- ==================== HOME SCREEN ==================== -->
+    <string name="home_camera_content_desc">Kamera</string>
+    <string name="home_gallery_content_desc">Galerie</string>
+    <string name="home_privacy_friends">Nur Freunde</string>
+    <string name="home_privacy_public">\u00d6ffentlich</string>
+    <string name="home_fab_upload">Foto hochladen</string>
+    
+    <!-- ==================== FILTER SCREEN ==================== -->
+    <string name="filter_title">Filter anwenden</string>
+    <string name="filter_back_camera">Zur\u00fcck zur Kamera</string>
+    <string name="filter_upload">Hochladen</string>
+    <string name="filter_photo_preview">Gefiltertes Foto</string>
+    <string name="filter_caption_placeholder">Bildunterschrift hinzuf\u00fcgen\u2026</string>
+    <string name="filter_find_friends">Freunde finden</string>
+    <string name="filter_remove_friend">Entfernen</string>
+    <string name="filter_tag_friends">Freunde im Foto markieren</string>
+    
+    <!-- Upload Status -->
+    <string name="upload_complete">Upload abgeschlossen!</string>
+    <string name="upload_failed">Upload fehlgeschlagen</string>
+    <string name="upload_limit_reached">T\u00e4gliches Upload-Limit erreicht</string>
+    
+    <!-- ==================== CHAT SCREENS ==================== -->
+    <string name="chat_message_placeholder">Nachricht</string>
+    <string name="chat_send_content_desc">Senden</string>
+    <string name="chat_no_messages">Noch keine Nachrichten</string>
+    <string name="chat_start_conversation">Beginnen Sie einen Chat mit Freunden!</string>
+    <string name="chat_say_hello">Sagen Sie Hallo!</string>
+    <string name="chat_you_prefix">Sie:</string>
+    <string name="chat_unknown_user">Unbekannt</string>
+    
+    <!-- ==================== PROFILE SCREEN ==================== -->
+    <string name="profile_photos_title">Meine Fotos</string>
+    <string name="profile_photo_count">%d Fotos</string>
+    <string name="profile_total_reactions">%d Reaktionen</string>
+    <string name="profile_streak">%d Tage Streak</string>
+    <string name="profile_edit_bio">Bio bearbeiten</string>
+    <string name="profile_change_photo">Profilfoto \u00e4ndern</string>
+    
+    <!-- ==================== FRIENDS SCREEN ==================== -->
+    <string name="friends_search_placeholder">Freunde suchen\u2026</string>
+    <string name="friends_no_results">Keine Benutzer gefunden</string>
+    <string name="friends_follow">Folgen</string>
+    <string name="friends_following">Folge ich</string>
+    <string name="friends_suggested">Vorgeschlagene Freunde</string>
+    <string name="friends_contacts">Kontakte auf PicFlick</string>
+    
+    <!-- ==================== SETTINGS SCREEN ==================== -->
+    <string name="settings_title">Einstellungen</string>
+    <string name="settings_edit_profile">Profil bearbeiten</string>
+    <string name="settings_manage_storage">Speicher verwalten</string>
+    <string name="settings_subscription">Abonnement-Status</string>
+    <string name="settings_privacy">Datenschutzeinstellungen</string>
+    <string name="settings_notifications">Benachrichtigungseinstellungen</string>
+    <string name="settings_help">Hilfe &amp; Support</string>
+    <string name="settings_about">\u00dcber</string>
+    <string name="settings_sign_out">Abmelden</string>
+    <string name="settings_delete_account">Konto l\u00f6schen</string>
+    
+    <!-- ==================== NOTIFICATIONS ==================== -->
+    <string name="notifications_title">Benachrichtigungen</string>
+    <string name="notifications_empty">Noch keine Benachrichtigungen</string>
+    <string name="notifications_mark_read">Alle als gelesen markieren</string>
+    
+    <!-- Notification Types -->
+    <string name="notif_like">hat Ihr Foto gefallen</string>
+    <string name="notif_reaction">hat auf Ihr Foto reagiert</string>
+    <string name="notif_comment">hat Ihr Foto kommentiert</string>
+    <string name="notif_follow">folgt Ihnen jetzt</string>
+    <string name="notif_message">hat Ihnen eine Nachricht gesendet</string>
+    <string name="notif_mention">hat Sie erw\u00e4hnt</string>
+    
+    <!-- ==================== STORAGE & BILLING ==================== -->
+    <string name="storage_title">Speicher verwalten</string>
+    <string name="storage_used">%1$.1f GB von %2$d GB verwendet</string>
+    <string name="storage_photos_count">%d Fotos</string>
+    <string name="storage_daily_uploads">%1$d / %2$s Uploads heute</string>
+    <string name="storage_unlimited">Unbegrenzt</string>
+    <string name="storage_upgrade">Speicher erweitern</string>
+    
+    <!-- Storage Labels -->
+    <string name="storage_photos_stored">Gespeicherte Fotos</string>
+    <string name="storage_avg_photo_size">Durchschnittliche Fotogr\u00f6\u00dfe</string>
+    <string name="storage_current_quality">Aktuelle Qualit\u00e4t</string>
+    <string name="storage_label_used">Verwendet</string>
+    <string name="storage_label_total">Gesamt</string>
+    <string name="storage_label_remaining">Verbleibend</string>
+    <string name="storage_breakdown">Speicheraufschl\u00fcsselung</string>
+    <string name="storage_upgrade_to">Auf %s upgraden</string>
+    <string name="storage_upgrade_soon">Erw\u00e4gen Sie bald ein Upgrade, um mehr Speicher f\u00fcr Ihre Erinnerungen zu erhalten.</string>
+    <string name="storage_upgrade_or_delete">Upgraden Sie Ihren Plan oder l\u00f6schen Sie alte Fotos, um Speicherplatz freizugeben.</string>
+    <string name="storage_looking_good">Sie haben viel Platz f\u00fcr weitere Fotos. Weiter so!</string>
+    <string name="storage_running_low">Wenig Speicherplatz</string>
+    <string name="storage_almost_full">Speicher fast voll!</string>
+    <string name="founder_status_1_year">Gr\u00fcnder-Status - 1 Jahr kostenlos</string>
+    
+    <!-- Subscription Tiers -->
+    <string name="tier_free">Kostenlos</string>
+    <string name="tier_standard">Standard</string>
+    <string name="tier_plus">Plus</string>
+    <string name="tier_pro">Pro</string>
+    <string name="tier_ultra">Ultra</string>
+    <string name="tier_founder">Gr\u00fcnder</string>
+    
+    <!-- ==================== ERRORS & MESSAGES ==================== -->
+    <string name="error_generic">Etwas ist schiefgelaufen</string>
+    <string name="error_network">Netzwerkfehler. Bitte versuchen Sie es erneut.</string>
+    <string name="error_permission_denied">Berechtigung verweigert</string>
+    <string name="error_camera_failed">Fotoaufnahme fehlgeschlagen</string>
+    <string name="error_upload_failed">Foto-Upload fehlgeschlagen</string>
+    <string name="error_unknown">Unbekannter Fehler</string>
+    
+    <!-- Success Messages -->
+    <string name="success_photo_uploaded">Foto erfolgreich hochgeladen!</string>
+    <string name="success_profile_updated">Profil aktualisiert!</string>
+    <string name="success_changes_saved">\u00c4nderungen gespeichert</string>
+    
+    <!-- ==================== DIALOGS ==================== -->
+    <string name="dialog_cancel">Abbrechen</string>
+    <string name="dialog_save">Speichern</string>
+    <string name="dialog_delete">L\u00f6schen</string>
+    <string name="dialog_confirm">Best\u00e4tigen</string>
+    <string name="dialog_go_back">Zur\u00fcck</string>
+    
+    <!-- Delete Confirmation -->
+    <string name="delete_photo_title">Foto l\u00f6schen?</string>
+    <string name="delete_photo_message">Diese Aktion kann nicht r\u00fcckg\u00e4ngig gemacht werden.</string>
+    <string name="delete_account_title">Konto l\u00f6schen?</string>
+    <string name="delete_account_message">Alle Ihre Daten werden dauerhaft gel\u00f6scht.</string>
+    
+    <!-- ==================== ABOUT SCREEN ==================== -->
+    <string name="about_title">\u00dcber PicFlick</string>
+    <string name="about_version">Version %s</string>
+    <string name="about_description">Teilen Sie Fotos mit Freunden in einem privaten, werbefreien Raum.</string>
+    <string name="about_privacy_policy">Datenschutzrichtlinie</string>
+    <string name="about_terms">Nutzungsbedingungen</string>
+    <string name="about_contact">Kontaktieren Sie uns</string>
+    
+    <!-- ==================== EXPLORE SCREEN ==================== -->
+    <string name="explore_search_placeholder">Fotos, Benutzer, Tags suchen\u2026</string>
+    <string name="explore_search_content_desc">Suchen</string>
+    <string name="explore_clear_content_desc">L\u00f6schen</string>
+    <string name="explore_trending_now">🔥 Aktuell beliebt</string>
+    <string name="explore_popular_creators">📸 Beliebte Ersteller</string>
+    <string name="explore_follow_more_friends_title">Folgen Sie mehr Freunden!</string>
+    <string name="explore_follow_more_friends_subtitle">Fotos von Personen, denen Sie folgen, werden hier angezeigt</string>
+    <string name="explore_from_people_you_follow">Von Personen, denen Sie folgen</string>
+    <string name="explore_reactions_count">%d Reaktionen</string>
+    <string name="explore_reactions_comments">%d Reaktionen \u2022 %d Kommentare</string>
+    <string name="explore_trending_badge">🔥 BELIEBT</string>
+    <string name="explore_new_badge">✨ NEU</string>
+    <string name="explore_no_photos_upload">Noch keine Fotos. Laden Sie eines hoch!</string>
+    <string name="explore_who_can_see">Wer kann das sehen?</string>
+    <string name="explore_friends_will_see">Nur Ihre Freunde werden dieses Foto sehen</string>
+    <string name="explore_everyone_will_see">Jeder kann dieses Foto sehen</string>
+    <string name="explore_tab_trending">Beliebt</string>
+    <string name="explore_tab_popular">Popul\u00e4r</string>
+    <string name="explore_tab_new">Neu</string>
+    <string name="explore_tab_for_you">F\u00fcr Sie</string>
+    
+    <!-- ==================== PROFILE DIALOG ==================== -->
+    <string name="profile_dialog_title">Bio bearbeiten</string>
+    <string name="profile_bio_label">Bio</string>
+    <string name="profile_bio_placeholder">Erz\u00e4hlen Sie etwas \u00fcber sich\u2026</string>
+    <string name="profile_dialog_save">Speichern</string>
+    <string name="profile_dialog_cancel">Abbrechen</string>
+    <string name="profile_photo_content_desc">Profilfoto</string>
+    <string name="profile_change_photo_content_desc">Foto \u00e4ndern</string>
+    
+    <!-- ==================== SHARE ==================== -->
+    <string name="share_photo_title">Foto teilen</string>
+    <string name="share_photo_text">Sehen Sie sich dieses Foto auf PicFlick an: %s</string>
+    
+</resources>

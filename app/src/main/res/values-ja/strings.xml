@@ -1,0 +1,202 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">PICFLICK</string>
+    
+    <string name="default_web_client_id" translatable="false">830332240569-pko9aotmkb9qn86ao98ml20drrihe4l4.apps.googleusercontent.com</string>
+    
+    <!-- ==================== LOGIN SCREEN ==================== -->
+    <string name="login_welcome_title">PicFlickへようこそ</string>
+    <string name="login_welcome_subtitle">友達と写真を共有しましょう</string>
+    <string name="login_sign_in_button">Googleでサインイン</string>
+    <string name="login_logo_content_desc">PicFlickロゴ</string>
+    
+    <string name="login_error_firebase_auth">Firebase認証に失敗しました</string>
+    <string name="login_error_parse_token">Google IDトークンの解析に失敗しました</string>
+    <string name="login_error_unsupported_credential">サポートされていない証明書タイプ</string>
+    <string name="login_error_sign_in_failed">サインインに失敗しました</string>
+    <string name="login_error_unexpected">予期しないエラー</string>
+    
+    <!-- ==================== NAVIGATION & COMMON ==================== -->
+    <string name="nav_back">戻る</string>
+    <string name="nav_settings">設定</string>
+    <string name="nav_notifications">通知</string>
+    <string name="nav_profile">プロフィール</string>
+    <string name="nav_home">ホーム</string>
+    <string name="nav_chats">チャット</string>
+    <string name="nav_friends">友達</string>
+    <string name="nav_upload">アップロード</string>
+    
+    <!-- ==================== HOME SCREEN ==================== -->
+    <string name="home_camera_content_desc">カメラ</string>
+    <string name="home_gallery_content_desc">ギャラリー</string>
+    <string name="home_privacy_friends">友達のみ</string>
+    <string name="home_privacy_public">公開</string>
+    <string name="home_fab_upload">写真をアップロード</string>
+    
+    <!-- ==================== FILTER SCREEN ==================== -->
+    <string name="filter_title">フィルターを適用</string>
+    <string name="filter_back_camera">カメラに戻る</string>
+    <string name="filter_upload">アップロード</string>
+    <string name="filter_photo_preview">フィルター適用写真</string>
+    <string name="filter_caption_placeholder">キャプション追加…</string>
+    <string name="filter_find_friends">友達を見つける</string>
+    <string name="filter_remove_friend">削除</string>
+    <string name="filter_tag_friends">写真に友達タグ</string>
+    
+    <!-- Upload Status -->
+    <string name="upload_complete">アップロード完了!</string>
+    <string name="upload_failed">アップロード失敗</string>
+    <string name="upload_limit_reached">1日のアップロード上限に達しました</string>
+    
+    <!-- ==================== CHAT SCREENS ==================== -->
+    <string name="chat_message_placeholder">メッセージ</string>
+    <string name="chat_send_content_desc">送信</string>
+    <string name="chat_no_messages">まだメッセージがありません</string>
+    <string name="chat_start_conversation">友達とチャットを始めましょう!</string>
+    <string name="chat_say_hello">こんにちは!</string>
+    <string name="chat_you_prefix">あなた:</string>
+    <string name="chat_unknown_user">不明</string>
+    
+    <!-- ==================== PROFILE SCREEN ==================== -->
+    <string name="profile_photos_title">私の写真</string>
+    <string name="profile_photo_count">%d枚の写真</string>
+    <string name="profile_total_reactions">%d件のリアクション</string>
+    <string name="profile_streak">%d日連続</string>
+    <string name="profile_edit_bio">趣味を編集</string>
+    <string name="profile_change_photo">プロフィール写真を変更</string>
+    
+    <!-- ==================== FRIENDS SCREEN ==================== -->
+    <string name="friends_search_placeholder">友達を検索…</string>
+    <string name="friends_no_results">ユーザーが見つかりません</string>
+    <string name="friends_follow">フォロー</string>
+    <string name="friends_following">フォロー中</string>
+    <string name="friends_suggested">おすすめの友達</string>
+    <string name="friends_contacts">PicFlickの連絡先</string>
+    
+    <!-- ==================== SETTINGS SCREEN ==================== -->
+    <string name="settings_title">設定</string>
+    <string name="settings_edit_profile">プロフィールを編集</string>
+    <string name="settings_manage_storage">ストレージを管理</string>
+    <string name="settings_subscription">購読状況</string>
+    <string name="settings_privacy">プライバシー設定</string>
+    <string name="settings_notifications">通知設定</string>
+    <string name="settings_help">ヘルプ＆サポート</string>
+    <string name="settings_about">アプリ情報</string>
+    <string name="settings_sign_out">サインアウト</string>
+    <string name="settings_delete_account">アカウントを削除</string>
+    
+    <!-- ==================== NOTIFICATIONS ==================== -->
+    <string name="notifications_title">通知</string>
+    <string name="notifications_empty">まだ通知がありません</string>
+    <string name="notifications_mark_read">すべて既読にする</string>
+    
+    <!-- Notification Types -->
+    <string name="notif_like">あなたの写真にいいねしました</string>
+    <string name="notif_reaction">あなたの写真にリアクションしました</string>
+    <string name="notif_comment">あなたの写真にコメントしました</string>
+    <string name="notif_follow">あなたをフォローし始めました</string>
+    <string name="notif_message">あなたにメッセージを送りました</string>
+    <string name="notif_mention">あなたをメンションしました</string>
+    
+    <!-- ==================== STORAGE & BILLING ==================== -->
+    <string name="storage_title">ストレージを管理</string>
+    <string name="storage_used">%1$.1f GB / %2$d GB 使用中</string>
+    <string name="storage_photos_count">%d枚の写真</string>
+    <string name="storage_daily_uploads">今日 %1$d / %2$s件アップロード</string>
+    <string name="storage_unlimited">制限なし</string>
+    <string name="storage_upgrade">ストレージをアップグレード</string>
+    
+    <!-- Storage Labels -->
+    <string name="storage_photos_stored">保存済み写真</string>
+    <string name="storage_avg_photo_size">平均写真サイズ</string>
+    <string name="storage_current_quality">現在の画質</string>
+    <string name="storage_label_used">使用済み</string>
+    <string name="storage_label_total">合計</string>
+    <string name="storage_label_remaining">残り</string>
+    <string name="storage_breakdown">ストレージ内訳</string>
+    <string name="storage_upgrade_to">%sにアップグレード</string>
+    <string name="storage_upgrade_soon">近々アップグレードを検討して、思い出をもっと保存できるようにしましょう。</string>
+    <string name="storage_upgrade_or_delete">プランをアップグレードするか、古い写真を削除して空き容量を確保してください。</string>
+    <string name="storage_looking_good">写真をもっと保存できる十分な空き容量があります。素敵な瞬間を追い続けてください！</string>
+    <string name="storage_running_low">空き容量が少なくなってきました</string>
+    <string name="storage_almost_full">ストレージがほぼ満杯！</string>
+    <string name="founder_status_1_year">ファウンダーステータス - 1年間無料</string>
+    
+    <!-- Subscription Tiers -->
+    <string name="tier_free">無料</string>
+    <string name="tier_standard">スタンダード</string>
+    <string name="tier_plus">プラス</string>
+    <string name="tier_pro">プロ</string>
+    <string name="tier_ultra">ウルトラ</string>
+    <string name="tier_founder">ファウンダー</string>
+    
+    <!-- ==================== ERRORS & MESSAGES ==================== -->
+    <string name="error_generic">エラーが発生しました</string>
+    <string name="error_network">ネットワークエラー。もう一度お試しください。</string>
+    <string name="error_permission_denied">権限が拒否されました</string>
+    <string name="error_camera_failed">写真の撮影に失敗しました</string>
+    <string name="error_upload_failed">写真のアップロードに失敗しました</string>
+    <string name="error_unknown">不明なエラー</string>
+    
+    <!-- Success Messages -->
+    <string name="success_photo_uploaded">写真が正常にアップロードされました！</string>
+    <string name="success_profile_updated">プロフィールが更新されました！</string>
+    <string name="success_changes_saved">変更が保存されました</string>
+    
+    <!-- ==================== DIALOGS ==================== -->
+    <string name="dialog_cancel">キャンセル</string>
+    <string name="dialog_save">保存</string>
+    <string name="dialog_delete">削除</string>
+    <string name="dialog_confirm">確認</string>
+    <string name="dialog_go_back">戻る</string>
+    
+    <!-- Delete Confirmation -->
+    <string name="delete_photo_title">写真を削除しますか？</string>
+    <string name="delete_photo_message">この操作は取り消せません。</string>
+    <string name="delete_account_title">アカウントを削除しますか？</string>
+    <string name="delete_account_message">すべてのデータが永久に削除されます。</string>
+    
+    <!-- ==================== ABOUT SCREEN ==================== -->
+    <string name="about_title">PicFlickについて</string>
+    <string name="about_version">バージョン %s</string>
+    <string name="about_description">プライベートで広告のない空間で友達と写真を共有しましょう。</string>
+    <string name="about_privacy_policy">プライバシーポリシー</string>
+    <string name="about_terms">利用規約</string>
+    <string name="about_contact">お問い合わせ</string>
+    
+    <!-- ==================== EXPLORE SCREEN ==================== -->
+    <string name="explore_search_placeholder">写真、ユーザー、タグを検索…</string>
+    <string name="explore_search_content_desc">検索</string>
+    <string name="explore_clear_content_desc">消去</string>
+    <string name="explore_trending_now">🔥 トレンド</string>
+    <string name="explore_popular_creators">📸 人気クリエイター</string>
+    <string name="explore_follow_more_friends_title">もっと友達をフォローしよう！</string>
+    <string name="explore_follow_more_friends_subtitle">フォロー中のユーザーの写真がここに表示されます</string>
+    <string name="explore_from_people_you_follow">フォロー中のユーザーから</string>
+    <string name="explore_reactions_count">%d 件のリアクション</string>
+    <string name="explore_reactions_comments">%d 件のリアクション • %d 件のコメント</string>
+    <string name="explore_trending_badge">🔥 トレンド</string>
+    <string name="explore_new_badge">✨ 新着</string>
+    <string name="explore_no_photos_upload">まだ写真がありません。アップロードしましょう！</string>
+    <string name="explore_who_can_see">誰が見ることができますか？</string>
+    <string name="explore_friends_will_see">友達だけがこの写真を見ることができます</string>
+    <string name="explore_everyone_will_see">誰でもこの写真を見ることができます</string>
+    <string name="explore_tab_trending">トレンド</string>
+    <string name="explore_tab_popular">人気</string>
+    <string name="explore_tab_new">新着</string>
+    <string name="explore_tab_for_you">あなたへ</string>
+    
+    <!-- ==================== PROFILE DIALOG ==================== -->
+    <string name="profile_dialog_title">趣味を編集</string>
+    <string name="profile_bio_label">趣味</string>
+    <string name="profile_bio_placeholder">自分のことを話しましょう…</string>
+    <string name="profile_dialog_save">保存</string>
+    <string name="profile_dialog_cancel">キャンセル</string>
+    <string name="profile_photo_content_desc">プロフィール写真</string>
+    <string name="profile_change_photo_content_desc">写真を変更</string>
+    
+    <!-- ==================== SHARE ==================== -->
+    <string name="share_photo_title">写真を共有</string>
+    <string name="share_photo_text">PicFlickでこの写真を見る: %s</string>
+    
+</resources>
