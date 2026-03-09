@@ -62,7 +62,6 @@ fun SettingsScreen(
     onNotificationsSettings: () -> Unit = {},
     onHelpSupport: () -> Unit = {},
     onAbout: () -> Unit = {}
-    // FIREBENDER callbacks removed - for developer testing only via Firebase Console
 ) {
     val context = LocalContext.current
     var showSignOutDialog by remember { mutableStateOf(false) }
@@ -211,31 +210,6 @@ fun SettingsScreen(
             }
 
             Spacer(modifier = Modifier.height(32.dp))
-            
-            // Debug Section (Hidden in production - Developer only)
-            // NOTE: FIREBENDER summon/remove is disabled for users.
-            // For testing, use Firebase Console directly.
-            /*
-            SettingsSection(title = "DEBUG") {
-                if (isFirebenderFriend) {
-                    SettingsItem(
-                        icon = Icons.Default.Person,
-                        title = "Remove FIREBENDER",
-                        subtitle = "Remove AI assistant from friends",
-                        onClick = onRemoveFirebender,
-                        showArrow = false
-                    )
-                } else {
-                    SettingsItem(
-                        icon = Icons.Default.Person,
-                        title = "Summon FIREBENDER",
-                        subtitle = "Add AI assistant as friend",
-                        onClick = onSummonFirebender,
-                        showArrow = false
-                    )
-                }
-            }
-            */
         }
     }
 
