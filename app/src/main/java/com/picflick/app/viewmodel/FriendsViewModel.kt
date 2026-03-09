@@ -38,6 +38,13 @@ class FriendsViewModel : ViewModel() {
     var contactUsers = mutableStateListOf<UserProfile>()
         private set
 
+    // Alias for contactUsers - contacts found on PicFlick
+    val contactsOnApp: List<UserProfile> get() = contactUsers
+
+    // Track which users are currently being processed (follow/unfollow)
+    var processingUserIds = mutableStateListOf<String>()
+        private set
+
     init {
         // Load suggested users on init
         loadSuggestedUsers()
@@ -84,7 +91,7 @@ class FriendsViewModel : ViewModel() {
         }
 
         isLoading = true
-        repository.searchUsers(query) { result ->
+        repository.searchUsers(query, currentUserId) { result ->
             when (result) {
                 is Result.Success -> {
                     searchResults.clear()
@@ -104,6 +111,10 @@ class FriendsViewModel : ViewModel() {
      * Load suggested users to follow
      */
     fun loadSuggestedUsers(currentUserId: String? = null) {
+        if (currentUserId == null) {
+            // Can't load without a user ID
+            return
+        }
         isLoading = true
         repository.getSuggestedUsers(currentUserId) { result ->
             when (result) {
@@ -124,7 +135,9 @@ class FriendsViewModel : ViewModel() {
      * Send a follow request
      */
     fun sendFollowRequest(currentUserId: String, targetUser: UserProfile, currentUserProfile: UserProfile) {
+        addProcessingUser(targetUser.uid)
         repository.followUser(currentUserId, targetUser.uid) { result ->
+            removeProcessingUser(targetUser.uid)
             // Handle result silently
         }
     }
@@ -133,7 +146,9 @@ class FriendsViewModel : ViewModel() {
      * Unfollow a user
      */
     fun unfollowUser(currentUserId: String, targetUserId: String) {
+        addProcessingUser(targetUserId)
         repository.unfollowUser(currentUserId, targetUserId) { result ->
+            removeProcessingUser(targetUserId)
             // Handle result silently
         }
     }
@@ -142,15 +157,41 @@ class FriendsViewModel : ViewModel() {
      * Accept a follow request
      */
     fun acceptFollowRequest(currentUserId: String, requester: UserProfile) {
+        addProcessingUser(requester.uid)
         viewModelScope.launch {
             repository.acceptFollowRequest(currentUserId, requester.uid, requester.displayName)
+            removeProcessingUser(requester.uid)
         }
+    }
+
+    /**
+     * Sync contacts - wrapper function for compatibility
+     */
+    fun syncContacts(context: Context, currentUserId: String? = null) {
+        val userId = currentUserId ?: return
+        loadContacts(context, userId)
+    }
+
+    /**
+     * Add a user to processing list (to show loading state)
+     */
+    fun addProcessingUser(userId: String) {
+        if (!processingUserIds.contains(userId)) {
+            processingUserIds.add(userId)
+        }
+    }
+
+    /**
+     * Remove a user from processing list
+     */
+    fun removeProcessingUser(userId: String) {
+        processingUserIds.remove(userId)
     }
 
     /**
      * Load contacts from phone and find matching PicFlick users
      */
-    fun loadContacts(context: Context, currentUserId: String) {
+    private fun loadContacts(context: Context, currentUserId: String) {
         isLoading = true
         contactUsers.clear()
 
