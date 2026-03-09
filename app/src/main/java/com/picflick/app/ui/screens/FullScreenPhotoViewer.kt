@@ -1058,7 +1058,16 @@ fun FullScreenPhotoViewer(
                                         )
                                     } else {
                                         comments.forEach { comment ->
-                                            CompactCommentItem(comment = comment)
+                                            CompactCommentItem(
+                                                comment = comment,
+                                                currentUserId = currentUser.uid,
+                                                onLikeClick = {
+                                                    // TODO: Implement comment like
+                                                },
+                                                onReplyClick = {
+                                                    // TODO: Implement reply UI
+                                                }
+                                            )
                                         }
                                     }
                                 }
@@ -1468,36 +1477,155 @@ private fun formatTimestamp(timestamp: Long): String {
 
 // Comment item
 @Composable
-private fun CompactCommentItem(comment: Comment) {
+private fun CompactCommentItem(
+    comment: Comment,
+    currentUserId: String,
+    onLikeClick: () -> Unit = {},
+    onReplyClick: () -> Unit = {},
+    showReplies: Boolean = false,
+    replies: List<Comment> = emptyList(),
+    onLoadReplies: () -> Unit = {}
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp)
+    ) {
+        // Main comment row
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.Top
+        ) {
+            AsyncImage(
+                model = comment.userPhotoUrl,
+                contentDescription = null,
+                modifier = Modifier
+                    .size(24.dp)
+                    .clip(CircleShape),
+                contentScale = ContentScale.Crop
+            )
+            
+            Spacer(modifier = Modifier.width(8.dp))
+            
+            Column(modifier = Modifier.weight(1f)) {
+                // Username and text
+                Row {
+                    Text(
+                        text = comment.userName,
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 12.sp
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = comment.text,
+                        color = Color.White.copy(alpha = 0.9f),
+                        fontSize = 12.sp
+                    )
+                }
+                
+                // Like and Reply buttons row
+                Row(
+                    modifier = Modifier.padding(top = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // Like button
+                    TextButton(
+                        onClick = onLikeClick,
+                        modifier = Modifier.height(20.dp),
+                        contentPadding = PaddingValues(horizontal = 0.dp)
+                    ) {
+                        Text(
+                            text = if (comment.hasUserLiked(currentUserId)) "❤️ Liked" else "🤍 Like",
+                            fontSize = 10.sp,
+                            color = if (comment.hasUserLiked(currentUserId)) Color(0xFFFF4081) else Color.Gray
+                        )
+                    }
+                    
+                    // Like count
+                    if (comment.getLikeCount() > 0) {
+                        Text(
+                            text = "${comment.getLikeCount()}",
+                            fontSize = 10.sp,
+                            color = Color.Gray,
+                            modifier = Modifier.padding(start = 4.dp)
+                        )
+                    }
+                    
+                    Spacer(modifier = Modifier.width(12.dp))
+                    
+                    // Reply button
+                    TextButton(
+                        onClick = onReplyClick,
+                        modifier = Modifier.height(20.dp),
+                        contentPadding = PaddingValues(horizontal = 0.dp)
+                    ) {
+                        Text(
+                            text = "💬 Reply",
+                            fontSize = 10.sp,
+                            color = Color.Gray
+                        )
+                    }
+                    
+                    // Reply count
+                    if (comment.replyCount > 0) {
+                        Text(
+                            text = "${comment.replyCount} replies",
+                            fontSize = 10.sp,
+                            color = Color.Gray,
+                            modifier = Modifier.padding(start = 4.dp)
+                        )
+                    }
+                }
+            }
+        }
+        
+        // Replies section (if any)
+        if (replies.isNotEmpty()) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 32.dp, top = 4.dp)
+            ) {
+                replies.forEach { reply ->
+                    CompactReplyItem(reply = reply)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun CompactReplyItem(reply: Comment) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 4.dp),
+            .padding(vertical = 2.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         AsyncImage(
-            model = comment.userPhotoUrl,
+            model = reply.userPhotoUrl,
             contentDescription = null,
             modifier = Modifier
-                .size(24.dp)
+                .size(16.dp)
                 .clip(CircleShape),
             contentScale = ContentScale.Crop
         )
         
-        Spacer(modifier = Modifier.width(8.dp))
+        Spacer(modifier = Modifier.width(6.dp))
         
         Row {
             Text(
-                text = comment.userName,
-                color = Color.White,
+                text = reply.userName,
+                color = Color.White.copy(alpha = 0.8f),
                 fontWeight = FontWeight.Bold,
-                fontSize = 12.sp
+                fontSize = 10.sp
             )
             Spacer(modifier = Modifier.width(4.dp))
             Text(
-                text = comment.text,
-                color = Color.White.copy(alpha = 0.9f),
-                fontSize = 12.sp
+                text = reply.text,
+                color = Color.White.copy(alpha = 0.7f),
+                fontSize = 10.sp
             )
         }
     }
