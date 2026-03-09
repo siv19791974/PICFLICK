@@ -230,8 +230,8 @@ fun ContactScreen(
 
                             val result = repository.submitFeedback(
                                 userId = userProfile.uid,
-                                userName = userProfile.displayName,
-                                userEmail = userProfile.email,
+                                userName = userProfile.displayName.ifBlank { "Anonymous" },
+                                userEmail = userProfile.email.ifBlank { "no-email@picflick.app" },
                                 subject = subject,
                                 message = message,
                                 category = selectedCategory,
@@ -245,6 +245,12 @@ fun ContactScreen(
                                 }
                                 is com.picflick.app.data.Result.Error -> {
                                     errorMessage = result.message ?: "Failed to submit feedback"
+                                    // Show detailed error for debugging
+                                    android.widget.Toast.makeText(
+                                        context,
+                                        "Error: ${result.exception?.message}",
+                                        android.widget.Toast.LENGTH_LONG
+                                    ).show()
                                 }
                                 else -> {}
                             }
