@@ -2,6 +2,7 @@ package com.picflick.app.ui.screens
 
 import com.picflick.app.R
 import androidx.compose.animation.*
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -462,16 +463,29 @@ fun FullScreenPhotoViewer(
             Box(modifier = Modifier.fillMaxSize()) {
                 
                 // SIMPLE 2D PAGER - Just direct positioning with Zoomable for pinch
-                var dragX by remember { mutableFloatStateOf(0f) }
-                var dragY by remember { mutableFloatStateOf(0f) }
+                // Use Animatable with spring for smooth snap-back animation
+                val dragXAnim = remember { Animatable(0f) }
+                val dragYAnim = remember { Animatable(0f) }
+                var rawDragX by remember { mutableFloatStateOf(0f) }
+                var rawDragY by remember { mutableFloatStateOf(0f) }
                 var isDraggingVertically by remember { mutableStateOf(false) }
+                var isDragging by remember { mutableStateOf(false) }
+                
+                // Spring spec for smooth snap animation
+                val springSpec: androidx.compose.animation.core.SpringSpec<Float> = spring(
+                    dampingRatio = Spring.DampingRatioMediumBouncy,
+                    stiffness = Spring.StiffnessLow
+                )
                 var currentPageIndex by remember { mutableIntStateOf(currentIndex) }
                 
                 // Reset drag when photo changes
                 LaunchedEffect(currentPageIndex) {
-                    dragX = 0f
-                    dragY = 0f
+                    dragXAnim.snapTo(0f)
+                    dragYAnim.snapTo(0f)
+                    rawDragX = 0f
+                    rawDragY = 0f
                     isDraggingVertically = false
+                    isDragging = false
                 }
                 
                 Box(
@@ -481,47 +495,62 @@ fun FullScreenPhotoViewer(
                             // SWIPE detection only - pinch handled by Zoomable library
                             detectDragGestures(
                                 onDragStart = {
-                                    dragX = 0f
-                                    dragY = 0f
+                                    rawDragX = 0f
+                                    rawDragY = 0f
                                     isDraggingVertically = false
+                                    isDragging = true
                                 },
                                 onDragEnd = {
+                                    isDragging = false
                                     // Navigate based on drag direction
                                     when {
-                                        // Vertical swipe
-                                        isDraggingVertically && kotlin.math.abs(dragY) > 100f -> {
-                                            if (dragY < 0 && currentPageIndex < validPhotos.size - 1) {
+                                        // Vertical swipe - threshold 150f
+                                        isDraggingVertically && kotlin.math.abs(rawDragY) > 150f -> {
+                                            if (rawDragY < 0 && currentPageIndex < validPhotos.size - 1) {
                                                 currentPageIndex++ // UP = NEXT
-                                            } else if (dragY > 0 && currentPageIndex > 0) {
+                                            } else if (rawDragY > 0 && currentPageIndex > 0) {
                                                 currentPageIndex-- // DOWN = PREV
                                             }
                                         }
-                                        // Horizontal swipe
-                                        !isDraggingVertically && kotlin.math.abs(dragX) > 100f -> {
-                                            if (dragX < 0 && currentPageIndex < validPhotos.size - 1) {
+                                        // Horizontal swipe - threshold 150f
+                                        !isDraggingVertically && kotlin.math.abs(rawDragX) > 150f -> {
+                                            if (rawDragX < 0 && currentPageIndex < validPhotos.size - 1) {
                                                 currentPageIndex++ // LEFT = NEXT
-                                            } else if (dragX > 0 && currentPageIndex > 0) {
+                                            } else if (rawDragX > 0 && currentPageIndex > 0) {
                                                 currentPageIndex-- // RIGHT = PREV
                                             }
                                         }
                                     }
-                                    dragX = 0f
-                                    dragY = 0f
+                                    // Spring back to center
+                                    coroutineScope.launch {
+                                        dragXAnim.animateTo(0f, springSpec)
+                                    }
+                                    coroutineScope.launch {
+                                        dragYAnim.animateTo(0f, springSpec)
+                                    }
+                                    rawDragX = 0f
+                                    rawDragY = 0f
                                 },
                                 onDrag = { change, amount ->
                                     val absY = kotlin.math.abs(amount.y)
                                     val absX = kotlin.math.abs(amount.x)
                                     
                                     // Detect direction on first real movement
-                                    if (kotlin.math.abs(dragX) < 10f && kotlin.math.abs(dragY) < 10f) {
+                                    if (kotlin.math.abs(rawDragX) < 10f && kotlin.math.abs(rawDragY) < 10f) {
                                         isDraggingVertically = absY > absX
                                     }
                                     
                                     // LOCK TO ONE AXIS - no diagonal wobble!
                                     if (isDraggingVertically) {
-                                        dragY += amount.y
+                                        rawDragY += amount.y
+                                        coroutineScope.launch {
+                                            dragYAnim.snapTo(rawDragY)
+                                        }
                                     } else {
-                                        dragX += amount.x
+                                        rawDragX += amount.x
+                                        coroutineScope.launch {
+                                            dragXAnim.snapTo(rawDragX)
+                                        }
                                     }
                                     change.consume()
                                 }
@@ -539,15 +568,15 @@ fun FullScreenPhotoViewer(
                         baseX: Float,
                         baseY: Float
                     ) {
-                        val finalX = baseX + dragX
-                        val finalY = baseY + dragY
+                        val finalX = baseX + dragXAnim.value
+                        val finalY = baseY + dragYAnim.value
                         
-                        // Calculate scale and fade for swipe effect
-                        val dragProgress = kotlin.math.abs(dragX) / screenWidthPx
-                        val verticalProgress = kotlin.math.abs(dragY) / screenHeightPx
+                        // Calculate scale and fade for swipe effect - only when dragging
+                        val dragProgress = kotlin.math.abs(dragXAnim.value) / screenWidthPx
+                        val verticalProgress = kotlin.math.abs(dragYAnim.value) / screenHeightPx
                         val maxProgress = kotlin.math.max(dragProgress, verticalProgress)
-                        val swipeScale = 1f - (maxProgress * 0.25f).coerceIn(0f, 0.25f)
-                        val swipeAlpha = 1f - (maxProgress * 0.5f).coerceIn(0f, 0.5f)
+                        val swipeScale = if (isDragging) 1f - (maxProgress * 0.15f).coerceIn(0f, 0.15f) else 1f
+                        val swipeAlpha = if (isDragging) 1f - (maxProgress * 0.3f).coerceIn(0f, 0.3f) else 1f
                         
                         // Track last tap time to detect double-tap manually
                         var lastTapTime by remember { mutableLongStateOf(0L) }
