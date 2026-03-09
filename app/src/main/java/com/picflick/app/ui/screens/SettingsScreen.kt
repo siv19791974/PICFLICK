@@ -215,7 +215,7 @@ fun SettingsScreen(
                 SettingsItem(
                     icon = Icons.Default.Edit,
                     title = "Storage & Data",
-                    subtitle = cacheSize,
+                    subtitle = "Clear cache: $cacheSize",
                     onClick = { showClearCacheDialog = true },
                     showArrow = false
                 )
