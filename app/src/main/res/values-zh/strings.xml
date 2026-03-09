@@ -147,6 +147,53 @@
     <string name="about_description">\u5728\u79c1\u5bc6\u3001\u65e0\u5e7f\u544a\u7684\u7a7a\u95f4\u4e2d\u4e0e\u670b\u53cb\u5206\u4eab\u7167\u7247\u3002</string>
     <string name="about_privacy_policy">\u9690\u79c1\u653f\u7b56</string>
     <string name="about_terms">\u670d\u52a1\u6761\u6b3e</string>
-    <string name="about_contact">\u8054\u7cfb\u6211\u4eec</string>
+    <string name="storage_photos_stored">\u5df2\u5b58\u50a8\u7684\u7167\u7247</string>
+    <string name="storage_avg_photo_size">\u5e73\u5747\u7167\u7247\u5927\u5c0f</string>
+    <string name="storage_current_quality">\u5f53\u524d\u753b\u8d28</string>
+    <string name="storage_label_used">\u5df2\u4f7f\u7528</string>
+    <string name="storage_label_total">\u603b\u5171</string>
+    <string name="storage_label_remaining">\u5269\u4f59</string>
+    <string name="storage_breakdown">\u5b58\u50a8\u8be6\u7ec6\u4fe1\u606f</string>
+    <string name="storage_upgrade_to">\u5347\u7ea7\u5230 %s</string>
+    <string name="storage_upgrade_soon">\u5c3d\u5feb\u8003\u8651\u5347\u7ea7\uff0c\u4e3a\u60a8\u7684\u56de\u5fc6\u83b7\u5f97\u66f4\u591a\u5b58\u50a8\u7a7a\u95f4\u3002</string>
+    <string name="storage_upgrade_or_delete">\u5347\u7ea7\u60a8\u7684\u8ba1\u5212\u6216\u5220\u9664\u65e7\u7167\u7247\u4ee5\u91ca\u653e\u7a7a\u95f4\u3002</string>
+    <string name="storage_looking_good">\u60a8\u6709\u8db3\u591f\u7684\u7a7a\u95f4\u5b58\u50a8\u66f4\u591a\u7167\u7247\u3002\u7ee7\u7eed\u6355\u6349\u7f8e\u597d\u65f6\u523b\uff01</string>
+    <string name="storage_running_low">\u5b58\u50a8\u7a7a\u95f4\u4e0d\u8db3</string>
+    <string name="storage_almost_full">\u5b58\u50a8\u7a7a\u95f4\u5feb\u6ee1\u4e86\uff01</string>
+    <string name="founder_status_1_year">\u521b\u59cb\u4eba\u8eab\u4efd - \u514d\u8d39\u4f7f\u75281\u5e74</string>
+    
+    <string name="explore_search_placeholder">\u641c\u7d22\u7167\u7247\u3001\u7528\u6237\u3001\u6807\u7b7e\u2026</string>
+    <string name="explore_search_content_desc">\u641c\u7d22</string>
+    <string name="explore_clear_content_desc">\u6e05\u9664</string>
+    <string name="explore_trending_now">\u2794 \u70ed\u95e8</string>
+    <string name="explore_popular_creators">\u2794 \u77e5\u540d\u521b\u4f5c\u8005</string>
+    <string name="explore_follow_more_friends_title">\u5173\u6ce8\u66f4\u591a\u597d\u53cb\uff01</string>
+    <string name="explore_follow_more_friends_subtitle">\u60a8\u5173\u6ce8\u7684\u4eba\u7684\u7167\u7247\u5c06\u663e\u793a\u5728\u8fd9\u91cc</string>
+    <string name="explore_from_people_you_follow">\u6765\u81ea\u60a8\u5173\u6ce8\u7684\u4eba</string>
+    <string name="explore_reactions_count">%d \u4e2a\u53cd\u5e94</string>
+    <string name="explore_reactions_comments">%d \u4e2a\u53cd\u5e94 \u2022 %d \u6761\u8bc4\u8bba</string>
+    <string name="explore_trending_badge">\u2794 \u70ed\u95e8</string>
+    <string name="explore_new_badge">\u2605 \u65b0</string>
+    <string name="explore_no_photos_upload">\u8fd8\u6ca1\u6709\u7167\u7247\u3002\u4e0a\u4f20\u4e00\u5f20\uff01</string>
+    <string name="explore_who_can_see">\u8c01\u53ef\u4ee5\u770b\u5230\uff1f</string>
+    <string name="explore_friends_will_see">\u53ea\u6709\u60a8\u7684\u597d\u53cb\u53ef\u4ee5\u770b\u5230\u8fd9\u5f20\u7167\u7247</string>
+    <string name="explore_everyone_will_see">\u6bcf\u4e2a\u4eba\u90fd\u53ef\u4ee5\u770b\u5230\u8fd9\u5f20\u7167\u7247</string>
+    <string name="explore_tab_trending">\u70ed\u95e8</string>
+    <string name="explore_tab_popular">\u6d41\u884c</string>
+    <string name="explore_tab_new">\u65b0</string>
+    <string name="explore_tab_for_you">\u63a8\u8350</string>
+    
+    <string name="profile_dialog_title">\u7f16\u8f91\u7b80\u4ecb</string>
+    <string name="profile_bio_label">\u7b80\u4ecb</string>
+    <string name="profile_bio_placeholder">\u544a\u8bc9\u5927\u5bb6\u5173\u4e8e\u60a8\u7684\u4fe1\u606f\u2026</string>
+    <string name="profile_dialog_save">\u4fdd\u5b58</string>
+    <string name="profile_dialog_cancel">\u53d6\u6d88</string>
+    <string name="profile_photo_content_desc">\u5934\u50cf</string>
+    <string name="profile_change_photo_content_desc">\u66f4\u6362\u5934\u50cf</string>
+    
+    <string name="share_photo_title">\u5206\u4eab\u7167\u7247</string>
+    <string name="share_photo_text">\u5728 PicFlick \u67e5\u770b\u8fd9\u5f20\u7167\u7247\uff1a%s</string>
+    
+    <string name="error_unknown">\u672a\u77e5\u9519\u8bef</string>
     
 </resources>
