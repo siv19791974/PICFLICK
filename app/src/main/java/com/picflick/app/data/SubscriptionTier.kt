@@ -131,11 +131,11 @@ fun SubscriptionTier.getDailyUploadLimit(): Int {
 
 fun SubscriptionTier.getStorageLimitGB(): Int {
     return when (this) {
-        SubscriptionTier.FREE -> 2
-        SubscriptionTier.STANDARD -> 15
-        SubscriptionTier.PLUS -> 50
-        SubscriptionTier.PRO -> 100
-        SubscriptionTier.ULTRA -> 200
+        SubscriptionTier.FREE -> 1        // Reduced from 2GB
+        SubscriptionTier.STANDARD -> 5     // Reduced from 15GB
+        SubscriptionTier.PLUS -> 15        // Reduced from 50GB
+        SubscriptionTier.PRO -> 30         // Reduced from 100GB
+        SubscriptionTier.ULTRA -> 50        // Reduced from 200GB
     }
 }
 
@@ -160,21 +160,21 @@ fun SubscriptionTier.getYearlyPrice(): Double {
 
 fun SubscriptionTier.getImageQuality(): Int {
     return when (this) {
-        SubscriptionTier.FREE -> 80
-        SubscriptionTier.STANDARD -> 85
-        SubscriptionTier.PLUS -> 90
-        SubscriptionTier.PRO -> 95
-        SubscriptionTier.ULTRA -> 100
+        SubscriptionTier.FREE -> 90         // Increased from 80
+        SubscriptionTier.STANDARD -> 95      // Increased from 85
+        SubscriptionTier.PLUS -> 98          // Increased from 90
+        SubscriptionTier.PRO -> 99           // Increased from 95
+        SubscriptionTier.ULTRA -> 100        // Unchanged (maximum)
     }
 }
 
 fun SubscriptionTier.getQualityDescription(): String {
     return when (this) {
-        SubscriptionTier.FREE -> "Standard"
-        SubscriptionTier.STANDARD -> "Better"
-        SubscriptionTier.PLUS -> "High"
-        SubscriptionTier.PRO -> "Premium"
-        SubscriptionTier.ULTRA -> "Maximum"
+        SubscriptionTier.FREE -> "High"           // Was "Standard"
+        SubscriptionTier.STANDARD -> "Excellent"   // Was "Better"
+        SubscriptionTier.PLUS -> "Superior"        // Was "High"
+        SubscriptionTier.PRO -> "Ultra"           // Was "Premium"
+        SubscriptionTier.ULTRA -> "Maximum"         // Unchanged
     }
 }
 
