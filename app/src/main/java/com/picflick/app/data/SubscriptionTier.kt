@@ -154,8 +154,8 @@ fun SubscriptionTier.getMonthlyPrice(): Double {
 }
 
 fun SubscriptionTier.getYearlyPrice(): Double {
-    // 2 months free when paying yearly
-    return (getMonthlyPrice() * 10)
+    // 20% discount when paying yearly (was 2 months free = 17%)
+    return (getMonthlyPrice() * 12 * 0.80)  // 20% off
 }
 
 fun SubscriptionTier.getImageQuality(): Int {
