@@ -50,8 +50,10 @@ import com.picflick.app.data.toEmoji
 import com.picflick.app.repository.FlickRepository
 import com.picflick.app.ui.components.DoubleTapHeartAnimation
 import com.picflick.app.ui.components.AnimatedReactionPicker
+import android.app.Activity
 import android.content.ContentValues
 import android.content.Context
+import android.content.pm.ActivityInfo
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.os.Build
@@ -88,6 +90,17 @@ fun FullScreenPhotoViewer(
     val configuration = LocalConfiguration.current
     val screenHeightPx = with(LocalDensity.current) { configuration.screenHeightDp.dp.toPx() }
     val screenWidthPx = with(LocalDensity.current) { configuration.screenWidthDp.dp.toPx() }
+    
+    // Unlock orientation to allow landscape when viewing photos
+    DisposableEffect(Unit) {
+        val activity = context as? Activity
+        activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+        
+        onDispose {
+            // Lock back to portrait when closing photo viewer
+            activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+        }
+    }
     
     // Helper function to show custom toast with PicFlick logo
     fun showPicFlickToast(message: String) {
