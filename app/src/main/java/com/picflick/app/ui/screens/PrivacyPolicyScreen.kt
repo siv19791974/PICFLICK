@@ -256,29 +256,17 @@ Continued use of PicFlick after changes constitutes acceptance of the revised po
 
 @Composable
 private fun PolicyHeader(isDarkMode: Boolean) {
-    val accentColor = Color(0xFF1565C0)
+    val textColor = if (isDarkMode) Color.White else Color.Black
     
     Column(
         modifier = Modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
-            text = "PicFlick",
-            fontSize = 28.sp,
-            fontWeight = FontWeight.Bold,
-            color = accentColor
-        )
-        Text(
-            text = "Privacy Policy",
-            fontSize = 20.sp,
-            fontWeight = FontWeight.Medium,
-            color = if (isDarkMode) Color.White else Color.Black
-        )
-        Spacer(modifier = Modifier.height(8.dp))
-        Text(
             text = "Your privacy is our priority",
-            fontSize = 14.sp,
-            color = if (isDarkMode) Color.Gray else Color.DarkGray
+            fontSize = 22.sp,
+            fontWeight = FontWeight.Bold,
+            color = textColor
         )
     }
 }
