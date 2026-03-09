@@ -72,6 +72,7 @@ fun SettingsScreen(
     var showDeleteAccountDialog by remember { mutableStateOf(false) }
     var showClearCacheDialog by remember { mutableStateOf(false) }
     var showAppearanceDialog by remember { mutableStateOf(false) }
+    var showLanguageDialog by remember { mutableStateOf(false) }
     // Use ThemeManager for theme state (persists across sessions)
     val isDarkMode by ThemeManager.isDarkMode
     
@@ -185,6 +186,13 @@ fun SettingsScreen(
                     title = "Appearance",
                     subtitle = if (isDarkMode) "Dark mode (active)" else "Light mode",
                     onClick = { showAppearanceDialog = true },
+                    showArrow = false
+                )
+                SettingsItem(
+                    icon = Icons.Default.Person,
+                    title = "Language",
+                    subtitle = "🌐 English",
+                    onClick = { showLanguageDialog = true },
                     showArrow = false
                 )
                 SettingsItem(
@@ -414,6 +422,134 @@ fun SettingsScreen(
             confirmButton = {},
             dismissButton = {
                 TextButton(onClick = { showAppearanceDialog = false }) {
+                    Text("Cancel", color = if (isDarkMode) Color.White else Color.Black)
+                }
+            },
+            containerColor = if (isDarkMode) Color(0xFF1C1C1E) else Color.White
+        )
+    }
+
+    // Language Settings Dialog
+    if (showLanguageDialog) {
+        AlertDialog(
+            onDismissRequest = { showLanguageDialog = false },
+            title = {
+                Text(
+                    "Language",
+                    color = if (isDarkMode) Color.White else Color.Black
+                )
+            },
+            text = {
+                Column {
+                    LanguageOption(
+                        flag = "🇺🇸",
+                        name = "English",
+                        isSelected = true,
+                        isDarkMode = isDarkMode,
+                        onClick = { showLanguageDialog = false }
+                    )
+                    HorizontalDivider(color = if (isDarkMode) Color(0xFF2C2C2E) else Color.LightGray)
+                    
+                    LanguageOption(
+                        flag = "🇸🇦",
+                        name = "العربية (Arabic)",
+                        isSelected = false,
+                        isDarkMode = isDarkMode,
+                        onClick = { showLanguageDialog = false }
+                    )
+                    HorizontalDivider(color = if (isDarkMode) Color(0xFF2C2C2E) else Color.LightGray)
+                    
+                    LanguageOption(
+                        flag = "🇪🇸",
+                        name = "Español (Spanish)",
+                        isSelected = false,
+                        isDarkMode = isDarkMode,
+                        onClick = { showLanguageDialog = false }
+                    )
+                    HorizontalDivider(color = if (isDarkMode) Color(0xFF2C2C2E) else Color.LightGray)
+                    
+                    LanguageOption(
+                        flag = "🇫🇷",
+                        name = "Français (French)",
+                        isSelected = false,
+                        isDarkMode = isDarkMode,
+                        onClick = { showLanguageDialog = false }
+                    )
+                    HorizontalDivider(color = if (isDarkMode) Color(0xFF2C2C2E) else Color.LightGray)
+                    
+                    LanguageOption(
+                        flag = "🇩🇪",
+                        name = "Deutsch (German)",
+                        isSelected = false,
+                        isDarkMode = isDarkMode,
+                        onClick = { showLanguageDialog = false }
+                    )
+                    HorizontalDivider(color = if (isDarkMode) Color(0xFF2C2C2E) else Color.LightGray)
+                    
+                    LanguageOption(
+                        flag = "🇨🇳",
+                        name = "中文 (Chinese)",
+                        isSelected = false,
+                        isDarkMode = isDarkMode,
+                        onClick = { showLanguageDialog = false }
+                    )
+                    HorizontalDivider(color = if (isDarkMode) Color(0xFF2C2C2E) else Color.LightGray)
+                    
+                    LanguageOption(
+                        flag = "🇯🇵",
+                        name = "日本語 (Japanese)",
+                        isSelected = false,
+                        isDarkMode = isDarkMode,
+                        onClick = { showLanguageDialog = false }
+                    )
+                    HorizontalDivider(color = if (isDarkMode) Color(0xFF2C2C2E) else Color.LightGray)
+                    
+                    LanguageOption(
+                        flag = "🇰🇷",
+                        name = "한국어 (Korean)",
+                        isSelected = false,
+                        isDarkMode = isDarkMode,
+                        onClick = { showLanguageDialog = false }
+                    )
+                    HorizontalDivider(color = if (isDarkMode) Color(0xFF2C2C2E) else Color.LightGray)
+                    
+                    LanguageOption(
+                        flag = "🇵🇹",
+                        name = "Português (Portuguese)",
+                        isSelected = false,
+                        isDarkMode = isDarkMode,
+                        onClick = { showLanguageDialog = false }
+                    )
+                    HorizontalDivider(color = if (isDarkMode) Color(0xFF2C2C2E) else Color.LightGray)
+                    
+                    LanguageOption(
+                        flag = "🇦🇱",
+                        name = "Shqip (Albanian)",
+                        isSelected = false,
+                        isDarkMode = isDarkMode,
+                        onClick = { showLanguageDialog = false }
+                    )
+                    HorizontalDivider(color = if (isDarkMode) Color(0xFF2C2C2E) else Color.LightGray)
+                    
+                    LanguageOption(
+                        flag = "🇮🇳",
+                        name = "हिन्दी (Hindi)",
+                        isSelected = false,
+                        isDarkMode = isDarkMode,
+                        onClick = { showLanguageDialog = false }
+                    )
+                    
+                    Text(
+                        text = "More languages coming soon",
+                        fontSize = 12.sp,
+                        color = if (isDarkMode) Color.Gray else Color.DarkGray,
+                        modifier = Modifier.padding(top = 12.dp)
+                    )
+                }
+            },
+            confirmButton = {},
+            dismissButton = {
+                TextButton(onClick = { showLanguageDialog = false }) {
                     Text("Cancel", color = if (isDarkMode) Color.White else Color.Black)
                 }
             },
@@ -970,5 +1106,41 @@ private fun getStorageSubtitle(userProfile: UserProfile): String {
     val usedGB = userProfile.calculateStorageUsedGB()
     val totalGB = userProfile.getTier().getStorageLimitGB()
     return "$usedGB GB / $totalGB GB used"
+}
+
+@Composable
+private fun LanguageOption(
+    flag: String,
+    name: String,
+    isSelected: Boolean,
+    isDarkMode: Boolean,
+    onClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() }
+            .padding(vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        // Flag emoji
+        Text(
+            text = flag,
+            fontSize = 24.sp,
+            modifier = Modifier.padding(end = 12.dp)
+        )
+        
+        // Language name
+        Text(
+            text = name,
+            modifier = Modifier.weight(1f),
+            color = if (isDarkMode) Color.White else Color.Black
+        )
+        
+        // Checkmark if selected
+        if (isSelected) {
+            Text("✓", color = Color(0xFF00D09C))
+        }
+    }
 }
 
