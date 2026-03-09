@@ -119,7 +119,7 @@ fun UserProfileScreen(
                 } else {
                     Icon(
                         imageVector = Icons.Default.Person,
-                        contentDescription = null,
+                        contentDescription = stringResource(R.string.content_desc_person),
                         modifier = Modifier.size(80.dp),
                         tint = Color.Gray
                     )
@@ -158,7 +158,7 @@ fun UserProfileScreen(
                 ) {
                     Icon(
                         imageVector = Icons.Default.Person,
-                        contentDescription = null,
+                        contentDescription = stringResource(R.string.content_desc_person),
                         modifier = Modifier.size(48.dp),
                         tint = Color.Gray
                     )
@@ -192,7 +192,7 @@ fun UserProfileScreen(
                     ) {
                         Icon(
                             imageVector = Icons.Default.Person,
-                            contentDescription = null,
+                            contentDescription = stringResource(R.string.content_desc_add_friend),
                             modifier = Modifier.size(20.dp)
                         )
                         Spacer(modifier = Modifier.width(8.dp))
@@ -257,7 +257,7 @@ fun UserProfileScreen(
                         items(photos) { photo ->
                             AsyncImage(
                                 model = photo.imageUrl,
-                                contentDescription = null,
+                                contentDescription = stringResource(R.string.content_desc_photo),
                                 modifier = Modifier
                                     .aspectRatio(1f)
                                     .clickable {

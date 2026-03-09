@@ -180,8 +180,8 @@ class UploadViewModel : ViewModel() {
             }
             
         } catch (e: Exception) {
-            // Silently fail - don't block upload success
-            e.printStackTrace()
+            // Silently fail - don't block upload success, but log for debugging
+            android.util.Log.w("UploadViewModel", "Failed to check achievements", e)
         }
     }
 

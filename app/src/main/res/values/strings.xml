@@ -199,4 +199,17 @@
     <!-- Errors -->
     <string name="error_unknown">Unknown error</string>
     
+    <!-- ==================== ACCESSIBILITY CONTENT DESCRIPTIONS ==================== -->
+    <string name="content_desc_back">Go back</string>
+    <string name="content_desc_email">Send email</string>
+    <string name="content_desc_person">Person</string>
+    <string name="content_desc_add_friend">Add friend</string>
+    <string name="content_desc_storage">Storage</string>
+    <string name="content_desc_upgrade">Upgrade</string>
+    <string name="content_desc_warning">Warning</string>
+    <string name="content_desc_info">Information</string>
+    <string name="content_desc_check">Checkmark</string>
+    <string name="content_desc_photo">Photo</string>
+    <string name="content_desc_next">Next</string>
+    
 </resources>

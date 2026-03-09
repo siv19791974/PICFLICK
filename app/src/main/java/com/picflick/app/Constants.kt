@@ -52,6 +52,18 @@ object Constants {
     }
 
     /**
+     * Photo and Filter Configuration
+     */
+    object Photo {
+        const val FILTER_PREVIEW_SIZE = 1024  // Max dimension for filter preview
+        const val FILTER_THUMBNAIL_SIZE = 256 // Filter icon thumbnail size
+        const val HIGH_CONTRAST_SCALE = 1.5f  // ColorMatrix scale factor
+        const val VINTAGE_SEPIIA_RED = 1.2f   // Sepia matrix red multiplier
+        const val VINTAGE_SEPIA_GREEN = 1.0f  // Sepia matrix green multiplier  
+        const val VINTAGE_SEPIA_BLUE = 0.8f   // Sepia matrix blue multiplier
+    }
+
+    /**
      * UI/UX Constants
      */
     object UI {

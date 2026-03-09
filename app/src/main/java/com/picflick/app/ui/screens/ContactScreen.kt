@@ -92,7 +92,7 @@ fun ContactScreen(
                 modifier = Modifier.fillMaxWidth(),
                 enabled = subject.isNotBlank() && message.isNotBlank()
             ) {
-                Icon(Icons.Default.Email, contentDescription = null)
+                Icon(Icons.Default.Email, contentDescription = stringResource(R.string.content_desc_email))
                 Spacer(modifier = Modifier.width(8.dp))
                 Text("Send Feedback")
             }

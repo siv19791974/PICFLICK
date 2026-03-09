@@ -328,7 +328,7 @@ private fun CurrentTierCard(
                 ) {
                     Icon(
                         imageVector = Icons.Default.Storage,
-                        contentDescription = null,
+                        contentDescription = stringResource(R.string.content_desc_storage),
                         tint = Color.White,
                         modifier = Modifier.size(24.dp)
                     )
@@ -408,7 +408,7 @@ private fun TierFeatureRow(
     ) {
         Icon(
             imageVector = icon,
-            contentDescription = null,
+            contentDescription = stringResource(R.string.content_desc_check),
             tint = if (isHighlighted) Color(0xFF1565C0) else Color.Gray,
             modifier = Modifier.size(20.dp)
         )
@@ -464,7 +464,7 @@ private fun UpgradeOptionsCard(
             ) {
                 Icon(
                     imageVector = Icons.Default.Upgrade,
-                    contentDescription = null,
+                    contentDescription = stringResource(R.string.content_desc_upgrade),
                     tint = Color(0xFFFF8F00),
                     modifier = Modifier.size(32.dp)
                 )
@@ -507,7 +507,7 @@ private fun UpgradeOptionsCard(
                 
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                    contentDescription = null,
+                    contentDescription = stringResource(R.string.content_desc_next),
                     tint = Color(0xFF1565C0)
                 )
             }
@@ -613,7 +613,11 @@ private fun StorageTipsCard(percent: Int) {
                     percent > 75 -> Icons.Default.Info
                     else -> Icons.Default.Check
                 },
-                contentDescription = null,
+                contentDescription = when {
+                    percent > 90 -> stringResource(R.string.content_desc_warning)
+                    percent > 75 -> stringResource(R.string.content_desc_info)
+                    else -> stringResource(R.string.content_desc_check)
+                },
                 tint = when {
                     percent > 90 -> Color.Red
                     percent > 75 -> Color(0xFFFF8F00)

@@ -123,11 +123,11 @@ fun FilterScreen(
                     onUpload(filteredUri, selectedFilter, taggedFriends.map { it.uid }, description.trim())
                     // Show success toast
                     withContext(Dispatchers.Main) {
-                        android.widget.Toast.makeText(context, "Upload Complete!", android.widget.Toast.LENGTH_SHORT).show()
+                        android.widget.Toast.makeText(context, context.getString(R.string.upload_complete), android.widget.Toast.LENGTH_SHORT).show()
                     }
                 } catch (e: Exception) {
                     withContext(Dispatchers.Main) {
-                        android.widget.Toast.makeText(context, "Upload failed", android.widget.Toast.LENGTH_SHORT).show()
+                        android.widget.Toast.makeText(context, context.getString(R.string.upload_failed), android.widget.Toast.LENGTH_SHORT).show()
                     }
                 } finally {
                     isUploading = false
@@ -924,7 +924,7 @@ private suspend fun loadBitmapFromUri(context: android.content.Context, uri: Uri
         val result = imageLoader.execute(request)
         result.image?.toBitmap()
     } catch (e: Exception) {
-        e.printStackTrace()
+        android.util.Log.e("FilterScreen", "Failed to load bitmap from URI", e)
         null
     }
 }
