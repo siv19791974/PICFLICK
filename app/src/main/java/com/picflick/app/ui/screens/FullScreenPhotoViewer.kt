@@ -38,6 +38,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import coil3.compose.AsyncImage
+import coil3.request.ImageRequest
 import net.engawapg.lib.zoomable.rememberZoomState
 import net.engawapg.lib.zoomable.zoomable
 import com.picflick.app.data.Comment
@@ -588,7 +589,11 @@ fun FullScreenPhotoViewer(
                             contentAlignment = Alignment.Center
                         ) {
                             AsyncImage(
-                                model = photo.imageUrl,
+                                model = ImageRequest.Builder(LocalContext.current)
+                                    .data(photo.imageUrl)
+                                    .memoryCachePolicy(coil3.request.CachePolicy.ENABLED)
+                                    .diskCachePolicy(coil3.request.CachePolicy.ENABLED)
+                                    .build(),
                                 contentDescription = null,
                                 modifier = Modifier.fillMaxSize(),
                                 contentScale = ContentScale.Fit
