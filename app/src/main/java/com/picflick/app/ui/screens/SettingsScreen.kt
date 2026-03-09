@@ -69,7 +69,6 @@ fun SettingsScreen(
     var showAppearanceDialog by remember { mutableStateOf(false) }
     // Use ThemeManager for theme state (persists across sessions)
     val isDarkMode by ThemeManager.isDarkMode
-    val isDummyFriendEnabled by ThemeManager.isDummyFriendEnabled
     var cacheSize by remember { mutableStateOf("24 MB") }
 
     Scaffold(
@@ -182,17 +181,6 @@ fun SettingsScreen(
 
             // Danger Zone
             SettingsSection(title = "DANGER ZONE", isDarkMode = isDarkMode) {
-                // Dummy Friend Toggle (Developer Feature)
-                SettingsItem(
-                    icon = Icons.Default.Person,
-                    title = "Test Friend: Firebender",
-                    subtitle = if (isDummyFriendEnabled) "ON - Tap to disable" else "OFF - Tap to enable",
-                    onClick = { 
-                        ThemeManager.toggleDummyFriend(context)
-                    },
-                    showArrow = false,
-                    titleColor = if (isDummyFriendEnabled) Color(0xFF4CAF50) else if (isDarkMode) Color.White else Color.Black
-                )
                 SettingsItem(
                     icon = Icons.Default.Close,
                     title = "Sign Out",

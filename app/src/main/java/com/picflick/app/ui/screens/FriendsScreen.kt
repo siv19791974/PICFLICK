@@ -42,17 +42,16 @@ fun FriendsScreen(
     onFindFriendsClick: () -> Unit = {},
     onProfilePhotoClick: (UserProfile) -> Unit = {}
 ) {
-    val context = LocalContext.current
 
     // Load following users
-    LaunchedEffect(userProfile.following, ThemeManager.isDummyFriendEnabled.value) {
-        viewModel.loadFollowingUsers(userProfile.following, context)
+    LaunchedEffect(userProfile.following) {
+        viewModel.loadFollowingUsers(userProfile.following)
     }
 
     // Modern PullRefresh state
     val pullRefreshState = rememberPullRefreshState(
         refreshing = viewModel.isLoading,
-        onRefresh = { viewModel.loadFollowingUsers(userProfile.following, context) }
+        onRefresh = { viewModel.loadFollowingUsers(userProfile.following) }
     )
 
     val isDarkMode = ThemeManager.isDarkMode.value

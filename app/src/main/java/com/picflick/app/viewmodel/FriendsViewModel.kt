@@ -8,11 +8,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.picflick.app.Constants
 import com.picflick.app.data.Result
 import com.picflick.app.data.UserProfile
 import com.picflick.app.repository.FlickRepository
-import com.picflick.app.ui.theme.ThemeManager
 import kotlinx.coroutines.launch
 
 /**
@@ -31,20 +29,13 @@ class FriendsViewModel : ViewModel() {
     var suggestedUsers = mutableStateListOf<UserProfile>()
         private set
 
-    var contactsOnApp = mutableStateListOf<UserProfile>()
-        private set
-
     var isLoading by mutableStateOf(false)
-        private set
-
-    var errorMessage by mutableStateOf<String?>(null)
         private set
 
     var searchQuery by mutableStateOf("")
         private set
-    
-    // Track which users are being followed/unfollowed (for button loading state)
-    var processingUserIds = mutableStateListOf<String>()
+
+    var contactUsers = mutableStateListOf<UserProfile>()
         private set
 
     init {
@@ -55,20 +46,14 @@ class FriendsViewModel : ViewModel() {
     /**
      * Load users that the current user is following
      */
-    fun loadFollowingUsers(followingIds: List<String>, context: Context? = null) {
-        if (followingIds.isEmpty() && (context == null || !ThemeManager.isDummyFriendEnabled.value)) {
+    fun loadFollowingUsers(followingIds: List<String>) {
+        if (followingIds.isEmpty()) {
             followingUsers.clear()
             return
         }
 
         isLoading = true
         followingUsers.clear()
-
-        // Add dummy friend if enabled
-        if (context != null && ThemeManager.isDummyFriendEnabled.value) {
-            val dummyProfile = Constants.Developer.createDummyFriendProfile()
-            followingUsers.add(dummyProfile)
-        }
 
         // Load each user's profile
         followingIds.forEach { userId ->
@@ -89,243 +74,58 @@ class FriendsViewModel : ViewModel() {
     }
 
     /**
-     * Search for users by display name
+     * Search for users by name
      */
     fun searchUsers(query: String, currentUserId: String) {
         searchQuery = query
-
         if (query.isBlank()) {
             searchResults.clear()
             return
         }
 
         isLoading = true
-        errorMessage = null
-
-        repository.searchUsers(query, currentUserId) { result ->
+        repository.searchUsers(query) { result ->
             when (result) {
                 is Result.Success -> {
                     searchResults.clear()
-                    searchResults.addAll(result.data)
-                    isLoading = false
+                    // Filter out current user
+                    searchResults.addAll(result.data.filter { it.uid != currentUserId })
                 }
                 is Result.Error -> {
-                    errorMessage = result.message
-                    isLoading = false
+                    // Handle error silently
                 }
-                is Result.Loading -> { /* Do nothing */ }
+                is Result.Loading -> { }
             }
+            isLoading = false
         }
     }
 
     /**
-     * Load suggested users (users with mutual followers)
+     * Load suggested users to follow
      */
     fun loadSuggestedUsers(currentUserId: String? = null) {
-        viewModelScope.launch {
-            isLoading = true
-
-            // Get all users and filter by mutual connections
-            repository.getAllUsers { result ->
-                when (result) {
-                    is Result.Success -> {
-                        val allUsers = result.data
-
-                        // Filter out current user and users already followed
-                        val potentialSuggestions = if (currentUserId != null) {
-                            allUsers.filter { user ->
-                                user.uid != currentUserId &&
-                                !user.followers.contains(currentUserId)
-                            }
-                        } else {
-                            allUsers
-                        }
-
-                        // Sort by follower count (popular users first)
-                        suggestedUsers.clear()
-                        suggestedUsers.addAll(
-                            potentialSuggestions
-                                .sortedByDescending { it.followers.size }
-                                .take(20) // Limit to 20 suggestions
-                        )
-
-                        isLoading = false
-                    }
-                    is Result.Error -> {
-                        isLoading = false
-                    }
-                    is Result.Loading -> { }
-                }
-            }
-        }
-    }
-
-    /**
-     * Sync phone contacts with app users
-     */
-    fun syncContacts(context: Context) {
-        viewModelScope.launch {
-            isLoading = true
-            contactsOnApp.clear()
-
-            try {
-                // Get phone contacts
-                val phoneNumbers = getPhoneContacts(context)
-
-                // Query Firebase for users with matching phone numbers
-                repository.findUsersByPhoneNumbers(phoneNumbers) { result ->
-                    when (result) {
-                        is Result.Success -> {
-                            contactsOnApp.addAll(result.data)
-                            isLoading = false
-                        }
-                        is Result.Error -> {
-                            errorMessage = result.message
-                            isLoading = false
-                        }
-                        is Result.Loading -> { }
-                    }
-                }
-            } catch (e: Exception) {
-                errorMessage = "Could not access contacts"
-                isLoading = false
-            }
-        }
-    }
-
-    /**
-     * Get phone contacts (simplified - just returns dummy data for now)
-     * In production, this would read actual phone contacts
-     */
-    private fun getPhoneContacts(context: Context): List<String> {
-        val contacts = mutableListOf<String>()
-
-        try {
-            val cursor = context.contentResolver.query(
-                ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
-                arrayOf(ContactsContract.CommonDataKinds.Phone.NUMBER),
-                null,
-                null,
-                null
-            )
-
-            cursor?.use {
-                val numberIndex = it.getColumnIndex(ContactsContract.CommonDataKinds.Phone.NUMBER)
-                while (it.moveToNext()) {
-                    val number = it.getString(numberIndex)?.replace("[^0-9]".toRegex(), "")
-                    if (number != null && number.length >= 10) {
-                        contacts.add(number)
-                    }
-                }
-            }
-        } catch (e: Exception) {
-            // Permission denied or error
-        }
-
-        return contacts
-    }
-
-    /**
-     * Send a follow request to a user
-     */
-    fun sendFollowRequest(currentUserId: String, targetUser: UserProfile, currentUser: UserProfile) {
-        viewModelScope.launch {
-            processingUserIds.add(targetUser.uid)
-            
-            val result = repository.sendFollowRequest(
-                currentUserId, 
-                targetUser.uid, 
-                currentUser.displayName,
-                currentUser.photoUrl
-            )
+        isLoading = true
+        repository.getSuggestedUsers(currentUserId) { result ->
             when (result) {
                 is Result.Success -> {
-                    // Update suggested users - remove sent request from suggestions
-                    val suggestedIndex = suggestedUsers.indexOfFirst { it.uid == targetUser.uid }
-                    if (suggestedIndex != -1) {
-                        suggestedUsers.removeAt(suggestedIndex)
-                    }
-                    errorMessage = null
+                    suggestedUsers.clear()
+                    suggestedUsers.addAll(result.data)
                 }
                 is Result.Error -> {
-                    errorMessage = result.message
+                    // Handle error silently
                 }
                 is Result.Loading -> { }
             }
-            
-            processingUserIds.remove(targetUser.uid)
+            isLoading = false
         }
     }
 
     /**
-     * Accept a follow request
+     * Send a follow request
      */
-    fun acceptFollowRequest(currentUserId: String, requester: UserProfile) {
+    fun sendFollowRequest(currentUserId: String, targetUser: UserProfile, currentUserProfile: UserProfile) {
         viewModelScope.launch {
-            processingUserIds.add(requester.uid)
-            
-            val result = repository.acceptFollowRequest(currentUserId, requester.uid, requester.displayName)
-            when (result) {
-                is Result.Success -> {
-                    // Refresh pending requests
-                    loadPendingRequests(currentUserId)
-                    errorMessage = null
-                }
-                is Result.Error -> {
-                    errorMessage = result.message
-                }
-                is Result.Loading -> { }
-            }
-            
-            processingUserIds.remove(requester.uid)
-        }
-    }
-
-    /**
-     * Reject a follow request
-     */
-    fun rejectFollowRequest(currentUserId: String, requesterId: String) {
-        viewModelScope.launch {
-            processingUserIds.add(requesterId)
-            
-            val result = repository.rejectFollowRequest(currentUserId, requesterId)
-            when (result) {
-                is Result.Success -> {
-                    // Refresh pending requests
-                    loadPendingRequests(currentUserId)
-                    errorMessage = null
-                }
-                is Result.Error -> {
-                    errorMessage = result.message
-                }
-                is Result.Loading -> { }
-            }
-            
-            processingUserIds.remove(requesterId)
-        }
-    }
-
-    /**
-     * Cancel a sent follow request
-     */
-    fun cancelFollowRequest(currentUserId: String, targetUserId: String) {
-        viewModelScope.launch {
-            processingUserIds.add(targetUserId)
-            
-            val result = repository.cancelFollowRequest(currentUserId, targetUserId)
-            when (result) {
-                is Result.Success -> {
-                    // Refresh suggested users
-                    loadSuggestedUsers(currentUserId)
-                    errorMessage = null
-                }
-                is Result.Error -> {
-                    errorMessage = result.message
-                }
-                is Result.Loading -> { }
-            }
-            
-            processingUserIds.remove(targetUserId)
+            repository.followUser(currentUserId, targetUser.uid)
         }
     }
 
@@ -334,48 +134,67 @@ class FriendsViewModel : ViewModel() {
      */
     fun unfollowUser(currentUserId: String, targetUserId: String) {
         viewModelScope.launch {
-            processingUserIds.add(targetUserId)
-            
-            val result = repository.unfollowUser(currentUserId, targetUserId)
-            when (result) {
-                is Result.Success -> {
-                    searchUsers(searchQuery, currentUserId)
-                    loadSuggestedUsers(currentUserId)
-                }
-                is Result.Error -> {
-                    errorMessage = result.message
-                }
-                is Result.Loading -> { }
-            }
-            
-            processingUserIds.remove(targetUserId)
+            repository.unfollowUser(currentUserId, targetUserId)
         }
     }
 
     /**
-     * Load pending follow requests
+     * Accept a follow request
      */
-    fun loadPendingRequests(userId: String) {
+    fun acceptFollowRequest(currentUserId: String, requester: UserProfile) {
+        viewModelScope.launch {
+            repository.acceptFollowRequest(currentUserId, requester.uid)
+        }
+    }
+
+    /**
+     * Load contacts from phone and find matching PicFlick users
+     */
+    fun loadContacts(context: Context, currentUserId: String) {
         isLoading = true
-        repository.getPendingFollowRequests(userId) { result ->
-            when (result) {
-                is Result.Success -> {
-                    // This would update a pendingRequests list in the ViewModel
-                    isLoading = false
-                }
-                is Result.Error -> {
-                    errorMessage = result.message
-                    isLoading = false
-                }
-                is Result.Loading -> { }
-            }
-        }
-    }
+        contactUsers.clear()
 
-    /**
-     * Clear error message
-     */
-    fun clearError() {
-        errorMessage = null
+        viewModelScope.launch {
+            try {
+                // Get phone numbers from contacts
+                val phoneNumbers = mutableListOf<String>()
+                val cursor = context.contentResolver.query(
+                    ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
+                    arrayOf(ContactsContract.CommonDataKinds.Phone.NUMBER),
+                    null, null, null
+                )
+
+                cursor?.use {
+                    val numberIndex = it.getColumnIndex(ContactsContract.CommonDataKinds.Phone.NUMBER)
+                    while (it.moveToNext()) {
+                        val number = it.getString(numberIndex)
+                        // Normalize phone number
+                        val normalized = number.replace("[^0-9]".toRegex(), "")
+                        if (normalized.length >= 10) {
+                            phoneNumbers.add(normalized)
+                        }
+                    }
+                }
+
+                // Find matching PicFlick users
+                if (phoneNumbers.isNotEmpty()) {
+                    repository.findUsersByPhoneNumbers(phoneNumbers.toList(), currentUserId) { result ->
+                        when (result) {
+                            is Result.Success -> {
+                                contactUsers.clear()
+                                contactUsers.addAll(result.data)
+                            }
+                            is Result.Error -> {
+                                // Handle error silently
+                            }
+                            is Result.Loading -> { }
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                // Handle permission denied or other errors
+            }
+            isLoading = false
+        }
     }
 }
