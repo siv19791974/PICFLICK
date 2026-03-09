@@ -48,7 +48,6 @@ import com.picflick.app.data.ReactionType
 import com.picflick.app.data.UserProfile
 import com.picflick.app.data.toEmoji
 import com.picflick.app.repository.FlickRepository
-import com.picflick.app.ui.components.DoubleTapHeartAnimation
 import com.picflick.app.ui.components.AnimatedReactionPicker
 import android.app.Activity
 import android.content.ContentValues
@@ -174,11 +173,6 @@ fun FullScreenPhotoViewer(
     var showTagFriendsDialog by remember { mutableStateOf(false) }
     var taggedFriends by remember { mutableStateOf<List<String>>(currentFlick.taggedFriends) }
     var isLoadingTagFriends by remember { mutableStateOf(false) }
-    
-    // Heart animation state for double tap
-    var showDoubleTapHeart by remember { mutableStateOf(false) }
-    var heartAnimationKey by remember { mutableIntStateOf(0) }
-    var isLikingAction by remember { mutableStateOf(true) } // true = like (red), false = unlike (white)
 
     // Load comments when flick changes - use DisposableEffect to properly manage listener
     DisposableEffect(currentFlick.id) {
@@ -598,21 +592,18 @@ fun FullScreenPhotoViewer(
                                 )
                                 .pointerInput(Unit) {
                                     detectTapGestures(
-                                        onTap = { uiVisible = !uiVisible },
-                                        onDoubleTap = {
-                                            // Determine if we're liking or unliking
-                                            isLikingAction = userReaction == null
-                                            heartAnimationKey++
-                                            showDoubleTapHeart = true
-                                            onReaction(if (userReaction != null) null else ReactionType.LIKE)
-                                        }
+                                        onTap = { uiVisible = !uiVisible }
+                                        // Double-tap removed - no heart animation, no zoom
                                     )
                                 }
                                 .then(
                                     // ZOOMABLE LAST = OUTERMOST = gets events FIRST
-                                    // This allows it to intercept pinch gestures before detectTapGestures
+                                    // Double-tap zoom disabled - pass empty lambda
                                     if (isCurrent && zoomState != null) {
-                                        Modifier.zoomable(zoomState)
+                                        Modifier.zoomable(
+                                            zoomState = zoomState,
+                                            onDoubleTap = { _ -> } // Disable double-tap zoom - do nothing
+                                        )
                                     } else Modifier
                                 ),
                             contentAlignment = Alignment.Center
@@ -669,16 +660,7 @@ fun FullScreenPhotoViewer(
                             baseY = screenHeightPx
                         )
                     }
-                    
-                    // BIG HEART ANIMATION FOR DOUBLE-TAP
-                    if (showDoubleTapHeart) {
-                        DoubleTapHeartAnimation(
-                            key = heartAnimationKey,
-                            isLiked = isLikingAction, // true = red heart (liking), false = white heart (unliking)
-                            onAnimationComplete = { showDoubleTapHeart = false }
-                        )
-                    }
-                    
+
                     // 5. PREV at TOP (for vertical swipe) - SAME photo as LEFT
                     if (currentPageIndex - 1 >= 0) {
                         PhotoAtPosition(
