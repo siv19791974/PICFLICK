@@ -128,6 +128,13 @@ fun SettingsScreen(
 
             // Account Section - Manage Storage and Subscription moved to Profile Header
             SettingsSection(title = "ACCOUNT", isDarkMode = isDarkMode) {
+                // Plan Options FIRST - most important
+                SettingsItem(
+                    icon = Icons.Default.Upgrade,
+                    title = "Plan Options",
+                    subtitle = "View all plans and upgrade",
+                    onClick = onPlanOptions
+                )
                 SettingsItem(
                     icon = Icons.Default.Lock,
                     title = "Privacy",
@@ -139,12 +146,6 @@ fun SettingsScreen(
                     title = "Notifications Settings",
                     subtitle = "Push, email preferences",
                     onClick = onNotificationsSettings
-                )
-                SettingsItem(
-                    icon = Icons.Default.Upgrade,
-                    title = "Plan Options",
-                    subtitle = "View all plans and upgrade",
-                    onClick = onPlanOptions
                 )
             }
 
