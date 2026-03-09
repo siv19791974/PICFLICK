@@ -210,6 +210,7 @@ private fun DiscoverTab(
                         UserResultItem(
                             user = user,
                             isFollowing = userProfile.following.contains(user.uid),
+                            isProcessing = viewModel.processingUserIds.contains(user.uid),
                             onFollowClick = { onFollowClick(user, userProfile.following.contains(user.uid)) },
                             onUserClick = { onUserClick(user.uid) },
                             showMutualFriends = true,
@@ -262,6 +263,7 @@ private fun DiscoverTab(
                             UserResultItem(
                                 user = user,
                                 isFollowing = userProfile.following.contains(user.uid),
+                                isProcessing = viewModel.processingUserIds.contains(user.uid),
                                 onFollowClick = { onFollowClick(user, userProfile.following.contains(user.uid)) },
                                 onUserClick = { onUserClick(user.uid) }
                             )
@@ -345,6 +347,7 @@ private fun ContactsTab(
                         UserResultItem(
                             user = user,
                             isFollowing = userProfile.following.contains(user.uid),
+                            isProcessing = viewModel.processingUserIds.contains(user.uid),
                             onFollowClick = { onFollowClick(user, userProfile.following.contains(user.uid)) },
                             onUserClick = { onUserClick(user.uid) },
                             subtitle = "From your contacts"
@@ -532,6 +535,7 @@ My username: ${userProfile.displayName}"""
 private fun UserResultItem(
     user: UserProfile,
     isFollowing: Boolean,
+    isProcessing: Boolean = false,
     onFollowClick: () -> Unit,
     onUserClick: () -> Unit,
     showMutualFriends: Boolean = false,
@@ -618,19 +622,29 @@ private fun UserResultItem(
             Spacer(modifier = Modifier.width(8.dp))
 
             // Follow button - separate from profile click area
-            if (isFollowing) {
-                OutlinedButton(
-                    onClick = onFollowClick,
-                    shape = RoundedCornerShape(20.dp)
-                ) {
-                    Text("Following")
+            when {
+                isProcessing -> {
+                    // Show loading indicator while processing
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(40.dp),
+                        strokeWidth = 2.dp
+                    )
                 }
-            } else {
-                Button(
-                    onClick = onFollowClick,
-                    shape = RoundedCornerShape(20.dp)
-                ) {
-                    Text("Follow")
+                isFollowing -> {
+                    OutlinedButton(
+                        onClick = onFollowClick,
+                        shape = RoundedCornerShape(20.dp)
+                    ) {
+                        Text("Following")
+                    }
+                }
+                else -> {
+                    Button(
+                        onClick = onFollowClick,
+                        shape = RoundedCornerShape(20.dp)
+                    ) {
+                        Text("Follow")
+                    }
                 }
             }
         }
