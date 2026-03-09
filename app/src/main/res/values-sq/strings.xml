@@ -1,0 +1,152 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">PICFLICK</string>
+    
+    <!-- Web Client ID for Google Sign-In - Should be moved to local.properties in production -->
+    <string name="default_web_client_id" translatable="false">830332240569-pko9aotmkb9qn86ao98ml20drrihe4l4.apps.googleusercontent.com</string>
+    
+    <!-- ==================== LOGIN SCREEN ==================== -->
+    <string name="login_welcome_title">Mir\u00ebserdhni n\u00eb PicFlick</string>
+    <string name="login_welcome_subtitle">Ndani foto me miqt\u00eb tuaj</string>
+    <string name="login_sign_in_button">Hyr me Google</string>
+    <string name="login_logo_content_desc">Logo e PicFlick</string>
+    
+    <!-- Login Error Messages -->
+    <string name="login_error_firebase_auth">Autentifikimi Firebase d\u00ebshtoi</string>
+    <string name="login_error_parse_token">Analiza e tokenit Google ID d\u00ebshtoi</string>
+    <string name="login_error_unsupported_credential">Lloji i kredencialit nuk mb\u00ebshtetet</string>
+    <string name="login_error_sign_in_failed">Hyrja d\u00ebshtoi</string>
+    <string name="login_error_unexpected">Gabim i papritur</string>
+    
+    <!-- ==================== NAVIGATION & COMMON ==================== -->
+    <string name="nav_back">Prapa</string>
+    <string name="nav_settings">Cil\u00ebsimet</string>
+    <string name="nav_notifications">Njoftimet</string>
+    <string name="nav_profile">Profili</string>
+    <string name="nav_home">Kryefaqja</string>
+    <string name="nav_chats">Bisedat</string>
+    <string name="nav_friends">Miqt\u00eb</string>
+    <string name="nav_upload">Ngarko</string>
+    
+    <!-- ==================== HOME SCREEN ==================== -->
+    <string name="home_camera_content_desc">Kamera</string>
+    <string name="home_gallery_content_desc">Galeria</string>
+    <string name="home_privacy_friends">Vet\u00ebm miqt\u00eb</string>
+    <string name="home_privacy_public">Publik</string>
+    <string name="home_fab_upload">Ngarko foto</string>
+    
+    <!-- ==================== FILTER SCREEN ==================== -->
+    <string name="filter_title">Apliko filt\u00ebrin</string>
+    <string name="filter_back_camera">Kthehu te kamera</string>
+    <string name="filter_upload">Ngarko</string>
+    <string name="filter_photo_preview">Foto e filtruar</string>
+    <string name="filter_caption_placeholder">Shto nj\u00eb titull\u2026</string>
+    <string name="filter_find_friends">Gjej miq</string>
+    <string name="filter_remove_friend">Hiq</string>
+    <string name="filter_tag_friends">Etiketo miqt\u00eb n\u00eb foto</string>
+    
+    <!-- Upload Status -->
+    <string name="upload_complete">Ngarkimi p\u00ebrfundoi!</string>
+    <string name="upload_failed">Ngarkimi d\u00ebshtoi</string>
+    <string name="upload_limit_reached">U arrit kufiri ditor i ngarkimeve</string>
+    
+    <!-- ==================== CHAT SCREENS ==================== -->
+    <string name="chat_message_placeholder">Mesazh</string>
+    <string name="chat_send_content_desc">D\u00ebrgo</string>
+    <string name="chat_no_messages">Akoma nuk ka mesazhe</string>
+    <string name="chat_start_conversation">Fillo bised\u00ebn me miqt\u00eb!</string>
+    <string name="chat_say_hello">Thot\u00eb p\u00ebrsh\u00ebndetje!</string>
+    <string name="chat_you_prefix">Ju:</string>
+    <string name="chat_unknown_user">I panjohur</string>
+    
+    <!-- ==================== PROFILE SCREEN ==================== -->
+    <string name="profile_photos_title">Fotot e mia</string>
+    <string name="profile_photo_count">%d foto</string>
+    <string name="profile_total_reactions">%d reagime</string>
+    <string name="profile_streak">Vazhdim\u00ebsia %d dit\u00eb</string>
+    <string name="profile_edit_bio">Ndrysho bion</string>
+    <string name="profile_change_photo">Ndrysho foton e profilit</string>
+    
+    <!-- ==================== FRIENDS SCREEN ==================== -->
+    <string name="friends_search_placeholder">K\u00ebrko miq\u2026</string>
+    <string name="friends_no_results">Nuk u gjet\u00ebn p\u00ebrdorues</string>
+    <string name="friends_follow">Ndiq</string>
+    <string name="friends_following">Ndjekur</string>
+    <string name="friends_suggested">Miq t\u00eb sugjeruar</string>
+    <string name="friends_contacts">Kontaktet n\u00eb PicFlick</string>
+    
+    <!-- ==================== SETTINGS SCREEN ==================== -->
+    <string name="settings_title">Cil\u00ebsimet</string>
+    <string name="settings_edit_profile">Ndrysho profilin</string>
+    <string name="settings_manage_storage">Menaxho hap\u00ebsir\u00ebn</string>
+    <string name="settings_subscription">Gjendja e abonimit</string>
+    <string name="settings_privacy">Cil\u00ebsimet e privat\u00ebsis\u00eb</string>
+    <string name="settings_notifications">Cil\u00ebsimet e njoftimeve</string>
+    <string name="settings_help">Ndihm\u00eb dhe mb\u00ebshtetje</string>
+    <string name="settings_about">Rreth nesh</string>
+    <string name="settings_sign_out">Dil</string>
+    <string name="settings_delete_account">Fshi llogarin\u00eb</string>
+    
+    <!-- ==================== NOTIFICATIONS ==================== -->
+    <string name="notifications_title">Njoftimet</string>
+    <string name="notifications_empty">Akoma nuk ka njoftime</string>
+    <string name="notifications_mark_read">Sh\u00ebnji t\u00eb gjitha si t\u00eb lexuara</string>
+    
+    <!-- Notification Types -->
+    <string name="notif_like">ka p\u00eblqyer foton t\u00ebnde</string>
+    <string name="notif_reaction">ka reaguar n\u00eb foton t\u00ebnde</string>
+    <string name="notif_comment">ka komentuar n\u00eb foton t\u00ebnde</string>
+    <string name="notif_follow">ka filluar t\u00eb t\u00eb ndjek\u00eb</string>
+    <string name="notif_message">t\u00eb ka d\u00ebrgur nj\u00eb mesazh</string>
+    <string name="notif_mention">t\u00eb ka p\u00ebrmendur</string>
+    
+    <!-- ==================== STORAGE & BILLING ==================== -->
+    <string name="storage_title">Menaxho hap\u00ebsir\u00ebn</string>
+    <string name="storage_used">%1$.1f GB t\u00eb p\u00ebrdorur nga %2$d GB</string>
+    <string name="storage_photos_count">%d foto</string>
+    <string name="storage_daily_uploads">%1$d / %2$s ngarkime sot</string>
+    <string name="storage_unlimited">I pakufizuar</string>
+    <string name="storage_upgrade">P\u00ebrmireso hap\u00ebsir\u00ebn</string>
+    
+    <!-- Subscription Tiers -->
+    <string name="tier_free">Falas</string>
+    <string name="tier_standard">Standard</string>
+    <string name="tier_plus">Plus</string>
+    <string name="tier_pro">Pro</string>
+    <string name="tier_ultra">Ultra</string>
+    <string name="tier_founder">Themelues</string>
+    
+    <!-- ==================== ERRORS & MESSAGES ==================== -->
+    <string name="error_generic">Di\u00e7ka shkoi keq</string>
+    <string name="error_network">Gabim rrjeti. Ju lutemi provoni p\u00ebrs\u00ebri.</string>
+    <string name="error_permission_denied">Leja u refuzua</string>
+    <string name="error_camera_failed">Kapja e fotos d\u00ebshtoi</string>
+    <string name="error_upload_failed">Ngarkimi i fotos d\u00ebshtoi</string>
+    
+    <!-- Success Messages -->
+    <string name="success_photo_uploaded">Foto u ngarkua me sukses!</string>
+    <string name="success_profile_updated">Profili u p\u00ebrdit\u00ebsua!</string>
+    <string name="success_changes_saved">Ndryshimet u ruajt\u00ebn</string>
+    
+    <!-- ==================== DIALOGS ==================== -->
+    <string name="dialog_cancel">Anulo</string>
+    <string name="dialog_save">Ruaj</string>
+    <string name="dialog_delete">Fshi</string>
+    <string name="dialog_confirm">Konfirmo</string>
+    <string name="dialog_go_back">Kthehu</string>
+    
+    <!-- Delete Confirmation -->
+    <string name="delete_photo_title">Fshi foton?</string>
+    <string name="delete_photo_message">Ky veprim nuk mund t\u00eb anulohet.</string>
+    <string name="delete_account_title">Fshi llogarin\u00eb?</string>
+    <string name="delete_account_message">T\u00eb gjitha t\u00eb dh\u00ebnat tuaja do t\u00eb fshihen p\u00ebrgjithmon\u00eb.</string>
+    
+    <!-- ==================== ABOUT SCREEN ==================== -->
+    <string name="about_title">Rreth PicFlick</string>
+    <string name="about_version">Versioni %s</string>
+    <string name="about_description">Ndani foto me miqt\u00eb tuaj n\u00eb nj\u00eb hap\u00ebsir privat dhe pa reklama.</string>
+    <string name="about_privacy_policy">Politika e privat\u00ebsis\u00eb</string>
+    <string name="about_terms">Kushtet e sh\u00ebrbimit</string>
+    <string name="about_contact">Na kontaktoni</string>
+    
+</resources>
