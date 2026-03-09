@@ -4,8 +4,8 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <!-- Blue background matching your logo -->
+    <!-- Transparent background - the blue square is in foreground -->
     <path
         android:pathData="M0,0h108v108h-108z"
-        android:fillColor="#2196F3" />
+        android:fillColor="#00000000" />
 </vector>
