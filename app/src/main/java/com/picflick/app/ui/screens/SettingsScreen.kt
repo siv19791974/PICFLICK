@@ -1,5 +1,7 @@
 package com.picflick.app.ui.screens
 
+import android.app.Activity
+import android.content.Intent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -32,12 +34,14 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.graphics.Brush
 import coil3.compose.AsyncImage
+import com.picflick.app.MainActivity
 import com.picflick.app.data.UserProfile
 import com.picflick.app.data.SubscriptionTier
 import com.picflick.app.data.getColor
 import com.picflick.app.data.getDarkColor
 import com.picflick.app.data.getDisplayName
 import com.picflick.app.data.getLightColor
+import com.picflick.app.ui.theme.ThemeManager
 import com.picflick.app.data.getStorageLimitBytes
 import com.picflick.app.data.getStorageLimitGB
 
@@ -58,14 +62,17 @@ fun SettingsScreen(
     onNotificationsSettings: () -> Unit = {},
     onHelpSupport: () -> Unit = {},
     onAbout: () -> Unit = {},
-    onSummonFirebender: () -> Unit = {}
+    onSummonFirebender: () -> Unit = {},
+    onRemoveFirebender: () -> Unit = {},
+    isFirebenderFriend: Boolean = false
 ) {
     val context = LocalContext.current
     var showSignOutDialog by remember { mutableStateOf(false) }
     var showDeleteAccountDialog by remember { mutableStateOf(false) }
     var showClearCacheDialog by remember { mutableStateOf(false) }
     var showAppearanceDialog by remember { mutableStateOf(false) }
-    var isDarkMode by remember { mutableStateOf(false) }
+    // Use ThemeManager for theme state (persists across sessions)
+    val isDarkMode by ThemeManager.isDarkMode
     var cacheSize by remember { mutableStateOf("24 MB") }
 
     Scaffold(
@@ -209,18 +216,35 @@ fun SettingsScreen(
             
             // Debug Section (Hidden in production)
             SettingsSection(title = "DEBUG") {
-                var firebenderStatus by remember { mutableStateOf("Summon FIREBENDER") }
-                
-                SettingsItem(
-                    icon = Icons.Default.Person,
-                    title = firebenderStatus,
-                    subtitle = "Add AI assistant as friend",
-                    onClick = {
-                        onSummonFirebender()
-                        firebenderStatus = "Summoned! Check friends"
-                    },
-                    showArrow = false
-                )
+                if (isFirebenderFriend) {
+                    // Show Remove button if FIREBENDER is already a friend
+                    var removeStatus by remember { mutableStateOf("Remove FIREBENDER") }
+                    
+                    SettingsItem(
+                        icon = Icons.Default.Person,
+                        title = removeStatus,
+                        subtitle = "Remove AI assistant from friends",
+                        onClick = {
+                            onRemoveFirebender()
+                            removeStatus = "Removed!"
+                        },
+                        showArrow = false
+                    )
+                } else {
+                    // Show Summon button if FIREBENDER is not a friend
+                    var summonStatus by remember { mutableStateOf("Summon FIREBENDER") }
+                    
+                    SettingsItem(
+                        icon = Icons.Default.Person,
+                        title = summonStatus,
+                        subtitle = "Add AI assistant as friend",
+                        onClick = {
+                            onSummonFirebender()
+                            summonStatus = "Summoned! Check friends"
+                        },
+                        showArrow = false
+                    )
+                }
             }
         }
     }
@@ -324,8 +348,13 @@ fun SettingsScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clickable { 
-                                isDarkMode = false
+                                ThemeManager.setDarkMode(context, false)
                                 showAppearanceDialog = false
+                                // Restart activity to apply theme
+                                val intent = Intent(context, MainActivity::class.java)
+                                intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_NEW_TASK)
+                                context.startActivity(intent)
+                                (context as? Activity)?.finish()
                             }
                             .padding(vertical = 12.dp),
                         verticalAlignment = Alignment.CenterVertically
@@ -346,8 +375,13 @@ fun SettingsScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clickable { 
-                                isDarkMode = true
+                                ThemeManager.setDarkMode(context, true)
                                 showAppearanceDialog = false
+                                // Restart activity to apply theme
+                                val intent = Intent(context, MainActivity::class.java)
+                                intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_NEW_TASK)
+                                context.startActivity(intent)
+                                (context as? Activity)?.finish()
                             }
                             .padding(vertical = 12.dp),
                         verticalAlignment = Alignment.CenterVertically
@@ -363,7 +397,7 @@ fun SettingsScreen(
                     }
                     
                     Text(
-                        text = "Note: Full dark mode support coming in next update",
+                        text = "Theme will be applied immediately",
                         fontSize = 12.sp,
                         color = Color.Gray,
                         modifier = Modifier.padding(top = 16.dp)

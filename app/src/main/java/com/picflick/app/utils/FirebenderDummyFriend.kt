@@ -170,4 +170,57 @@ object FirebenderDummyFriend {
             false
         }
     }
+    
+    /**
+     * Remove FIREBENDER as a friend (cleanup)
+     */
+    suspend fun removeFirebenderFriend(currentUserId: String): Boolean {
+        return try {
+            val db = FirebaseFirestore.getInstance()
+            
+            // Remove FIREBENDER from your following list
+            db.collection("users")
+                .document(currentUserId)
+                .update("following", FieldValue.arrayRemove(FIREBENDER_ID))
+                .await()
+            
+            // Remove you from FIREBENDER's followers
+            db.collection("users")
+                .document(FIREBENDER_ID)
+                .update("followers", FieldValue.arrayRemove(currentUserId))
+                .await()
+            
+            // Remove FIREBENDER from your followers (if applicable)
+            db.collection("users")
+                .document(currentUserId)
+                .update("followers", FieldValue.arrayRemove(FIREBENDER_ID))
+                .await()
+            
+            Log.d(TAG, "✅ FIREBENDER removed as friend!")
+            true
+        } catch (e: Exception) {
+            Log.e(TAG, "❌ Failed to remove FIREBENDER: ${e.message}", e)
+            false
+        }
+    }
+    
+    /**
+     * Check if FIREBENDER is already a friend
+     */
+    suspend fun isFirebenderFriend(currentUserId: String): Boolean {
+        return try {
+            val db = FirebaseFirestore.getInstance()
+            
+            val userDoc = db.collection("users")
+                .document(currentUserId)
+                .get()
+                .await()
+            
+            val following = userDoc.get("following") as? List<String> ?: emptyList()
+            following.contains(FIREBENDER_ID)
+        } catch (e: Exception) {
+            Log.e(TAG, "❌ Failed to check friendship: ${e.message}", e)
+            false
+        }
+    }
 }

@@ -37,8 +37,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import kotlinx.coroutines.launch
 import androidx.lifecycle.viewmodel.compose.viewModel
+import kotlinx.coroutines.launch
 import com.picflick.app.data.Flick
 import com.picflick.app.data.UserProfile
 import com.picflick.app.data.ChatSession
@@ -72,7 +72,7 @@ import androidx.compose.ui.unit.sp
 import com.picflick.app.ui.screens.SplashScreen
 import com.picflick.app.ui.screens.SubscriptionStatusScreen
 import com.picflick.app.ui.screens.UserProfileScreen
-import com.picflick.app.ui.theme.PicFlickBackground
+import com.picflick.app.ui.theme.ThemeManager
 import com.picflick.app.ui.theme.PicFlickBannerBackground
 import com.picflick.app.ui.theme.PicFlickTheme
 import com.picflick.app.viewmodel.AuthViewModel
@@ -93,11 +93,14 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        // Initialize theme manager before setting content
+        ThemeManager.init(this)
+
         setContent {
             PicFlickTheme {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
-                    color = PicFlickBackground
+                    color = MaterialTheme.colorScheme.background
                 ) {
                     AppContent()
                 }
@@ -374,8 +377,8 @@ fun MainScreen(
     // Outer Scaffold with bottom navigation for all screens
     Scaffold(
         modifier = Modifier.fillMaxSize(),
-        containerColor = PicFlickBannerBackground,
-        contentColor = PicFlickBannerBackground,
+        containerColor = MaterialTheme.colorScheme.background,
+        contentColor = MaterialTheme.colorScheme.onBackground,
         topBar = {
             // SHARED logo banner - never moves when switching screens!
             if (currentUser != null && userProfile != null) {
@@ -841,7 +844,24 @@ private fun AuthenticatedContent(
                             Toast.makeText(context, "Failed to summon: ${e.message}", Toast.LENGTH_LONG).show()
                         }
                     }
-                }
+                },
+                onRemoveFirebender = {
+                    // Remove FIREBENDER as friend
+                    scope.launch {
+                        try {
+                            val removed = com.picflick.app.utils.FirebenderDummyFriend.removeFirebenderFriend(userProfile.uid)
+                            val message = if (removed) {
+                                "🔥 FIREBENDER removed from friends"
+                            } else {
+                                "⚠️ Could not remove FIREBENDER"
+                            }
+                            Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+                        } catch (e: Exception) {
+                            Toast.makeText(context, "Failed to remove: ${e.message}", Toast.LENGTH_LONG).show()
+                        }
+                    }
+                },
+                isFirebenderFriend = userProfile.following.contains("firebender_ai_001")
             )
 
             is Screen.ManageStorage -> {
