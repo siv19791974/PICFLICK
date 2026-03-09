@@ -71,7 +71,36 @@ fun SettingsScreen(
     var showAppearanceDialog by remember { mutableStateOf(false) }
     // Use ThemeManager for theme state (persists across sessions)
     val isDarkMode by ThemeManager.isDarkMode
-    var cacheSize by remember { mutableStateOf("24 MB") }
+    
+    // Calculate actual cache size
+    fun calculateDirSize(dir: java.io.File): Long {
+        if (!dir.exists()) return 0
+        var size: Long = 0
+        dir.listFiles()?.forEach { file ->
+            size += if (file.isDirectory) calculateDirSize(file) else file.length()
+        }
+        return size
+    }
+    
+    fun calculateCacheSize(): String {
+        val cacheDir = context.cacheDir
+        val size = calculateDirSize(cacheDir)
+        return when {
+            size > 1024 * 1024 * 1024 -> String.format(java.util.Locale.US, "%.1f GB", size / (1024.0 * 1024.0 * 1024.0))
+            size > 1024 * 1024 -> String.format(java.util.Locale.US, "%.1f MB", size / (1024.0 * 1024.0))
+            size > 1024 -> String.format(java.util.Locale.US, "%.1f KB", size / 1024.0)
+            else -> "$size B"
+        }
+    }
+    
+    var cacheSize by remember { mutableStateOf(calculateCacheSize()) }
+    
+    // Refresh cache size when dialog is shown
+    LaunchedEffect(showClearCacheDialog) {
+        if (showClearCacheDialog) {
+            cacheSize = calculateCacheSize()
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -281,7 +310,8 @@ fun SettingsScreen(
                         val cacheDir = context.cacheDir
                         val deleted = cacheDir.deleteRecursively()
                         if (deleted) {
-                            cacheSize = "0 MB"
+                            cacheSize = calculateCacheSize()
+                            android.widget.Toast.makeText(context, "Cache cleared successfully!", android.widget.Toast.LENGTH_SHORT).show()
                         }
                     }
                 ) {
