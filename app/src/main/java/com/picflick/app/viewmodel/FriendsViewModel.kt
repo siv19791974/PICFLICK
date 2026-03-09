@@ -229,10 +229,16 @@ class FriendsViewModel : ViewModel() {
                     val numberIndex = it.getColumnIndex(ContactsContract.CommonDataKinds.Phone.NUMBER)
                     while (it.moveToNext()) {
                         val number = it.getString(numberIndex)
-                        // Normalize phone number
+                        // Normalize phone number - remove all non-digits
                         val normalized = number.replace("[^0-9]".toRegex(), "")
+                        // Add both full number and last 10 digits for matching
                         if (normalized.length >= 10) {
                             phoneNumbers.add(normalized)
+                            // Also add last 10 digits (without country code) for better matching
+                            val last10 = normalized.takeLast(10)
+                            if (last10.length == 10 && !phoneNumbers.contains(last10)) {
+                                phoneNumbers.add(last10)
+                            }
                         }
                     }
                 }
