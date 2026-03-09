@@ -4,14 +4,14 @@
     <item>
         <color android:color="#2196F3" />
     </item>
-    <!-- Your actual logo.png - smaller with more padding -->
+    <!-- Your logo.png - vertically shrunk to fit better -->
     <item
         android:width="72dp"
-        android:height="72dp"
+        android:height="52dp"
         android:left="18dp"
-        android:top="18dp"
+        android:top="28dp"
         android:right="18dp"
-        android:bottom="18dp"
+        android:bottom="28dp"
         android:gravity="center">
         <bitmap
             android:src="@drawable/logo"
