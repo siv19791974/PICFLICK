@@ -95,23 +95,44 @@ fun FindFriendsScreen(
             Tab(
                 selected = selectedTab == 0,
                 onClick = { selectedTab = 0 },
-                text = { Text("Discover") }
+                text = { Text("Friends") }
             )
             Tab(
                 selected = selectedTab == 1,
                 onClick = { selectedTab = 1 },
-                text = { Text("Contacts") }
+                text = { Text("Discover") }
             )
             Tab(
                 selected = selectedTab == 2,
                 onClick = { selectedTab = 2 },
+                text = { Text("Contacts") }
+            )
+            Tab(
+                selected = selectedTab == 3,
+                onClick = { selectedTab = 3 },
                 text = { Text("Invite") }
             )
         }
 
-        // Content based on tab
+    // Load friends when tab changes to Friends
+    LaunchedEffect(selectedTab) {
+        if (selectedTab == 0) {
+            viewModel.loadFollowingUsers(userProfile.following)
+        }
+    }
+
+    // Content based on tab
         when (selectedTab) {
-            0 ->             DiscoverTab(
+            0 -> FriendsTab(
+                viewModel = viewModel,
+                userProfile = userProfile,
+                onUnfollow = { user ->
+                    viewModel.unfollowUser(userProfile.uid, user.uid)
+                    android.widget.Toast.makeText(context, "Unfollowed ${user.displayName}", android.widget.Toast.LENGTH_SHORT).show()
+                },
+                onUserClick = onNavigateToProfile
+            )
+            1 -> DiscoverTab(
                 viewModel = viewModel,
                 userProfile = userProfile,
                 onFollowClick = { user, action ->
@@ -126,7 +147,7 @@ fun FindFriendsScreen(
                 },
                 onUserClick = onNavigateToProfile
             )
-            1 ->             ContactsTab(
+            2 -> ContactsTab(
                 viewModel = viewModel,
                 userProfile = userProfile,
                 hasPermission = hasContactPermission,
@@ -145,7 +166,7 @@ fun FindFriendsScreen(
                 },
                 onUserClick = onNavigateToProfile
             )
-            2 -> InviteTab(
+            3 -> InviteTab(
                 userProfile = userProfile,
                 hasContactPermission = hasContactPermission,
                 onRequestPermission = {
@@ -565,6 +586,150 @@ My username: ${userProfile.displayName}"""
             )
             Spacer(modifier = Modifier.width(4.dp))
             Text("Copy invite text")
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterialApi::class)
+@Composable
+private fun FriendsTab(
+    viewModel: FriendsViewModel,
+    userProfile: UserProfile,
+    onUnfollow: (UserProfile) -> Unit,
+    onUserClick: (String) -> Unit
+) {
+    val isDarkMode = ThemeManager.isDarkMode.value
+    val followingUsers = viewModel.followingUsers
+    val isLoading = viewModel.isLoading
+    
+    // Pull-to-refresh state
+    val pullRefreshState = rememberPullRefreshState(
+        refreshing = isLoading,
+        onRefresh = { viewModel.loadFollowingUsers(userProfile.following) }
+    )
+    
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .pullRefresh(pullRefreshState)
+    ) {
+        if (followingUsers.isEmpty() && !isLoading) {
+            // Empty state
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(32.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Person,
+                    contentDescription = null,
+                    modifier = Modifier.size(80.dp),
+                    tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(
+                    text = "No friends yet",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "Follow people in the Discover tab to see them here",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                )
+            }
+        } else {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                items(followingUsers) { user ->
+                    FriendItem(
+                        user = user,
+                        onUnfollow = { onUnfollow(user) },
+                        onUserClick = { onUserClick(user.uid) }
+                    )
+                }
+            }
+        }
+        
+        PullRefreshIndicator(
+            refreshing = isLoading,
+            state = pullRefreshState,
+            modifier = Modifier.align(Alignment.TopCenter)
+        )
+    }
+}
+
+@Composable
+private fun FriendItem(
+    user: UserProfile,
+    onUnfollow: () -> Unit,
+    onUserClick: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onUserClick() },
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = if (ThemeManager.isDarkMode.value) Color(0xFF1C1C1E) else Color.White
+        )
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Profile photo
+            Box(
+                modifier = Modifier
+                    .size(56.dp)
+                    .clip(CircleShape)
+                    .background(Color(0xFF2C2C2E))
+            ) {
+                AsyncImage(
+                    model = user.photoUrl,
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxSize(),
+                    error = painterResource(id = android.R.drawable.ic_menu_myplaces)
+                )
+            }
+            
+            Spacer(modifier = Modifier.width(12.dp))
+            
+            // User info
+            Column(
+                modifier = Modifier.weight(1f)
+            ) {
+                Text(
+                    text = user.displayName,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 16.sp
+                )
+                if (user.bio.isNotEmpty()) {
+                    Text(
+                        text = user.bio,
+                        fontSize = 14.sp,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                        maxLines = 1
+                    )
+                }
+            }
+            
+            // Unfollow button
+            OutlinedButton(
+                onClick = onUnfollow,
+                shape = RoundedCornerShape(20.dp)
+            ) {
+                Text("Following")
+            }
         }
     }
 }
