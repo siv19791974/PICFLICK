@@ -148,8 +148,8 @@ fun SubscriptionTier.getMonthlyPrice(): Double {
         SubscriptionTier.FREE -> 0.0
         SubscriptionTier.STANDARD -> 2.99
         SubscriptionTier.PLUS -> 4.99
-        SubscriptionTier.PRO -> 8.99
-        SubscriptionTier.ULTRA -> 14.99
+        SubscriptionTier.PRO -> 9.99      // Increased from 8.99
+        SubscriptionTier.ULTRA -> 19.99   // Increased from 14.99
     }
 }
 
