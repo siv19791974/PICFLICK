@@ -23,7 +23,8 @@ import coil3.compose.AsyncImage
 import com.picflick.app.data.Flick
 import com.picflick.app.data.UserProfile
 import com.picflick.app.ui.components.*
-import com.picflick.app.ui.theme.PicFlickBackground
+import com.picflick.app.ui.theme.isDarkModeBackground
+import com.picflick.app.ui.theme.ThemeManager
 import com.picflick.app.viewmodel.ProfileViewModel
 
 /**
@@ -38,6 +39,7 @@ fun MyPhotosScreen(
     onBack: () -> Unit
 ) {
     val context = LocalContext.current
+    val isDarkMode = ThemeManager.isDarkMode.value
     var selectedPhoto by remember { mutableStateOf<Flick?>(null) }
 
     // Load user photos
@@ -54,7 +56,7 @@ fun MyPhotosScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(PicFlickBackground),
+            .background(isDarkModeBackground(isDarkMode)),
     ) {
         // Modern PullRefresh content
         Box(

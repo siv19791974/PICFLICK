@@ -37,7 +37,8 @@ import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import com.picflick.app.data.Flick
 import com.picflick.app.data.UserProfile
-import com.picflick.app.ui.theme.PicFlickBackground
+import com.picflick.app.ui.theme.isDarkModeBackground
+import com.picflick.app.ui.theme.ThemeManager
 
 /**
  * Modern Profile screen with enhanced UI
@@ -58,6 +59,8 @@ fun ProfileScreen(
     onRefresh: () -> Unit = {},
     isLoading: Boolean = false
 ) {
+    val isDarkMode = ThemeManager.isDarkMode.value
+
     // Image picker launcher
     val imagePicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
@@ -117,7 +120,7 @@ fun ProfileScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color.Black)
+                .background(isDarkModeBackground(isDarkMode))
                 .verticalScroll(rememberScrollState()),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
@@ -269,7 +272,7 @@ fun ProfileScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(gridHeight)
-                    .background(PicFlickBackground)
+                    .background(isDarkModeBackground(isDarkMode))
             ) {
                 // 3-column grid matching Home Feed exactly
                 LazyVerticalGrid(

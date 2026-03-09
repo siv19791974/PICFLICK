@@ -43,7 +43,8 @@ import com.picflick.app.data.toEmoji
 import com.picflick.app.ui.components.AnimatedReactionPicker
 import com.picflick.app.ui.components.ErrorMessage
 import com.picflick.app.ui.components.PhotoGridShimmer
-import com.picflick.app.ui.theme.PicFlickBackground
+import com.picflick.app.ui.theme.isDarkModeBackground
+import com.picflick.app.ui.theme.ThemeManager
 import com.picflick.app.viewmodel.HomeViewModel
 import java.io.File
 import kotlinx.coroutines.delay
@@ -127,12 +128,14 @@ fun HomeScreen(
         }
     }
 
+    val isDarkMode = ThemeManager.isDarkMode.value
+
     // Column WITHOUT verticalScroll (because LazyVerticalGrid has its own scroll)
     // NO BANNER HERE - banner is now in MainActivity's Scaffold topBar!
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(PicFlickBackground),
+            .background(isDarkModeBackground(isDarkMode)),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         // Modern PullRefresh content

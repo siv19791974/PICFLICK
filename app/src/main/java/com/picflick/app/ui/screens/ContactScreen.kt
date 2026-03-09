@@ -16,7 +16,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
 import com.picflick.app.R
-import com.picflick.app.ui.theme.PicFlickBackground
+import com.picflick.app.ui.theme.isDarkModeBackground
+import com.picflick.app.ui.theme.ThemeManager
 
 /**
  * Contact screen for sending feedback
@@ -26,13 +27,14 @@ fun ContactScreen(
     onBack: () -> Unit
 ) {
     val context = LocalContext.current
+    val isDarkMode = ThemeManager.isDarkMode.value
     var subject by remember { mutableStateOf("") }
     var message by remember { mutableStateOf("") }
 
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(PicFlickBackground)
+            .background(isDarkModeBackground(isDarkMode))
     ) {
         // NO BANNER - banner is now in MainActivity's Scaffold topBar!
         // Simple back button only

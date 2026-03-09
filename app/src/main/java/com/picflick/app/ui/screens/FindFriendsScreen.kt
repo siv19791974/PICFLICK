@@ -35,7 +35,8 @@ import androidx.core.content.ContextCompat
 import coil3.compose.AsyncImage
 import com.picflick.app.data.UserProfile
 import com.picflick.app.ui.components.FullScreenLoading
-import com.picflick.app.ui.theme.PicFlickBackground
+import com.picflick.app.ui.theme.isDarkModeBackground
+import com.picflick.app.ui.theme.ThemeManager
 import com.picflick.app.viewmodel.FriendsViewModel
 
 /**
@@ -51,6 +52,7 @@ fun FindFriendsScreen(
     onNavigateToProfile: (String) -> Unit = {}
 ) {
     val context = LocalContext.current
+    val isDarkMode = ThemeManager.isDarkMode.value
     val scope = rememberCoroutineScope()
     var selectedTab by remember { mutableStateOf(0) }
     var hasContactPermission by remember {
@@ -82,7 +84,7 @@ fun FindFriendsScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(PicFlickBackground)
+            .background(isDarkModeBackground(isDarkMode))
     ) {
         // Top bar with tabs
         TabRow(
