@@ -336,10 +336,15 @@ private fun PlanCard(
                 )
                 
                 // Photos (estimated)
-                val estimatedPhotos = storageGB * 100 // Rough estimate: 100 photos per GB
+                // Calculation: GB × 1024 MB/GB ÷ 1.5 MB per medium quality photo
+                val estimatedPhotos = (storageGB * 1024 / 1.5).toInt()
+                val displayPhotos = when {
+                    estimatedPhotos >= 1000 -> "${estimatedPhotos / 1000}K"
+                    else -> "${estimatedPhotos}"
+                }
                 FeatureItem(
                     icon = Icons.Default.Check,
-                    value = "~${estimatedPhotos}K",
+                    value = "~$displayPhotos",
                     label = "Photos",
                     isDarkMode = isDarkMode
                 )
