@@ -13,6 +13,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import java.util.Calendar
+import java.util.UUID
 import com.picflick.app.Constants
 
 /**
@@ -199,9 +200,9 @@ class FlickRepository private constructor() {
      * Get flicks for a specific user
      */
     fun getUserFlicks(userId: String, onResult: (Result<List<Flick>>) -> Unit) {
-        db.collection("flicks")
+        db.collection(Constants.FirebaseCollections.FLICKS)
             .whereEqualTo("userId", userId)
-            .limit(50)
+            .limit(Constants.Pagination.FLICKS_PER_PAGE.toLong())
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
                     onResult(Result.Error(Exception(error.message), "Failed to load user photos"))
@@ -369,8 +370,8 @@ class FlickRepository private constructor() {
         }
     }
     fun getAllUsers(onResult: (Result<List<UserProfile>>) -> Unit) {
-        db.collection("users")
-            .limit(100)
+        db.collection(Constants.FirebaseCollections.USERS)
+            .limit(Constants.Pagination.USERS_PER_PAGE.toLong())
             .get()
             .addOnSuccessListener { snapshot ->
                 val users = snapshot.toObjects(UserProfile::class.java)
@@ -393,7 +394,7 @@ class FlickRepository private constructor() {
         // Query users with matching phone numbers
         // Since Firestore doesn't support direct array contains for multiple values efficiently,
         // we'll query in batches
-        val batches = phoneNumbers.chunked(10)
+        val batches = phoneNumbers.chunked(Constants.Pagination.MAX_FRIENDS_BATCH)
         val foundUsers = mutableListOf<UserProfile>()
         var completedBatches = 0
 
@@ -423,11 +424,11 @@ class FlickRepository private constructor() {
     fun searchUsers(query: String, currentUserId: String, onResult: (Result<List<UserProfile>>) -> Unit) {
         val searchLower = query.lowercase()
 
-        db.collection("users")
+        db.collection(Constants.FirebaseCollections.USERS)
             .orderBy("displayName")
             .startAt(searchLower)
             .endAt(searchLower + "\uf8ff")
-            .limit(20)
+            .limit(Constants.Pagination.SUGGESTED_USERS_LIMIT.toLong())
             .get()
             .addOnSuccessListener { snapshot ->
                 val users = snapshot.toObjects(UserProfile::class.java)
@@ -503,14 +504,14 @@ class FlickRepository private constructor() {
                 val following = userProfile?.following ?: emptyList()
 
                 // Get users not in following list
-                db.collection("users")
-                    .limit(20)
+                db.collection(Constants.FirebaseCollections.USERS)
+                    .limit(Constants.Pagination.SUGGESTED_USERS_LIMIT.toLong())
                     .get()
                     .addOnSuccessListener { snapshot ->
                         val allUsers = snapshot.toObjects(UserProfile::class.java)
                         val suggestions = allUsers
                             .filter { it.uid != userId && it.uid !in following }
-                            .take(10)
+                            .take(Constants.Pagination.SUGGESTED_USERS_LIMIT / 2)
                         onResult(Result.Success(suggestions))
                     }
                     .addOnFailureListener { e -> onResult(Result.Error(e, "Failed to get suggestions")) }
@@ -745,10 +746,10 @@ class FlickRepository private constructor() {
         onUpdate: (List<Notification>) -> Unit,
         onError: (String) -> Unit
     ): com.google.firebase.firestore.ListenerRegistration {
-        return db.collection("notifications")
+        return db.collection(Constants.FirebaseCollections.NOTIFICATIONS)
             .whereEqualTo("userId", userId)
             .orderBy("timestamp", Query.Direction.DESCENDING)
-            .limit(50)
+            .limit(Constants.Pagination.NOTIFICATIONS_PER_PAGE.toLong())
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
                     onError(error.message ?: "Failed to load notifications")
@@ -1044,10 +1045,10 @@ class FlickRepository private constructor() {
      * Get notifications for a user
      */
     fun getNotifications(userId: String, onResult: (Result<List<Map<String, Any>>>) -> Unit) {
-        db.collection("notifications")
+        db.collection(Constants.FirebaseCollections.NOTIFICATIONS)
             .whereEqualTo("userId", userId)
             .orderBy("timestamp", Query.Direction.DESCENDING)
-            .limit(50)
+            .limit(Constants.Pagination.NOTIFICATIONS_PER_PAGE.toLong())
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
                     onResult(Result.Error(error, "Failed to load notifications"))
@@ -1293,7 +1294,7 @@ class FlickRepository private constructor() {
     suspend fun getLeaderboard(): Result<List<Pair<UserProfile, Int>>> {
         return try {
             // Get all users
-            val usersSnapshot = db.collection("users").limit(100).get().await()
+            val usersSnapshot = db.collection(Constants.FirebaseCollections.USERS).limit(Constants.Pagination.USERS_PER_PAGE.toLong()).get().await()
             val users = usersSnapshot.toObjects(UserProfile::class.java)
 
             // Calculate scores for each user
