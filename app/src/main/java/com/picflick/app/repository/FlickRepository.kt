@@ -1437,7 +1437,7 @@ class FlickRepository private constructor() {
             val allUsers = db.collection(Constants.FirebaseCollections.USERS).get().await()
             allUsers.documents.forEach { userDoc ->
                 val userData = userDoc.toObject(UserProfile::class.java)
-                if (userData.followers.contains(userId) || userData.following.contains(userId)) {
+                if (userData != null && (userData.followers.contains(userId) || userData.following.contains(userId))) {
                     val updatedFollowers = userData.followers.filter { it != userId }
                     val updatedFollowing = userData.following.filter { it != userId }
                     userDoc.reference.update(
