@@ -586,9 +586,15 @@ fun FullScreenPhotoViewer(
                         val zoomState = if (isCurrent) rememberZoomState() else null
                         
                         // Single modifier chain with proper gesture handling
+                        // ZOOMABLE FIRST so it gets pinch gestures before detectTapGestures
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
+                                .then(
+                                    if (isCurrent && zoomState != null) {
+                                        Modifier.zoomable(zoomState)
+                                    } else Modifier
+                                )
                                 .pointerInput(Unit) {
                                     detectTapGestures(
                                         onTap = { uiVisible = !uiVisible },
@@ -597,24 +603,9 @@ fun FullScreenPhotoViewer(
                                             heartAnimationKey++
                                             showDoubleTapHeart = true
                                             onReaction(if (userReaction != null) null else ReactionType.LIKE)
-                                            // Gesture is consumed by detectTapGestures
                                         }
                                     )
                                 }
-                                .then(
-                                    if (isCurrent && zoomState != null) {
-                                        // Custom zoomable that ignores double-tap
-                                        Modifier.pointerInput(Unit) {
-                                            // This blocks double-tap from reaching zoomable
-                                            // Zoomable still gets pinch gestures
-                                        }
-                                    } else Modifier
-                                )
-                                .then(
-                                    if (isCurrent && zoomState != null) {
-                                        Modifier.zoomable(zoomState)
-                                    } else Modifier
-                                )
                                 .graphicsLayer(
                                     translationX = finalX,
                                     translationY = finalY,
