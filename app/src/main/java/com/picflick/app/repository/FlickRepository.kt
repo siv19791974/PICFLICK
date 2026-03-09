@@ -520,6 +520,22 @@ class FlickRepository private constructor() {
     }
 
     /**
+     * Get ALL users (not filtered - for Discover tab)
+     */
+    fun getAllUsers(currentUserId: String, onResult: (Result<List<UserProfile>>) -> Unit) {
+        db.collection(Constants.FirebaseCollections.USERS)
+            .limit(50)
+            .get()
+            .addOnSuccessListener { snapshot ->
+                val allUsers = snapshot.toObjects(UserProfile::class.java)
+                // Only filter out the current user, show everyone else including followed
+                val users = allUsers.filter { it.uid != currentUserId }
+                onResult(Result.Success(users))
+            }
+            .addOnFailureListener { e -> onResult(Result.Error(e, "Failed to get users")) }
+    }
+
+    /**
      * Follow a user
      */
     fun followUser(currentUserId: String, targetUserId: String, onResult: (Result<Unit>) -> Unit) {
