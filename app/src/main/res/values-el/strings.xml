@@ -1,0 +1,213 @@
+<resources>
+    <string name="app_name">PICFLICK</string>
+    
+    <!-- ==================== LOGIN SCREEN ==================== -->
+    <string name="login_welcome_title">Καλώς ήρθατε στο PicFlick</string>
+    <string name="login_welcome_subtitle">Μοιραστείτε φωτογραφίες με φίλους</string>
+    <string name="login_sign_in_button">Σύνδεση με Google</string>
+    <string name="login_logo_content_desc">Λογότυπο PicFlick</string>
+    
+    <!-- Login Error Messages -->
+    <string name="login_error_firebase_auth">Η ταυτοποίηση απέτυχε</string>
+    <string name="login_error_parse_token">Αποτυχία ανάλυσης διακριτικού Google</string>
+    <string name="login_error_unsupported_credential">Μη υποστηριζόμενος τύπος διαπιστευτηρίων</string>
+    <string name="login_error_sign_in_failed">Η σύνδεση απέτυχε</string>
+    <string name="login_error_unexpected">Απροσδόκητο σφάλμα</string>
+    
+    <!-- ==================== NAVIGATION & COMMON ==================== -->
+    <string name="nav_back">Πίσω</string>
+    <string name="nav_settings">Ρυθμίσεις</string>
+    <string name="nav_notifications">Ειδοποιήσεις</string>
+    <string name="nav_profile">Προφίλ</string>
+    <string name="nav_home">Αρχική</string>
+    <string name="nav_chats">Συνομιλίες</string>
+    <string name="nav_friends">Φίλοι</string>
+    <string name="nav_upload">Μεταφόρτωση</string>
+    
+    <!-- ==================== HOME SCREEN ==================== -->
+    <string name="home_camera_content_desc">Κάμερα</string>
+    <string name="home_gallery_content_desc">Συλλογή</string>
+    <string name="home_privacy_friends">Μόνο Φίλοι</string>
+    <string name="home_privacy_public">Δημόσιο</string>
+    <string name="home_fab_upload">Μεταφόρτωση Φωτογραφίας</string>
+    
+    <!-- ==================== FILTER SCREEN ==================== -->
+    <string name="filter_title">Εφαρμογή Φίλτρου</string>
+    <string name="filter_back_camera">Πίσω στην Κάμερα</string>
+    <string name="filter_upload">Μεταφόρτωση</string>
+    <string name="filter_photo_preview">Φωτογραφία με φίλτρο</string>
+    <string name="filter_caption_placeholder">Προσθέστε λεζάντα…</string>
+    <string name="filter_find_friends">Βρείτε Φίλους</string>
+    <string name="filter_remove_friend">Αφαίρεση</string>
+    <string name="filter_tag_friends">Επισημάνετε φίλους στη φωτογραφία</string>
+    
+    <!-- Upload Status -->
+    <string name="upload_complete">Η Μεταφόρτωση Ολοκληρώθηκε!</string>
+    <string name="upload_failed">Η μεταφόρτωση απέτυχε</string>
+    <string name="upload_limit_reached">Φτάσατε το ημερήσιο όριο μεταφόρτωσης</string>
+    
+    <!-- ==================== CHAT SCREENS ==================== -->
+    <string name="chat_message_placeholder">Μήνυμα</string>
+    <string name="chat_send_content_desc">Αποστολή</string>
+    <string name="chat_no_messages">Δεν υπάρχουν μηνύματα ακόμα</string>
+    <string name="chat_start_conversation">Ξεκινήστε συνομιλία με φίλους!</string>
+    <string name="chat_say_hello">Πείτε γειά!</string>
+    <string name="chat_you_prefix">Εσείς:</string>
+    <string name="chat_unknown_user">Άγνωστος</string>
+    
+    <!-- ==================== PROFILE SCREEN ==================== -->
+    <string name="profile_photos_title">Οι Φωτογραφίες Μου</string>
+    <string name="profile_photo_count">%d φωτογραφίες</string>
+    <string name="profile_total_reactions">%d αντιδράσεις</string>
+    <string name="profile_streak">%d ημερών σερί</string>
+    <string name="profile_edit_bio">Επεξεργασία Βιογραφικού</string>
+    <string name="profile_change_photo">Αλλαγή Φωτογραφίας Προφίλ</string>
+    
+    <!-- ==================== FRIENDS SCREEN ==================== -->
+    <string name="friends_search_placeholder">Αναζήτηση φίλων…</string>
+    <string name="friends_no_results">Δεν βρέθηκαν χρήστες</string>
+    <string name="friends_follow">Ακολούθηση</string>
+    <string name="friends_following">Ακολουθείτε</string>
+    <string name="friends_suggested">Προτεινόμενοι Φίλοι</string>
+    <string name="friends_contacts">Επαφές στο PicFlick</string>
+    
+    <!-- ==================== SETTINGS SCREEN ==================== -->
+    <string name="settings_title">Ρυθμίσεις</string>
+    <string name="settings_edit_profile">Επεξεργασία Προφίλ</string>
+    <string name="settings_manage_storage">Διαχείριση Αποθήκευσης</string>
+    <string name="settings_subscription">Κατάσταση Συνδρομής</string>
+    <string name="settings_privacy">Ρυθμίσεις Απορρήτου</string>
+    <string name="settings_notifications">Ρυθμίσεις Ειδοποιήσεων</string>
+    <string name="settings_help">Βοήθεια &amp; Υποστήριξη</string>
+    <string name="settings_about">Σχετικά</string>
+    <string name="settings_sign_out">Αποσύνδεση</string>
+    <string name="settings_delete_account">Διαγραφή Λογαριασμού</string>
+    
+    <!-- ==================== NOTIFICATIONS ==================== -->
+    <string name="notifications_title">Ειδοποιήσεις</string>
+    <string name="notifications_empty">Δεν υπάρχουν ειδοποιήσεις ακόμα</string>
+    <string name="notifications_mark_read">Σήμανση όλων ως αναγνωσμένων</string>
+    
+    <!-- Notification Types -->
+    <string name="notif_like">άρεσε η φωτογραφία σας</string>
+    <string name="notif_reaction">αντέδρασε στη φωτογραφία σας</string>
+    <string name="notif_comment">σχολίασε τη φωτογραφία σας</string>
+    <string name="notif_follow">άρχισε να σας ακολουθεί</string>
+    <string name="notif_message">σας έστειλε μήνυμα</string>
+    <string name="notif_mention">σας ανέφερε</string>
+    
+    <!-- ==================== STORAGE & BILLING ==================== -->
+    <string name="storage_title">Διαχείριση Αποθήκευσης</string>
+    <string name="storage_used">%1$.1f GB σε χρήση από %2$d GB</string>
+    <string name="storage_photos_count">%d φωτογραφίες</string>
+    <string name="storage_daily_uploads">%1$d / %2$s μεταφορτώσεις σήμερα</string>
+    <string name="storage_unlimited">Απεριόριστο</string>
+    <string name="storage_upgrade">Αναβάθμιση Αποθήκευσης</string>
+    
+    <!-- Subscription Tiers -->
+    <string name="tier_free">Δωρεάν</string>
+    <string name="tier_standard">Στάνταρ</string>
+    <string name="tier_plus">Plus</string>
+    <string name="tier_pro">Pro</string>
+    <string name="tier_ultra">Ultra</string>
+    <string name="tier_founder">Ιδρυτής</string>
+    
+    <!-- ==================== ERRORS & MESSAGES ==================== -->
+    <string name="error_generic">Κάτι πήγε στραβά</string>
+    <string name="error_network">Σφάλμα δικτύου. Παρακαλώ προσπαθήστε ξανά.</string>
+    <string name="error_permission_denied">Άρνηση άδειας</string>
+    <string name="error_camera_failed">Αποτυχία λήψης φωτογραφίας</string>
+    <string name="error_upload_failed">Αποτυχία μεταφόρτωσης φωτογραφίας</string>
+    
+    <!-- Success Messages -->
+    <string name="success_photo_uploaded">Η φωτογραφία μεταφορτώθηκε επιτυχώς!</string>
+    <string name="success_profile_updated">Το προφίλ ενημερώθηκε!</string>
+    <string name="success_changes_saved">Οι αλλαγές αποθηκεύτηκαν</string>
+    
+    <!-- ==================== DIALOGS ==================== -->
+    <string name="dialog_cancel">Ακύρωση</string>
+    <string name="dialog_save">Αποθήκευση</string>
+    <string name="dialog_delete">Διαγραφή</string>
+    <string name="dialog_confirm">Επιβεβαίωση</string>
+    <string name="dialog_go_back">Επιστροφή</string>
+    
+    <!-- Delete Confirmation -->
+    <string name="delete_photo_title">Διαγραφή Φωτογραφίας;</string>
+    <string name="delete_photo_message">Αυτή η ενέργεια δεν μπορεί να αναιρεθεί.</string>
+    <string name="delete_account_title">Διαγραφή Λογαριασμού;</string>
+    <string name="delete_account_message">Όλα τα δεδομένα σας θα διαγραφούν μόνιμα.</string>
+    
+    <!-- ==================== ABOUT SCREEN ==================== -->
+    <string name="about_title">Σχετικά με το PicFlick</string>
+    <string name="about_version">Έκδοση %s</string>
+    <string name="about_description">Μοιραστείτε φωτογραφίες με φίλους σε έναν ιδιωτικό χώρο χωρίς διαφημίσεις.</string>
+    <string name="about_privacy_policy">Πολιτική Απορρήτου</string>
+    <string name="about_terms">Όροι Χρήσης</string>
+    <string name="about_contact">Επικοινωνία</string>
+    <string name="storage_photos_stored">Αποθηκευμένες φωτογραφίες</string>
+    <string name="storage_avg_photo_size">Μέσο μέγεθος φωτογραφίας</string>
+    <string name="storage_current_quality">Τρέχουσα ποιότητα</string>
+    <string name="storage_label_used">Σε χρήση</string>
+    <string name="storage_label_total">Σύνολο</string>
+    <string name="storage_label_remaining">Υπόλοιπο</string>
+    <string name="storage_breakdown">Ανάλυση Αποθήκευσης</string>
+    <string name="storage_upgrade_to">Αναβάθμιση σε %s</string>
+    <string name="storage_upgrade_soon">Σκεφτείτε να αναβαθμίσετε σύντομα για περισσότερο χώρο.</string>
+    <string name="storage_upgrade_or_delete">Αναβαθμίστε ή διαγράψτε παλιές φωτογραφίες.</string>
+    <string name="storage_looking_good">Έχετε αρκετό χώρο για περισσότερες φωτογραφίες!</string>
+    <string name="storage_running_low">Τελειώνει ο χώρος</string>
+    <string name="storage_almost_full">Η αποθήκευση είναι σχεδόν γεμάτη!</string>
+    <string name="founder_status_1_year">Κατάσταση Ιδρυτή - 1 Έτος Δωρεάν</string>
+    
+    <!-- Explore Screen -->
+    <string name="explore_search_placeholder">Αναζήτηση φωτογραφιών, χρηστών…</string>
+    <string name="explore_search_content_desc">Αναζήτηση</string>
+    <string name="explore_clear_content_desc">Καθαρισμός</string>
+    <string name="explore_trending_now">🔥 Δημοφιλή Τώρα</string>
+    <string name="explore_popular_creators">📸 Δημοφιλείς Δημιουργοί</string>
+    <string name="explore_follow_more_friends_title">Ακολουθήστε περισσότερους φίλους!</string>
+    <string name="explore_follow_more_friends_subtitle">Φωτογραφίες από άτομα που ακολουθείτε</string>
+    <string name="explore_from_people_you_follow">Από Άτομα Που Ακολουθείτε</string>
+    <string name="explore_reactions_count">%d αντιδράσεις</string>
+    <string name="explore_reactions_comments">%d αντιδράσεις • %d σχόλια</string>
+    <string name="explore_trending_badge">🔥 ΔΗΜΟΦΙΛΗ</string>
+    <string name="explore_new_badge">✨ ΝΕΟ</string>
+    <string name="explore_no_photos_upload">Δεν υπάρχουν φωτογραφίες ακόμα. Μεταφορτώστε μία!</string>
+    <string name="explore_who_can_see">Ποιος μπορεί να το δει;</string>
+    <string name="explore_friends_will_see">Μόνο οι φίλοι σας θα δουν αυτή τη φωτογραφία</string>
+    <string name="explore_everyone_will_see">Όλοι μπορούν να δουν αυτή τη φωτογραφία</string>
+    <string name="explore_tab_trending">Δημοφιλή</string>
+    <string name="explore_tab_popular">Δημοφιλείς</string>
+    <string name="explore_tab_new">Νέα</string>
+    <string name="explore_tab_for_you">Για Εσάς</string>
+    
+    <!-- Profile Screen -->
+    <string name="profile_dialog_title">Επεξεργασία Βιογραφικού</string>
+    <string name="profile_bio_label">Βιογραφικό</string>
+    <string name="profile_bio_placeholder">Πείτε στους άλλους για εσάς…</string>
+    <string name="profile_dialog_save">Αποθήκευση</string>
+    <string name="profile_dialog_cancel">Ακύρωση</string>
+    <string name="profile_photo_content_desc">Φωτογραφία προφίλ</string>
+    <string name="profile_change_photo_content_desc">Αλλαγή Φωτογραφίας</string>
+    
+    <!-- Share -->
+    <string name="share_photo_title">Κοινοποίηση Φωτογραφίας</string>
+    <string name="share_photo_text">Δείτε αυτή τη φωτογραφία στο PicFlick: %s</string>
+    
+    <!-- Errors -->
+    <string name="error_unknown">Άγνωστο σφάλμα</string>
+    
+    <!-- ==================== ACCESSIBILITY CONTENT DESCRIPTIONS ==================== -->
+    <string name="content_desc_back">Πίσω</string>
+    <string name="content_desc_email">Αποστολή email</string>
+    <string name="content_desc_person">Άτομο</string>
+    <string name="content_desc_add_friend">Προσθήκη φίλου</string>
+    <string name="content_desc_storage">Αποθήκευση</string>
+    <string name="content_desc_upgrade">Αναβάθμιση</string>
+    <string name="content_desc_warning">Προειδοποίηση</string>
+    <string name="content_desc_info">Πληροφορίες</string>
+    <string name="content_desc_check">Σημάδι επιλογής</string>
+    <string name="content_desc_photo">Φωτογραφία</string>
+    <string name="content_desc_next">Επόμενο</string>
+    
+</resources>

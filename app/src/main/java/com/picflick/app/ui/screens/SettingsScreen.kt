@@ -116,7 +116,8 @@ fun SettingsScreen(
             "pt" -> "🇵🇹" to "Português"
             "sq" -> "🇦🇱" to "Shqip"
             "hi" -> "🇮🇳" to "हिन्दी"
-            else -> "🇺🇸" to "English"
+            "el" -> "🇬🇷" to "Ελληνικά"
+            else -> "🇬🇧" to "English"
         }
     }
     val (currentFlag, currentLangName) = getLanguageDisplayInfo(currentLanguage)
@@ -464,7 +465,7 @@ fun SettingsScreen(
             text = {
                 Column {
                     LanguageOption(
-                        flag = "🇺🇸",
+                        flag = "🇬🇧",
                         name = "English",
                         isSelected = currentLanguage.isEmpty(),
                         isDarkMode = isDarkMode,
@@ -622,6 +623,21 @@ fun SettingsScreen(
                             LocaleHelper.saveLanguage(context, "hi")
                             LocaleHelper.setLocale(context, "hi")
                             currentLanguage = "hi"
+                            showLanguageDialog = false
+                            LocaleHelper.restartActivity(context as Activity)
+                        }
+                    )
+                    HorizontalDivider(color = if (isDarkMode) Color(0xFF2C2C2E) else Color.LightGray)
+                    
+                    LanguageOption(
+                        flag = "🇬🇷",
+                        name = "Ελληνικά (Greek)",
+                        isSelected = currentLanguage == "el",
+                        isDarkMode = isDarkMode,
+                        onClick = { 
+                            LocaleHelper.saveLanguage(context, "el")
+                            LocaleHelper.setLocale(context, "el")
+                            currentLanguage = "el"
                             showLanguageDialog = false
                             LocaleHelper.restartActivity(context as Activity)
                         }
