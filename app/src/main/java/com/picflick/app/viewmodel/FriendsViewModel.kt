@@ -2,6 +2,7 @@ package com.picflick.app.viewmodel
 
 import android.content.Context
 import android.provider.ContactsContract
+import android.util.Log
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -136,14 +137,18 @@ class FriendsViewModel : ViewModel() {
      */
     fun loadAllUsers(currentUserId: String) {
         isLoading = true
+        Log.d("FriendsViewModel", "Loading all users, currentUserId: $currentUserId")
         repository.getAllUsers(currentUserId) { result ->
             when (result) {
                 is Result.Success -> {
+                    Log.d("FriendsViewModel", "Loaded ${result.data.size} users")
                     suggestedUsers.clear()
                     suggestedUsers.addAll(result.data)
                 }
                 is Result.Error -> {
-                    // Handle error silently
+                    // Log error for debugging
+                    Log.e("FriendsViewModel", "Failed to load all users: ${result.exception?.message}")
+                    result.exception?.printStackTrace()
                 }
                 is Result.Loading -> { }
             }
