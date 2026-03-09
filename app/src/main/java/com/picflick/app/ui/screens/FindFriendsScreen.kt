@@ -112,11 +112,11 @@ fun FindFriendsScreen(
             0 -> DiscoverTab(
                 viewModel = viewModel,
                 userProfile = userProfile,
-                onFollowClick = { user, isFollowing ->
-                    if (isFollowing) {
-                        viewModel.unfollowUser(userProfile.uid, user.uid)
-                    } else {
-                        viewModel.followUser(userProfile.uid, user, userProfile)
+                onFollowClick = { user, action ->
+                    when (action) {
+                        "unfollow" -> viewModel.unfollowUser(userProfile.uid, user.uid)
+                        "accept" -> viewModel.acceptFollowRequest(userProfile.uid, user)
+                        "send_request" -> viewModel.sendFollowRequest(userProfile.uid, user, userProfile)
                     }
                 },
                 onUserClick = onNavigateToProfile
@@ -128,11 +128,11 @@ fun FindFriendsScreen(
                 onRequestPermission = {
                     permissionLauncher.launch(android.Manifest.permission.READ_CONTACTS)
                 },
-                onFollowClick = { user, isFollowing ->
-                    if (isFollowing) {
-                        viewModel.unfollowUser(userProfile.uid, user.uid)
-                    } else {
-                        viewModel.followUser(userProfile.uid, user, userProfile)
+                onFollowClick = { user, action ->
+                    when (action) {
+                        "unfollow" -> viewModel.unfollowUser(userProfile.uid, user.uid)
+                        "accept" -> viewModel.acceptFollowRequest(userProfile.uid, user)
+                        "send_request" -> viewModel.sendFollowRequest(userProfile.uid, user, userProfile)
                     }
                 },
                 onUserClick = onNavigateToProfile
@@ -153,7 +153,7 @@ fun FindFriendsScreen(
 private fun DiscoverTab(
     viewModel: FriendsViewModel,
     userProfile: UserProfile,
-    onFollowClick: (UserProfile, Boolean) -> Unit,
+    onFollowClick: (UserProfile, String) -> Unit,
     onUserClick: (String) -> Unit
 ) {
     // Pull-to-refresh state
@@ -210,8 +210,17 @@ private fun DiscoverTab(
                         UserResultItem(
                             user = user,
                             isFollowing = userProfile.following.contains(user.uid),
+                            hasSentRequest = userProfile.sentFollowRequests.contains(user.uid),
+                            hasReceivedRequest = userProfile.pendingFollowRequests.contains(user.uid),
                             isProcessing = viewModel.processingUserIds.contains(user.uid),
-                            onFollowClick = { onFollowClick(user, userProfile.following.contains(user.uid)) },
+                            onFollowClick = {
+                                val action = when {
+                                    userProfile.following.contains(user.uid) -> "unfollow"
+                                    userProfile.pendingFollowRequests.contains(user.uid) -> "accept"
+                                    else -> "send_request"
+                                }
+                                onFollowClick(user, action)
+                            },
                             onUserClick = { onUserClick(user.uid) },
                             showMutualFriends = true,
                             mutualCount = (user.followers intersect userProfile.following.toSet()).size
@@ -263,8 +272,17 @@ private fun DiscoverTab(
                             UserResultItem(
                                 user = user,
                                 isFollowing = userProfile.following.contains(user.uid),
+                                hasSentRequest = userProfile.sentFollowRequests.contains(user.uid),
+                                hasReceivedRequest = userProfile.pendingFollowRequests.contains(user.uid),
                                 isProcessing = viewModel.processingUserIds.contains(user.uid),
-                                onFollowClick = { onFollowClick(user, userProfile.following.contains(user.uid)) },
+                                onFollowClick = {
+                                val action = when {
+                                    userProfile.following.contains(user.uid) -> "unfollow"
+                                    userProfile.pendingFollowRequests.contains(user.uid) -> "accept"
+                                    else -> "send_request"
+                                }
+                                onFollowClick(user, action)
+                            },
                                 onUserClick = { onUserClick(user.uid) }
                             )
                         }
@@ -288,7 +306,7 @@ private fun ContactsTab(
     userProfile: UserProfile,
     hasPermission: Boolean,
     onRequestPermission: () -> Unit,
-    onFollowClick: (UserProfile, Boolean) -> Unit,
+    onFollowClick: (UserProfile, String) -> Unit,
     onUserClick: (String) -> Unit
 ) {
     if (!hasPermission) {
@@ -347,8 +365,17 @@ private fun ContactsTab(
                         UserResultItem(
                             user = user,
                             isFollowing = userProfile.following.contains(user.uid),
+                            hasSentRequest = userProfile.sentFollowRequests.contains(user.uid),
+                            hasReceivedRequest = userProfile.pendingFollowRequests.contains(user.uid),
                             isProcessing = viewModel.processingUserIds.contains(user.uid),
-                            onFollowClick = { onFollowClick(user, userProfile.following.contains(user.uid)) },
+                            onFollowClick = {
+                                val action = when {
+                                    userProfile.following.contains(user.uid) -> "unfollow"
+                                    userProfile.pendingFollowRequests.contains(user.uid) -> "accept"
+                                    else -> "send_request"
+                                }
+                                onFollowClick(user, action)
+                            },
                             onUserClick = { onUserClick(user.uid) },
                             subtitle = "From your contacts"
                         )
@@ -535,6 +562,8 @@ My username: ${userProfile.displayName}"""
 private fun UserResultItem(
     user: UserProfile,
     isFollowing: Boolean,
+    hasSentRequest: Boolean = false,
+    hasReceivedRequest: Boolean = false,
     isProcessing: Boolean = false,
     onFollowClick: () -> Unit,
     onUserClick: () -> Unit,
@@ -629,6 +658,30 @@ private fun UserResultItem(
                         modifier = Modifier.size(40.dp),
                         strokeWidth = 2.dp
                     )
+                }
+                hasSentRequest -> {
+                    // Request sent, waiting for approval
+                    OutlinedButton(
+                        onClick = { /* Cancel functionality can be added */ },
+                        shape = RoundedCornerShape(20.dp),
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            contentColor = Color.Gray
+                        )
+                    ) {
+                        Text("Requested")
+                    }
+                }
+                hasReceivedRequest -> {
+                    // User sent us a request - show Accept button
+                    Button(
+                        onClick = onFollowClick,
+                        shape = RoundedCornerShape(20.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFF4CAF50)
+                        )
+                    ) {
+                        Text("Accept")
+                    }
                 }
                 isFollowing -> {
                     OutlinedButton(
