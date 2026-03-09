@@ -384,6 +384,7 @@ class FlickRepository private constructor() {
 
     /**
      * Find users by phone numbers (for contact sync)
+     * Queries both full number and last 10 digits for better matching
      */
     fun findUsersByPhoneNumbers(phoneNumbers: List<String>, onResult: (Result<List<UserProfile>>) -> Unit) {
         if (phoneNumbers.isEmpty()) {
@@ -391,30 +392,81 @@ class FlickRepository private constructor() {
             return
         }
 
-        // Query users with matching phone numbers
-        // Since Firestore doesn't support direct array contains for multiple values efficiently,
-        // we'll query in batches
-        val batches = phoneNumbers.chunked(Constants.Pagination.MAX_FRIENDS_BATCH)
-        val foundUsers = mutableListOf<UserProfile>()
-        var completedBatches = 0
+        // Remove duplicates and get last 10 digits for each
+        val uniqueNumbers = phoneNumbers.distinct()
+        val last10Digits = uniqueNumbers.map { it.takeLast(10) }.distinct()
+        
+        val foundUsers = mutableSetOf<UserProfile>() // Use set to avoid duplicates
+        var completedQueries = 0
+        val totalQueries = 2 // We'll do 2 queries: full numbers and last 10 digits
 
-        batches.forEach { batch ->
-            db.collection("users")
-                .whereIn("phoneNumber", batch)
-                .get()
-                .addOnSuccessListener { snapshot ->
-                    foundUsers.addAll(snapshot.toObjects(UserProfile::class.java))
-                    completedBatches++
-                    if (completedBatches == batches.size) {
-                        onResult(Result.Success(foundUsers))
+        // Query 1: Match full phone numbers
+        val fullNumberBatches = uniqueNumbers.chunked(Constants.Pagination.MAX_FRIENDS_BATCH)
+        var fullNumberCompleted = 0
+        
+        if (fullNumberBatches.isEmpty()) {
+            completedQueries++
+        } else {
+            fullNumberBatches.forEach { batch ->
+                db.collection("users")
+                    .whereIn("phoneNumber", batch)
+                    .get()
+                    .addOnSuccessListener { snapshot ->
+                        foundUsers.addAll(snapshot.toObjects(UserProfile::class.java))
+                        fullNumberCompleted++
+                        if (fullNumberCompleted == fullNumberBatches.size) {
+                            completedQueries++
+                            if (completedQueries == totalQueries) {
+                                onResult(Result.Success(foundUsers.toList()))
+                            }
+                        }
                     }
-                }
-                .addOnFailureListener { e ->
-                    completedBatches++
-                    if (completedBatches == batches.size) {
-                        onResult(Result.Success(foundUsers)) // Return what we found
+                    .addOnFailureListener { e ->
+                        fullNumberCompleted++
+                        if (fullNumberCompleted == fullNumberBatches.size) {
+                            completedQueries++
+                            if (completedQueries == totalQueries) {
+                                onResult(Result.Success(foundUsers.toList()))
+                            }
+                        }
                     }
-                }
+            }
+        }
+
+        // Query 2: Match last 10 digits (handles country code differences)
+        val last10Batches = last10Digits.chunked(Constants.Pagination.MAX_FRIENDS_BATCH)
+        var last10Completed = 0
+        
+        if (last10Batches.isEmpty()) {
+            completedQueries++
+            if (completedQueries == totalQueries) {
+                onResult(Result.Success(foundUsers.toList()))
+            }
+        } else {
+            last10Batches.forEach { batch ->
+                db.collection("users")
+                    .whereIn("phoneNumber", batch)
+                    .get()
+                    .addOnSuccessListener { snapshot ->
+                        foundUsers.addAll(snapshot.toObjects(UserProfile::class.java))
+                        last10Completed++
+                        if (last10Completed == last10Batches.size) {
+                            completedQueries++
+                            if (completedQueries == totalQueries) {
+                                onResult(Result.Success(foundUsers.toList()))
+                            }
+                        }
+                    }
+                    .addOnFailureListener { e ->
+                        last10Completed++
+                        if (last10Completed == last10Batches.size) {
+                            completedQueries++
+                            if (completedQueries == totalQueries) {
+                                onResult(Result.Success(foundUsers.toList()))
+                            }
+                        }
+                    }
+            }
         }
     }
 
