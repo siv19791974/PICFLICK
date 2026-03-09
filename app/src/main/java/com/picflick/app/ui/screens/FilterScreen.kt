@@ -28,6 +28,7 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -37,6 +38,7 @@ import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.allowHardware
 import coil3.toBitmap
+import com.picflick.app.R
 import com.picflick.app.data.PhotoFilter
 import com.picflick.app.data.UserProfile
 import kotlinx.coroutines.Dispatchers
@@ -181,7 +183,7 @@ fun FilterScreen(
                     ) {
                         Icon(
                             imageVector = Icons.Default.Close,
-                            contentDescription = "Back to Camera",
+                            contentDescription = stringResource(R.string.filter_back_camera),
                             tint = Color.White,
                             modifier = Modifier.size(24.dp)
                         )
@@ -357,7 +359,7 @@ fun FilterScreen(
                             OutlinedTextField(
                                 value = description,
                                 onValueChange = { description = it },
-                                placeholder = { Text("Add a caption...", color = Color.White.copy(alpha = 0.5f)) },
+                                placeholder = { Text(stringResource(R.string.filter_caption_placeholder), color = Color.White.copy(alpha = 0.5f)) },
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .padding(horizontal = 16.dp, vertical = 8.dp),
@@ -567,7 +569,7 @@ private fun FriendPickerDialog(
                                 modifier = Modifier.size(18.dp)
                             )
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("Find Friends")
+                            Text(stringResource(R.string.filter_find_friends))
                         }
                     }
                 }
