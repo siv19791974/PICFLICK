@@ -822,7 +822,7 @@ private fun AuthenticatedContent(
                 onAbout = { onScreenChange(Screen.About) },
                 onSummonFirebender = {
                     // Create FIREBENDER as dummy friend with better feedback
-                    kotlinx.coroutines.GlobalScope.launch {
+                    scope.launch {
                         try {
                             val friendCreated = com.picflick.app.utils.FirebenderDummyFriend.createFirebenderFriend(userProfile.uid)
                             val photoCreated = com.picflick.app.utils.FirebenderDummyFriend.createFirebenderPhoto()
