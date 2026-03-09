@@ -317,6 +317,7 @@ fun FilterScreen(
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
+                                .weight(1f) // Fill remaining space to avoid light blue gap
                                 .background(if (isDarkMode) Color(0xFF1C1C1E) else Color.White) // White panel in light mode
                                 .padding(vertical = 16.dp)
                         ) {
