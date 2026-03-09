@@ -164,6 +164,8 @@ private fun DiscoverTab(
     onFollowClick: (UserProfile, String) -> Unit,
     onUserClick: (String) -> Unit
 ) {
+    val isDarkMode = ThemeManager.isDarkMode.value
+    
     // Pull-to-refresh state
     val pullRefreshState = rememberPullRefreshState(
         refreshing = viewModel.isLoading,
@@ -210,6 +212,7 @@ private fun DiscoverTab(
                 Text(
                     text = "Suggested for you",
                     style = MaterialTheme.typography.titleMedium,
+                    color = if (isDarkMode) Color.White else Color.Black,
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                 )
 
@@ -579,10 +582,15 @@ private fun UserResultItem(
     mutualCount: Int = 0,
     subtitle: String? = null
 ) {
+    val isDarkMode = ThemeManager.isDarkMode.value
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 4.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = if (isDarkMode) Color(0xFF1C1C1E) else Color.White
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(
             modifier = Modifier.padding(12.dp)
@@ -610,14 +618,14 @@ private fun UserResultItem(
                         modifier = Modifier
                             .size(56.dp)
                             .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)),
+                            .background(if (isDarkMode) Color(0xFF3A3A3C) else Color(0xFFE0E0E0)),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
                             imageVector = Icons.Default.Person,
                             contentDescription = null,
                             modifier = Modifier.size(32.dp),
-                            tint = MaterialTheme.colorScheme.primary
+                            tint = if (isDarkMode) Color.Gray else Color.DarkGray
                         )
                     }
                 }
@@ -629,26 +637,27 @@ private fun UserResultItem(
                     Text(
                         text = user.displayName,
                         style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold
+                        fontWeight = FontWeight.SemiBold,
+                        color = if (isDarkMode) Color.White else Color.Black
                     )
 
                     if (showMutualFriends && mutualCount > 0) {
                         Text(
                             text = "$mutualCount mutual followers",
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                            color = if (isDarkMode) Color.Gray else Color.DarkGray
                         )
                     } else if (subtitle != null) {
                         Text(
                             text = subtitle,
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                            color = if (isDarkMode) Color.Gray else Color.DarkGray
                         )
                     } else {
                         Text(
                             text = "${user.followers.size} followers",
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                            color = if (isDarkMode) Color.Gray else Color.DarkGray
                         )
                     }
                 }
