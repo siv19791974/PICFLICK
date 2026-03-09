@@ -30,7 +30,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.foundation.layout.imePadding
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
@@ -992,12 +991,12 @@ fun FullScreenPhotoViewer(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .heightIn(max = 500.dp) // Max height constraint
-                                .imePadding() // Handle keyboard insets here
                                 .background(
                                     Color.Black.copy(alpha = 0.98f),
                                     RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)
                                 )
                                 .padding(horizontal = 16.dp, vertical = 16.dp)
+                                .windowInsetsPadding(WindowInsets.ime.union(WindowInsets.navigationBars))
                         ) {
                             // Handle bar
                             Box(

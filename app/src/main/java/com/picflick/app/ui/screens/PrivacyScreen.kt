@@ -37,7 +37,6 @@ import com.picflick.app.ui.theme.isDarkModeSurface
 fun PrivacyScreen(
     userProfile: UserProfile,
     onBack: () -> Unit,
-    onFindFriends: () -> Unit = {},
     onPrivacyPolicy: () -> Unit = {}
 ) {
     val isDarkMode = ThemeManager.isDarkMode.value
@@ -134,14 +133,6 @@ fun PrivacyScreen(
                     currentPrivacy = defaultPrivacy,
                     onPrivacyChange = { defaultPrivacy = it },
                     isDarkMode = isDarkMode
-                )
-            }
-
-            // Who Can Find You
-            item {
-                WhoCanFindYouSection(
-                    isDarkMode = isDarkMode,
-                    onClick = onFindFriends
                 )
             }
 
@@ -381,76 +372,6 @@ private fun PrivacyOption(
                 tint = accentColor,
                 modifier = Modifier.size(24.dp)
             )
-        }
-    }
-}
-
-@Composable
-private fun WhoCanFindYouSection(
-    isDarkMode: Boolean,
-    onClick: () -> Unit
-) {
-    val textColor = if (isDarkMode) Color.White else Color.Black
-    val subtitleColor = if (isDarkMode) Color.Gray else Color.DarkGray
-    val cardBackground = if (isDarkMode) Color(0xFF1C1C1E) else Color.White
-    val accentColor = Color(0xFF1565C0)
-
-    Column(
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Text(
-            text = "WHO CAN FIND YOU",
-            color = subtitleColor,
-            fontSize = 12.sp,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(bottom = 8.dp)
-        )
-
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable(onClick = onClick),
-            colors = CardDefaults.cardColors(
-                containerColor = cardBackground
-            ),
-            shape = RoundedCornerShape(12.dp)
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(
-                    imageVector = Icons.Default.PersonSearch,
-                    contentDescription = null,
-                    tint = accentColor,
-                    modifier = Modifier.size(24.dp)
-                )
-
-                Spacer(modifier = Modifier.width(12.dp))
-
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = "Friend Discovery",
-                        color = textColor,
-                        fontWeight = FontWeight.Medium,
-                        fontSize = 16.sp
-                    )
-                    Text(
-                        text = "Tap to find friends on PicFlick",
-                        color = subtitleColor,
-                        fontSize = 13.sp
-                    )
-                }
-
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                    contentDescription = "Go",
-                    tint = subtitleColor,
-                    modifier = Modifier.size(20.dp)
-                )
-            }
         }
     }
 }

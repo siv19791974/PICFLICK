@@ -144,8 +144,7 @@ fun FilterScreen(
 
     Scaffold(
         modifier = Modifier
-            .fillMaxSize()
-            .imePadding(),
+            .fillMaxSize(),
         topBar = {
             // Custom compact 48dp title bar
             Box(
@@ -297,9 +296,10 @@ fun FilterScreen(
                                 .padding(horizontal = 24.dp, vertical = 16.dp),
                             contentAlignment = Alignment.Center
                         ) {
-                            // Show currently selected filter as large preview
+                            // Show currently selected filter as large preview - FULL QUALITY
                             val previewBitmap = remember(bmp, selectedFilter) {
-                                applyFilterToBitmap(bmp, selectedFilter, thumbnailSize = 1024) // High quality preview
+                                // Pass 0 to get full resolution (no downscaling)
+                                applyFilterToBitmap(bmp, selectedFilter, thumbnailSize = 0)
                             }
                             Image(
                                 painter = BitmapPainter(previewBitmap.asImageBitmap()),
@@ -317,15 +317,16 @@ fun FilterScreen(
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .weight(1f) // Fill remaining space to avoid light blue gap
-                                .background(if (isDarkMode) Color(0xFF1C1C1E) else Color.White) // White panel in light mode
-                                .padding(vertical = 16.dp)
+                                .weight(1f) // Fill remaining space
+                                .background(if (isDarkMode) Color(0xFF1C1C1E) else Color.White)
+                                .padding(vertical = 8.dp) // Reduced padding
+                                .windowInsetsPadding(WindowInsets.navigationBars) // Handle nav bar insets
                         ) {
                             // Filter Icons (simplified - no text)
                             LazyRow(
                                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                                 contentPadding = PaddingValues(horizontal = 16.dp),
-                                modifier = Modifier.padding(bottom = 16.dp)
+                                modifier = Modifier.padding(bottom = 8.dp) // Reduced from 16.dp
                             ) {
                                 items(filters) { filter ->
                                     FilterIcon(
@@ -359,11 +360,18 @@ fun FilterScreen(
                             
                             // Tag Friends Button
                             TextButton(
-                                onClick = { showFriendPicker = true },
+                                onClick = { 
+                                    if (friends.isEmpty()) {
+                                        // Navigate to Find Friends if no friends
+                                        onNavigateToFindFriends()
+                                    } else {
+                                        // Show friend picker if friends exist
+                                        showFriendPicker = true
+                                    }
+                                },
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(horizontal = 16.dp),
-                                enabled = friends.isNotEmpty()
+                                    .padding(horizontal = 16.dp)
                             ) {
                                 Text(
                                     text = "+",
@@ -373,30 +381,35 @@ fun FilterScreen(
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text(
-                                    text = if (friends.isEmpty()) "No friends to tag" else "Tag Friends (${taggedFriends.size})",
+                                    text = if (friends.isEmpty()) "Find Friends to Tag" else "Tag Friends (${taggedFriends.size})",
                                     color = if (isDarkMode) Color(0xFF87CEEB) else Color(0xFF1565C0)
                                 )
                             }
                             
-                            // Description/Caption Input Field
-                            OutlinedTextField(
-                                value = description,
-                                onValueChange = { description = it },
-                                placeholder = { Text(stringResource(R.string.filter_caption_placeholder), color = if (isDarkMode) Color.White.copy(alpha = 0.5f) else Color.Black.copy(alpha = 0.5f)) },
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                                colors = OutlinedTextFieldDefaults.colors(
-                                    focusedTextColor = if (isDarkMode) Color.White else Color.Black,
-                                    unfocusedTextColor = if (isDarkMode) Color.White else Color.Black,
-                                    focusedBorderColor = if (isDarkMode) Color(0xFF87CEEB) else Color(0xFF1565C0),
-                                    unfocusedBorderColor = if (isDarkMode) Color.White.copy(alpha = 0.3f) else Color.Black.copy(alpha = 0.3f),
-                                    focusedContainerColor = if (isDarkMode) Color(0xFF2C2C2E) else Color.White,
-                                    unfocusedContainerColor = if (isDarkMode) Color(0xFF2C2C2E) else Color.White
-                                ),
-                                maxLines = 2,
-                                singleLine = false
-                            )
+                            // Description/Caption Input Field - Wrapped in surface to cover background
+                            Surface(
+                                modifier = Modifier.fillMaxWidth(),
+                                color = if (isDarkMode) Color(0xFF1C1C1E) else Color.White
+                            ) {
+                                OutlinedTextField(
+                                    value = description,
+                                    onValueChange = { description = it },
+                                    placeholder = { Text(stringResource(R.string.filter_caption_placeholder), color = if (isDarkMode) Color.White.copy(alpha = 0.5f) else Color.Black.copy(alpha = 0.5f)) },
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                                    colors = OutlinedTextFieldDefaults.colors(
+                                        focusedTextColor = if (isDarkMode) Color.White else Color.Black,
+                                        unfocusedTextColor = if (isDarkMode) Color.White else Color.Black,
+                                        focusedBorderColor = if (isDarkMode) Color(0xFF87CEEB) else Color(0xFF1565C0),
+                                        unfocusedBorderColor = if (isDarkMode) Color.White.copy(alpha = 0.3f) else Color.Black.copy(alpha = 0.3f),
+                                        focusedContainerColor = if (isDarkMode) Color(0xFF2C2C2E) else Color.White,
+                                        unfocusedContainerColor = if (isDarkMode) Color(0xFF2C2C2E) else Color.White
+                                    ),
+                                    maxLines = 2,
+                                    singleLine = false
+                                )
+                            }
                             
                             // Upload limit warning
                             if (!canUpload) {
@@ -461,9 +474,9 @@ private fun FilterIcon(
             contentAlignment = Alignment.Center
         ) {
             if (bitmap != null) {
-                // Show actual filtered thumbnail with MUCH higher quality
+                // Show actual filtered thumbnail at ULTRA HIGH RESOLUTION (768px for crisp 96dp display)
                 val thumbnailBitmap = remember(bitmap, filter) {
-                    applyFilterToBitmap(bitmap, filter, thumbnailSize = 300)  // Higher quality filter icons
+                    applyFilterToBitmap(bitmap, filter, thumbnailSize = 768)  // Ultra high quality for 96dp display
                 }
                 Image(
                     painter = BitmapPainter(thumbnailBitmap.asImageBitmap()),
@@ -471,9 +484,7 @@ private fun FilterIcon(
                     modifier = Modifier
                         .fillMaxSize()
                         .clip(RoundedCornerShape(16.dp)),
-                    contentScale = ContentScale.Crop,
-                    // Use high quality filtering
-                    alignment = Alignment.Center
+                    contentScale = ContentScale.Crop
                 )
             } else {
                 // Fallback to emoji
@@ -923,7 +934,7 @@ private fun applyFilterToBitmap(bitmap: Bitmap, filter: PhotoFilter, thumbnailSi
         }
     }
 
-    // Resize if thumbnail
+    // Resize if thumbnail (use high quality filtering)
     val targetBitmap = if (thumbnailSize > 0) {
         val scale = thumbnailSize.toFloat() / maxOf(bitmap.width, bitmap.height)
         val newWidth = (bitmap.width * scale).toInt()
@@ -933,6 +944,8 @@ private fun applyFilterToBitmap(bitmap: Bitmap, filter: PhotoFilter, thumbnailSi
 
     val paint = android.graphics.Paint().apply {
         colorFilter = ColorMatrixColorFilter(matrix)
+        // Enable high quality filtering
+        isFilterBitmap = true
     }
 
     val result = createBitmap(targetBitmap.width, targetBitmap.height)
@@ -944,13 +957,15 @@ private fun applyFilterToBitmap(bitmap: Bitmap, filter: PhotoFilter, thumbnailSi
 }
 
 /**
- * Load bitmap from URI
+ * Load bitmap from URI at ORIGINAL size for high quality
  */
 private suspend fun loadBitmapFromUri(context: android.content.Context, uri: Uri): Bitmap? {
     return try {
         val request = ImageRequest.Builder(context)
             .data(uri)
             .allowHardware(false)
+            // Load at ORIGINAL dimensions for high quality processing
+            .size(coil3.size.Dimension.Undefined, coil3.size.Dimension.Undefined)
             .build()
 
         val imageLoader = ImageLoader.Builder(context).build()
@@ -973,10 +988,10 @@ private suspend fun applyFilterAndSave(
     return withContext(Dispatchers.IO) {
         val filteredBitmap = applyFilterToBitmap(bitmap, filter)
 
-        // Save to temp file
+        // Save to temp file at MAXIMUM QUALITY (100% JPEG)
         val tempFile = java.io.File.createTempFile("filtered_", ".jpg", context.cacheDir)
         java.io.FileOutputStream(tempFile).use { out ->
-            filteredBitmap.compress(Bitmap.CompressFormat.JPEG, 95, out)
+            filteredBitmap.compress(Bitmap.CompressFormat.JPEG, 100, out)  // MAX quality - was 95
         }
 
         Uri.fromFile(tempFile)
