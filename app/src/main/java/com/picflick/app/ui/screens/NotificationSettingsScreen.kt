@@ -64,11 +64,11 @@ fun NotificationSettingsScreen(
                         )
                     }
                     Text(
-                        text = "Notifications Settings",
+                        text = "Notification Settings",
                         modifier = Modifier.weight(1f),
                         color = Color.White,
                         fontWeight = FontWeight.Bold,
-                        fontSize = 16.sp,
+                        fontSize = 15.sp,
                         textAlign = androidx.compose.ui.text.style.TextAlign.Center
                     )
                     // Save button on the right
@@ -272,13 +272,17 @@ private fun MasterToggle(
                 Text(
                     text = title,
                     color = Color.White,
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold
+                    fontSize = 17.sp,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                 )
                 Text(
                     text = subtitle,
                     color = Color.Gray,
-                    fontSize = 14.sp
+                    fontSize = 13.sp,
+                    maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                 )
             }
 
