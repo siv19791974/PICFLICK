@@ -134,7 +134,7 @@ fun ProfileScreen(
                 .size(150.dp)
                 .clip(CircleShape)
                 .background(Color.DarkGray.copy(alpha = 0.3f))
-                .border(3.dp, Color.White.copy(alpha = 0.8f), CircleShape)
+                .border(3.dp, if (isDarkMode) Color.White.copy(alpha = 0.8f) else Color.Black.copy(alpha = 0.8f), CircleShape)
                 .clickable { 
                     if (userProfile.photoUrl.isNotEmpty()) {
                         onProfilePhotoClick()
@@ -183,21 +183,21 @@ fun ProfileScreen(
             text = userProfile.displayName,
             fontSize = 28.sp,
             fontWeight = FontWeight.Bold,
-            color = Color.White
+            color = if (isDarkMode) Color.White else Color.Black
         )
 
-        // Bio - clickable to edit, light blue color
+        // Bio - clickable to edit
         if (userProfile.bio.isNotEmpty()) {
             Spacer(modifier = Modifier.height(12.dp))
             Text(
                 text = userProfile.bio,
                 fontSize = 14.sp,
-                color = Color(0xFF87CEEB), // Light blue
+                color = if (isDarkMode) Color(0xFF87CEEB) else Color.Black,
                 modifier = Modifier
                     .padding(horizontal = 32.dp)
-                    .clickable { 
+                    .clickable {
                         bioText = userProfile.bio
-                        showBioDialog = true 
+                        showBioDialog = true
                     }
             )
         }
@@ -208,12 +208,12 @@ fun ProfileScreen(
         if (userProfile.bio.isEmpty()) {
             Text(
                 text = "✏️ Add a bio to tell people about yourself",
-                color = Color(0xFF87CEEB), // Light blue
+                color = if (isDarkMode) Color(0xFF87CEEB) else Color.DarkGray,
                 fontSize = 14.sp,
                 modifier = Modifier
-                    .clickable { 
+                    .clickable {
                         bioText = ""
-                        showBioDialog = true 
+                        showBioDialog = true
                     }
                     .padding(horizontal = 24.dp)
             )
@@ -229,23 +229,28 @@ fun ProfileScreen(
         ) {
             ModernStatItem(
                 value = photoCount.toString(),
-                label = "Posts"
+                label = "Posts",
+                isDarkMode = isDarkMode
             )
             ModernStatItem(
                 value = formatNumber(totalReactions),
-                label = "Reactions"
+                label = "Reactions",
+                isDarkMode = isDarkMode
             )
             ModernStatItem(
                 value = userProfile.followers.size.toString(),
-                label = "Followers"
+                label = "Followers",
+                isDarkMode = isDarkMode
             )
             ModernStatItem(
                 value = userProfile.following.size.toString(),
-                label = "Following"
+                label = "Following",
+                isDarkMode = isDarkMode
             )
             ModernStatItem(
                 value = currentStreak.toString(),
-                label = "Streak"
+                label = "Streak",
+                isDarkMode = isDarkMode
             )
         }
 
@@ -257,7 +262,7 @@ fun ProfileScreen(
                 text = "My Photos ($photoCount)",
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Bold,
-                color = Color.White,
+                color = if (isDarkMode) Color.White else Color.Black,
                 modifier = Modifier.padding(horizontal = 8.dp)  // Match reduced grid padding
             )
             Spacer(modifier = Modifier.height(12.dp))
@@ -689,7 +694,8 @@ private fun ProfilePhotoGridItem(
 @Composable
 private fun ModernStatItem(
     value: String,
-    label: String
+    label: String,
+    isDarkMode: Boolean
 ) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally
@@ -698,13 +704,13 @@ private fun ModernStatItem(
             text = value,
             fontSize = 22.sp,
             fontWeight = FontWeight.Bold,
-            color = Color.White
+            color = if (isDarkMode) Color.White else Color.Black
         )
         Spacer(modifier = Modifier.height(4.dp))
         Text(
             text = label,
             fontSize = 13.sp,
-            color = Color.Gray,
+            color = if (isDarkMode) Color.Gray else Color.DarkGray,
             fontWeight = FontWeight.Medium
         )
     }

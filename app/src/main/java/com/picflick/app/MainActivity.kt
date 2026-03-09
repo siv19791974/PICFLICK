@@ -818,7 +818,6 @@ private fun AuthenticatedContent(
                         }
                     }
                 },
-                onEditProfile = { onScreenChange(Screen.Profile) },
                 onManageStorage = { onScreenChange(Screen.ManageStorage) },
                 onSubscriptionStatus = { onScreenChange(Screen.SubscriptionStatus) },
                 onPrivacySettings = { onScreenChange(Screen.Privacy) },

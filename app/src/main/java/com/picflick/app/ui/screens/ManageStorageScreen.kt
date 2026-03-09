@@ -42,6 +42,9 @@ import com.picflick.app.data.getNextTier
 import com.picflick.app.data.getQualityDescription
 import com.picflick.app.data.getStorageLimitGB
 import com.picflick.app.data.getStorageLimitBytes
+import com.picflick.app.ui.theme.ThemeManager
+import com.picflick.app.ui.theme.isDarkModeBackground
+import com.picflick.app.ui.theme.isDarkModeSurface
 import com.picflick.app.viewmodel.BillingViewModel
 import com.picflick.app.viewmodel.SubscriptionProduct
 
@@ -67,6 +70,7 @@ fun ManageStorageScreen(
     val usedGB = storageUsed / (1024.0 * 1024.0 * 1024.0)
     val totalGB = storageLimit / (1024.0 * 1024.0 * 1024.0)
     val remainingGB = totalGB - usedGB
+    val isDarkMode = ThemeManager.isDarkMode.value
     
     Scaffold(
         topBar = {
@@ -88,11 +92,11 @@ fun ManageStorageScreen(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color(0xFF1565C0) // Light blue header
+                    containerColor = if (isDarkMode) Color.Black else Color(0xFF1565C0)
                 )
             )
         },
-        containerColor = Color(0xFFE3F2FD) // Light blue background
+        containerColor = isDarkModeBackground(isDarkMode)
     ) { padding ->
         Column(
             modifier = Modifier
@@ -107,7 +111,8 @@ fun ManageStorageScreen(
                 remainingGB = remainingGB,
                 percent = storagePercent,
                 tier = tier,
-                tierColor = tierColor
+                tierColor = tierColor,
+                isDarkMode = isDarkMode
             )
             
             Spacer(modifier = Modifier.height(16.dp))
@@ -119,7 +124,8 @@ fun ManageStorageScreen(
                 isFounder = userProfile.isFounder,
                 photosCount = userProfile.totalPhotos,
                 dailyUploads = userProfile.dailyUploadsToday,
-                dailyLimit = tier.getDailyUploadLimit()
+                dailyLimit = tier.getDailyUploadLimit(),
+                isDarkMode = isDarkMode
             )
             
             Spacer(modifier = Modifier.height(16.dp))
@@ -129,7 +135,8 @@ fun ManageStorageScreen(
                 UpgradeOptionsCard(
                     currentTier = tier,
                     billingViewModel = billingViewModel,
-                    onUpgrade = onUpgrade
+                    onUpgrade = onUpgrade,
+                    isDarkMode = isDarkMode
                 )
             }
             
@@ -140,13 +147,17 @@ fun ManageStorageScreen(
                 photosCount = userProfile.totalPhotos,
                 usedGB = usedGB,
                 averagePhotoSize = if (userProfile.totalPhotos > 0) usedGB / userProfile.totalPhotos else 0.0,
-                quality = tier.getQualityDescription()
+                quality = tier.getQualityDescription(),
+                isDarkMode = isDarkMode
             )
             
             Spacer(modifier = Modifier.height(16.dp))
             
             // Storage Tips
-            StorageTipsCard(percent = storagePercent)
+            StorageTipsCard(
+                percent = storagePercent,
+                isDarkMode = isDarkMode
+            )
             
             Spacer(modifier = Modifier.height(32.dp))
         }
@@ -160,14 +171,15 @@ private fun StorageMeterCard(
     remainingGB: Double,
     percent: Int,
     tier: SubscriptionTier,
-    tierColor: Color
+    tierColor: Color,
+    isDarkMode: Boolean
 ) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding(16.dp),
         colors = CardDefaults.cardColors(
-            containerColor = Color.White
+            containerColor = if (isDarkMode) Color(0xFF1C1C1E) else Color.White
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
@@ -184,7 +196,7 @@ private fun StorageMeterCard(
                     text = "Storage Used",
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Medium,
-                    color = Color(0xFF424242)
+                    color = if (isDarkMode) Color.White else Color(0xFF424242)
                 )
                 
                 // Tier Badge
@@ -255,17 +267,20 @@ private fun StorageMeterCard(
                 StorageStat(
                     label = "Used",
                     value = String.format("%.1f GB", usedGB),
-                    color = tierColor
+                    color = tierColor,
+                    isDarkMode = isDarkMode
                 )
                 StorageStat(
                     label = "Total",
                     value = String.format("%.0f GB", totalGB),
-                    color = Color.Gray
+                    color = if (isDarkMode) Color.Gray else Color.DarkGray,
+                    isDarkMode = isDarkMode
                 )
                 StorageStat(
                     label = "Remaining",
                     value = String.format("%.1f GB", remainingGB),
-                    color = if (remainingGB < 5) Color.Red else Color(0xFF00C853)
+                    color = if (remainingGB < 5) Color.Red else Color(0xFF00C853),
+                    isDarkMode = isDarkMode
                 )
             }
         }
@@ -273,7 +288,7 @@ private fun StorageMeterCard(
 }
 
 @Composable
-private fun StorageStat(label: String, value: String, color: Color) {
+private fun StorageStat(label: String, value: String, color: Color, isDarkMode: Boolean) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Text(
             text = value,
@@ -284,7 +299,7 @@ private fun StorageStat(label: String, value: String, color: Color) {
         Text(
             text = label,
             fontSize = 12.sp,
-            color = Color.Gray
+            color = if (isDarkMode) Color.Gray else Color.DarkGray
         )
     }
 }
@@ -296,14 +311,15 @@ private fun CurrentTierCard(
     isFounder: Boolean,
     photosCount: Int,
     dailyUploads: Int,
-    dailyLimit: Int
+    dailyLimit: Int,
+    isDarkMode: Boolean
 ) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp),
         colors = CardDefaults.cardColors(
-            containerColor = Color.White
+            containerColor = if (isDarkMode) Color(0xFF1C1C1E) else Color.White
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
@@ -358,7 +374,7 @@ private fun CurrentTierCard(
             
             Spacer(modifier = Modifier.height(16.dp))
             
-            HorizontalDivider(color = Color(0xFFE0E0E0))
+            HorizontalDivider(color = if (isDarkMode) Color(0xFF2C2C2E) else Color(0xFFE0E0E0))
             
             Spacer(modifier = Modifier.height(16.dp))
             
@@ -367,28 +383,32 @@ private fun CurrentTierCard(
                 icon = Icons.Default.Photo,
                 label = "Daily Uploads",
                 value = if (dailyLimit == Int.MAX_VALUE) "$dailyUploads / Unlimited" else "$dailyUploads / $dailyLimit",
-                isUnlimited = dailyLimit == Int.MAX_VALUE
+                isUnlimited = dailyLimit == Int.MAX_VALUE,
+                isDarkMode = isDarkMode
             )
             
             TierFeatureRow(
                 icon = Icons.Default.Storage,
                 label = "Storage",
                 value = "${tier.getStorageLimitGB()} GB",
-                isHighlighted = true
+                isHighlighted = true,
+                isDarkMode = isDarkMode
             )
             
             TierFeatureRow(
                 icon = Icons.Default.Check,
                 label = "Photo Quality",
                 value = tier.getQualityDescription(),
-                isHighlighted = true
+                isHighlighted = true,
+                isDarkMode = isDarkMode
             )
             
             TierFeatureRow(
                 icon = Icons.Default.Photo,
                 label = "Total Photos",
                 value = "$photosCount stored",
-                isHighlighted = false
+                isHighlighted = false,
+                isDarkMode = isDarkMode
             )
         }
     }
@@ -400,7 +420,8 @@ private fun TierFeatureRow(
     label: String,
     value: String,
     isUnlimited: Boolean = false,
-    isHighlighted: Boolean = false
+    isHighlighted: Boolean = false,
+    isDarkMode: Boolean
 ) {
     Row(
         modifier = Modifier
@@ -411,7 +432,7 @@ private fun TierFeatureRow(
         Icon(
             imageVector = icon,
             contentDescription = stringResource(R.string.content_desc_check),
-            tint = if (isHighlighted) Color(0xFF1565C0) else Color.Gray,
+            tint = if (isHighlighted) Color(0xFF1565C0) else if (isDarkMode) Color.Gray else Color.DarkGray,
             modifier = Modifier.size(20.dp)
         )
         
@@ -421,7 +442,7 @@ private fun TierFeatureRow(
             text = label,
             modifier = Modifier.weight(1f),
             fontSize = 14.sp,
-            color = Color(0xFF424242)
+            color = if (isDarkMode) Color(0xFFE0E0E0) else Color(0xFF424242)
         )
         
         Text(
@@ -431,7 +452,7 @@ private fun TierFeatureRow(
             color = when {
                 isUnlimited -> Color(0xFF00C853)
                 isHighlighted -> Color(0xFF1565C0)
-                else -> Color.Gray
+                else -> if (isDarkMode) Color.Gray else Color.DarkGray
             }
         )
     }
@@ -441,7 +462,8 @@ private fun TierFeatureRow(
 private fun UpgradeOptionsCard(
     currentTier: SubscriptionTier,
     billingViewModel: BillingViewModel,
-    onUpgrade: (SubscriptionTier) -> Unit
+    onUpgrade: (SubscriptionTier) -> Unit,
+    isDarkMode: Boolean
 ) {
     val nextTier = currentTier.getNextTier()
     val products: List<SubscriptionProduct> by billingViewModel.products.collectAsState()
@@ -456,7 +478,7 @@ private fun UpgradeOptionsCard(
                 .padding(horizontal = 16.dp)
                 .clickable { onUpgrade(nextTier) },
             colors = CardDefaults.cardColors(
-                containerColor = Color(0xFFFFF8E1) // Light amber
+                containerColor = if (isDarkMode) Color(0xFF2D2D2D) else Color(0xFFFFF8E1) // Dark gray in dark mode, light amber in light
             ),
             elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
         ) {
@@ -478,12 +500,12 @@ private fun UpgradeOptionsCard(
                         text = "Upgrade to ${nextTier.getDisplayName()}",
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Bold,
-                        color = Color(0xFF424242)
+                        color = if (isDarkMode) Color.White else Color(0xFF424242)
                     )
                     Text(
                         text = "${nextTier.getStorageLimitGB()} GB • ${nextTier.getDailyUploadLimit()} uploads/day",
                         fontSize = 13.sp,
-                        color = Color.Gray
+                        color = if (isDarkMode) Color.Gray else Color.DarkGray
                     )
                 }
                 
@@ -501,7 +523,7 @@ private fun UpgradeOptionsCard(
                     Text(
                         text = "/month",
                         fontSize = 12.sp,
-                        color = Color.Gray
+                        color = if (isDarkMode) Color.Gray else Color.DarkGray
                     )
                 }
                 
@@ -522,14 +544,15 @@ private fun StorageBreakdownCard(
     photosCount: Int,
     usedGB: Double,
     averagePhotoSize: Double,
-    quality: String
+    quality: String,
+    isDarkMode: Boolean
 ) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp),
         colors = CardDefaults.cardColors(
-            containerColor = Color.White
+            containerColor = if (isDarkMode) Color(0xFF1C1C1E) else Color.White
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
@@ -540,36 +563,40 @@ private fun StorageBreakdownCard(
                 text = "Storage Breakdown",
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Medium,
-                color = Color(0xFF424242)
+                color = if (isDarkMode) Color.White else Color(0xFF424242)
             )
             
             Spacer(modifier = Modifier.height(16.dp))
             
             BreakdownRow(
                 label = "Photos stored",
-                value = "$photosCount"
+                value = "$photosCount",
+                isDarkMode = isDarkMode
             )
             
             BreakdownRow(
                 label = "Average photo size",
-                value = String.format("%.1f MB", averagePhotoSize * 1024)
+                value = String.format("%.1f MB", averagePhotoSize * 1024),
+                isDarkMode = isDarkMode
             )
             
             BreakdownRow(
                 label = "Current quality",
-                value = quality
+                value = quality,
+                isDarkMode = isDarkMode
             )
             
             BreakdownRow(
                 label = "Storage used",
-                value = String.format("%.2f GB", usedGB)
+                value = String.format("%.2f GB", usedGB),
+                isDarkMode = isDarkMode
             )
         }
     }
 }
 
 @Composable
-private fun BreakdownRow(label: String, value: String) {
+private fun BreakdownRow(label: String, value: String, isDarkMode: Boolean) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -579,28 +606,28 @@ private fun BreakdownRow(label: String, value: String) {
         Text(
             text = label,
             fontSize = 14.sp,
-            color = Color.Gray
+            color = if (isDarkMode) Color.Gray else Color.DarkGray
         )
         Text(
             text = value,
             fontSize = 14.sp,
             fontWeight = FontWeight.Medium,
-            color = Color(0xFF424242)
+            color = if (isDarkMode) Color(0xFFE0E0E0) else Color(0xFF424242)
         )
     }
 }
 
 @Composable
-private fun StorageTipsCard(percent: Int) {
+private fun StorageTipsCard(percent: Int, isDarkMode: Boolean) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp),
         colors = CardDefaults.cardColors(
             containerColor = when {
-                percent > 90 -> Color(0xFFFFEBEE) // Light red
-                percent > 75 -> Color(0xFFFFF3E0) // Light orange
-                else -> Color(0xFFE8F5E9) // Light green
+                percent > 90 -> if (isDarkMode) Color(0xFF3D1F1F) else Color(0xFFFFEBEE) // Dark red / Light red
+                percent > 75 -> if (isDarkMode) Color(0xFF3D2E1F) else Color(0xFFFFF3E0) // Dark orange / Light orange
+                else -> if (isDarkMode) Color(0xFF1F3D1F) else Color(0xFFE8F5E9) // Dark green / Light green
             }
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
@@ -655,7 +682,7 @@ private fun StorageTipsCard(percent: Int) {
                         else -> "You have plenty of space for more photos. Keep capturing moments!"
                     },
                     fontSize = 13.sp,
-                    color = Color.Gray
+                    color = if (isDarkMode) Color.Gray else Color.DarkGray
                 )
             }
         }

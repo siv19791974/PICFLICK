@@ -42,6 +42,7 @@ import com.picflick.app.data.getDarkColor
 import com.picflick.app.data.getDisplayName
 import com.picflick.app.data.getLightColor
 import com.picflick.app.ui.theme.ThemeManager
+import com.picflick.app.ui.theme.isDarkModeBackground
 import com.picflick.app.data.getStorageLimitBytes
 import com.picflick.app.data.getStorageLimitGB
 
@@ -55,7 +56,6 @@ fun SettingsScreen(
     onBack: () -> Unit,
     onSignOut: () -> Unit,
     onDeleteAccount: () -> Unit = {},
-    onEditProfile: () -> Unit = {},
     onManageStorage: () -> Unit = {},
     onSubscriptionStatus: () -> Unit = {},
     onPrivacySettings: () -> Unit = {},
@@ -96,7 +96,7 @@ fun SettingsScreen(
                 )
             )
         },
-        containerColor = Color(0xFF121212)
+        containerColor = isDarkModeBackground(isDarkMode)
     ) { padding ->
         Column(
             modifier = Modifier
@@ -111,16 +111,10 @@ fun SettingsScreen(
                 onSubscriptionStatus = onSubscriptionStatus
             )
 
-            HorizontalDivider(color = Color(0xFF2C2C2E), thickness = 0.5.dp)
+            HorizontalDivider(color = if (isDarkMode) Color(0xFF2C2C2E) else Color.LightGray, thickness = 0.5.dp)
 
             // Account Section
             SettingsSection(title = "ACCOUNT") {
-                SettingsItem(
-                    icon = Icons.Default.Edit,
-                    title = "Edit Profile",
-                    subtitle = "Change name, bio, photo",
-                    onClick = onEditProfile
-                )
                 SettingsItem(
                     icon = Icons.Default.Cloud,
                     title = "Manage Storage",
@@ -151,7 +145,7 @@ fun SettingsScreen(
                 )
             }
 
-            HorizontalDivider(color = Color(0xFF2C2C2E), thickness = 0.5.dp)
+            HorizontalDivider(color = if (isDarkMode) Color(0xFF2C2C2E) else Color.LightGray, thickness = 0.5.dp)
 
             // Preferences Section
             SettingsSection(title = "PREFERENCES") {
@@ -170,7 +164,7 @@ fun SettingsScreen(
                 )
             }
 
-            HorizontalDivider(color = Color(0xFF2C2C2E), thickness = 0.5.dp)
+            HorizontalDivider(color = if (isDarkMode) Color(0xFF2C2C2E) else Color.LightGray, thickness = 0.5.dp)
 
             // Support Section
             SettingsSection(title = "SUPPORT") {
@@ -188,7 +182,7 @@ fun SettingsScreen(
                 )
             }
 
-            HorizontalDivider(color = Color(0xFF2C2C2E), thickness = 0.5.dp)
+            HorizontalDivider(color = if (isDarkMode) Color(0xFF2C2C2E) else Color.LightGray, thickness = 0.5.dp)
 
             // Danger Zone
             SettingsSection(title = "DANGER ZONE") {
@@ -234,9 +228,9 @@ fun SettingsScreen(
                     Text("Cancel")
                 }
             },
-            containerColor = Color(0xFF1C1C1E),
-            titleContentColor = Color.White,
-            textContentColor = Color.White
+            containerColor = if (isDarkMode) Color(0xFF1C1C1E) else Color.White,
+            titleContentColor = if (isDarkMode) Color.White else Color.Black,
+            textContentColor = if (isDarkMode) Color.White else Color.Black
         )
     }
 
@@ -263,9 +257,9 @@ fun SettingsScreen(
                     Text("Cancel")
                 }
             },
-            containerColor = Color(0xFF1C1C1E),
-            titleContentColor = Color.White,
-            textContentColor = Color.White
+            containerColor = if (isDarkMode) Color(0xFF1C1C1E) else Color.White,
+            titleContentColor = if (isDarkMode) Color.White else Color.Black,
+            textContentColor = if (isDarkMode) Color.White else Color.Black
         )
     }
 
@@ -295,9 +289,9 @@ fun SettingsScreen(
                     Text("Cancel")
                 }
             },
-            containerColor = Color(0xFF1C1C1E),
-            titleContentColor = Color.White,
-            textContentColor = Color.White
+            containerColor = if (isDarkMode) Color(0xFF1C1C1E) else Color.White,
+            titleContentColor = if (isDarkMode) Color.White else Color.Black,
+            textContentColor = if (isDarkMode) Color.White else Color.Black
         )
     }
 
@@ -378,9 +372,9 @@ fun SettingsScreen(
                     Text("Close")
                 }
             },
-            containerColor = Color(0xFF1C1C1E),
-            titleContentColor = Color.White,
-            textContentColor = Color.White
+            containerColor = if (isDarkMode) Color(0xFF1C1C1E) else Color.White,
+            titleContentColor = if (isDarkMode) Color.White else Color.Black,
+            textContentColor = if (isDarkMode) Color.White else Color.Black
         )
     }
 }
@@ -675,9 +669,10 @@ private fun SettingsItem(
     subtitle: String? = null,
     onClick: () -> Unit,
     showArrow: Boolean = true,
-    titleColor: Color = Color.White,
-    iconBackgroundColor: Color = Color(0xFF2C2C2E),
-    iconColor: Color = if (titleColor == Color.Red) Color.Red else Color.White
+    isDarkMode: Boolean = true,
+    titleColor: Color = if (isDarkMode) Color.White else Color.Black,
+    iconBackgroundColor: Color = if (isDarkMode) Color(0xFF2C2C2E) else Color(0xFFE3F2FD),
+    iconColor: Color = if (titleColor == Color.Red) Color.Red else if (isDarkMode) Color.White else Color(0xFF1565C0)
 ) {
     Row(
         modifier = Modifier
@@ -726,6 +721,7 @@ private fun SettingsItem(
 @Composable
 private fun SettingsSection(
     title: String,
+    isDarkMode: Boolean = true,
     content: @Composable () -> Unit
 ) {
     Column(
@@ -735,7 +731,7 @@ private fun SettingsSection(
     ) {
         Text(
             text = title,
-            color = Color.Gray,
+            color = if (isDarkMode) Color.Gray else Color.DarkGray,
             fontSize = 12.sp,
             fontWeight = FontWeight.Bold,
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
