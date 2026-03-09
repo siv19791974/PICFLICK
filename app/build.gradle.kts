@@ -9,6 +9,14 @@ android {
     namespace = "com.picflick.app"
     compileSdk = 35
 
+    // Load signing properties from local.properties
+    val localProperties = java.util.Properties().apply {
+        val localPropertiesFile = rootProject.file("local.properties")
+        if (localPropertiesFile.exists()) {
+            load(localPropertiesFile.inputStream())
+        }
+    }
+
     defaultConfig {
         applicationId = "com.picflick.app"
         minSdk = 24
@@ -22,9 +30,9 @@ android {
     signingConfigs {
         create("release") {
             storeFile = file("keystore.jks")
-            storePassword = "picflick123"
-            keyAlias = "picflick"
-            keyPassword = "picflick123"
+            storePassword = localProperties.getProperty("STORE_PASSWORD", "")
+            keyAlias = localProperties.getProperty("KEY_ALIAS", "picflick")
+            keyPassword = localProperties.getProperty("KEY_PASSWORD", "")
         }
     }
 
