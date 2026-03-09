@@ -31,7 +31,6 @@ fun PrivacyPolicyScreen(
     onContactUs: () -> Unit = {}
 ) {
     val isDarkMode = ThemeManager.isDarkMode.value
-    val context = LocalContext.current
     val textColor = if (isDarkMode) Color.White else Color.Black
     val subtitleColor = if (isDarkMode) Color.Gray else Color.DarkGray
     val accentColor = Color(0xFF1565C0)
@@ -238,7 +237,7 @@ Continued use of PicFlick after changes constitutes acceptance of the revised po
                             )
                         }
                         Icon(
-                            imageVector = androidx.compose.material.icons.automirrored.filled.ArrowForward,
+                            imageVector = Icons.AutoMirrored.Filled.ArrowForward,
                             contentDescription = null,
                             tint = subtitleColor,
                             modifier = Modifier.size(20.dp)
