@@ -122,23 +122,14 @@ fun FilterScreen(
     val remainingUploads = maxDailyUploads - dailyUploadCount
     val canUpload = remainingUploads > 0
     
-    // Animation state for countdown
-    var previousRemainingUploads by remember { mutableIntStateOf(remainingUploads) }
+    // Animation state for countdown - now triggered immediately on upload click
     var showCountdownAnimation by remember { mutableStateOf(false) }
-    
-    // Watch for upload count changes and trigger animation
-    LaunchedEffect(dailyUploadCount) {
-        if (dailyUploadCount > 0 && remainingUploads < previousRemainingUploads) {
-            showCountdownAnimation = true
-            delay(1500) // Show animation for 1.5 seconds
-            showCountdownAnimation = false
-        }
-        previousRemainingUploads = remainingUploads
-    }
 
     // Upload function with loading state
     fun triggerUpload() {
         if (canUpload && !isUploading && bitmap != null) {
+            // Trigger countdown animation immediately when clicking tick
+            showCountdownAnimation = true
             isUploading = true
             scope.launch {
                 try {
@@ -154,6 +145,9 @@ fun FilterScreen(
                     }
                 } finally {
                     isUploading = false
+                    // Keep animation visible for a moment then hide
+                    delay(1000)
+                    showCountdownAnimation = false
                 }
             }
         }
