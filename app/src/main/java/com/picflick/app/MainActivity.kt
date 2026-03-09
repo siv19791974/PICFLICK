@@ -64,6 +64,7 @@ import com.picflick.app.ui.screens.ManageStorageScreen
 import com.picflick.app.ui.screens.MyPhotosScreen
 import com.picflick.app.ui.screens.NotificationsScreen
 import com.picflick.app.ui.screens.NotificationSettingsScreen
+import com.picflick.app.ui.screens.PlanOptionsScreen
 import com.picflick.app.ui.screens.ProfileScreen
 import com.picflick.app.ui.screens.SettingsScreen
 import com.picflick.app.ui.screens.PrivacyScreen
@@ -149,6 +150,7 @@ sealed class Screen {
     data object NotificationSettings : Screen()
     data object ManageStorage : Screen()           // NEW: Storage management
     data object SubscriptionStatus : Screen()        // NEW: Subscription details
+    data object PlanOptions : Screen()              // NEW: Plan comparison and purchase
 }
 
 /**
@@ -821,6 +823,7 @@ private fun AuthenticatedContent(
                 onManageStorage = { onScreenChange(Screen.ManageStorage) },
                 onPrivacySettings = { onScreenChange(Screen.Privacy) },
                 onNotificationsSettings = { onScreenChange(Screen.NotificationSettings) },
+                onPlanOptions = { onScreenChange(Screen.PlanOptions) },
                 onHelpSupport = { onScreenChange(Screen.Contact) },
                 onAbout = { onScreenChange(Screen.About) }
             )
@@ -893,6 +896,32 @@ private fun AuthenticatedContent(
                     },
                     onManagePayment = {
                         Toast.makeText(context, "Payment management coming soon!", Toast.LENGTH_SHORT).show()
+                    }
+                )
+            }
+
+            is Screen.PlanOptions -> {
+                val activity = context as? Activity
+                PlanOptionsScreen(
+                    userProfile = userProfile,
+                    billingViewModel = bvm,
+                    onBack = { onScreenChange(Screen.Settings) },
+                    onPurchase = { tier: SubscriptionTier ->
+                        activity?.let { act: Activity ->
+                            val product: SubscriptionProduct? = bvm.getProductForTier(tier)
+                            if (product != null) {
+                                bvm.purchaseSubscription(act, product)
+                            } else {
+                                // Show error if product not found
+                                android.widget.Toast.makeText(
+                                    context,
+                                    "Subscription products not loaded yet. Please try again in a moment.",
+                                    android.widget.Toast.LENGTH_LONG
+                                ).show()
+                                // Retry loading products
+                                bvm.queryProducts()
+                            }
+                        }
                     }
                 )
             }

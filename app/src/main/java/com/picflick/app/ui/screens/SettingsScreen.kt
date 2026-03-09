@@ -22,6 +22,7 @@ import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Cloud
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Upgrade
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -59,6 +60,7 @@ fun SettingsScreen(
     onManageStorage: () -> Unit = {},
     onPrivacySettings: () -> Unit = {},
     onNotificationsSettings: () -> Unit = {},
+    onPlanOptions: () -> Unit = {},
     onHelpSupport: () -> Unit = {},
     onAbout: () -> Unit = {}
 ) {
@@ -137,6 +139,12 @@ fun SettingsScreen(
                     title = "Notifications Settings",
                     subtitle = "Push, email preferences",
                     onClick = onNotificationsSettings
+                )
+                SettingsItem(
+                    icon = Icons.Default.Upgrade,
+                    title = "Plan Options",
+                    subtitle = "View all plans and upgrade",
+                    onClick = onPlanOptions
                 )
             }
 
