@@ -163,12 +163,11 @@ fun DoubleTapHeartAnimation(
                     .scale(scale * 1.1f)
             )
             
-            // Main red heart (half size: was 180, now 90)
+            // Main red heart (always RED for double-tap animation)
             Icon(
                 imageVector = Icons.Default.Favorite,
-                contentDescription = if (isLiked) "Liked" else "Unliked",
-                // Pure red when liked, white when unliked
-                tint = if (isLiked) Color.Red.copy(alpha = alpha) else Color.White.copy(alpha = alpha * 0.5f),
+                contentDescription = "Liked",
+                tint = Color.Red.copy(alpha = alpha),  // Always pure red!
                 modifier = Modifier
                     .size(90.dp)
                     .scale(scale)
