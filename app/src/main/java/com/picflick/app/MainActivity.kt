@@ -1335,7 +1335,6 @@ private fun AuthenticatedContent(
             is Screen.Privacy -> PrivacyScreen(
                 userProfile = userProfile,
                 onBack = { onScreenChange(Screen.Settings) },
-                onFindFriends = { onScreenChange(Screen.FindFriends) },
                 onPrivacyPolicy = { onScreenChange(Screen.PrivacyPolicy) }
             )
 

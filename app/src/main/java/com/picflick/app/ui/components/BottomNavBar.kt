@@ -36,7 +36,10 @@ fun BottomNavBar(
             },
             label = { Text("Home", color = if (currentRoute == "home") Color.White else Color.LightGray) },
             selected = currentRoute == "home",
-            onClick = { onNavigate("home") }
+            onClick = { onNavigate("home") },
+            colors = NavigationBarItemDefaults.colors(
+                indicatorColor = Color(0xFF1565C0)  // Blue indicator (matches upload tick)
+            )
         )
 
         // Messages
@@ -50,7 +53,10 @@ fun BottomNavBar(
             },
             label = { Text("Messages", color = if (currentRoute == "chats") Color.White else Color.LightGray) },
             selected = currentRoute == "chats",
-            onClick = { onNavigate("chats") }
+            onClick = { onNavigate("chats") },
+            colors = NavigationBarItemDefaults.colors(
+                indicatorColor = Color(0xFF1565C0)  // Blue indicator
+            )
         )
 
         // Upload (center elevated)
@@ -84,7 +90,10 @@ fun BottomNavBar(
             },
             label = { Text("Friends", color = if (currentRoute == "friends") Color.White else Color.LightGray) },
             selected = currentRoute == "friends",
-            onClick = { onNavigate("friends") }
+            onClick = { onNavigate("friends") },
+            colors = NavigationBarItemDefaults.colors(
+                indicatorColor = Color(0xFF1565C0)  // Blue indicator
+            )
         )
 
         // Profile
@@ -98,7 +107,10 @@ fun BottomNavBar(
             },
             label = { Text("Profile", color = if (currentRoute == "profile") Color.White else Color.LightGray) },
             selected = currentRoute == "profile",
-            onClick = { onNavigate("profile") }
+            onClick = { onNavigate("profile") },
+            colors = NavigationBarItemDefaults.colors(
+                indicatorColor = Color(0xFF1565C0)  // Blue indicator
+            )
         )
     }
 }

@@ -249,11 +249,11 @@ fun ProfileScreen(
             Spacer(modifier = Modifier.height(16.dp))
         }
 
-        // MODERN STATS GRID - Horizontal layout like Instagram (5 items)
+        // MODERN STATS GRID - Horizontal layout like Instagram (6 items)
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp),
+                .padding(horizontal = 8.dp),
             horizontalArrangement = Arrangement.SpaceEvenly
         ) {
             ModernStatItem(
@@ -750,10 +750,10 @@ private fun ModernStatItem(
                 color = textColor
             )
         }
-        Spacer(modifier = Modifier.height(4.dp))
+        Spacer(modifier = Modifier.height(2.dp))
         Text(
             text = label,
-            fontSize = 13.sp,
+            fontSize = 12.sp,
             color = subtitleColor,
             fontWeight = FontWeight.Medium
         )
@@ -815,10 +815,10 @@ private fun TierBadgeStatItem(
                 )
             }
         }
-        Spacer(modifier = Modifier.height(4.dp))
+        Spacer(modifier = Modifier.height(2.dp))
         Text(
             text = "Plan",
-            fontSize = 13.sp,
+            fontSize = 12.sp,
             color = subtitleColor,
             fontWeight = FontWeight.Medium
         )

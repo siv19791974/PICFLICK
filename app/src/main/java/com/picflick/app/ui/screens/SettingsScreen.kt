@@ -203,8 +203,8 @@ fun SettingsScreen(
             SettingsSection(title = "SUPPORT", isDarkMode = isDarkMode) {
                 SettingsItem(
                     icon = Icons.Default.Menu,
-                    title = "Help Center",
-                    subtitle = "FAQ, contact support",
+                    title = "Contact Us",
+                    subtitle = "Get help and support",
                     onClick = onHelpSupport
                 )
                 SettingsItem(

@@ -21,7 +21,7 @@ service cloud.firestore {
     function isAdmin() {
       return isAuthenticated() && 
         (request.auth.token.admin == true || 
-         request.auth.uid in ['YOUR_ADMIN_UID_HERE']);
+         request.auth.uid in ['cuj8dU3zNMN9TELEU2qmPR6Np5A2']);
     }
 
     function isNotBlockedBy(ownerId) {
@@ -117,7 +117,7 @@ INSTRUCTIONS:
 4. Click "Rules" tab at top
 5. DELETE all existing text
 6. PASTE the rules above (starting from "rules_version")
-7. REPLACE 'YOUR_ADMIN_UID_HERE' with your actual Firebase UID
+7. REPLACE 'YOU' with your actual Firebase UID
 8. Click "PUBLISH" button
 
 DONE!
