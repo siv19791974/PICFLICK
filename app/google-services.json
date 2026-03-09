@@ -9,7 +9,7 @@
       "client_info": {
         "mobilesdk_app_id": "1:830332240569:android:250a2708021e2467abd168",
         "android_client_info": {
-          "package_name": "com.example.picflick"
+          "package_name": "com.picflick.app"
         }
       },
       "oauth_client": [
@@ -17,7 +17,7 @@
           "client_id": "830332240569-mb7tlp00mootfl2m6g0n46soci6eh86f.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
-            "package_name": "com.example.picflick",
+            "package_name": "com.picflick.app",
             "certificate_hash": "4792ea62bbc6c349fe9a072b32952084c5a4d4be"
           }
         },
