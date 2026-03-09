@@ -36,7 +36,6 @@ import com.picflick.app.data.getLightColor
 import com.picflick.app.data.getMonthlyPrice
 import com.picflick.app.data.getQualityDescription
 import com.picflick.app.data.getStorageLimitGB
-import com.picflick.app.data.getStorageLimitBytes
 import com.picflick.app.viewmodel.BillingEvent
 import com.picflick.app.viewmodel.BillingViewModel
 import com.picflick.app.viewmodel.SubscriptionProduct
@@ -360,125 +359,6 @@ private fun BenefitRow(
             text = text,
             fontSize = 15.sp,
             color = Color(0xFF424242)
-        )
-    }
-}
-
-@Composable
-private fun UsageCard(
-    userProfile: UserProfile,
-    tier: SubscriptionTier
-) {
-    val dailyUsed = userProfile.dailyUploadsToday
-    val dailyLimit = tier.getDailyUploadLimit()
-    val dailyPercent = if (dailyLimit > 0 && dailyLimit != Int.MAX_VALUE) {
-        (dailyUsed * 100 / dailyLimit)
-    } else 0
-    
-    val storageUsed = userProfile.storageUsedBytes
-    val storageLimit = tier.getStorageLimitBytes()
-    val storagePercent = if (storageLimit > 0) {
-        (storageUsed * 100 / storageLimit).toInt()
-    } else 0
-    
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = Color.White
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-    ) {
-        Column(
-            modifier = Modifier.padding(20.dp)
-        ) {
-            Text(
-                text = "Usage This Month",
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Medium,
-                color = Color(0xFF424242)
-            )
-            
-            Spacer(modifier = Modifier.height(16.dp))
-            
-            // Uploads Progress
-            UsageProgressRow(
-                label = "Uploads",
-                used = dailyUsed,
-                limit = dailyLimit,
-                percent = dailyPercent,
-                unit = "photos"
-            )
-            
-            Spacer(modifier = Modifier.height(12.dp))
-            
-            // Storage Progress
-            val usedGB = storageUsed / (1024.0 * 1024.0 * 1024.0)
-            val limitGB = storageLimit / (1024.0 * 1024.0 * 1024.0)
-            
-            UsageProgressRow(
-                label = "Storage",
-                used = usedGB.toInt(),
-                limit = limitGB.toInt(),
-                percent = storagePercent,
-                unit = "GB"
-            )
-        }
-    }
-}
-
-@Composable
-private fun UsageProgressRow(
-    label: String,
-    used: Int,
-    limit: Int,
-    percent: Int,
-    unit: String
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(
-            text = label,
-            modifier = Modifier.width(70.dp),
-            fontSize = 14.sp,
-            color = Color.Gray
-        )
-        
-        // Progress Bar
-        Box(
-            modifier = Modifier
-                .weight(1f)
-                .height(8.dp)
-                .clip(RoundedCornerShape(4.dp))
-                .background(Color(0xFFE0E0E0))
-        ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxHeight()
-                    .fillMaxWidth(percent / 100f)
-                    .clip(RoundedCornerShape(4.dp))
-                    .background(
-                        when {
-                            percent > 80 -> Color.Red
-                            percent > 60 -> Color(0xFFFF8F00)
-                            else -> Color(0xFF00C853)
-                        }
-                    )
-            )
-        }
-        
-        Spacer(modifier = Modifier.width(12.dp))
-        
-        // Usage Text
-        Text(
-            text = if (limit == Int.MAX_VALUE) "$used" else "$used/$limit",
-            fontSize = 13.sp,
-            fontWeight = FontWeight.Medium,
-            color = Color(0xFF424242),
-            modifier = Modifier.width(60.dp)
         )
     }
 }

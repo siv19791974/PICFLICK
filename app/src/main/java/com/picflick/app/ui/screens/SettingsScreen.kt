@@ -57,7 +57,6 @@ fun SettingsScreen(
     onSignOut: () -> Unit,
     onDeleteAccount: () -> Unit = {},
     onManageStorage: () -> Unit = {},
-    onSubscriptionStatus: () -> Unit = {},
     onPrivacySettings: () -> Unit = {},
     onNotificationsSettings: () -> Unit = {},
     onHelpSupport: () -> Unit = {},
@@ -121,7 +120,6 @@ fun SettingsScreen(
             ProfileHeaderWithStorage(
                 userProfile = userProfile,
                 onManageStorage = onManageStorage,
-                onSubscriptionStatus = onSubscriptionStatus,
                 isDarkMode = isDarkMode
             )
 
@@ -391,7 +389,6 @@ fun SettingsScreen(
 private fun ProfileHeaderWithStorage(
     userProfile: UserProfile,
     onManageStorage: () -> Unit,
-    onSubscriptionStatus: () -> Unit,
     isDarkMode: Boolean
 ) {
     val tier = userProfile.subscriptionTier
@@ -554,16 +551,7 @@ private fun ProfileHeaderWithStorage(
                 text = "Manage Storage",
                 onClick = onManageStorage,
                 color = Color(0xFF1565C0),
-                modifier = Modifier.weight(1f),
-                isDarkMode = isDarkMode
-            )
-            
-            // Subscription Button
-            QuickActionButton(
-                text = "Subscription",
-                onClick = onSubscriptionStatus,
-                color = tierColor,
-                modifier = Modifier.weight(1f),
+                modifier = Modifier.fillMaxWidth(),
                 isDarkMode = isDarkMode
             )
         }
