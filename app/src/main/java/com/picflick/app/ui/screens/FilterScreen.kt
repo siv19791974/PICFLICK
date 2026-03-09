@@ -41,6 +41,9 @@ import coil3.toBitmap
 import com.picflick.app.R
 import com.picflick.app.data.PhotoFilter
 import com.picflick.app.data.UserProfile
+import com.picflick.app.data.getDailyUploadLimit
+import com.picflick.app.ui.theme.ThemeManager
+import com.picflick.app.ui.theme.isDarkModeBackground
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -55,7 +58,6 @@ fun FilterScreen(
     currentUser: UserProfile,
     friends: List<UserProfile>,
     dailyUploadCount: Int,
-    maxDailyUploads: Int = 5,
     onBack: () -> Unit,
     onUpload: (Uri, PhotoFilter, List<String>, String) -> Unit,
     onNavigateToFindFriends: () -> Unit = {},
@@ -66,6 +68,10 @@ fun FilterScreen(
     var selectedFilter by remember { mutableStateOf(PhotoFilter.ORIGINAL) }
     var bitmap by remember { mutableStateOf<Bitmap?>(null) }
     var isLoading by remember { mutableStateOf(true) }
+    val isDarkMode = ThemeManager.isDarkMode.value
+    
+    // Get daily upload limit from subscription tier
+    val maxDailyUploads = currentUser.subscriptionTier.getDailyUploadLimit()
     
     // Friend tagging state
     var taggedFriends by remember { mutableStateOf<List<UserProfile>>(emptyList()) }
@@ -155,7 +161,7 @@ fun FilterScreen(
                         Box(
                             modifier = Modifier
                                 .background(
-                                    if (isLimitReached) Color.Red else Color(0xFF87CEEB),
+                                    if (isLimitReached) Color.Red else if (isDarkMode) Color(0xFF1C1C1E) else Color(0xFF87CEEB),
                                     RoundedCornerShape(20.dp)
                                 )
                                 .padding(horizontal = 16.dp, vertical = 8.dp)
@@ -166,7 +172,7 @@ fun FilterScreen(
                                 } else {
                                     "$remainingUploads PHOTOS REMAINING TODAY"
                                 },
-                                color = Color.Black,
+                                color = if (isDarkMode) Color.White else Color.Black,
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Bold
                             )
@@ -179,12 +185,12 @@ fun FilterScreen(
                         onClick = onNavigateToCamera,
                         modifier = Modifier
                             .size(44.dp)
-                            .background(Color.Black.copy(alpha = 0.6f), CircleShape)
+                            .background(if (isDarkMode) Color.Black.copy(alpha = 0.6f) else Color.White.copy(alpha = 0.6f), CircleShape)
                     ) {
                         Icon(
                             imageVector = Icons.Default.Close,
                             contentDescription = stringResource(R.string.filter_back_camera),
-                            tint = Color.White,
+                            tint = if (isDarkMode) Color.White else Color.Black,
                             modifier = Modifier.size(24.dp)
                         )
                     }
@@ -199,43 +205,47 @@ fun FilterScreen(
                         modifier = Modifier
                             .size(44.dp)
                             .background(
-                                if (canUpload && !isLoading && bitmap != null) Color(0xFFD7ECFF) else Color.DarkGray,
+                                if (canUpload && !isLoading && bitmap != null) {
+                                    if (isDarkMode) Color(0xFF1565C0) else Color(0xFFD7ECFF)
+                                } else Color.DarkGray,
                                 CircleShape
                             )
                     ) {
                         if (isUploading) {
                             CircularProgressIndicator(
                                 modifier = Modifier.size(24.dp),
-                                color = Color.White,
+                                color = if (isDarkMode) Color.White else Color.Black,
                                 strokeWidth = 2.dp
                             )
                         } else {
                             Icon(
                                 imageVector = Icons.Default.Check,
                                 contentDescription = "Upload",
-                                tint = Color.White,
+                                tint = if (canUpload && !isLoading && bitmap != null) {
+                                    if (isDarkMode) Color.White else Color.Black
+                                } else Color.White,
                                 modifier = Modifier.size(24.dp)
                             )
                         }
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.Black
+                    containerColor = if (isDarkMode) Color.Black else Color(0xFF1565C0)
                 )
             )
         },
-        containerColor = Color.Black
+        containerColor = if (isDarkMode) Color.Black else Color(0xFFD7ECFF)
     ) { padding ->
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color.Black)
+                .background(if (isDarkMode) Color.Black else Color(0xFFD7ECFF))
                 .padding(padding)
         ) {
             if (isLoading) {
                 CircularProgressIndicator(
                     modifier = Modifier.align(Alignment.Center),
-                    color = Color.White
+                    color = if (isDarkMode) Color.White else Color(0xFF1565C0)
                 )
             } else {
                 bitmap?.let { bmp ->
@@ -247,21 +257,21 @@ fun FilterScreen(
                             Box(
                                 modifier = Modifier
                                     .fillMaxSize()
-                                    .background(Color.Black.copy(alpha = 0.7f)),
+                                    .background(if (isDarkMode) Color.Black.copy(alpha = 0.7f) else Color.White.copy(alpha = 0.7f)),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Column(
                                     horizontalAlignment = Alignment.CenterHorizontally
                                 ) {
                                     CircularProgressIndicator(
-                                        color = Color(0xFF87CEEB),
+                                        color = if (isDarkMode) Color(0xFF87CEEB) else Color(0xFF1565C0),
                                         strokeWidth = 3.dp,
                                         modifier = Modifier.size(48.dp)
                                     )
                                     Spacer(modifier = Modifier.height(12.dp))
                                     Text(
                                         text = "Uploading...",
-                                        color = Color.White,
+                                        color = if (isDarkMode) Color.White else Color.Black,
                                         fontSize = 16.sp,
                                         fontWeight = FontWeight.Medium
                                     )
@@ -287,7 +297,7 @@ fun FilterScreen(
                                 modifier = Modifier
                                     .fillMaxSize()
                                     .clip(RoundedCornerShape(8.dp))
-                                    .border(3.dp, Color.White.copy(alpha = 0.9f), RoundedCornerShape(8.dp))
+                                    .border(3.dp, if (isDarkMode) Color.White.copy(alpha = 0.9f) else Color.Black.copy(alpha = 0.9f), RoundedCornerShape(8.dp))
                                     .padding(3.dp),
                                 contentScale = ContentScale.Crop
                             )
@@ -297,7 +307,7 @@ fun FilterScreen(
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .background(Color.Black)
+                                .background(if (isDarkMode) Color.Black else Color(0xFFE3F2FD))
                                 .padding(vertical = 16.dp)
                         ) {
                             // Filter Icons (simplified - no text)
@@ -311,7 +321,8 @@ fun FilterScreen(
                                         filter = filter,
                                         isSelected = selectedFilter == filter,
                                         onClick = { selectedFilter = filter },
-                                        bitmap = bmp
+                                        bitmap = bmp,
+                                        isDarkMode = isDarkMode
                                     )
                                 }
                             }
@@ -328,7 +339,8 @@ fun FilterScreen(
                                             friend = friend,
                                             onRemove = {
                                                 taggedFriends = taggedFriends - friend
-                                            }
+                                            },
+                                            isDarkMode = isDarkMode
                                         )
                                     }
                                 }
@@ -344,14 +356,14 @@ fun FilterScreen(
                             ) {
                                 Text(
                                     text = "+",
-                                    color = Color(0xFF87CEEB),
+                                    color = if (isDarkMode) Color(0xFF87CEEB) else Color(0xFF1565C0),
                                     fontSize = 24.sp,
                                     fontWeight = FontWeight.Bold
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text(
                                     text = if (friends.isEmpty()) "No friends to tag" else "Tag Friends (${taggedFriends.size})",
-                                    color = Color(0xFF87CEEB)
+                                    color = if (isDarkMode) Color(0xFF87CEEB) else Color(0xFF1565C0)
                                 )
                             }
                             
@@ -359,17 +371,17 @@ fun FilterScreen(
                             OutlinedTextField(
                                 value = description,
                                 onValueChange = { description = it },
-                                placeholder = { Text(stringResource(R.string.filter_caption_placeholder), color = Color.White.copy(alpha = 0.5f)) },
+                                placeholder = { Text(stringResource(R.string.filter_caption_placeholder), color = if (isDarkMode) Color.White.copy(alpha = 0.5f) else Color.Black.copy(alpha = 0.5f)) },
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .padding(horizontal = 16.dp, vertical = 8.dp),
                                 colors = OutlinedTextFieldDefaults.colors(
-                                    focusedTextColor = Color.White,
-                                    unfocusedTextColor = Color.White,
-                                    focusedBorderColor = Color(0xFF87CEEB),
-                                    unfocusedBorderColor = Color.White.copy(alpha = 0.3f),
-                                    focusedContainerColor = Color(0xFF2C2C2E),
-                                    unfocusedContainerColor = Color(0xFF2C2C2E)
+                                    focusedTextColor = if (isDarkMode) Color.White else Color.Black,
+                                    unfocusedTextColor = if (isDarkMode) Color.White else Color.Black,
+                                    focusedBorderColor = if (isDarkMode) Color(0xFF87CEEB) else Color(0xFF1565C0),
+                                    unfocusedBorderColor = if (isDarkMode) Color.White.copy(alpha = 0.3f) else Color.Black.copy(alpha = 0.3f),
+                                    focusedContainerColor = if (isDarkMode) Color(0xFF2C2C2E) else Color.White,
+                                    unfocusedContainerColor = if (isDarkMode) Color(0xFF2C2C2E) else Color.White
                                 ),
                                 maxLines = 2,
                                 singleLine = false
@@ -414,7 +426,8 @@ private fun FilterIcon(
     filter: PhotoFilter,
     isSelected: Boolean,
     onClick: () -> Unit,
-    bitmap: Bitmap? = null
+    bitmap: Bitmap? = null,
+    isDarkMode: Boolean
 ) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -426,10 +439,14 @@ private fun FilterIcon(
                 .clip(RoundedCornerShape(16.dp))
                 .border(
                     width = if (isSelected) 4.dp else 2.dp,
-                    color = if (isSelected) Color(0xFF87CEEB) else Color.White.copy(alpha = 0.3f),
+                    color = if (isSelected) {
+                        if (isDarkMode) Color(0xFF87CEEB) else Color(0xFF1565C0)
+                    } else {
+                        if (isDarkMode) Color.White.copy(alpha = 0.3f) else Color.Black.copy(alpha = 0.3f)
+                    },
                     shape = RoundedCornerShape(16.dp)
                 )
-                .background(Color(0xFF2C2C2E)),
+                .background(if (isDarkMode) Color(0xFF2C2C2E) else Color.White),
             contentAlignment = Alignment.Center
         ) {
             if (bitmap != null) {
@@ -461,7 +478,11 @@ private fun FilterIcon(
         // Filter name
         Text(
             text = filter.displayName,
-            color = if (isSelected) Color(0xFF87CEEB) else Color.White.copy(alpha = 0.7f),
+            color = if (isSelected) {
+                if (isDarkMode) Color(0xFF87CEEB) else Color(0xFF1565C0)
+            } else {
+                if (isDarkMode) Color.White.copy(alpha = 0.7f) else Color.Black.copy(alpha = 0.7f)
+            },
             fontSize = 12.sp,
             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
         )
@@ -471,12 +492,13 @@ private fun FilterIcon(
 @Composable
 private fun TaggedFriendChip(
     friend: UserProfile,
-    onRemove: () -> Unit
+    onRemove: () -> Unit,
+    isDarkMode: Boolean
 ) {
     Box(
         modifier = Modifier
             .clip(RoundedCornerShape(16.dp))
-            .background(Color(0xFF87CEEB))
+            .background(if (isDarkMode) Color(0xFF87CEEB) else Color(0xFF1565C0))
             .padding(start = 12.dp, end = 4.dp, top = 4.dp, bottom = 4.dp)
     ) {
         Row(
@@ -484,7 +506,7 @@ private fun TaggedFriendChip(
         ) {
             Text(
                 text = friend.displayName.take(15),
-                color = Color.Black,
+                color = if (isDarkMode) Color.Black else Color.White,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Medium
             )
@@ -495,7 +517,7 @@ private fun TaggedFriendChip(
                 Icon(
                     imageVector = Icons.Default.Close,
                     contentDescription = "Remove",
-                    tint = Color.Black,
+                    tint = if (isDarkMode) Color.Black else Color.White,
                     modifier = Modifier.size(14.dp)
                 )
             }

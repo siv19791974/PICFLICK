@@ -111,19 +111,22 @@ fun FindFriendsScreen(
 
         // Content based on tab
         when (selectedTab) {
-            0 -> DiscoverTab(
+            0 ->             DiscoverTab(
                 viewModel = viewModel,
                 userProfile = userProfile,
                 onFollowClick = { user, action ->
                     when (action) {
                         "unfollow" -> viewModel.unfollowUser(userProfile.uid, user.uid)
                         "accept" -> viewModel.acceptFollowRequest(userProfile.uid, user)
-                        "send_request" -> viewModel.sendFollowRequest(userProfile.uid, user, userProfile)
+                        "send_request" -> {
+                            viewModel.sendFollowRequest(userProfile.uid, user, userProfile)
+                            android.widget.Toast.makeText(context, "Friend request sent to ${user.displayName}", android.widget.Toast.LENGTH_SHORT).show()
+                        }
                     }
                 },
                 onUserClick = onNavigateToProfile
             )
-            1 -> ContactsTab(
+            1 ->             ContactsTab(
                 viewModel = viewModel,
                 userProfile = userProfile,
                 hasPermission = hasContactPermission,
@@ -134,7 +137,10 @@ fun FindFriendsScreen(
                     when (action) {
                         "unfollow" -> viewModel.unfollowUser(userProfile.uid, user.uid)
                         "accept" -> viewModel.acceptFollowRequest(userProfile.uid, user)
-                        "send_request" -> viewModel.sendFollowRequest(userProfile.uid, user, userProfile)
+                        "send_request" -> {
+                            viewModel.sendFollowRequest(userProfile.uid, user, userProfile)
+                            android.widget.Toast.makeText(context, "Friend request sent to ${user.displayName}", android.widget.Toast.LENGTH_SHORT).show()
+                        }
                     }
                 },
                 onUserClick = onNavigateToProfile
@@ -577,16 +583,14 @@ private fun UserResultItem(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 4.dp),
-        // Removed clickable from card - only profile area should be clickable
     ) {
-        Row(
-            modifier = Modifier.padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically
+        Column(
+            modifier = Modifier.padding(12.dp)
         ) {
-            // Profile photo + user info - clickable to view profile
+            // Top row: Profile photo + user info - clickable to view profile
             Row(
                 modifier = Modifier
-                    .weight(1f)
+                    .fillMaxWidth()
                     .clickable { onUserClick() },
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -621,7 +625,7 @@ private fun UserResultItem(
                 Spacer(modifier = Modifier.width(12.dp))
 
                 // User info
-                Column {
+                Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = user.displayName,
                         style = MaterialTheme.typography.titleMedium,
@@ -649,23 +653,27 @@ private fun UserResultItem(
                     }
                 }
             }
-
-            Spacer(modifier = Modifier.width(8.dp))
-
-            // Follow button - separate from profile click area
+            
+            Spacer(modifier = Modifier.height(12.dp))
+            
+            // Follow button - NOW AT BOTTOM (full width)
             when {
                 isProcessing -> {
-                    // Show loading indicator while processing
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(40.dp),
-                        strokeWidth = 2.dp
-                    )
+                    Box(
+                        modifier = Modifier.fillMaxWidth(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(40.dp),
+                            strokeWidth = 2.dp
+                        )
+                    }
                 }
                 hasSentRequest -> {
-                    // Request sent, waiting for approval
                     OutlinedButton(
                         onClick = { /* Cancel functionality can be added */ },
                         shape = RoundedCornerShape(20.dp),
+                        modifier = Modifier.fillMaxWidth(),
                         colors = ButtonDefaults.outlinedButtonColors(
                             contentColor = Color.Gray
                         )
@@ -674,10 +682,10 @@ private fun UserResultItem(
                     }
                 }
                 hasReceivedRequest -> {
-                    // User sent us a request - show Accept button
                     Button(
                         onClick = onFollowClick,
                         shape = RoundedCornerShape(20.dp),
+                        modifier = Modifier.fillMaxWidth(),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = Color(0xFF4CAF50)
                         )
@@ -688,7 +696,8 @@ private fun UserResultItem(
                 isFollowing -> {
                     OutlinedButton(
                         onClick = onFollowClick,
-                        shape = RoundedCornerShape(20.dp)
+                        shape = RoundedCornerShape(20.dp),
+                        modifier = Modifier.fillMaxWidth()
                     ) {
                         Text("Following")
                     }
@@ -696,7 +705,8 @@ private fun UserResultItem(
                 else -> {
                     Button(
                         onClick = onFollowClick,
-                        shape = RoundedCornerShape(20.dp)
+                        shape = RoundedCornerShape(20.dp),
+                        modifier = Modifier.fillMaxWidth()
                     ) {
                         Text("Follow")
                     }
