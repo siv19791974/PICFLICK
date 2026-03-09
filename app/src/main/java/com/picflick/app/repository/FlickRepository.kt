@@ -588,6 +588,16 @@ class FlickRepository private constructor() {
     }
 
     /**
+     * Update user's default privacy setting
+     */
+    fun updateDefaultPrivacy(userId: String, privacy: String, onResult: (Result<Unit>) -> Unit) {
+        db.collection("users").document(userId)
+            .update("defaultPrivacy", privacy)
+            .addOnSuccessListener { onResult(Result.Success(Unit)) }
+            .addOnFailureListener { e -> onResult(Result.Error(e, "Failed to update privacy setting")) }
+    }
+
+    /**
      * Follow a user
      */
     fun followUser(currentUserId: String, targetUserId: String, onResult: (Result<Unit>) -> Unit) {

@@ -17,6 +17,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -39,11 +40,12 @@ fun PrivacyScreen(
     onBack: () -> Unit,
     onPrivacyPolicy: () -> Unit = {}
 ) {
+    val context = LocalContext.current
     val isDarkMode = ThemeManager.isDarkMode.value
     val repository = remember { FlickRepository.getInstance() }
     var blockedUsers by remember { mutableStateOf<List<UserProfile>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
-    var defaultPrivacy by remember { mutableStateOf("friends") } // Default to friends-only
+    var defaultPrivacy by remember { mutableStateOf(userProfile.defaultPrivacy) } // Load from userProfile
     var showUnblockDialog by remember { mutableStateOf<UserProfile?>(null) }
 
     // Theme-aware colors
@@ -131,7 +133,20 @@ fun PrivacyScreen(
             item {
                 DefaultPrivacySetting(
                     currentPrivacy = defaultPrivacy,
-                    onPrivacyChange = { defaultPrivacy = it },
+                    onPrivacyChange = { newPrivacy ->
+                        defaultPrivacy = newPrivacy
+                        // Save to Firestore
+                        repository.updateDefaultPrivacy(userProfile.uid, newPrivacy) { result ->
+                            if (result is com.picflick.app.data.Result.Success) {
+                                // Show success toast
+                                android.widget.Toast.makeText(
+                                    context,
+                                    "Privacy setting saved",
+                                    android.widget.Toast.LENGTH_SHORT
+                                ).show()
+                            }
+                        }
+                    },
                     isDarkMode = isDarkMode
                 )
             }
