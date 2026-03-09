@@ -24,6 +24,7 @@ import com.picflick.app.data.UserProfile
 import com.picflick.app.repository.FlickRepository
 import com.picflick.app.ui.theme.ThemeManager
 import com.picflick.app.ui.theme.isDarkModeBackground
+import com.picflick.app.ui.theme.isDarkModeSurface
 
 /**
  * Privacy Settings Screen - Privacy by Default
@@ -42,6 +43,13 @@ fun PrivacyScreen(
     var isLoading by remember { mutableStateOf(true) }
     var defaultPrivacy by remember { mutableStateOf("friends") } // Default to friends-only
     var showUnblockDialog by remember { mutableStateOf<UserProfile?>(null) }
+
+    // Theme-aware colors
+    val accentColor = Color(0xFF1565C0) // Blue for light mode
+    val textColor = if (isDarkMode) Color.White else Color.Black
+    val subtitleColor = if (isDarkMode) Color.Gray else Color.DarkGray
+    val cardBackground = isDarkModeSurface(isDarkMode)
+    val dividerColor = if (isDarkMode) Color(0xFF2C2C2E) else Color.LightGray
 
     // Load blocked users
     LaunchedEffect(userProfile.blockedUsers) {
@@ -114,25 +122,26 @@ fun PrivacyScreen(
         ) {
             // Privacy by Default Banner
             item {
-                PrivacyBanner()
+                PrivacyBanner(isDarkMode = isDarkMode)
             }
 
             // Default Privacy Setting
             item {
                 DefaultPrivacySetting(
                     currentPrivacy = defaultPrivacy,
-                    onPrivacyChange = { defaultPrivacy = it }
+                    onPrivacyChange = { defaultPrivacy = it },
+                    isDarkMode = isDarkMode
                 )
             }
 
             // Who Can Find You
             item {
-                WhoCanFindYouSection()
+                WhoCanFindYouSection(isDarkMode = isDarkMode)
             }
 
             // Blocked Users Section
             item {
-                BlockedUsersHeader(count = blockedUsers.size)
+                BlockedUsersHeader(count = blockedUsers.size, isDarkMode = isDarkMode)
             }
 
             if (isLoading) {
@@ -144,19 +153,20 @@ fun PrivacyScreen(
                         contentAlignment = Alignment.Center
                     ) {
                         CircularProgressIndicator(
-                            color = Color(0xFFD7ECFF)
+                            color = accentColor
                         )
                     }
                 }
             } else if (blockedUsers.isEmpty()) {
                 item {
-                    EmptyBlockedUsers()
+                    EmptyBlockedUsers(isDarkMode = isDarkMode)
                 }
             } else {
                 items(blockedUsers) { blockedUser ->
                     BlockedUserItem(
                         user = blockedUser,
-                        onUnblock = { showUnblockDialog = blockedUser }
+                        onUnblock = { showUnblockDialog = blockedUser },
+                        isDarkMode = isDarkMode
                     )
                 }
             }
@@ -180,27 +190,32 @@ fun PrivacyScreen(
                         showUnblockDialog = null
                     }
                 ) {
-                    Text("Unblock", color = Color(0xFFD7ECFF))
+                    Text("Unblock", color = Color(0xFF1565C0))
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showUnblockDialog = null }) {
-                    Text("Cancel")
+                    Text("Cancel", color = if (isDarkMode) Color.White else Color.Black)
                 }
             },
-            containerColor = Color(0xFF1C1C1E),
-            titleContentColor = Color.White,
-            textContentColor = Color.White
+            containerColor = cardBackground,
+            titleContentColor = textColor,
+            textContentColor = subtitleColor
         )
     }
 }
 
 @Composable
-private fun PrivacyBanner() {
+private fun PrivacyBanner(isDarkMode: Boolean) {
+    val accentColor = Color(0xFF1565C0)
+    val textColor = if (isDarkMode) Color.White else Color.Black
+    val subtitleColor = if (isDarkMode) Color.Gray else Color.DarkGray
+    val cardBackground = if (isDarkMode) Color(0xFF1C1C1E) else Color.White
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
-            containerColor = Color(0xFFD7ECFF).copy(alpha = 0.1f)
+            containerColor = if (isDarkMode) accentColor.copy(alpha = 0.1f) else accentColor.copy(alpha = 0.05f)
         ),
         shape = RoundedCornerShape(12.dp)
     ) {
@@ -213,22 +228,21 @@ private fun PrivacyBanner() {
             Icon(
                 imageVector = Icons.Default.Lock,
                 contentDescription = null,
-                tint = Color(0xFFD7ECFF),
+                tint = accentColor,
                 modifier = Modifier.size(24.dp)
             )
-
             Spacer(modifier = Modifier.width(12.dp))
 
             Column {
                 Text(
                     text = "Privacy by Default",
-                    color = Color(0xFFD7ECFF),
+                    color = accentColor,
                     fontWeight = FontWeight.Bold,
                     fontSize = 16.sp
                 )
                 Text(
                     text = "Only accepted friends can see and interact with your content. Blocked users can't do anything.",
-                    color = Color.Gray,
+                    color = subtitleColor,
                     fontSize = 13.sp
                 )
             }
@@ -239,14 +253,21 @@ private fun PrivacyBanner() {
 @Composable
 private fun DefaultPrivacySetting(
     currentPrivacy: String,
-    onPrivacyChange: (String) -> Unit
+    onPrivacyChange: (String) -> Unit,
+    isDarkMode: Boolean
 ) {
+    val textColor = if (isDarkMode) Color.White else Color.Black
+    val subtitleColor = if (isDarkMode) Color.Gray else Color.DarkGray
+    val cardBackground = if (isDarkMode) Color(0xFF1C1C1E) else Color.White
+    val accentColor = Color(0xFF1565C0)
+    val dividerColor = if (isDarkMode) Color(0xFF2C2C2E) else Color.LightGray
+
     Column(
         modifier = Modifier.fillMaxWidth()
     ) {
         Text(
             text = "DEFAULT PRIVACY",
-            color = Color.Gray,
+            color = subtitleColor,
             fontSize = 12.sp,
             fontWeight = FontWeight.Bold,
             modifier = Modifier.padding(bottom = 8.dp)
@@ -255,7 +276,7 @@ private fun DefaultPrivacySetting(
         Card(
             modifier = Modifier.fillMaxWidth(),
             colors = CardDefaults.cardColors(
-                containerColor = Color(0xFF1C1C1E)
+                containerColor = cardBackground
             ),
             shape = RoundedCornerShape(12.dp)
         ) {
@@ -266,11 +287,12 @@ private fun DefaultPrivacySetting(
                     title = "Friends Only",
                     subtitle = "Only your accepted friends can see",
                     selected = currentPrivacy == "friends",
-                    onClick = { onPrivacyChange("friends") }
+                    onClick = { onPrivacyChange("friends") },
+                    isDarkMode = isDarkMode
                 )
 
                 HorizontalDivider(
-                    color = Color(0xFF2C2C2E),
+                    color = dividerColor,
                     thickness = 0.5.dp,
                     modifier = Modifier.padding(vertical = 12.dp)
                 )
@@ -281,14 +303,15 @@ private fun DefaultPrivacySetting(
                     title = "Public",
                     subtitle = "Anyone can see (but blocked users still can't)",
                     selected = currentPrivacy == "public",
-                    onClick = { onPrivacyChange("public") }
+                    onClick = { onPrivacyChange("public") },
+                    isDarkMode = isDarkMode
                 )
             }
         }
 
         Text(
             text = "This sets the default for new posts. You can change it per post.",
-            color = Color.Gray,
+            color = subtitleColor,
             fontSize = 12.sp,
             modifier = Modifier.padding(top = 8.dp, start = 4.dp)
         )
@@ -301,8 +324,13 @@ private fun PrivacyOption(
     title: String,
     subtitle: String,
     selected: Boolean,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    isDarkMode: Boolean
 ) {
+    val textColor = if (isDarkMode) Color.White else Color.Black
+    val subtitleColor = if (isDarkMode) Color.Gray else Color.DarkGray
+    val accentColor = Color(0xFF1565C0)
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -313,22 +341,21 @@ private fun PrivacyOption(
         Icon(
             imageVector = icon,
             contentDescription = null,
-            tint = if (selected) Color(0xFFD7ECFF) else Color.Gray,
+            tint = if (selected) accentColor else subtitleColor,
             modifier = Modifier.size(24.dp)
         )
-
         Spacer(modifier = Modifier.width(12.dp))
 
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = title,
-                color = Color.White,
+                color = textColor,
                 fontWeight = FontWeight.Medium,
                 fontSize = 16.sp
             )
             Text(
                 text = subtitle,
-                color = Color.Gray,
+                color = subtitleColor,
                 fontSize = 13.sp
             )
         }
@@ -337,7 +364,7 @@ private fun PrivacyOption(
             Icon(
                 imageVector = Icons.Default.Check,
                 contentDescription = "Selected",
-                tint = Color(0xFFD7ECFF),
+                tint = accentColor,
                 modifier = Modifier.size(24.dp)
             )
         }
@@ -345,13 +372,17 @@ private fun PrivacyOption(
 }
 
 @Composable
-private fun WhoCanFindYouSection() {
+private fun WhoCanFindYouSection(isDarkMode: Boolean) {
+    val textColor = if (isDarkMode) Color.White else Color.Black
+    val subtitleColor = if (isDarkMode) Color.Gray else Color.DarkGray
+    val cardBackground = if (isDarkMode) Color(0xFF1C1C1E) else Color.White
+
     Column(
         modifier = Modifier.fillMaxWidth()
     ) {
         Text(
             text = "WHO CAN FIND YOU",
-            color = Color.Gray,
+            color = subtitleColor,
             fontSize = 12.sp,
             fontWeight = FontWeight.Bold,
             modifier = Modifier.padding(bottom = 8.dp)
@@ -360,7 +391,7 @@ private fun WhoCanFindYouSection() {
         Card(
             modifier = Modifier.fillMaxWidth(),
             colors = CardDefaults.cardColors(
-                containerColor = Color(0xFF1C1C1E)
+                containerColor = cardBackground
             ),
             shape = RoundedCornerShape(12.dp)
         ) {
@@ -372,7 +403,7 @@ private fun WhoCanFindYouSection() {
                     Icon(
                         imageVector = Icons.Default.PersonSearch,
                         contentDescription = null,
-                        tint = Color.White,
+                        tint = textColor,
                         modifier = Modifier.size(24.dp)
                     )
 
@@ -381,13 +412,13 @@ private fun WhoCanFindYouSection() {
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
                             text = "Friend Discovery",
-                            color = Color.White,
+                            color = textColor,
                             fontWeight = FontWeight.Medium,
                             fontSize = 16.sp
                         )
                         Text(
                             text = "People can find you by username only",
-                            color = Color.Gray,
+                            color = subtitleColor,
                             fontSize = 13.sp
                         )
                     }
@@ -398,14 +429,17 @@ private fun WhoCanFindYouSection() {
 }
 
 @Composable
-private fun BlockedUsersHeader(count: Int) {
+private fun BlockedUsersHeader(count: Int, isDarkMode: Boolean) {
+    val textColor = if (isDarkMode) Color.White else Color.Black
+    val subtitleColor = if (isDarkMode) Color.Gray else Color.DarkGray
+
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
             text = "BLOCKED USERS",
-            color = Color.Gray,
+            color = subtitleColor,
             fontSize = 12.sp,
             fontWeight = FontWeight.Bold
         )
@@ -419,45 +453,51 @@ private fun BlockedUsersHeader(count: Int) {
                 Text(text = count.toString())
             }
         }
+
+        Spacer(modifier = Modifier.weight(1f))
+
+        Text(
+            text = "$count blocked",
+            color = subtitleColor,
+            fontSize = 13.sp
+        )
     }
 }
 
 @Composable
-private fun EmptyBlockedUsers() {
+private fun EmptyBlockedUsers(isDarkMode: Boolean) {
+    val subtitleColor = if (isDarkMode) Color.Gray else Color.DarkGray
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
-            containerColor = Color(0xFF1C1C1E)
+            containerColor = if (isDarkMode) Color(0xFF1C1C1E) else Color.White
         ),
         shape = RoundedCornerShape(12.dp)
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-            .padding(32.dp),
+                .padding(32.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Icon(
                 imageVector = Icons.Default.Shield,
                 contentDescription = null,
-                tint = Color(0xFFD7ECFF),
+                tint = subtitleColor,
                 modifier = Modifier.size(48.dp)
             )
-
-            Spacer(modifier = Modifier.height(12.dp))
-
+            Spacer(modifier = Modifier.height(16.dp))
             Text(
-                text = "No Blocked Users",
-                color = Color.White,
-                fontWeight = FontWeight.Bold,
-                fontSize = 16.sp
+                text = "No blocked users",
+                color = subtitleColor,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Medium
             )
-
-            Spacer(modifier = Modifier.height(4.dp))
-
+            Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = "Blocked users can't see your content or interact with you",
-                color = Color.Gray,
+                text = "Block someone from their profile if needed",
+                color = subtitleColor,
                 fontSize = 13.sp
             )
         }
@@ -467,12 +507,17 @@ private fun EmptyBlockedUsers() {
 @Composable
 private fun BlockedUserItem(
     user: UserProfile,
-    onUnblock: () -> Unit
+    onUnblock: () -> Unit,
+    isDarkMode: Boolean
 ) {
+    val textColor = if (isDarkMode) Color.White else Color.Black
+    val subtitleColor = if (isDarkMode) Color.Gray else Color.DarkGray
+    val cardBackground = if (isDarkMode) Color(0xFF1C1C1E) else Color.White
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
-            containerColor = Color(0xFF1C1C1E)
+            containerColor = cardBackground
         ),
         shape = RoundedCornerShape(12.dp)
     ) {
@@ -482,53 +527,56 @@ private fun BlockedUserItem(
                 .padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Avatar
-            Box(
-                modifier = Modifier
-                    .size(48.dp)
-                    .clip(CircleShape)
-                    .background(Color(0xFF2C2C2E)),
-                contentAlignment = Alignment.Center
-            ) {
-                if (user.photoUrl.isNotEmpty()) {
-                    AsyncImage(
-                        model = user.photoUrl,
+            // Profile Photo
+            if (user.photoUrl.isNotEmpty()) {
+                AsyncImage(
+                    model = user.photoUrl,
+                    contentDescription = null,
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clip(CircleShape)
+                )
+            } else {
+                Box(
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clip(CircleShape)
+                        .background(subtitleColor),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Person,
                         contentDescription = null,
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = androidx.compose.ui.layout.ContentScale.Crop
-                    )
-                } else {
-                    Text(
-                        text = user.displayName.firstOrNull()?.uppercase() ?: "?",
-                        color = Color.White,
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.Bold
+                        tint = Color.White,
+                        modifier = Modifier.size(28.dp)
                     )
                 }
             }
 
             Spacer(modifier = Modifier.width(12.dp))
 
-            // Name & Info
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = user.displayName,
-                    color = Color.White,
+                    color = textColor,
                     fontWeight = FontWeight.Medium,
                     fontSize = 16.sp
                 )
                 Text(
-                    text = "Blocked - Can't see or interact",
-                    color = Color.Red,
+                    text = "Blocked user",
+                    color = subtitleColor,
                     fontSize = 13.sp
                 )
             }
 
             // Unblock Button
-            TextButton(
+            OutlinedButton(
                 onClick = onUnblock,
-                colors = ButtonDefaults.textButtonColors(
-                    contentColor = Color(0xFFD7ECFF)
+                border = ButtonDefaults.outlinedButtonBorder.copy(
+                    brush = androidx.compose.ui.graphics.SolidColor(Color(0xFF1565C0))
+                ),
+                colors = ButtonDefaults.outlinedButtonColors(
+                    contentColor = Color(0xFF1565C0)
                 )
             ) {
                 Text("Unblock")
