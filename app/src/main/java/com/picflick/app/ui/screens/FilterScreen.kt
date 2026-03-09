@@ -148,7 +148,6 @@ fun FilterScreen(
             .imePadding(),
         topBar = {
             TopAppBar(
-                modifier = Modifier.statusBarsPadding(),
                 title = {
                     // Centered countdown box
                     val remainingUploads = maxDailyUploads - dailyUploadCount
@@ -233,16 +232,16 @@ fun FilterScreen(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = if (isDarkMode) Color.Black else Color(0xFF1565C0)
+                    containerColor = Color.Black
                 )
             )
         },
-        containerColor = if (isDarkMode) Color.Black else Color.White
+        containerColor = isDarkModeBackground(isDarkMode)
     ) { padding ->
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(if (isDarkMode) Color.Black else Color(0xFFF5F5F5)) // Light gray in light mode
+                .background(isDarkModeBackground(isDarkMode))
                 .padding(padding)
         ) {
             if (isLoading) {

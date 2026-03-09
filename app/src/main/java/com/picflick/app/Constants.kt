@@ -123,6 +123,36 @@ object Constants {
     }
 
     /**
+     * Developer/Testing
+     */
+    object Developer {
+        const val DUMMY_FRIEND_ID = "firebender_dummy_001"
+        const val DUMMY_FRIEND_NAME = "Firebender"
+        const val DUMMY_FRIEND_EMAIL = "firebender@picflick.app"
+        const val DUMMY_FRIEND_BIO = "AI Assistant helping with PicFlick development! 🤖📸"
+        const val DUMMY_FRIEND_PHOTO = "https://ui-avatars.com/api/?name=Fire+Bender&background=1565C0&color=fff&size=256"
+        const val PREF_DUMMY_FRIEND_ENABLED = "dummy_friend_enabled"
+        
+        /**
+         * Create a dummy friend UserProfile for testing
+         */
+        fun createDummyFriendProfile(): com.picflick.app.data.UserProfile {
+            return com.picflick.app.data.UserProfile(
+                uid = DUMMY_FRIEND_ID,
+                email = DUMMY_FRIEND_EMAIL,
+                displayName = DUMMY_FRIEND_NAME,
+                photoUrl = DUMMY_FRIEND_PHOTO,
+                bio = DUMMY_FRIEND_BIO,
+                followers = listOf(), // Will be dynamically set
+                following = listOf(),
+                subscriptionTier = com.picflick.app.data.SubscriptionTier.PLUS,
+                totalPhotos = 42,
+                joinedAt = System.currentTimeMillis() - (30L * 24 * 60 * 60 * 1000) // Joined 30 days ago
+            )
+        }
+    }
+
+    /**
      * Cache and Performance
      */
     object Cache {

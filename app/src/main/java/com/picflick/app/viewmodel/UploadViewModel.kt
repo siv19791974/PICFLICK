@@ -102,6 +102,21 @@ class UploadViewModel : ViewModel() {
     }
 
     /**
+     * Increment the total photos count in Firestore
+     * This tracks lifetime photos uploaded (never decrements on delete)
+     */
+    private suspend fun incrementTotalPhotos(userId: String) {
+        try {
+            firestore.collection("users").document(userId)
+                .update("totalPhotos", com.google.firebase.firestore.FieldValue.increment(1))
+                .await()
+        } catch (e: Exception) {
+            // Silently fail - the upload succeeded, just the counter update failed
+            android.util.Log.w("UploadViewModel", "Failed to update total photos count", e)
+        }
+    }
+
+    /**
      * Upload a photo to Firebase Storage and create a Flick
      *
      * @param photoUri URI of the filtered photo
@@ -159,6 +174,9 @@ class UploadViewModel : ViewModel() {
                 // Increment daily count in Firestore (persists even if photo is deleted later)
                 incrementDailyUploadCount(userProfile.uid)
                 dailyUploadCount++
+
+                // Increment total photos count
+                incrementTotalPhotos(userProfile.uid)
 
                 uploadSuccess = true
                 

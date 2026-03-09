@@ -8,9 +8,11 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.picflick.app.Constants
 import com.picflick.app.data.Result
 import com.picflick.app.data.UserProfile
 import com.picflick.app.repository.FlickRepository
+import com.picflick.app.ui.theme.ThemeManager
 import kotlinx.coroutines.launch
 
 /**
@@ -53,14 +55,20 @@ class FriendsViewModel : ViewModel() {
     /**
      * Load users that the current user is following
      */
-    fun loadFollowingUsers(followingIds: List<String>) {
-        if (followingIds.isEmpty()) {
+    fun loadFollowingUsers(followingIds: List<String>, context: Context? = null) {
+        if (followingIds.isEmpty() && (context == null || !ThemeManager.isDummyFriendEnabled.value)) {
             followingUsers.clear()
             return
         }
 
         isLoading = true
         followingUsers.clear()
+
+        // Add dummy friend if enabled
+        if (context != null && ThemeManager.isDummyFriendEnabled.value) {
+            val dummyProfile = Constants.Developer.createDummyFriendProfile()
+            followingUsers.add(dummyProfile)
+        }
 
         // Load each user's profile
         followingIds.forEach { userId ->

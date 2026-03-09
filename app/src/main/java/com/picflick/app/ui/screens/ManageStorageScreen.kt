@@ -44,7 +44,6 @@ import com.picflick.app.data.getStorageLimitGB
 import com.picflick.app.data.getStorageLimitBytes
 import com.picflick.app.ui.theme.ThemeManager
 import com.picflick.app.ui.theme.isDarkModeBackground
-import com.picflick.app.ui.theme.isDarkModeSurface
 import com.picflick.app.viewmodel.BillingViewModel
 import com.picflick.app.viewmodel.SubscriptionProduct
 
@@ -92,7 +91,7 @@ fun ManageStorageScreen(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = if (isDarkMode) Color.Black else Color(0xFF1565C0)
+                    containerColor = Color.Black
                 )
             )
         },
@@ -139,17 +138,6 @@ fun ManageStorageScreen(
                     isDarkMode = isDarkMode
                 )
             }
-            
-            Spacer(modifier = Modifier.height(16.dp))
-            
-            // Storage Breakdown
-            StorageBreakdownCard(
-                photosCount = userProfile.totalPhotos,
-                usedGB = usedGB,
-                averagePhotoSize = if (userProfile.totalPhotos > 0) usedGB / userProfile.totalPhotos else 0.0,
-                quality = tier.getQualityDescription(),
-                isDarkMode = isDarkMode
-            )
             
             Spacer(modifier = Modifier.height(16.dp))
             
@@ -478,7 +466,7 @@ private fun UpgradeOptionsCard(
                 .padding(horizontal = 16.dp)
                 .clickable { onUpgrade(nextTier) },
             colors = CardDefaults.cardColors(
-                containerColor = if (isDarkMode) Color(0xFF2D2D2D) else Color(0xFFFFF8E1) // Dark gray in dark mode, light amber in light
+                containerColor = if (isDarkMode) Color(0xFF1C1C1E) else Color.White
             ),
             elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
         ) {
@@ -489,7 +477,7 @@ private fun UpgradeOptionsCard(
                 Icon(
                     imageVector = Icons.Default.Upgrade,
                     contentDescription = stringResource(R.string.content_desc_upgrade),
-                    tint = Color(0xFFFF8F00),
+                    tint = if (isDarkMode) Color(0xFFFF8F00) else Color(0xFF1565C0),
                     modifier = Modifier.size(32.dp)
                 )
                 
@@ -536,84 +524,6 @@ private fun UpgradeOptionsCard(
                 )
             }
         }
-    }
-}
-
-@Composable
-private fun StorageBreakdownCard(
-    photosCount: Int,
-    usedGB: Double,
-    averagePhotoSize: Double,
-    quality: String,
-    isDarkMode: Boolean
-) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = if (isDarkMode) Color(0xFF1C1C1E) else Color.White
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-    ) {
-        Column(
-            modifier = Modifier.padding(20.dp)
-        ) {
-            Text(
-                text = "Storage Breakdown",
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Medium,
-                color = if (isDarkMode) Color.White else Color(0xFF424242)
-            )
-            
-            Spacer(modifier = Modifier.height(16.dp))
-            
-            BreakdownRow(
-                label = "Photos stored",
-                value = "$photosCount",
-                isDarkMode = isDarkMode
-            )
-            
-            BreakdownRow(
-                label = "Average photo size",
-                value = String.format("%.1f MB", averagePhotoSize * 1024),
-                isDarkMode = isDarkMode
-            )
-            
-            BreakdownRow(
-                label = "Current quality",
-                value = quality,
-                isDarkMode = isDarkMode
-            )
-            
-            BreakdownRow(
-                label = "Storage used",
-                value = String.format("%.2f GB", usedGB),
-                isDarkMode = isDarkMode
-            )
-        }
-    }
-}
-
-@Composable
-private fun BreakdownRow(label: String, value: String, isDarkMode: Boolean) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 6.dp),
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
-        Text(
-            text = label,
-            fontSize = 14.sp,
-            color = if (isDarkMode) Color.Gray else Color.DarkGray
-        )
-        Text(
-            text = value,
-            fontSize = 14.sp,
-            fontWeight = FontWeight.Medium,
-            color = if (isDarkMode) Color(0xFFE0E0E0) else Color(0xFF424242)
-        )
     }
 }
 

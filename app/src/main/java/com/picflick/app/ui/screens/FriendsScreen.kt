@@ -20,6 +20,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
@@ -41,15 +42,17 @@ fun FriendsScreen(
     onFindFriendsClick: () -> Unit = {},
     onProfilePhotoClick: (UserProfile) -> Unit = {}
 ) {
+    val context = LocalContext.current
+
     // Load following users
-    LaunchedEffect(userProfile.following) {
-        viewModel.loadFollowingUsers(userProfile.following)
+    LaunchedEffect(userProfile.following, ThemeManager.isDummyFriendEnabled.value) {
+        viewModel.loadFollowingUsers(userProfile.following, context)
     }
 
     // Modern PullRefresh state
     val pullRefreshState = rememberPullRefreshState(
         refreshing = viewModel.isLoading,
-        onRefresh = { viewModel.loadFollowingUsers(userProfile.following) }
+        onRefresh = { viewModel.loadFollowingUsers(userProfile.following, context) }
     )
 
     val isDarkMode = ThemeManager.isDarkMode.value

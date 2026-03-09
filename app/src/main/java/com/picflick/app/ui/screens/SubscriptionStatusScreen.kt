@@ -102,7 +102,7 @@ fun SubscriptionStatusScreen(
                 )
             )
         },
-        containerColor = Color(0xFFF5F5F5)
+        containerColor = Color.Black
     ) { padding ->
         Column(
             modifier = Modifier
@@ -606,7 +606,7 @@ private fun TierComparisonRow(
                     text = price,
                     fontSize = 15.sp,
                     fontWeight = FontWeight.Medium,
-                    color = Color(0xFF424242)
+                    color = Color.DarkGray
                 )
             }
             onUpgrade != null -> {
