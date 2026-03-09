@@ -821,12 +821,22 @@ private fun AuthenticatedContent(
                 onHelpSupport = { onScreenChange(Screen.Contact) },
                 onAbout = { onScreenChange(Screen.About) },
                 onSummonFirebender = {
-                    // Create FIREBENDER as dummy friend
+                    // Create FIREBENDER as dummy friend with better feedback
                     kotlinx.coroutines.GlobalScope.launch {
                         try {
-                            com.picflick.app.utils.FirebenderDummyFriend.createFirebenderFriend(userProfile.uid)
-                            com.picflick.app.utils.FirebenderDummyFriend.createFirebenderPhoto()
-                            Toast.makeText(context, "🔥 FIREBENDER summoned! Check your friends!", Toast.LENGTH_LONG).show()
+                            val friendCreated = com.picflick.app.utils.FirebenderDummyFriend.createFirebenderFriend(userProfile.uid)
+                            val photoCreated = com.picflick.app.utils.FirebenderDummyFriend.createFirebenderPhoto()
+                            
+                            // Create a welcome message in chat
+                            val chatId = "chat_${userProfile.uid}_${com.picflick.app.utils.FirebenderDummyFriend.FIREBENDER_ID}"
+                            com.picflick.app.utils.FirebenderDummyFriend.createWelcomeMessage(chatId, userProfile.displayName)
+                            
+                            val message = when {
+                                friendCreated && photoCreated -> "🔥 FIREBENDER summoned with photos! Check Home & Chats!"
+                                friendCreated -> "🔥 FIREBENDER summoned! Photos may take a moment..."
+                                else -> "⚠️ FIREBENDER already exists or error occurred"
+                            }
+                            Toast.makeText(context, message, Toast.LENGTH_LONG).show()
                         } catch (e: Exception) {
                             Toast.makeText(context, "Failed to summon: ${e.message}", Toast.LENGTH_LONG).show()
                         }
