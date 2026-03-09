@@ -50,6 +50,8 @@ fun NotificationsScreen(
     userProfile: UserProfile,
     onBack: () -> Unit,
     onUserProfileClick: (String) -> Unit = {},
+    onPhotoClick: (flickId: String, imageUrl: String?, userId: String) -> Unit = { _, _, _ -> },
+    onChatClick: (chatId: String, otherUserId: String, otherUserName: String, otherUserPhoto: String) -> Unit = { _, _, _, _ -> },
     viewModel: NotificationViewModel = viewModel()
 ) {
     val notifications = viewModel.notifications
@@ -179,6 +181,31 @@ fun NotificationsScreen(
                             onClick = {
                                 if (!notification.isRead) {
                                     viewModel.markAsRead(notification.id)
+                                }
+                                // Navigate based on notification type
+                                when (notification.type) {
+                                    NotificationType.LIKE,
+                                    NotificationType.REACTION,
+                                    NotificationType.COMMENT,
+                                    NotificationType.MENTION,
+                                    NotificationType.PHOTO_ADDED -> {
+                                        // Navigate to photo
+                                        notification.flickId?.let { flickId ->
+                                            onPhotoClick(flickId, notification.flickImageUrl, notification.senderId)
+                                        }
+                                    }
+                                    NotificationType.FOLLOW -> {
+                                        // Navigate to follower's profile
+                                        onUserProfileClick(notification.senderId)
+                                    }
+                                    NotificationType.MESSAGE -> {
+                                        // Navigate to chat - need to get chat session
+                                        // For now, just show the chat list
+                                        onChatClick("", notification.senderId, notification.senderName, notification.senderPhotoUrl)
+                                    }
+                                    else -> {
+                                        // Default: just mark as read
+                                    }
                                 }
                             },
                             onDelete = {
