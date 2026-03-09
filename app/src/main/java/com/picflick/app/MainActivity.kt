@@ -21,6 +21,7 @@ import androidx.compose.material3.Badge
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.activity.compose.BackHandler
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -168,6 +169,42 @@ fun MainScreen(
     uploadViewModel: UploadViewModel = viewModel()
 ) {
     var currentScreen by remember { mutableStateOf<Screen>(Screen.Home) }
+    
+    // Handle back button - navigate within app instead of exiting
+    BackHandler(enabled = currentScreen != Screen.Home) {
+        when (currentScreen) {
+            // Most screens go back to Home
+            is Screen.Profile,
+            is Screen.MyPhotos,
+            is Screen.Friends,
+            is Screen.Chats,
+            is Screen.FindFriends,
+            is Screen.About,
+            is Screen.Contact,
+            is Screen.Notifications,
+            is Screen.Explore,
+            is Screen.Settings,
+            is Screen.Privacy,
+            is Screen.NotificationSettings,
+            is Screen.ManageStorage,
+            is Screen.SubscriptionStatus,
+            is Screen.PlanOptions,
+            is Screen.Filter -> {
+                currentScreen = Screen.Home
+            }
+            // UserProfile goes back to Friends
+            is Screen.UserProfile -> {
+                currentScreen = Screen.Friends
+            }
+            // ChatDetail goes back to Chats list
+            is Screen.ChatDetail -> {
+                currentScreen = Screen.Chats
+            }
+            // Already on Home - let Android handle (exit app)
+            else -> {}
+        }
+    }
+    
     val currentUser = authViewModel.currentUser
     val userProfile = authViewModel.userProfile
     val context = LocalContext.current // Get context for Toast
@@ -624,6 +661,11 @@ private fun AuthenticatedContent(
                 
                 // FullScreenPhotoViewer when photo selected
                 selectedPhoto?.let { flick ->
+                    // Handle back button to close photo viewer
+                    BackHandler {
+                        selectedPhoto = null
+                    }
+                    
                     // Check if this is a profile photo
                     val isProfilePhoto = flick.id.startsWith("profile_")
                     
@@ -785,6 +827,11 @@ private fun AuthenticatedContent(
                 
                 // FullScreenPhotoViewer for notification photos
                 selectedNotificationPhoto?.let { flick ->
+                    // Handle back button to close photo viewer
+                    BackHandler {
+                        selectedNotificationPhoto = null
+                    }
+                    
                     FullScreenPhotoViewer(
                         flick = flick,
                         currentUser = userProfile,
@@ -979,6 +1026,11 @@ private fun AuthenticatedContent(
                 
                 // FullScreenPhotoViewer when photo selected
                 selectedPhoto?.let { flick ->
+                    // Handle back button to close photo viewer
+                    BackHandler {
+                        selectedPhoto = null
+                    }
+                    
                     FullScreenPhotoViewer(
                         flick = flick,
                         currentUser = userProfile,
@@ -1190,6 +1242,11 @@ private fun AuthenticatedContent(
                     
                     // FullScreenPhotoViewer for photos
                     selectedUserPhoto?.let { flick ->
+                        // Handle back button to close photo viewer
+                        BackHandler {
+                            selectedUserPhoto = null
+                        }
+                        
                         val isUserProfilePhoto = flick.id.startsWith("profile_")
                         
                         FullScreenPhotoViewer(
