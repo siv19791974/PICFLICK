@@ -199,8 +199,8 @@ private fun DiscoverTab(
         }
     )
 
-    // Reload all users when screen opens
-    LaunchedEffect(userProfile.uid) {
+    // Reload all users when Discover tab is opened
+    LaunchedEffect(Unit) {
         viewModel.loadAllUsers(userProfile.uid)
     }
 
@@ -277,13 +277,13 @@ private fun DiscoverTab(
                         )
                         Spacer(modifier = Modifier.height(16.dp))
                         Text(
-                            text = "No suggestions yet",
+                            text = "No users found",
                             style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.Bold
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            text = "Search for friends by name or invite your contacts!",
+                            text = "Be the first to invite friends to PicFlick!",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
                             textAlign = androidx.compose.ui.text.style.TextAlign.Center
