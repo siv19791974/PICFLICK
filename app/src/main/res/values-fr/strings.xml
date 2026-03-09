@@ -147,6 +147,7 @@
     <string name="about_description">Partagez des photos avec vos amis dans un espace priv\u00e9 et sans publicit\u00e9.</string>
     <string name="about_privacy_policy">Politique de confidentialit\u00e9</string>
     <string name="about_terms">Conditions d\'utilisation</string>
+    <string name="about_contact">Contactez-nous</string>
     <string name="storage_photos_stored">Photos stock\u00e9es</string>
     <string name="storage_avg_photo_size">Taille moyenne des photos</string>
     <string name="storage_current_quality">Qualit\u00e9 actuelle</string>
