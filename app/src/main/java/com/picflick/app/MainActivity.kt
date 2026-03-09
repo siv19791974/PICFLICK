@@ -655,8 +655,9 @@ private fun AuthenticatedContent(
                         }
                     },
                     onRefresh = {
-                        // Reload user photos and stats
+                        // Reload user photos and stats, AND refresh profile data
                         profileViewModel.loadUserPhotos(userProfile.uid)
+                        authViewModel.reloadUserProfile() // Force refresh profile pic and bio
                     },
                     isLoading = profileViewModel.isLoading
                 )

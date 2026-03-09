@@ -41,8 +41,19 @@ class AuthViewModel : ViewModel() {
         // Listen for auth state changes
         auth.addAuthStateListener { firebaseAuth ->
             currentUser = firebaseAuth.currentUser
-            currentUser?.let { loadUserProfile(it.uid) }
+            // Only load profile if we don't already have one (prevents wiping on token refresh)
+            if (userProfile == null) {
+                currentUser?.let { loadUserProfile(it.uid) }
+            }
         }
+    }
+
+    /**
+     * Public function to reload user profile from Firestore
+     * Call this when you want to force a refresh (e.g., pull-to-refresh)
+     */
+    fun reloadUserProfile() {
+        currentUser?.let { loadUserProfile(it.uid) }
     }
 
     /**
