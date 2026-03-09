@@ -1160,6 +1160,30 @@ private fun AuthenticatedContent(
                                     }
                                 }
                             }
+                        },
+                        onBlockUser = {
+                            // Block the user
+                            repository.blockUser(userProfile.uid, target.uid) { result ->
+                                when (result) {
+                                    is com.picflick.app.data.Result.Success -> {
+                                        Toast.makeText(
+                                            context,
+                                            "${target.displayName} has been blocked",
+                                            Toast.LENGTH_LONG
+                                        ).show()
+                                        // Navigate back
+                                        onScreenChange(Screen.Home)
+                                    }
+                                    is com.picflick.app.data.Result.Error -> {
+                                        Toast.makeText(
+                                            context,
+                                            result.message ?: "Failed to block user",
+                                            Toast.LENGTH_LONG
+                                        ).show()
+                                    }
+                                    else -> {}
+                                }
+                            }
                         }
                     )
                     

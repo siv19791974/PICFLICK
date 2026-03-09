@@ -17,6 +17,7 @@ import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.pullrefresh.PullRefreshIndicator
 import androidx.compose.material.pullrefresh.pullRefresh
 import androidx.compose.material.pullrefresh.rememberPullRefreshState
+import androidx.compose.material.icons.filled.Block
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -52,6 +53,7 @@ fun UserProfileScreen(
     onProfilePhotoClick: () -> Unit = {},
     onAddFriend: () -> Unit = {},
     onMessageClick: () -> Unit = {},
+    onBlockUser: () -> Unit = {},
     onRefresh: () -> Unit = {}
 ) {
     // Pull-to-refresh state
@@ -200,6 +202,28 @@ fun UserProfileScreen(
                         Spacer(modifier = Modifier.width(8.dp))
                         Text("Add Friend")
                     }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // Block User button for non-friends
+                    OutlinedButton(
+                        onClick = onBlockUser,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(48.dp),
+                        shape = RoundedCornerShape(24.dp),
+                        colors = ButtonDefaults.outlinedButtonColors(
+                        contentColor = Color(0xFFFF4444) // Red color for block
+                    )
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Block,
+                            contentDescription = "Block user",
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Block User")
+                    }
                 }
             } else {
                 // FRIENDS - Show stats and photos
@@ -283,6 +307,29 @@ fun UserProfileScreen(
                     shape = RoundedCornerShape(24.dp)
                 ) {
                     Text("Send Message")
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Block User button for friends
+                OutlinedButton(
+                    onClick = onBlockUser,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 32.dp)
+                        .height(48.dp),
+                    shape = RoundedCornerShape(24.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        contentColor = Color(0xFFFF4444) // Red color for block
+                    )
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Block,
+                        contentDescription = "Block user",
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Block User")
                 }
 
                 Spacer(modifier = Modifier.height(32.dp))
