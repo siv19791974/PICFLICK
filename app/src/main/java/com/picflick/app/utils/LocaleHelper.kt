@@ -26,7 +26,8 @@ object LocaleHelper {
         "ko" to "한국어",
         "pt" to "Português",
         "sq" to "Shqip",
-        "hi" to "हिन्दी"
+        "hi" to "हिन्दी",
+        "el" to "Ελληνικά"
     )
     
     fun setLocale(context: Context, languageCode: String): Context {
