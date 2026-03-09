@@ -68,6 +68,19 @@ fun ProfileScreen(
     isLoading: Boolean = false
 ) {
     val isDarkMode = ThemeManager.isDarkMode.value
+    
+    // Keep photo URL stable - don't clear when profile temporarily reloads
+    var cachedPhotoUrl by remember { mutableStateOf(userProfile.photoUrl) }
+    
+    // Update cached photo only when we get a valid new URL
+    LaunchedEffect(userProfile.photoUrl) {
+        if (userProfile.photoUrl.isNotEmpty()) {
+            cachedPhotoUrl = userProfile.photoUrl
+        }
+    }
+    
+    // Use cached photo URL for display (falls back to userProfile.photoUrl if empty)
+    val displayPhotoUrl = cachedPhotoUrl.takeIf { it.isNotEmpty() } ?: userProfile.photoUrl
 
     // Image picker launcher
     val imagePicker = rememberLauncherForActivityResult(
@@ -76,11 +89,31 @@ fun ProfileScreen(
         uri?.let { onPhotoSelected(it) }
     }
     
-    // Bio edit dialog state
-    var showBioDialog by remember { mutableStateOf(false) }
-    var bioText by remember(userProfile.bio) { mutableStateOf(userProfile.bio) }
+    // Keep bio stable - don't clear when profile temporarily reloads
+    var cachedBio by remember { mutableStateOf(userProfile.bio) }
     
-    // Bio edit dialog
+    // Update cached bio only when we get a valid new bio
+    LaunchedEffect(userProfile.bio) {
+        if (userProfile.bio.isNotEmpty()) {
+            cachedBio = userProfile.bio
+        }
+    }
+    
+    // Use cached bio for display (falls back to userProfile.bio)
+    val displayBio = cachedBio.takeIf { it.isNotEmpty() } ?: userProfile.bio
+    
+    // Bio edit dialog state - use rememberSaveable to survive recompositions
+    var showBioDialog by remember { mutableStateOf(false) }
+    
+    // Keep bio text stable - only update when dialog opens, not on every profile change
+    var bioText by remember { mutableStateOf(userProfile.bio) }
+    
+    // Update bioText when dialog opens (not on every recomposition)
+    LaunchedEffect(showBioDialog) {
+        if (showBioDialog) {
+            bioText = displayBio
+        }
+    }
     if (showBioDialog) {
         AlertDialog(
             onDismissRequest = { showBioDialog = false },
@@ -169,7 +202,7 @@ fun ProfileScreen(
                         .clip(CircleShape)
                         .background(Color(0xFF2C2C2E))
                         .clickable { 
-                            if (userProfile.photoUrl.isNotEmpty()) {
+                            if (displayPhotoUrl.isNotEmpty()) {
                                 onProfilePhotoClick()
                             } else {
                                 imagePicker.launch("image/*")
@@ -179,7 +212,7 @@ fun ProfileScreen(
                 ) {
                     AsyncImage(
                         model = ImageRequest.Builder(LocalContext.current)
-                            .data(userProfile.photoUrl)
+                            .data(displayPhotoUrl)
                             .memoryCachePolicy(CachePolicy.ENABLED)
                             .diskCachePolicy(CachePolicy.ENABLED)
                             .build(),
@@ -190,7 +223,7 @@ fun ProfileScreen(
                     )
 
                     // Edit icon overlay
-                    if (userProfile.photoUrl.isNotEmpty()) {
+                    if (displayPhotoUrl.isNotEmpty()) {
                         Box(
                             modifier = Modifier
                                 .align(Alignment.BottomEnd)
@@ -224,16 +257,16 @@ fun ProfileScreen(
         )
 
         // Bio - clickable to edit
-        if (userProfile.bio.isNotEmpty()) {
+        if (displayBio.isNotEmpty()) {
             Spacer(modifier = Modifier.height(12.dp))
             Text(
-                text = userProfile.bio,
+                text = displayBio,
                 fontSize = 14.sp,
                 color = if (isDarkMode) Color(0xFF87CEEB) else Color.Black,
                 modifier = Modifier
                     .padding(horizontal = 32.dp)
                     .clickable {
-                        bioText = userProfile.bio
+                        bioText = displayBio
                         showBioDialog = true
                     }
             )
@@ -242,7 +275,7 @@ fun ProfileScreen(
         Spacer(modifier = Modifier.height(32.dp))
 
         // Quick Actions Chips - Visual flair without duplication
-        if (userProfile.bio.isEmpty()) {
+        if (displayBio.isEmpty()) {
             Text(
                 text = "✏️ Add a bio to tell people about yourself",
                 color = if (isDarkMode) Color(0xFF87CEEB) else Color.DarkGray,
