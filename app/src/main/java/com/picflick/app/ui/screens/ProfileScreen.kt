@@ -31,11 +31,14 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
+import coil3.request.ImageRequest
+import coil3.request.CachePolicy
 import com.picflick.app.data.Flick
 import com.picflick.app.data.UserProfile
 import com.picflick.app.data.getColor
@@ -174,7 +177,11 @@ fun ProfileScreen(
                     contentAlignment = Alignment.Center
                 ) {
                     AsyncImage(
-                        model = userProfile.photoUrl,
+                        model = ImageRequest.Builder(LocalContext.current)
+                            .data(userProfile.photoUrl)
+                            .memoryCachePolicy(CachePolicy.ENABLED)
+                            .diskCachePolicy(CachePolicy.ENABLED)
+                            .build(),
                         contentDescription = "Profile photo",
                         modifier = Modifier.fillMaxSize(),
                         error = painterResource(id = android.R.drawable.ic_menu_myplaces),
