@@ -25,7 +25,8 @@ import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.picflick.app.data.UserProfile
 import com.picflick.app.ui.components.ListItemShimmer
-import com.picflick.app.ui.theme.PicFlickBackground
+import com.picflick.app.ui.theme.isDarkModeBackground
+import com.picflick.app.ui.theme.ThemeManager
 import com.picflick.app.viewmodel.FriendsViewModel
 
 /**
@@ -51,10 +52,12 @@ fun FriendsScreen(
         onRefresh = { viewModel.loadFollowingUsers(userProfile.following) }
     )
 
+    val isDarkMode = ThemeManager.isDarkMode.value
+
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(PicFlickBackground)
+            .background(isDarkModeBackground(isDarkMode))
     ) {
         // NO BANNER - banner is now in MainActivity's Scaffold topBar!
 

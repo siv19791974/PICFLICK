@@ -14,17 +14,18 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.picflick.app.ui.components.LogoImage
-import com.picflick.app.ui.theme.PicFlickBackground
+import com.picflick.app.ui.theme.isDarkModeBackground
 import kotlinx.coroutines.delay
 
 /**
  * Custom Splash Screen
  * Uses LogoImage (same as home screen banner - 40dp height)
- * Light blue background (PicFlickBackground)
+ * Adapts to light/dark theme
  * Simple and clean - just logo + loading dots
  */
 @Composable
 fun SplashScreen(
+    isDarkMode: Boolean = false,
     onSplashComplete: () -> Unit
 ) {
     // Animation states
@@ -62,7 +63,7 @@ fun SplashScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(PicFlickBackground),
+            .background(isDarkModeBackground(isDarkMode)),
         contentAlignment = Alignment.Center
     ) {
         // Logo - SAME as home screen (40dp height)
@@ -129,7 +130,7 @@ fun SplashScreenPreview() {
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(PicFlickBackground),
+            .background(isDarkModeBackground(false)),
         contentAlignment = Alignment.Center
     ) {
         // Logo placeholder

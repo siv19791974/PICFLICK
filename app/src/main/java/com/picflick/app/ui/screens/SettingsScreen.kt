@@ -61,10 +61,8 @@ fun SettingsScreen(
     onPrivacySettings: () -> Unit = {},
     onNotificationsSettings: () -> Unit = {},
     onHelpSupport: () -> Unit = {},
-    onAbout: () -> Unit = {},
-    onSummonFirebender: () -> Unit = {},
-    onRemoveFirebender: () -> Unit = {},
-    isFirebenderFriend: Boolean = false
+    onAbout: () -> Unit = {}
+    // FIREBENDER callbacks removed - for developer testing only via Firebase Console
 ) {
     val context = LocalContext.current
     var showSignOutDialog by remember { mutableStateOf(false) }
@@ -214,38 +212,30 @@ fun SettingsScreen(
 
             Spacer(modifier = Modifier.height(32.dp))
             
-            // Debug Section (Hidden in production)
+            // Debug Section (Hidden in production - Developer only)
+            // NOTE: FIREBENDER summon/remove is disabled for users.
+            // For testing, use Firebase Console directly.
+            /*
             SettingsSection(title = "DEBUG") {
                 if (isFirebenderFriend) {
-                    // Show Remove button if FIREBENDER is already a friend
-                    var removeStatus by remember { mutableStateOf("Remove FIREBENDER") }
-                    
                     SettingsItem(
                         icon = Icons.Default.Person,
-                        title = removeStatus,
+                        title = "Remove FIREBENDER",
                         subtitle = "Remove AI assistant from friends",
-                        onClick = {
-                            onRemoveFirebender()
-                            removeStatus = "Removed!"
-                        },
+                        onClick = onRemoveFirebender,
                         showArrow = false
                     )
                 } else {
-                    // Show Summon button if FIREBENDER is not a friend
-                    var summonStatus by remember { mutableStateOf("Summon FIREBENDER") }
-                    
                     SettingsItem(
                         icon = Icons.Default.Person,
-                        title = summonStatus,
+                        title = "Summon FIREBENDER",
                         subtitle = "Add AI assistant as friend",
-                        onClick = {
-                            onSummonFirebender()
-                            summonStatus = "Summoned! Check friends"
-                        },
+                        onClick = onSummonFirebender,
                         showArrow = false
                     )
                 }
             }
+            */
         }
     }
 

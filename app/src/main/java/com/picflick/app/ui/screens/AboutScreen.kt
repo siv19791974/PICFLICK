@@ -10,7 +10,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.picflick.app.ui.theme.PicFlickBackground
+import com.picflick.app.ui.theme.isDarkModeBackground
+import com.picflick.app.ui.theme.ThemeManager
 
 /**
  * About screen with app information
@@ -19,10 +20,12 @@ import com.picflick.app.ui.theme.PicFlickBackground
 fun AboutScreen(
     onBack: () -> Unit
 ) {
+    val isDarkMode = ThemeManager.isDarkMode.value
+    
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(PicFlickBackground)
+            .background(isDarkModeBackground(isDarkMode))
     ) {
         // NO BANNER - banner is now in MainActivity's Scaffold topBar!
         // Simple back button only

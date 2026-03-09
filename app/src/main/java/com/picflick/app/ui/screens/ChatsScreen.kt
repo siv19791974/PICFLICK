@@ -29,7 +29,8 @@ import coil3.compose.AsyncImage
 import com.picflick.app.R
 import com.picflick.app.data.ChatSession
 import com.picflick.app.data.UserProfile
-import com.picflick.app.ui.theme.PicFlickBackground
+import com.picflick.app.ui.theme.isDarkModeBackground
+import com.picflick.app.ui.theme.ThemeManager
 import com.picflick.app.viewmodel.ChatViewModel
 import java.text.SimpleDateFormat
 import java.util.*
@@ -58,10 +59,12 @@ fun ChatsScreen(
         onRefresh = { viewModel.loadChatSessions(userProfile.uid) }
     )
 
+    val isDarkMode = ThemeManager.isDarkMode.value
+
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(PicFlickBackground)
+            .background(isDarkModeBackground(isDarkMode))
     ) {
         // NO BANNER - banner is in MainActivity
 

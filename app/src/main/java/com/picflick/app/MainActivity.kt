@@ -115,9 +115,11 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun AppContent() {
     var showSplash by remember { mutableStateOf(true) }
+    val isDarkMode = ThemeManager.isDarkMode.value
 
     if (showSplash) {
         SplashScreen(
+            isDarkMode = isDarkMode,
             onSplashComplete = { showSplash = false }
         )
     } else {
@@ -822,46 +824,9 @@ private fun AuthenticatedContent(
                 onPrivacySettings = { onScreenChange(Screen.Privacy) },
                 onNotificationsSettings = { onScreenChange(Screen.NotificationSettings) },
                 onHelpSupport = { onScreenChange(Screen.Contact) },
-                onAbout = { onScreenChange(Screen.About) },
-                onSummonFirebender = {
-                    // Create FIREBENDER as dummy friend with better feedback
-                    scope.launch {
-                        try {
-                            val friendCreated = com.picflick.app.utils.FirebenderDummyFriend.createFirebenderFriend(userProfile.uid)
-                            val photoCreated = com.picflick.app.utils.FirebenderDummyFriend.createFirebenderPhoto()
-                            
-                            // Create a welcome message in chat
-                            val chatId = "chat_${userProfile.uid}_${com.picflick.app.utils.FirebenderDummyFriend.FIREBENDER_ID}"
-                            com.picflick.app.utils.FirebenderDummyFriend.createWelcomeMessage(chatId, userProfile.displayName)
-                            
-                            val message = when {
-                                friendCreated && photoCreated -> "🔥 FIREBENDER summoned with photos! Check Home & Chats!"
-                                friendCreated -> "🔥 FIREBENDER summoned! Photos may take a moment..."
-                                else -> "⚠️ FIREBENDER already exists or error occurred"
-                            }
-                            Toast.makeText(context, message, Toast.LENGTH_LONG).show()
-                        } catch (e: Exception) {
-                            Toast.makeText(context, "Failed to summon: ${e.message}", Toast.LENGTH_LONG).show()
-                        }
-                    }
-                },
-                onRemoveFirebender = {
-                    // Remove FIREBENDER as friend
-                    scope.launch {
-                        try {
-                            val removed = com.picflick.app.utils.FirebenderDummyFriend.removeFirebenderFriend(userProfile.uid)
-                            val message = if (removed) {
-                                "🔥 FIREBENDER removed from friends"
-                            } else {
-                                "⚠️ Could not remove FIREBENDER"
-                            }
-                            Toast.makeText(context, message, Toast.LENGTH_LONG).show()
-                        } catch (e: Exception) {
-                            Toast.makeText(context, "Failed to remove: ${e.message}", Toast.LENGTH_LONG).show()
-                        }
-                    }
-                },
-                isFirebenderFriend = userProfile.following.contains("firebender_ai_001")
+                onAbout = { onScreenChange(Screen.About) }
+                // FIREBENDER callbacks removed - for developer testing only
+                // Use Firebase Console to manually add/remove FIREBENDER for testing
             )
 
             is Screen.ManageStorage -> {
