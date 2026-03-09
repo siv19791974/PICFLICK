@@ -19,6 +19,7 @@ import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Cloud
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -204,6 +205,22 @@ fun SettingsScreen(
             }
 
             Spacer(modifier = Modifier.height(32.dp))
+            
+            // Debug Section (Hidden in production)
+            SettingsSection(title = "DEBUG") {
+                var firebenderStatus by remember { mutableStateOf("Summon FIREBENDER") }
+                
+                SettingsItem(
+                    icon = Icons.Default.Person,
+                    title = firebenderStatus,
+                    subtitle = "Add AI assistant as friend",
+                    onClick = {
+                        // This will be handled in MainActivity
+                        firebenderStatus = "Summoning..."
+                    },
+                    showArrow = false
+                )
+            }
         }
     }
 
