@@ -841,14 +841,3 @@ private fun getStorageSubtitle(userProfile: UserProfile): String {
     return "$usedGB GB / $totalGB GB used"
 }
 
-/**
- * Get subscription subtitle text for the Subscription settings item
- */
-private fun getSubscriptionSubtitle(userProfile: UserProfile): String {
-    val tier = userProfile.getTier()
-    return if (userProfile.isFounder) {
-        "${tier.getDisplayName()} - Founder (Free)"
-    } else {
-        tier.getDisplayName()
-    }
-}
