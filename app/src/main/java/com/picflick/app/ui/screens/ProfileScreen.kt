@@ -767,10 +767,10 @@ private fun TierBadgeStatItem(
     Column(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // Colored tier badge/dot
+        // Colored tier badge - sized to match 22.sp text height
         Box(
             modifier = Modifier
-                .size(22.dp)
+                .size(26.dp)  // Slightly larger to align with 22.sp text visually
                 .clip(CircleShape)
                 .background(
                     brush = Brush.sweepGradient(
@@ -790,7 +790,7 @@ private fun TierBadgeStatItem(
         )
         Spacer(modifier = Modifier.height(4.dp))
         Text(
-            text = "PLAN",
+            text = "Plan",
             fontSize = 13.sp,
             color = if (isDarkMode) Color.Gray else Color.DarkGray,
             fontWeight = FontWeight.Medium
