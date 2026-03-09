@@ -47,6 +47,7 @@ firebase-firestore = { group = "com.google.firebase", name = "firebase-firestore
 firebase-storage = { group = "com.google.firebase", name = "firebase-storage-ktx" }
 firebase-messaging = { group = "com.google.firebase", name = "firebase-messaging-ktx" }
 firebase-functions = { group = "com.google.firebase", name = "firebase-functions-ktx" }
+firebase-crashlytics = { group = "com.google.firebase", name = "firebase-crashlytics-ktx" }
 
 # Google Sign In (DEPRECATED - Use Credential Manager below)
 # google-play-services-auth = { group = "com.google.android.gms", name = "play-services-auth", version = "21.3.0" }
