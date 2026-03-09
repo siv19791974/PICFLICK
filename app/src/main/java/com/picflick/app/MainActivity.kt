@@ -152,6 +152,7 @@ sealed class Screen {
     data object ManageStorage : Screen()           // NEW: Storage management
     data object SubscriptionStatus : Screen()        // NEW: Subscription details
     data object PlanOptions : Screen()              // NEW: Plan comparison and purchase
+    data object PrivacyPolicy : Screen()            // NEW: Privacy Policy screen
 }
 
 /**
@@ -1334,12 +1335,7 @@ private fun AuthenticatedContent(
                 userProfile = userProfile,
                 onBack = { onScreenChange(Screen.Settings) },
                 onFindFriends = { onScreenChange(Screen.FindFriends) },
-                onPrivacyPolicy = {
-                    // Open privacy policy in browser
-                    val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, 
-                        Uri.parse("https://picflick.app/privacy"))
-                    context.startActivity(intent)
-                }
+                onPrivacyPolicy = { onScreenChange(Screen.PrivacyPolicy) }
             )
 
             is Screen.NotificationSettings -> NotificationSettingsScreen(
@@ -1350,6 +1346,10 @@ private fun AuthenticatedContent(
                     Toast.makeText(context, "Notification settings saved!", Toast.LENGTH_SHORT).show()
                     onScreenChange(Screen.Settings)
                 }
+            )
+
+            is Screen.PrivacyPolicy -> PrivacyPolicyScreen(
+                onBack = { onScreenChange(Screen.Privacy) }
             )
     }
 }
