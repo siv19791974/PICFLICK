@@ -671,6 +671,23 @@ private fun FriendsTab(
                 contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
+                // Find Friends button at top - always visible
+                item {
+                    Button(
+                        onClick = onFindFriendsClick,
+                        shape = RoundedCornerShape(20.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Person,
+                            contentDescription = null,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Find Friends")
+                    }
+                }
+                
                 items(followingUsers) { user ->
                     FriendItem(
                         user = user,
