@@ -5,49 +5,72 @@ import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.dynamicDarkColorScheme
-import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.SideEffect
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
+import androidx.core.view.WindowCompat
 
-private val DarkColorScheme = darkColorScheme(
-    primary = Purple80,
-    secondary = PurpleGrey80,
-    tertiary = Pink80
+// ============================================
+// PICFLICK COLOR SCHEMES
+// ============================================
+
+private val PicFlickLightColorScheme = lightColorScheme(
+    primary = PicFlickAccent,
+    secondary = PicFlickAccent,
+    tertiary = Pink40,
+    background = PicFlickLightBackground,
+    surface = PicFlickLightSurface,
+    onBackground = PicFlickLightOnBackground,
+    onSurface = PicFlickLightOnSurface,
+    onPrimary = Color.Black,
+    onSecondary = Color.Black
 )
 
-private val LightColorScheme = lightColorScheme(
-    primary = Purple40,
-    secondary = PurpleGrey40,
-    tertiary = Pink40
-
-    /* Other default colors to override
-    background = Color(0xFFFFFBFE),
-    surface = Color(0xFFFFFBFE),
+private val PicFlickDarkColorScheme = darkColorScheme(
+    primary = PicFlickAccent,
+    secondary = PicFlickAccent,
+    tertiary = Pink80,
+    background = PicFlickDarkBackground,
+    surface = PicFlickDarkSurface,
+    onBackground = PicFlickDarkOnBackground,
+    onSurface = PicFlickDarkOnSurface,
     onPrimary = Color.White,
-    onSecondary = Color.White,
-    onTertiary = Color.White,
-    onBackground = Color(0xFF1C1B1F),
-    onSurface = Color(0xFF1C1B1F),
-    */
+    onSecondary = Color.White
 )
 
+/**
+ * PicFlickTheme - Main theme composable
+ * Respects user preference from ThemeManager, falls back to system default
+ */
 @Composable
 fun PicFlickTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
-    // Dynamic color is available on Android 12+
-    dynamicColor: Boolean = true,
     content: @Composable () -> Unit
 ) {
-    val colorScheme = when {
-        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
-            val context = LocalContext.current
-            if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
-        }
+    val context = LocalContext.current
+    
+    // Use saved preference if available, otherwise use system default
+    val isDarkModeEnabled = ThemeManager.isDarkMode.value || 
+        (ThemeManager.isDarkMode.value == false && ThemeManager.isDarkModeEnabled(context)) ||
+        darkTheme
+    
+    val colorScheme = if (isDarkModeEnabled) {
+        PicFlickDarkColorScheme
+    } else {
+        PicFlickLightColorScheme
+    }
 
-        darkTheme -> DarkColorScheme
-        else -> LightColorScheme
+    val view = LocalView.current
+    if (!view.isInEditMode) {
+        SideEffect {
+            val window = (view.context as Activity).window
+            window.statusBarColor = PicFlickBannerBackground.toArgb()
+            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = !isDarkModeEnabled
+        }
     }
 
     MaterialTheme(
