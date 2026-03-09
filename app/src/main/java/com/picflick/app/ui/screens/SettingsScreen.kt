@@ -64,7 +64,8 @@ fun SettingsScreen(
     onHelpSupport: () -> Unit = {},
     onAbout: () -> Unit = {},
     onPhilosophy: () -> Unit = {},
-    onLegal: () -> Unit = {}
+    onLegal: () -> Unit = {},
+    onProfileClick: () -> Unit = {}
 ) {
     val context = LocalContext.current
     var showSignOutDialog by remember { mutableStateOf(false) }
@@ -152,6 +153,7 @@ fun SettingsScreen(
             ProfileHeaderWithStorage(
                 userProfile = userProfile,
                 onManageStorage = onManageStorage,
+                onProfileClick = onProfileClick,
                 isDarkMode = isDarkMode
             )
 
@@ -424,6 +426,7 @@ fun SettingsScreen(
 private fun ProfileHeaderWithStorage(
     userProfile: UserProfile,
     onManageStorage: () -> Unit,
+    onProfileClick: () -> Unit,
     isDarkMode: Boolean
 ) {
     val tier = userProfile.subscriptionTier
@@ -439,9 +442,11 @@ private fun ProfileHeaderWithStorage(
             .fillMaxWidth()
             .padding(16.dp)
     ) {
-        // Top row: Profile Photo with Tier Ring + Name/Storage
+        // Top row: Profile Photo with Tier Ring + Name/Storage - CLICKABLE to go to profile
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { onProfileClick() },
             verticalAlignment = Alignment.CenterVertically
         ) {
             // Profile Photo with Tier Color Ring

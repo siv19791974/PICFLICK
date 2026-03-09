@@ -891,7 +891,8 @@ private fun AuthenticatedContent(
                 onHelpSupport = { onScreenChange(Screen.Contact) },
                 onAbout = { onScreenChange(Screen.About) },
                 onPhilosophy = { onScreenChange(Screen.Philosophy) },
-                onLegal = { onScreenChange(Screen.Legal) }
+                onLegal = { onScreenChange(Screen.Legal) },
+                onProfileClick = { onScreenChange(Screen.Profile) }
             )
 
             is Screen.ManageStorage -> {
