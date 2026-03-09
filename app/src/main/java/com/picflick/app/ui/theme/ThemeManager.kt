@@ -1,20 +1,23 @@
 package com.picflick.app.ui.theme
 
 import android.content.Context
-import android.content.SharedPreferences
 import androidx.compose.runtime.mutableStateOf
 import androidx.core.content.edit
 
 /**
- * ThemeManager - Manages app theme state (Light/Dark mode)
- * Persists user preference to SharedPreferences
+ * ThemeManager - Manages app theme state (Light/Dark mode) and developer settings
+ * Persists user preferences to SharedPreferences
  */
 object ThemeManager {
     private const val PREFS_NAME = "picflick_theme_prefs"
     private const val KEY_DARK_MODE = "is_dark_mode"
+    private const val KEY_DUMMY_FRIEND = "dummy_friend_enabled"
     
     // Observable state for Compose recomposition
     var isDarkMode = mutableStateOf(false)
+        private set
+    
+    var isDummyFriendEnabled = mutableStateOf(false)
         private set
     
     /**
@@ -23,6 +26,7 @@ object ThemeManager {
     fun init(context: Context) {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         isDarkMode.value = prefs.getBoolean(KEY_DARK_MODE, false)
+        isDummyFriendEnabled.value = prefs.getBoolean(KEY_DUMMY_FRIEND, false)
     }
     
     /**
@@ -49,6 +53,35 @@ object ThemeManager {
     fun toggle(context: Context): Boolean {
         val newValue = !isDarkMode.value
         setDarkMode(context, newValue)
+        return newValue
+    }
+    
+    // ==================== DUMMY FRIEND SETTINGS ====================
+    
+    /**
+     * Check if dummy friend is enabled
+     */
+    fun isDummyFriendEnabled(context: Context): Boolean {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        return prefs.getBoolean(KEY_DUMMY_FRIEND, false)
+    }
+    
+    /**
+     * Set dummy friend enabled/disabled
+     */
+    fun setDummyFriendEnabled(context: Context, enabled: Boolean) {
+        isDummyFriendEnabled.value = enabled
+        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).edit {
+            putBoolean(KEY_DUMMY_FRIEND, enabled)
+        }
+    }
+    
+    /**
+     * Toggle dummy friend on/off
+     */
+    fun toggleDummyFriend(context: Context): Boolean {
+        val newValue = !isDummyFriendEnabled.value
+        setDummyFriendEnabled(context, newValue)
         return newValue
     }
 }

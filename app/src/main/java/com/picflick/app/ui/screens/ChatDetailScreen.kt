@@ -33,6 +33,8 @@ import com.picflick.app.data.ChatMessage
 import com.picflick.app.data.ChatSession
 import com.picflick.app.data.UserProfile
 import com.picflick.app.ui.theme.PicFlickBannerBackground
+import com.picflick.app.ui.theme.ThemeManager
+import com.picflick.app.ui.theme.isDarkModeBackground
 import com.picflick.app.viewmodel.ChatViewModel
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
@@ -59,6 +61,7 @@ fun ChatDetailScreen(
     var replyToMessage by remember { mutableStateOf<ChatMessage?>(null) }
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
+    val isDarkMode = ThemeManager.isDarkMode.value
 
     // Pull-to-refresh state
     val pullRefreshState = rememberPullRefreshState(
@@ -86,7 +89,6 @@ fun ChatDetailScreen(
         modifier = Modifier.fillMaxSize(),
         topBar = {
             TopAppBar(
-                modifier = Modifier.fillMaxWidth(),
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = PicFlickBannerBackground
                 ),
@@ -248,7 +250,7 @@ fun ChatDetailScreen(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(PicFlickBannerBackground)
+                    .background(isDarkModeBackground(isDarkMode))
             ) {
                 // Messages list
                 when {

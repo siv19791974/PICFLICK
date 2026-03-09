@@ -70,31 +70,44 @@ fun SettingsScreen(
     var showAppearanceDialog by remember { mutableStateOf(false) }
     // Use ThemeManager for theme state (persists across sessions)
     val isDarkMode by ThemeManager.isDarkMode
+    val isDummyFriendEnabled by ThemeManager.isDummyFriendEnabled
     var cacheSize by remember { mutableStateOf("24 MB") }
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        text = "Settings",
-                        color = Color.White,
-                        fontWeight = FontWeight.Bold
-                    )
-                },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
+            // Custom compact 48dp title bar
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(48.dp)
+                    .background(Color.Black),
+                contentAlignment = Alignment.CenterStart
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    IconButton(
+                        onClick = onBack,
+                        modifier = Modifier.size(48.dp)
+                    ) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Back",
                             tint = Color.White
                         )
                     }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.Black
-                )
-            )
+                    Text(
+                        text = "Settings",
+                        modifier = Modifier.weight(1f),
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                    )
+                    // Spacer for balance (same width as back button)
+                    Spacer(modifier = Modifier.size(48.dp))
+                }
+            }
         },
         containerColor = isDarkModeBackground(isDarkMode)
     ) { padding ->
@@ -124,7 +137,7 @@ fun SettingsScreen(
                 )
                 SettingsItem(
                     icon = Icons.Default.Notifications,
-                    title = "Notifications",
+                    title = "Notifications Settings",
                     subtitle = "Push, email preferences",
                     onClick = onNotificationsSettings
                 )
@@ -171,6 +184,17 @@ fun SettingsScreen(
 
             // Danger Zone
             SettingsSection(title = "DANGER ZONE", isDarkMode = isDarkMode) {
+                // Dummy Friend Toggle (Developer Feature)
+                SettingsItem(
+                    icon = Icons.Default.Person,
+                    title = "Test Friend: Firebender",
+                    subtitle = if (isDummyFriendEnabled) "ON - Tap to disable" else "OFF - Tap to enable",
+                    onClick = { 
+                        ThemeManager.toggleDummyFriend(context)
+                    },
+                    showArrow = false,
+                    titleColor = if (isDummyFriendEnabled) Color(0xFF4CAF50) else if (isDarkMode) Color.White else Color.Black
+                )
                 SettingsItem(
                     icon = Icons.Default.Close,
                     title = "Sign Out",
@@ -523,20 +547,24 @@ private fun ProfileHeaderWithStorage(
         // Quick Actions Row
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceEvenly
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             // Manage Storage Button
             QuickActionButton(
                 text = "Manage Storage",
                 onClick = onManageStorage,
-                color = Color(0xFF1565C0)
+                color = Color(0xFF1565C0),
+                modifier = Modifier.weight(1f),
+                isDarkMode = isDarkMode
             )
             
             // Subscription Button
             QuickActionButton(
                 text = "Subscription",
                 onClick = onSubscriptionStatus,
-                color = tierColor
+                color = tierColor,
+                modifier = Modifier.weight(1f),
+                isDarkMode = isDarkMode
             )
         }
     }
@@ -629,21 +657,49 @@ private fun StorageProgressBar(
 private fun QuickActionButton(
     text: String,
     onClick: () -> Unit,
-    color: Color
+    color: Color,
+    modifier: Modifier = Modifier,
+    isDarkMode: Boolean
 ) {
-    Box(
-        modifier = Modifier
-            .clip(RoundedCornerShape(8.dp))
-            .background(color.copy(alpha = 0.15f))
-            .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 10.dp)
+    Card(
+        modifier = modifier
+            .clickable(onClick = onClick),
+        colors = CardDefaults.cardColors(
+            containerColor = if (isDarkMode) Color(0xFF1C1C1E) else Color.White
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
-        Text(
-            text = text,
-            color = color,
-            fontSize = 13.sp,
-            fontWeight = FontWeight.Medium
-        )
+        Column(
+            modifier = Modifier
+                .padding(12.dp)
+                .fillMaxWidth(),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            // Icon circle with tier color
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(CircleShape)
+                    .background(color.copy(alpha = 0.15f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = if (text.contains("Storage")) Icons.Default.Cloud else Icons.Default.AccountCircle,
+                    contentDescription = null,
+                    tint = color,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+            
+            Spacer(modifier = Modifier.height(8.dp))
+            
+            Text(
+                text = text,
+                color = if (isDarkMode) Color.White else Color.Black,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Medium
+            )
+        }
     }
 }
 

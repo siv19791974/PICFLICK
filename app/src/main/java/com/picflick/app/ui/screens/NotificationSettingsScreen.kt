@@ -71,7 +71,7 @@ fun NotificationSettingsScreen(
                 )
             )
         },
-        containerColor = Color(0xFF121212)
+        containerColor = Color.Black
     ) { padding ->
         Column(
             modifier = Modifier
