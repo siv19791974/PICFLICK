@@ -71,6 +71,7 @@ import com.picflick.app.ui.screens.SettingsScreen
 import com.picflick.app.ui.screens.PrivacyScreen
 import com.picflick.app.ui.screens.PrivacyPolicyScreen
 import com.picflick.app.ui.screens.PhilosophyScreen
+import com.picflick.app.ui.screens.LegalScreen
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.ui.unit.sp
 import com.picflick.app.ui.screens.SplashScreen
@@ -156,6 +157,7 @@ sealed class Screen {
     data object PlanOptions : Screen()              // NEW: Plan comparison and purchase
     data object PrivacyPolicy : Screen()            // NEW: Privacy Policy screen
     data object Philosophy : Screen()                 // NEW: Our Philosophy screen
+    data object Legal : Screen()                      // NEW: Legal/Terms screen
 }
 
 /**
@@ -194,7 +196,8 @@ fun MainScreen(
             is Screen.SubscriptionStatus,
             is Screen.PlanOptions,
             is Screen.Filter,
-            is Screen.Philosophy -> {
+            is Screen.Philosophy,
+            is Screen.Legal -> {
                 currentScreen = Screen.Home
             }
             // UserProfile goes back to Friends
@@ -880,7 +883,8 @@ private fun AuthenticatedContent(
                 onPlanOptions = { onScreenChange(Screen.PlanOptions) },
                 onHelpSupport = { onScreenChange(Screen.Contact) },
                 onAbout = { onScreenChange(Screen.About) },
-                onPhilosophy = { onScreenChange(Screen.Philosophy) }
+                onPhilosophy = { onScreenChange(Screen.Philosophy) },
+                onLegal = { onScreenChange(Screen.Legal) }
             )
 
             is Screen.ManageStorage -> {
@@ -1359,6 +1363,10 @@ private fun AuthenticatedContent(
             )
 
             is Screen.Philosophy -> PhilosophyScreen(
+                onBack = { onScreenChange(Screen.Settings) }
+            )
+
+            is Screen.Legal -> LegalScreen(
                 onBack = { onScreenChange(Screen.Settings) }
             )
     }

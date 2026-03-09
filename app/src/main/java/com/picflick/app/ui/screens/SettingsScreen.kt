@@ -63,7 +63,8 @@ fun SettingsScreen(
     onPlanOptions: () -> Unit = {},
     onHelpSupport: () -> Unit = {},
     onAbout: () -> Unit = {},
-    onPhilosophy: () -> Unit = {}
+    onPhilosophy: () -> Unit = {},
+    onLegal: () -> Unit = {}
 ) {
     val context = LocalContext.current
     var showSignOutDialog by remember { mutableStateOf(false) }
@@ -206,7 +207,7 @@ fun SettingsScreen(
                     icon = Icons.Default.Lock,
                     title = "Legal",
                     subtitle = "Terms and conditions",
-                    onClick = onHelpSupport
+                    onClick = onLegal
                 )
                 SettingsItem(
                     icon = Icons.Default.Lock,
