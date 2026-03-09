@@ -819,7 +819,19 @@ private fun AuthenticatedContent(
                 onPrivacySettings = { onScreenChange(Screen.Privacy) },
                 onNotificationsSettings = { onScreenChange(Screen.NotificationSettings) },
                 onHelpSupport = { onScreenChange(Screen.Contact) },
-                onAbout = { onScreenChange(Screen.About) }
+                onAbout = { onScreenChange(Screen.About) },
+                onSummonFirebender = {
+                    // Create FIREBENDER as dummy friend
+                    kotlinx.coroutines.GlobalScope.launch {
+                        try {
+                            com.picflick.app.utils.FirebenderDummyFriend.createFirebenderFriend(userProfile.uid)
+                            com.picflick.app.utils.FirebenderDummyFriend.createFirebenderPhoto()
+                            Toast.makeText(context, "🔥 FIREBENDER summoned! Check your friends!", Toast.LENGTH_LONG).show()
+                        } catch (e: Exception) {
+                            Toast.makeText(context, "Failed to summon: ${e.message}", Toast.LENGTH_LONG).show()
+                        }
+                    }
+                }
             )
 
             is Screen.ManageStorage -> {

@@ -57,7 +57,8 @@ fun SettingsScreen(
     onPrivacySettings: () -> Unit = {},
     onNotificationsSettings: () -> Unit = {},
     onHelpSupport: () -> Unit = {},
-    onAbout: () -> Unit = {}
+    onAbout: () -> Unit = {},
+    onSummonFirebender: () -> Unit = {}
 ) {
     val context = LocalContext.current
     var showSignOutDialog by remember { mutableStateOf(false) }
@@ -215,8 +216,8 @@ fun SettingsScreen(
                     title = firebenderStatus,
                     subtitle = "Add AI assistant as friend",
                     onClick = {
-                        // This will be handled in MainActivity
-                        firebenderStatus = "Summoning..."
+                        onSummonFirebender()
+                        firebenderStatus = "Summoned! Check friends"
                     },
                     showArrow = false
                 )
