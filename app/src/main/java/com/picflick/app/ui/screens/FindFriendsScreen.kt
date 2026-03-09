@@ -293,18 +293,43 @@ private fun DiscoverTab(
                             tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
                         )
                         Spacer(modifier = Modifier.height(16.dp))
-                        Text(
-                            text = "No users found",
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            text = "Be the first to invite friends to PicFlick!",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
-                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
-                        )
+                        
+                        // Show error message if there is one
+                        if (viewModel.errorMessage != null) {
+                            Text(
+                                text = "Error loading users",
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.error
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = viewModel.errorMessage ?: "",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.error,
+                                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                            )
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Button(
+                                onClick = { viewModel.loadAllUsers(userProfile.uid) },
+                                shape = RoundedCornerShape(20.dp)
+                            ) {
+                                Text("Retry")
+                            }
+                        } else {
+                            Text(
+                                text = "No users found",
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = "Be the first to invite friends to PicFlick!",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                            )
+                        }
                     }
                 }
             } else if (viewModel.searchQuery.isNotBlank()) {

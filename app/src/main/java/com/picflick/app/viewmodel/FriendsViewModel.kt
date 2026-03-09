@@ -33,6 +33,9 @@ class FriendsViewModel : ViewModel() {
     var isLoading by mutableStateOf(false)
         private set
 
+    var errorMessage by mutableStateOf<String?>(null)
+        private set
+
     var searchQuery by mutableStateOf("")
         private set
 
@@ -137,6 +140,7 @@ class FriendsViewModel : ViewModel() {
      */
     fun loadAllUsers(currentUserId: String) {
         isLoading = true
+        errorMessage = null
         Log.d("FriendsViewModel", "Loading all users, currentUserId: $currentUserId")
         repository.getAllUsers(currentUserId) { result ->
             when (result) {
@@ -144,11 +148,14 @@ class FriendsViewModel : ViewModel() {
                     Log.d("FriendsViewModel", "Loaded ${result.data.size} users")
                     suggestedUsers.clear()
                     suggestedUsers.addAll(result.data)
+                    errorMessage = null
                 }
                 is Result.Error -> {
                     // Log error for debugging
-                    Log.e("FriendsViewModel", "Failed to load all users: ${result.exception?.message}")
+                    val error = result.exception?.message ?: "Unknown error"
+                    Log.e("FriendsViewModel", "Failed to load all users: $error")
                     result.exception?.printStackTrace()
+                    errorMessage = "Error: $error"
                 }
                 is Result.Loading -> { }
             }
