@@ -155,9 +155,10 @@ class DataClassesTest {
     @Test
     fun `data classes should support equality`() {
         // Given
-        val profile1 = UserProfile(uid = "user1", displayName = "User One")
-        val profile2 = UserProfile(uid = "user1", displayName = "User One")
-        val profile3 = UserProfile(uid = "user2", displayName = "User Two")
+        val joinedAt = System.currentTimeMillis()
+        val profile1 = UserProfile(uid = "user1", displayName = "User One", joinedAt = joinedAt)
+        val profile2 = UserProfile(uid = "user1", displayName = "User One", joinedAt = joinedAt)
+        val profile3 = UserProfile(uid = "user2", displayName = "User Two", joinedAt = joinedAt)
 
         // Then
         assertEquals(profile1, profile2)
