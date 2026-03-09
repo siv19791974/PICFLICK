@@ -409,13 +409,13 @@ private fun ProfileHeaderWithStorage(
             // Profile Photo with Tier Color Ring
             Box(
                 modifier = Modifier
-                    .size(76.dp),
+                    .size(82.dp), // Increased from 76.dp to accommodate thicker ring
                 contentAlignment = Alignment.Center
             ) {
-                // Outer ring with tier color
+                // Outer ring with tier color - DOUBLE THICKNESS
                 Box(
                     modifier = Modifier
-                        .size(76.dp)
+                        .size(82.dp)
                         .clip(CircleShape)
                         .background(
                             brush = Brush.sweepGradient(
@@ -427,7 +427,7 @@ private fun ProfileHeaderWithStorage(
                                 )
                             )
                         )
-                        .padding(3.dp) // Ring thickness
+                        .padding(6.dp) // DOUBLED from 3.dp to 6.dp - thicker ring
                 ) {
                     // Inner profile photo
                     Box(

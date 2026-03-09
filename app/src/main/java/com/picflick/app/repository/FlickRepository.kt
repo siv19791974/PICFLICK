@@ -1699,6 +1699,46 @@ class FlickRepository private constructor() {
     }
 
     /**
+     * Submit user feedback to Firestore
+     * Creates a feedback document in the "feedback" collection
+     */
+    suspend fun submitFeedback(
+        userId: String,
+        userName: String,
+        userEmail: String,
+        subject: String,
+        message: String,
+        category: String = "GENERAL",
+        appVersion: String = "",
+        deviceInfo: String = ""
+    ): Result<String> {
+        return try {
+            val feedback = hashMapOf(
+                "userId" to userId,
+                "userName" to userName,
+                "userEmail" to userEmail,
+                "subject" to subject,
+                "message" to message,
+                "category" to category,
+                "timestamp" to System.currentTimeMillis(),
+                "status" to "NEW",
+                "appVersion" to appVersion,
+                "deviceInfo" to deviceInfo
+            )
+
+            val docRef = db.collection("feedback").add(feedback).await()
+            
+            // Update with the generated ID
+            docRef.update("id", docRef.id).await()
+
+            Result.Success(docRef.id)
+        } catch (e: Exception) {
+            android.util.Log.e("FlickRepository", "Failed to submit feedback", e)
+            Result.Error(e, "Failed to submit feedback. Please try again.")
+        }
+    }
+
+    /**
      * Get reported photos (for admin use)
      */
     suspend fun getReportedPhotos(): Result<List<Pair<Flick, Int>>> {
