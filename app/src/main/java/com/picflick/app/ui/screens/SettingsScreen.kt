@@ -165,12 +165,6 @@ fun SettingsScreen(
                     onClick = onPlanOptions
                 )
                 SettingsItem(
-                    icon = Icons.Default.Lock,
-                    title = "Privacy",
-                    subtitle = "Photo visibility, blocked users",
-                    onClick = onPrivacySettings
-                )
-                SettingsItem(
                     icon = Icons.Default.Notifications,
                     title = "Notifications Settings",
                     subtitle = "Push, email preferences",
@@ -199,18 +193,30 @@ fun SettingsScreen(
 
             HorizontalDivider(color = if (isDarkMode) Color(0xFF2C2C2E) else Color.LightGray, thickness = 0.5.dp)
 
-            // Support Section
+            // Support Section - Reorganized with Philosophy, Legal, Privacy Policy, Version
             SettingsSection(title = "SUPPORT", isDarkMode = isDarkMode) {
                 SettingsItem(
                     icon = Icons.Default.Menu,
-                    title = "Contact Us",
-                    subtitle = "Get help and support",
+                    title = "Our Philosophy",
+                    subtitle = "What we stand for",
                     onClick = onHelpSupport
                 )
                 SettingsItem(
+                    icon = Icons.Default.Lock,
+                    title = "Legal",
+                    subtitle = "Terms and conditions",
+                    onClick = onHelpSupport
+                )
+                SettingsItem(
+                    icon = Icons.Default.Lock,
+                    title = "Privacy Policy",
+                    subtitle = "Your data, your control",
+                    onClick = onPrivacySettings
+                )
+                SettingsItem(
                     icon = Icons.Default.Info,
-                    title = "About",
-                    subtitle = "Version 1.0.0",
+                    title = "Version",
+                    subtitle = "1.0.0",
                     onClick = onAbout
                 )
             }
