@@ -40,6 +40,8 @@ import com.picflick.app.data.getStorageLimitBytes
 import com.picflick.app.viewmodel.BillingEvent
 import com.picflick.app.viewmodel.BillingViewModel
 import com.picflick.app.viewmodel.SubscriptionProduct
+import com.picflick.app.ui.theme.ThemeManager
+import com.picflick.app.ui.theme.isDarkModeBackground
 
 /**
  * Subscription Status Screen - Financial/tier details
@@ -57,6 +59,7 @@ fun SubscriptionStatusScreen(
 ) {
     val tier = userProfile.subscriptionTier
     val tierColor = tier.getColor()
+    val isDarkMode = ThemeManager.isDarkMode.value
     
     // Collect billing state with explicit types
     val products: List<SubscriptionProduct> by billingViewModel.products.collectAsState()
@@ -113,7 +116,7 @@ fun SubscriptionStatusScreen(
                 }
             }
         },
-        containerColor = Color.Black
+        containerColor = isDarkModeBackground(isDarkMode)
     ) { padding ->
         Column(
             modifier = Modifier
@@ -128,14 +131,6 @@ fun SubscriptionStatusScreen(
                 tierColor = tierColor,
                 onManagePayment = onManagePayment,
                 products = products
-            )
-            
-            Spacer(modifier = Modifier.height(16.dp))
-            
-            // Usage This Month
-            UsageCard(
-                userProfile = userProfile,
-                tier = tier
             )
             
             Spacer(modifier = Modifier.height(16.dp))
