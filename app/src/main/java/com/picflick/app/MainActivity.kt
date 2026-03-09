@@ -48,6 +48,7 @@ import com.picflick.app.data.NotificationPreferences
 import com.picflick.app.data.SubscriptionTier
 import com.picflick.app.repository.ChatRepository
 import com.picflick.app.ui.components.BottomNavBar
+import com.picflick.app.utils.LocaleHelper
 import com.picflick.app.ui.components.LogoImage
 import com.picflick.app.ui.components.UploadSourceDialog
 import com.picflick.app.ui.screens.AboutScreen
@@ -95,6 +96,12 @@ import com.picflick.app.viewmodel.UploadViewModel
  * Uses clean architecture with ViewModels and separated concerns
  */
 class MainActivity : ComponentActivity() {
+    override fun attachBaseContext(newBase: android.content.Context) {
+        // Apply saved locale to the context
+        val context = LocaleHelper.applySavedLocale(newBase)
+        super.attachBaseContext(context)
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
