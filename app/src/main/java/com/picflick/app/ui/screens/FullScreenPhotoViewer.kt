@@ -585,6 +585,11 @@ fun FullScreenPhotoViewer(
                                     if (isCurrent && zoomState != null) {
                                         Modifier.zoomable(zoomState)
                                     } else Modifier
+                                )
+                                .graphicsLayer(
+                                    scaleX = swipeScale,
+                                    scaleY = swipeScale,
+                                    alpha = swipeAlpha
                                 ),
                             contentAlignment = Alignment.Center
                         ) {
