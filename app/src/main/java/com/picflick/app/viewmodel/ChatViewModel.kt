@@ -86,17 +86,23 @@ class ChatViewModel : ViewModel() {
         recipientId: String,
         senderName: String,
         senderPhotoUrl: String,
+        replyToMessage: ChatMessage? = null,
         onComplete: () -> Unit = {}
     ) {
         viewModelScope.launch {
             val message = ChatMessage(
+                chatId = chatId,
                 senderId = senderId,
                 senderName = senderName,
                 senderPhotoUrl = senderPhotoUrl,
                 text = text,
                 timestamp = System.currentTimeMillis(),
                 read = false,
-                delivered = false
+                delivered = false,
+                // Reply functionality
+                replyToMessageId = replyToMessage?.id,
+                quotedText = replyToMessage?.text?.take(100), // First 100 chars
+                quotedSenderName = replyToMessage?.senderName
             )
 
             when (val result = repository.sendMessage(chatId, message, recipientId)) {
