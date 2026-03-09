@@ -773,6 +773,7 @@ private fun TierBadgeStatItem(
     isDarkMode: Boolean
 ) {
     val tierColor = tier.getColor()
+    val textColor = if (isDarkMode) Color.White else Color.Black
     val subtitleColor = if (isDarkMode) Color.Gray else Color.DarkGray
     
     // Get tier display name
@@ -786,9 +787,9 @@ private fun TierBadgeStatItem(
     
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier.wrapContentWidth()  // Don't expand unnecessarily
+        modifier = Modifier.wrapContentWidth()
     ) {
-        // Fixed height container matching ModernStatItem (30.dp for larger badge)
+        // Fixed height container matching ModernStatItem (30.dp for badge)
         Box(
             modifier = Modifier.height(30.dp),
             contentAlignment = Alignment.Center
@@ -796,7 +797,7 @@ private fun TierBadgeStatItem(
             // Colored tier badge - no letter inside, just the colored dot
             Box(
                 modifier = Modifier
-                    .size(26.dp)  // Increased from 24dp
+                    .size(26.dp)
                     .clip(CircleShape)
                     .background(
                         brush = Brush.sweepGradient(
