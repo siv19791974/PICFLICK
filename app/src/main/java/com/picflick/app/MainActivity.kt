@@ -668,6 +668,7 @@ private fun AuthenticatedContent(
                         profileViewModel.loadUserPhotos(userProfile.uid)
                         authViewModel.reloadUserProfile() // Force refresh profile pic and bio
                     },
+                    onPlanOptions = { onScreenChange(Screen.PlanOptions) },
                     isLoading = profileViewModel.isLoading
                 )
                 

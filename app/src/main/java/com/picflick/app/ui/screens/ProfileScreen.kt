@@ -64,6 +64,7 @@ fun ProfileScreen(
     onPhotoClick: (Flick, Int) -> Unit = { _, _ -> },
     onProfilePhotoClick: () -> Unit = {},
     onRefresh: () -> Unit = {},
+    onPlanOptions: () -> Unit = {},
     isLoading: Boolean = false
 ) {
     val isDarkMode = ThemeManager.isDarkMode.value
@@ -291,7 +292,8 @@ fun ProfileScreen(
             // SIXTH ITEM - Subscription Tier Badge
             TierBadgeStatItem(
                 tier = userProfile.subscriptionTier,
-                isDarkMode = isDarkMode
+                isDarkMode = isDarkMode,
+                onClick = onPlanOptions
             )
         }
 
@@ -770,7 +772,8 @@ private fun ModernStatItem(
 @Composable
 private fun TierBadgeStatItem(
     tier: com.picflick.app.data.SubscriptionTier,
-    isDarkMode: Boolean
+    isDarkMode: Boolean,
+    onClick: () -> Unit = {}
 ) {
     val tierColor = tier.getColor()
     val textColor = if (isDarkMode) Color.White else Color.Black
@@ -787,7 +790,9 @@ private fun TierBadgeStatItem(
     
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier.wrapContentWidth()
+        modifier = Modifier
+            .wrapContentWidth()
+            .clickable { onClick() }
     ) {
         // Fixed height container matching ModernStatItem (30.dp for badge)
         Box(
