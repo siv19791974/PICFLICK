@@ -116,14 +116,14 @@ fun PhilosophyScreen(
                             modifier = Modifier.padding(bottom = 12.dp)
                         )
                         Text(
-                            text = "Many people are becoming disillusioned with the current giant social media platforms. Ads, algorithms and more ads. Designed to keep you on your phone scrolling aimlessly.",
+                            text = "Big social media has lost its way. What started as connecting people became a machine for selling your attention. Endless ads. Manipulative algorithms. Everything designed to keep you scrolling, not communicating.",
                             fontSize = 15.sp,
                             color = textColor,
                             lineHeight = 22.sp
                         )
                         Spacer(modifier = Modifier.height(12.dp))
                         Text(
-                            text = "Their intention is clear. The longer you stay on their app, looking at cat videos, and fails, and mindlessly scrolling. The more money they make.",
+                            text = "The longer you stare at cat videos and viral fails, the more money they make. Your time is their product. Your attention is auctioned to the highest bidder. We think that's wrong.",
                             fontSize = 15.sp,
                             color = textColor,
                             lineHeight = 22.sp
