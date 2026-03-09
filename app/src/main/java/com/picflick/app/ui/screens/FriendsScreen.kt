@@ -61,27 +61,11 @@ fun FriendsScreen(
     ) {
         // NO BANNER - banner is now in MainActivity's Scaffold topBar!
 
-        // Find Friends button
-        Button(
-            onClick = onFindFriendsClick,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp),
-            shape = RoundedCornerShape(12.dp)
-        ) {
-            Icon(
-                imageVector = Icons.Default.Search,
-                contentDescription = null,
-                modifier = Modifier.size(20.dp)
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            Text("Find Friends")
-        }
-
-        // Modern PullRefresh content
+        // Modern PullRefresh content - takes all available space
         Box(
             modifier = Modifier
-                .fillMaxSize()
+                .fillMaxWidth()
+                .weight(1f)
                 .pullRefresh(pullRefreshState)
         ) {
             when {
@@ -114,6 +98,23 @@ fun FriendsScreen(
                 backgroundColor = MaterialTheme.colorScheme.surface,
                 contentColor = MaterialTheme.colorScheme.primary
             )
+        }
+
+        // Find Friends button - NOW AT THE BOTTOM
+        Button(
+            onClick = onFindFriendsClick,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            shape = RoundedCornerShape(12.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Default.Search,
+                contentDescription = null,
+                modifier = Modifier.size(20.dp)
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text("Find Friends")
         }
     }
 }
