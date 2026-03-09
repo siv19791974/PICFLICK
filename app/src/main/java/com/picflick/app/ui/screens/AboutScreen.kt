@@ -1,24 +1,15 @@
 package com.picflick.app.ui.screens
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.ArrowForward
-import androidx.compose.material.icons.filled.Email
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.Menu
-import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -33,11 +24,7 @@ import com.picflick.app.ui.theme.isDarkModeBackground
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AboutScreen(
-    onBack: () -> Unit,
-    onPrivacyPolicy: () -> Unit = {},
-    onLegal: () -> Unit = {},
-    onPhilosophy: () -> Unit = {},
-    onContactUs: () -> Unit = {}
+    onBack: () -> Unit
 ) {
     val isDarkMode = ThemeManager.isDarkMode.value
     val textColor = if (isDarkMode) Color.White else Color.Black
@@ -89,44 +76,13 @@ fun AboutScreen(
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 24.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // App Logo/Icon Section
+            // Version Header
             item {
                 Column(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    // App Icon Placeholder
-                    Box(
-                        modifier = Modifier
-                            .size(100.dp)
-                            .clip(CircleShape)
-                            .background(accentColor.copy(alpha = 0.2f)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Star,
-                            contentDescription = "PicFlick Logo",
-                            modifier = Modifier.size(50.dp),
-                            tint = accentColor
-                        )
-                    }
-
                     Spacer(modifier = Modifier.height(16.dp))
-
-                    Text(
-                        text = "PicFlick",
-                        fontSize = 32.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = accentColor
-                    )
-
-                    Text(
-                        text = "Private Photo Sharing",
-                        fontSize = 16.sp,
-                        color = subtitleColor
-                    )
-
-                    Spacer(modifier = Modifier.height(8.dp))
 
                     // Version Badge
                     Card(
@@ -151,179 +107,6 @@ fun AboutScreen(
                         fontSize = 12.sp,
                         color = subtitleColor
                     )
-                }
-            }
-
-            // Quick Links
-            item {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(
-                        containerColor = cardBackground
-                    ),
-                    shape = RoundedCornerShape(16.dp)
-                ) {
-                    Column(
-                        modifier = Modifier.padding(16.dp)
-                    ) {
-                        Text(
-                            text = "Quick Links",
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = textColor,
-                            modifier = Modifier.padding(bottom = 12.dp)
-                        )
-
-                        // Our Philosophy
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable { onPhilosophy() }
-                                .padding(vertical = 12.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Menu,
-                                contentDescription = null,
-                                tint = accentColor,
-                                modifier = Modifier.size(24.dp)
-                            )
-                            Spacer(modifier = Modifier.width(16.dp))
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = "Our Philosophy",
-                                    fontSize = 15.sp,
-                                    fontWeight = FontWeight.Medium,
-                                    color = textColor
-                                )
-                                Text(
-                                    text = "What we stand for",
-                                    fontSize = 13.sp,
-                                    color = subtitleColor
-                                )
-                            }
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                                contentDescription = null,
-                                tint = subtitleColor,
-                                modifier = Modifier.size(20.dp)
-                            )
-                        }
-
-                        HorizontalDivider(color = if (isDarkMode) Color(0xFF2C2C2E) else Color.LightGray, thickness = 0.5.dp)
-
-                        // Privacy Policy
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable { onPrivacyPolicy() }
-                                .padding(vertical = 12.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Lock,
-                                contentDescription = null,
-                                tint = accentColor,
-                                modifier = Modifier.size(24.dp)
-                            )
-                            Spacer(modifier = Modifier.width(16.dp))
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = "Privacy Policy",
-                                    fontSize = 15.sp,
-                                    fontWeight = FontWeight.Medium,
-                                    color = textColor
-                                )
-                                Text(
-                                    text = "Your data, your control",
-                                    fontSize = 13.sp,
-                                    color = subtitleColor
-                                )
-                            }
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                                contentDescription = null,
-                                tint = subtitleColor,
-                                modifier = Modifier.size(20.dp)
-                            )
-                        }
-
-                        HorizontalDivider(color = if (isDarkMode) Color(0xFF2C2C2E) else Color.LightGray, thickness = 0.5.dp)
-
-                        // Legal
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable { onLegal() }
-                                .padding(vertical = 12.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Info,
-                                contentDescription = null,
-                                tint = accentColor,
-                                modifier = Modifier.size(24.dp)
-                            )
-                            Spacer(modifier = Modifier.width(16.dp))
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = "Legal",
-                                    fontSize = 15.sp,
-                                    fontWeight = FontWeight.Medium,
-                                    color = textColor
-                                )
-                                Text(
-                                    text = "Terms and conditions",
-                                    fontSize = 13.sp,
-                                    color = subtitleColor
-                                )
-                            }
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                                contentDescription = null,
-                                tint = subtitleColor,
-                                modifier = Modifier.size(20.dp)
-                            )
-                        }
-
-                        HorizontalDivider(color = if (isDarkMode) Color(0xFF2C2C2E) else Color.LightGray, thickness = 0.5.dp)
-
-                        // Contact Us
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable { onContactUs() }
-                                .padding(vertical = 12.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Email,
-                                contentDescription = null,
-                                tint = accentColor,
-                                modifier = Modifier.size(24.dp)
-                            )
-                            Spacer(modifier = Modifier.width(16.dp))
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = "Contact Us",
-                                    fontSize = 15.sp,
-                                    fontWeight = FontWeight.Medium,
-                                    color = textColor
-                                )
-                                Text(
-                                    text = "Get help and support",
-                                    fontSize = 13.sp,
-                                    color = subtitleColor
-                                )
-                            }
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                                contentDescription = null,
-                                tint = subtitleColor,
-                                modifier = Modifier.size(20.dp)
-                            )
-                        }
-                    }
                 }
             }
 

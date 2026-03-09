@@ -792,11 +792,7 @@ private fun AuthenticatedContent(
             )
 
             is Screen.About -> AboutScreen(
-                onBack = { onScreenChange(Screen.Settings) },
-                onPrivacyPolicy = { onScreenChange(Screen.PrivacyPolicy) },
-                onLegal = { onScreenChange(Screen.Legal) },
-                onPhilosophy = { onScreenChange(Screen.Philosophy) },
-                onContactUs = { onScreenChange(Screen.Contact) }
+                onBack = { onScreenChange(Screen.Settings) }
             )
 
             is Screen.Contact -> ContactScreen(
