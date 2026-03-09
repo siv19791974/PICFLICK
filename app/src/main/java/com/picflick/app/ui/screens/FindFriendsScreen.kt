@@ -70,14 +70,14 @@ fun FindFriendsScreen(
     ) { isGranted ->
         hasContactPermission = isGranted
         if (isGranted) {
-            viewModel.syncContacts(context)
+            viewModel.syncContacts(context, userProfile.uid)
         }
     }
 
     // Load contacts on first permission grant
     LaunchedEffect(hasContactPermission) {
         if (hasContactPermission) {
-            viewModel.syncContacts(context)
+            viewModel.syncContacts(context, userProfile.uid)
         }
     }
 
