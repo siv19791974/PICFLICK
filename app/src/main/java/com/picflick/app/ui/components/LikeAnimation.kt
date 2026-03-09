@@ -153,23 +153,24 @@ fun DoubleTapHeartAnimation(
             modifier = Modifier.fillMaxSize(),
             contentAlignment = Alignment.Center
         ) {
-            // Big white outline
+            // White outline (half size: was 200, now 100)
             Icon(
                 imageVector = Icons.Default.Favorite,
                 contentDescription = null,
                 tint = Color.White.copy(alpha = alpha * 0.3f),
                 modifier = Modifier
-                    .size(200.dp)
+                    .size(100.dp)
                     .scale(scale * 1.1f)
             )
             
-            // Main red heart
+            // Main red heart (half size: was 180, now 90)
             Icon(
                 imageVector = Icons.Default.Favorite,
                 contentDescription = if (isLiked) "Liked" else "Unliked",
+                // Pure red when liked, white when unliked
                 tint = if (isLiked) Color.Red.copy(alpha = alpha) else Color.White.copy(alpha = alpha * 0.5f),
                 modifier = Modifier
-                    .size(180.dp)
+                    .size(90.dp)
                     .scale(scale)
             )
         }

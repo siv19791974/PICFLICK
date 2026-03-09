@@ -6,7 +6,6 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -61,7 +60,6 @@ import android.provider.MediaStore
 import android.widget.Toast
 import android.view.LayoutInflater
 import android.widget.TextView
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.Dispatchers
@@ -565,20 +563,20 @@ fun FullScreenPhotoViewer(
                                 }
                                 .then(
                                     if (isCurrent && zoomState != null) {
-                                        // Current photo: clickable first to catch double-tap, then zoomable
+                                        // Current photo: consume double-tap for like, then zoomable
                                         Modifier
-                                            .combinedClickable(
-                                                indication = null,
-                                                interactionSource = remember { MutableInteractionSource() },
-                                                onClick = { uiVisible = !uiVisible },
-                                                onDoubleClick = {
-                                                    // Double tap to like/unlike - consume gesture
-                                                    heartAnimationKey++
-                                                    showDoubleTapHeart = true
-                                                    // Toggle reaction (like)
-                                                    onReaction(if (userReaction != null) null else ReactionType.LIKE)
-                                                }
-                                            )
+                                            .pointerInput(Unit) {
+                                                detectTapGestures(
+                                                    onTap = { uiVisible = !uiVisible },
+                                                    onDoubleTap = {
+                                                        // Double tap to like/unlike - consume gesture to prevent zoom
+                                                        heartAnimationKey++
+                                                        showDoubleTapHeart = true
+                                                        // Toggle reaction (like)
+                                                        onReaction(if (userReaction != null) null else ReactionType.LIKE)
+                                                    }
+                                                )
+                                            }
                                             .zoomable(zoomState)
                                     } else Modifier
                                 ),
