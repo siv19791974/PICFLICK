@@ -49,6 +49,7 @@ fun SettingsScreen(
     userProfile: UserProfile,
     onBack: () -> Unit,
     onSignOut: () -> Unit,
+    onDeleteAccount: () -> Unit = {},
     onEditProfile: () -> Unit = {},
     onManageStorage: () -> Unit = {},
     onSubscriptionStatus: () -> Unit = {},
@@ -245,7 +246,7 @@ fun SettingsScreen(
                 TextButton(
                     onClick = {
                         showDeleteAccountDialog = false
-                        // TODO: Implement account deletion
+                        onDeleteAccount()
                     }
                 ) {
                     Text("Delete", color = Color.Red)

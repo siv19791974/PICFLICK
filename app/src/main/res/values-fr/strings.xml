@@ -1,3 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">PICFLICK</string>
     
@@ -11,49 +12,49 @@
     <string name="login_logo_content_desc">Logo PicFlick</string>
     
     <!-- Login Error Messages -->
-    <string name="login_error_firebase_auth">Échec de l'authentification Firebase</string>
-    <string name="login_error_parse_token">Échec de l'analyse du jeton Google ID</string>
-    <string name="login_error_unsupported_credential">Type d'identifiant non pris en charge</string>
-    <string name="login_error_sign_in_failed">Échec de la connexion</string>
+    <string name="login_error_firebase_auth">\u00c9chec de l\'authentification Firebase</string>
+    <string name="login_error_parse_token">\u00c9chec de l\'analyse du jeton Google ID</string>
+    <string name="login_error_unsupported_credential">Type d\'identifiant non pris en charge</string>
+    <string name="login_error_sign_in_failed">\u00c9chec de la connexion</string>
     <string name="login_error_unexpected">Erreur inattendue</string>
     
     <!-- ==================== NAVIGATION & COMMON ==================== -->
     <string name="nav_back">Retour</string>
-    <string name="nav_settings">Paramètres</string>
+    <string name="nav_settings">Param\u00e8tres</string>
     <string name="nav_notifications">Notifications</string>
     <string name="nav_profile">Profil</string>
     <string name="nav_home">Accueil</string>
     <string name="nav_chats">Discussions</string>
     <string name="nav_friends">Amis</string>
-    <string name="nav_upload">Télécharger</string>
+    <string name="nav_upload">T\u00e9l\u00e9charger</string>
     
     <!-- ==================== HOME SCREEN ==================== -->
-    <string name="home_camera_content_desc">Caméra</string>
+    <string name="home_camera_content_desc">Cam\u00e9ra</string>
     <string name="home_gallery_content_desc">Galerie</string>
     <string name="home_privacy_friends">Amis uniquement</string>
     <string name="home_privacy_public">Public</string>
-    <string name="home_fab_upload">Télécharger une photo</string>
+    <string name="home_fab_upload">T\u00e9l\u00e9charger une photo</string>
     
     <!-- ==================== FILTER SCREEN ==================== -->
     <string name="filter_title">Appliquer un filtre</string>
-    <string name="filter_back_camera">Retour à la caméra</string>
-    <string name="filter_upload">Télécharger</string>
-    <string name="filter_photo_preview">Photo filtrée</string>
-    <string name="filter_caption_placeholder">Ajouter une légende…</string>
+    <string name="filter_back_camera">Retour \u00e0 la cam\u00e9ra</string>
+    <string name="filter_upload">T\u00e9l\u00e9charger</string>
+    <string name="filter_photo_preview">Photo filtr\u00e9e</string>
+    <string name="filter_caption_placeholder">Ajouter une l\u00e9gende\u2026</string>
     <string name="filter_find_friends">Trouver des amis</string>
     <string name="filter_remove_friend">Supprimer</string>
     <string name="filter_tag_friends">Identifier des amis sur la photo</string>
     
     <!-- Upload Status -->
-    <string name="upload_complete">Téléchargement terminé !</string>
-    <string name="upload_failed">Échec du téléchargement</string>
-    <string name="upload_limit_reached">Limite quotidienne de téléchargements atteinte</string>
+    <string name="upload_complete">T\u00e9l\u00e9chargement termin\u00e9 !</string>
+    <string name="upload_failed">\u00c9chec du t\u00e9l\u00e9chargement</string>
+    <string name="upload_limit_reached">Limite quotidienne de t\u00e9l\u00e9chargements atteinte</string>
     
     <!-- ==================== CHAT SCREENS ==================== -->
     <string name="chat_message_placeholder">Message</string>
     <string name="chat_send_content_desc">Envoyer</string>
-    <string name="chat_no_messages">Aucun message pour l'instant</string>
-    <string name="chat_start_conversation">Commencez à discuter avec vos amis !</string>
+    <string name="chat_no_messages">Aucun message pour l\'instant</string>
+    <string name="chat_start_conversation">Commencez \u00e0 discuter avec vos amis !</string>
     <string name="chat_say_hello">Dites bonjour !</string>
     <string name="chat_you_prefix">Vous :</string>
     <string name="chat_unknown_user">Inconnu</string>
@@ -61,51 +62,51 @@
     <!-- ==================== PROFILE SCREEN ==================== -->
     <string name="profile_photos_title">Mes photos</string>
     <string name="profile_photo_count">%d photos</string>
-    <string name="profile_total_reactions">%d réactions</string>
-    <string name="profile_streak">Série de %d jours</string>
+    <string name="profile_total_reactions">%d r\u00e9actions</string>
+    <string name="profile_streak">S\u00e9rie de %d jours</string>
     <string name="profile_edit_bio">Modifier la bio</string>
     <string name="profile_change_photo">Changer la photo de profil</string>
     
     <!-- ==================== FRIENDS SCREEN ==================== -->
-    <string name="friends_search_placeholder">Rechercher des amis…</string>
-    <string name="friends_no_results">Aucun utilisateur trouvé</string>
+    <string name="friends_search_placeholder">Rechercher des amis\u2026</string>
+    <string name="friends_no_results">Aucun utilisateur trouv\u00e9</string>
     <string name="friends_follow">Suivre</string>
     <string name="friends_following">Suivi</string>
-    <string name="friends_suggested">Amis suggérés</string>
+    <string name="friends_suggested">Amis sugg\u00e9r\u00e9s</string>
     <string name="friends_contacts">Contacts sur PicFlick</string>
     
     <!-- ==================== SETTINGS SCREEN ==================== -->
-    <string name="settings_title">Paramètres</string>
+    <string name="settings_title">Param\u00e8tres</string>
     <string name="settings_edit_profile">Modifier le profil</string>
-    <string name="settings_manage_storage">Gérer le stockage</string>
-    <string name="settings_subscription">État de l'abonnement</string>
-    <string name="settings_privacy">Paramètres de confidentialité</string>
-    <string name="settings_notifications">Paramètres de notifications</string>
+    <string name="settings_manage_storage">G\u00e9rer le stockage</string>
+    <string name="settings_subscription">\u00c9tat de l\'abonnement</string>
+    <string name="settings_privacy">Param\u00e8tres de confidentialit\u00e9</string>
+    <string name="settings_notifications">Param\u00e8tres de notifications</string>
     <string name="settings_help">Aide et support</string>
-    <string name="settings_about">À propos</string>
-    <string name="settings_sign_out">Se déconnecter</string>
+    <string name="settings_about">\u00c0 propos</string>
+    <string name="settings_sign_out">Se d\u00e9connecter</string>
     <string name="settings_delete_account">Supprimer le compte</string>
     
     <!-- ==================== NOTIFICATIONS ==================== -->
     <string name="notifications_title">Notifications</string>
-    <string name="notifications_empty">Aucune notification pour l'instant</string>
+    <string name="notifications_empty">Aucune notification pour l\'instant</string>
     <string name="notifications_mark_read">Marquer tout comme lu</string>
     
     <!-- Notification Types -->
-    <string name="notif_like">a aimé votre photo</string>
-    <string name="notif_reaction">a réagi à votre photo</string>
-    <string name="notif_comment">a commenté votre photo</string>
-    <string name="notif_follow">a commencé à vous suivre</string>
-    <string name="notif_message">vous a envoyé un message</string>
-    <string name="notif_mention">vous a mentionné</string>
+    <string name="notif_like">a aim\u00e9 votre photo</string>
+    <string name="notif_reaction">a r\u00e9agi \u00e0 votre photo</string>
+    <string name="notif_comment">a comment\u00e9 votre photo</string>
+    <string name="notif_follow">a commenc\u00e9 \u00e0 vous suivre</string>
+    <string name="notif_message">vous a envoy\u00e9 un message</string>
+    <string name="notif_mention">vous a mentionn\u00e9</string>
     
     <!-- ==================== STORAGE & BILLING ==================== -->
-    <string name="storage_title">Gérer le stockage</string>
-    <string name="storage_used">%1$.1f Go utilisés sur %2$d Go</string>
+    <string name="storage_title">G\u00e9rer le stockage</string>
+    <string name="storage_used">%1$.1f GB utilis\u00e9s de %2$d GB</string>
     <string name="storage_photos_count">%d photos</string>
-    <string name="storage_daily_uploads">%1$d / %2$s téléchargements aujourd'hui</string>
-    <string name="storage_unlimited">Illimité</string>
-    <string name="storage_upgrade">Mettre à niveau le stockage</string>
+    <string name="storage_daily_uploads">%1$d / %2$s t\u00e9l\u00e9chargements aujourd\'hui</string>
+    <string name="storage_unlimited">Illimit\u00e9</string>
+    <string name="storage_upgrade">Mettre \u00e0 niveau le stockage</string>
     
     <!-- Subscription Tiers -->
     <string name="tier_free">Gratuit</string>
@@ -116,16 +117,16 @@
     <string name="tier_founder">Fondateur</string>
     
     <!-- ==================== ERRORS & MESSAGES ==================== -->
-    <string name="error_generic">Quelque chose s'est mal passé</string>
-    <string name="error_network">Erreur réseau. Veuillez réessayer.</string>
-    <string name="error_permission_denied">Permission refusée</string>
-    <string name="error_camera_failed">Échec de la capture photo</string>
-    <string name="error_upload_failed">Échec du téléchargement de la photo</string>
+    <string name="error_generic">Quelque chose s\'est mal pass\u00e9</string>
+    <string name="error_network">Erreur r\u00e9seau. Veuillez r\u00e9essayer.</string>
+    <string name="error_permission_denied">Permission refus\u00e9e</string>
+    <string name="error_camera_failed">\u00c9chec de la capture photo</string>
+    <string name="error_upload_failed">\u00c9chec du t\u00e9l\u00e9chargement de la photo</string>
     
     <!-- Success Messages -->
-    <string name="success_photo_uploaded">Photo téléchargée avec succès !</string>
-    <string name="success_profile_updated">Profil mis à jour !</string>
-    <string name="success_changes_saved">Modifications enregistrées</string>
+    <string name="success_photo_uploaded">Photo t\u00e9l\u00e9charg\u00e9e avec succ\u00e8s !</string>
+    <string name="success_profile_updated">Profil mis \u00e0 jour !</string>
+    <string name="success_changes_saved">Modifications enregistr\u00e9es</string>
     
     <!-- ==================== DIALOGS ==================== -->
     <string name="dialog_cancel">Annuler</string>
@@ -136,16 +137,16 @@
     
     <!-- Delete Confirmation -->
     <string name="delete_photo_title">Supprimer la photo ?</string>
-    <string name="delete_photo_message">Cette action ne peut pas être annulée.</string>
+    <string name="delete_photo_message">Cette action ne peut pas \u00eatre annul\u00e9e.</string>
     <string name="delete_account_title">Supprimer le compte ?</string>
-    <string name="delete_account_message">Toutes vos données seront définitivement supprimées.</string>
+    <string name="delete_account_message">Toutes vos donn\u00e9es seront d\u00e9finitivement supprim\u00e9es.</string>
     
     <!-- ==================== ABOUT SCREEN ==================== -->
-    <string name="about_title">À propos de PicFlick</string>
+    <string name="about_title">\u00c0 propos de PicFlick</string>
     <string name="about_version">Version %s</string>
-    <string name="about_description">Partagez des photos avec vos amis dans un espace privé et sans publicité.</string>
-    <string name="about_privacy_policy">Politique de confidentialité</string>
-    <string name="about_terms">Conditions d'utilisation</string>
+    <string name="about_description">Partagez des photos avec vos amis dans un espace priv\u00e9 et sans publicit\u00e9.</string>
+    <string name="about_privacy_policy">Politique de confidentialit\u00e9</string>
+    <string name="about_terms">Conditions d\'utilisation</string>
     <string name="about_contact">Contactez-nous</string>
     
 </resources>
