@@ -146,6 +146,57 @@
     <string name="about_description">Share photos with friends in a private, ad-free space.</string>
     <string name="about_privacy_policy">Privacy Policy</string>
     <string name="about_terms">Terms of Service</string>
-    <string name="about_contact">Contact Us</string>
+    <string name="storage_photos_stored">Photos stored</string>
+    <string name="storage_avg_photo_size">Average photo size</string>
+    <string name="storage_current_quality">Current quality</string>
+    <string name="storage_label_used">Used</string>
+    <string name="storage_label_total">Total</string>
+    <string name="storage_label_remaining">Remaining</string>
+    <string name="storage_breakdown">Storage Breakdown</string>
+    <string name="storage_upgrade_to">Upgrade to %s</string>
+    <string name="storage_upgrade_soon">Consider upgrading soon to get more storage for your memories.</string>
+    <string name="storage_upgrade_or_delete">Upgrade your plan or delete old photos to free up space.</string>
+    <string name="storage_looking_good">You have plenty of space for more photos. Keep capturing moments!</string>
+    <string name="storage_running_low">Running low on space</string>
+    <string name="storage_almost_full">Storage almost full!</string>
+    <string name="founder_status_1_year">Founder Status - 1 Year Free</string>
+    
+    <!-- Explore Screen -->
+    <string name="explore_search_placeholder">Search photos, users, tags…</string>
+    <string name="explore_search_content_desc">Search</string>
+    <string name="explore_clear_content_desc">Clear</string>
+    <string name="explore_trending_now">🔥 Trending Now</string>
+    <string name="explore_popular_creators">📸 Popular Creators</string>
+    <string name="explore_follow_more_friends_title">Follow more friends!</string>
+    <string name="explore_follow_more_friends_subtitle">Photos from people you follow will appear here</string>
+    <string name="explore_from_people_you_follow">From People You Follow</string>
+    <string name="explore_reactions_count">%d reactions</string>
+    <string name="explore_reactions_comments">%d reactions • %d comments</string>
+    <string name="explore_trending_badge">🔥 TRENDING</string>
+    <string name="explore_new_badge">✨ NEW</string>
+    <string name="explore_no_photos_upload">No photos yet. Upload one!</string>
+    <string name="explore_who_can_see">Who can see this?</string>
+    <string name="explore_friends_will_see">Only your friends will see this photo</string>
+    <string name="explore_everyone_will_see">Everyone can see this photo</string>
+    <string name="explore_tab_trending">Trending</string>
+    <string name="explore_tab_popular">Popular</string>
+    <string name="explore_tab_new">New</string>
+    <string name="explore_tab_for_you">For You</string>
+    
+    <!-- Profile Screen -->
+    <string name="profile_dialog_title">Edit Bio</string>
+    <string name="profile_bio_label">Bio</string>
+    <string name="profile_bio_placeholder">Tell people about yourself…</string>
+    <string name="profile_dialog_save">Save</string>
+    <string name="profile_dialog_cancel">Cancel</string>
+    <string name="profile_photo_content_desc">Profile photo</string>
+    <string name="profile_change_photo_content_desc">Change Photo</string>
+    
+    <!-- Share -->
+    <string name="share_photo_title">Share Photo</string>
+    <string name="share_photo_text">Check out this photo on PicFlick: %s</string>
+    
+    <!-- Errors -->
+    <string name="error_unknown">Unknown error</string>
     
 </resources>

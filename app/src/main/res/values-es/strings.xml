@@ -146,6 +146,57 @@
     <string name="about_description">Comparte fotos con tus amigos en un espacio privado y sin anuncios.</string>
     <string name="about_privacy_policy">Política de privacidad</string>
     <string name="about_terms">Términos de servicio</string>
-    <string name="about_contact">Contáctanos</string>
+    <string name="storage_photos_stored">Fotos almacenadas</string>
+    <string name="storage_avg_photo_size">Tamaño promedio de foto</string>
+    <string name="storage_current_quality">Calidad actual</string>
+    <string name="storage_label_used">Usado</string>
+    <string name="storage_label_total">Total</string>
+    <string name="storage_label_remaining">Restante</string>
+    <string name="storage_breakdown">Desglose de almacenamiento</string>
+    <string name="storage_upgrade_to">Actualizar a %s</string>
+    <string name="storage_upgrade_soon">Considera actualizar pronto para obtener más almacenamiento para tus recuerdos.</string>
+    <string name="storage_upgrade_or_delete">Actualiza tu plan o elimina fotos antiguas para liberar espacio.</string>
+    <string name="storage_looking_good">Tienes mucho espacio para más fotos. ¡Sigue capturando momentos!</string>
+    <string name="storage_running_low">Poco espacio disponible</string>
+    <string name="storage_almost_full">¡Almacenamiento casi lleno!</string>
+    <string name="founder_status_1_year">Estado Fundador - 1 año gratis</string>
+    
+    <!-- Explore Screen -->
+    <string name="explore_search_placeholder">Buscar fotos, usuarios, etiquetas…</string>
+    <string name="explore_search_content_desc">Buscar</string>
+    <string name="explore_clear_content_desc">Borrar</string>
+    <string name="explore_trending_now">🔥 Tendencias</string>
+    <string name="explore_popular_creators">📸 Creadores populares</string>
+    <string name="explore_follow_more_friends_title">¡Sigue más amigos!</string>
+    <string name="explore_follow_more_friends_subtitle">Las fotos de las personas que sigues aparecerán aquí</string>
+    <string name="explore_from_people_you_follow">De personas que sigues</string>
+    <string name="explore_reactions_count">%d reacciones</string>
+    <string name="explore_reactions_comments">%d reacciones • %d comentarios</string>
+    <string name="explore_trending_badge">🔥 TENDENCIA</string>
+    <string name="explore_new_badge">✨ NUEVO</string>
+    <string name="explore_no_photos_upload">Aún no hay fotos. ¡Sube una!</string>
+    <string name="explore_who_can_see">¿Quién puede ver esto?</string>
+    <string name="explore_friends_will_see">Solo tus amigos verán esta foto</string>
+    <string name="explore_everyone_will_see">Todos pueden ver esta foto</string>
+    <string name="explore_tab_trending">Tendencias</string>
+    <string name="explore_tab_popular">Popular</string>
+    <string name="explore_tab_new">Nuevo</string>
+    <string name="explore_tab_for_you">Para ti</string>
+    
+    <!-- Profile Screen -->
+    <string name="profile_dialog_title">Editar biografía</string>
+    <string name="profile_bio_label">Biografía</string>
+    <string name="profile_bio_placeholder">Cuéntanos sobre ti…</string>
+    <string name="profile_dialog_save">Guardar</string>
+    <string name="profile_dialog_cancel">Cancelar</string>
+    <string name="profile_photo_content_desc">Foto de perfil</string>
+    <string name="profile_change_photo_content_desc">Cambiar foto</string>
+    
+    <!-- Share -->
+    <string name="share_photo_title">Compartir foto</string>
+    <string name="share_photo_text">Mira esta foto en PicFlick: %s</string>
+    
+    <!-- Errors -->
+    <string name="error_unknown">Error desconocido</string>
     
 </resources>

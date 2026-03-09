@@ -147,6 +147,53 @@
     <string name="about_description">Ndani foto me miqt\u00eb tuaj n\u00eb nj\u00eb hap\u00ebsir privat dhe pa reklama.</string>
     <string name="about_privacy_policy">Politika e privat\u00ebsis\u00eb</string>
     <string name="about_terms">Kushtet e sh\u00ebrbimit</string>
-    <string name="about_contact">Na kontaktoni</string>
+    <string name="storage_photos_stored">Foto t\u00eb ruajtura</string>
+    <string name="storage_avg_photo_size">Madh\u00ebsia mesatare e fotos</string>
+    <string name="storage_current_quality">Cil\u00ebsia aktuale</string>
+    <string name="storage_label_used">P\u00ebrdorur</string>
+    <string name="storage_label_total">Total</string>
+    <string name="storage_label_remaining">Mbetur</string>
+    <string name="storage_breakdown">P\u00ebrmbajtja e ruajtjes</string>
+    <string name="storage_upgrade_to">P\u00ebrshtat n\u00eb %s</string>
+    <string name="storage_upgrade_soon">Konsideroni p\u00ebrshtatjen s\u00eb shpejti p\u00ebr t\u00eb marr\u00eb m\u00eb shum\u00eb hap\u00ebsir ruajtjeje p\u00ebr kujtimet tuaja.</string>
+    <string name="storage_upgrade_or_delete">P\u00ebrshtat planin tuaj ose fshi foto t\u00eb vjetra p\u00ebr t\u00eb liruar hap\u00ebsir.</string>
+    <string name="storage_looking_good">Keni shum\u00eb hap\u00ebsir p\u00ebr m\u00eb shum\u00eb foto. Vazhdoni t\u00eb kapni momente!</string>
+    <string name="storage_running_low">Po mbaron hap\u00ebsira</string>
+    <string name="storage_almost_full">Ruajtja pothuajse plot!</string>
+    <string name="founder_status_1_year">Statusi Themelues - 1 Vit Falas</string>
+    
+    <string name="explore_search_placeholder">K\u00ebrko foto, p\u00ebrdorues, etiketa\u2026</string>
+    <string name="explore_search_content_desc">K\u00ebrko</string>
+    <string name="explore_clear_content_desc">Pastro</string>
+    <string name="explore_trending_now">🔥 N\u00eb Trend</string>
+    <string name="explore_popular_creators">📸 Krijues t\u00eb Njohur</string>
+    <string name="explore_follow_more_friends_title">Ndiqni m\u00eb shum\u00eb miq!</string>
+    <string name="explore_follow_more_friends_subtitle">Fotot e njer\u00ebzve qe ndiqni do t\u00eb shfaqen k\u00ebtu</string>
+    <string name="explore_from_people_you_follow">Nga njer\u00ebzit qe ndiqni</string>
+    <string name="explore_reactions_count">%d reagime</string>
+    <string name="explore_reactions_comments">%d reagime \u2022 %d komente</string>
+    <string name="explore_trending_badge">🔥 N\u00cb TREND</string>
+    <string name="explore_new_badge">✨ I RI</string>
+    <string name="explore_no_photos_upload">Ende nuk ka foto. Ngarko nj\u00eb!</string>
+    <string name="explore_who_can_see">Kush mund ta shikoj\u00eb k\u00ebt\u00eb?</string>
+    <string name="explore_friends_will_see">Vet\u00ebm miqt\u00eb tuaj do ta shikojn\u00eb k\u00ebt\u00eb foto</string>
+    <string name="explore_everyone_will_see">T\u00eb gjith\u00eb mund ta shikojn\u00eb k\u00ebt\u00eb foto</string>
+    <string name="explore_tab_trending">N\u00eb Trend</string>
+    <string name="explore_tab_popular">Popullor</string>
+    <string name="explore_tab_new">I Ri</string>
+    <string name="explore_tab_for_you">P\u00ebr Ju</string>
+    
+    <string name="profile_dialog_title">Ndrysho p\u00ebrshkrimin</string>
+    <string name="profile_bio_label">P\u00ebrshkrimi</string>
+    <string name="profile_bio_placeholder">Trego p\u00ebr veten t\u00ebnde\u2026</string>
+    <string name="profile_dialog_save">Ruaj</string>
+    <string name="profile_dialog_cancel">Anulo</string>
+    <string name="profile_photo_content_desc">Foto e profilit</string>
+    <string name="profile_change_photo_content_desc">Ndrysho foton</string>
+    
+    <string name="share_photo_title">Ndaje foton</string>
+    <string name="share_photo_text">Shiko k\u00ebt\u00eb foto n\u00eb PicFlick: %s</string>
+    
+    <string name="error_unknown">Gabim i panjohur</string>
     
 </resources>

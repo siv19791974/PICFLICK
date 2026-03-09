@@ -147,6 +147,57 @@
     <string name="about_description">Partagez des photos avec vos amis dans un espace priv\u00e9 et sans publicit\u00e9.</string>
     <string name="about_privacy_policy">Politique de confidentialit\u00e9</string>
     <string name="about_terms">Conditions d\'utilisation</string>
-    <string name="about_contact">Contactez-nous</string>
+    <string name="storage_photos_stored">Photos stock\u00e9es</string>
+    <string name="storage_avg_photo_size">Taille moyenne des photos</string>
+    <string name="storage_current_quality">Qualit\u00e9 actuelle</string>
+    <string name="storage_label_used">Utilis\u00e9</string>
+    <string name="storage_label_total">Total</string>
+    <string name="storage_label_remaining">Restant</string>
+    <string name="storage_breakdown">R\u00e9partition du stockage</string>
+    <string name="storage_upgrade_to">Passer \u00e0 %s</string>
+    <string name="storage_upgrade_soon">Envisagez de mettre \u00e0 niveau bient\u00f4t pour obtenir plus d\'espace de stockage pour vos souvenirs.</string>
+    <string name="storage_upgrade_or_delete">Mettez \u00e0 niveau votre forfait ou supprimez les anciennes photos pour lib\u00e9rer de l\'espace.</string>
+    <string name="storage_looking_good">Vous avez beaucoup d\'espace pour plus de photos. Continuez \u00e0 capturer des moments !</string>
+    <string name="storage_running_low">Espace insuffisant</string>
+    <string name="storage_almost_full">Stockage presque plein !</string>
+    <string name="founder_status_1_year">Statut Fondateur - 1 an gratuit</string>
+    
+    <!-- Explore Screen -->
+    <string name="explore_search_placeholder">Rechercher des photos, utilisateurs, tags…</string>
+    <string name="explore_search_content_desc">Rechercher</string>
+    <string name="explore_clear_content_desc">Effacer</string>
+    <string name="explore_trending_now">🔥 Tendances</string>
+    <string name="explore_popular_creators">📸 Cr\u00e9ateurs populaires</string>
+    <string name="explore_follow_more_friends_title">Suivez plus d\'amis !</string>
+    <string name="explore_follow_more_friends_subtitle">Les photos des personnes que vous suivez appara\u00eetront ici</string>
+    <string name="explore_from_people_you_follow">Des personnes que vous suivez</string>
+    <string name="explore_reactions_count">%d r\u00e9actions</string>
+    <string name="explore_reactions_comments">%d r\u00e9actions • %d commentaires</string>
+    <string name="explore_trending_badge">🔥 TENDANCE</string>
+    <string name="explore_new_badge">✨ NOUVEAU</string>
+    <string name="explore_no_photos_upload">Pas encore de photos. Envoyez-en une !</string>
+    <string name="explore_who_can_see">Qui peut voir ceci ?</string>
+    <string name="explore_friends_will_see">Seuls vos amis verront cette photo</string>
+    <string name="explore_everyone_will_see">Tout le monde peut voir cette photo</string>
+    <string name="explore_tab_trending">Tendances</string>
+    <string name="explore_tab_popular">Populaire</string>
+    <string name="explore_tab_new">Nouveau</string>
+    <string name="explore_tab_for_you">Pour vous</string>
+    
+    <!-- Profile Screen -->
+    <string name="profile_dialog_title">Modifier la bio</string>
+    <string name="profile_bio_label">Bio</string>
+    <string name="profile_bio_placeholder">Parlez-nous de vous…</string>
+    <string name="profile_dialog_save">Enregistrer</string>
+    <string name="profile_dialog_cancel">Annuler</string>
+    <string name="profile_photo_content_desc">Photo de profil</string>
+    <string name="profile_change_photo_content_desc">Changer la photo</string>
+    
+    <!-- Share -->
+    <string name="share_photo_title">Partager la photo</string>
+    <string name="share_photo_text">Regardez cette photo sur PicFlick : %s</string>
+    
+    <!-- Errors -->
+    <string name="error_unknown">Erreur inconnue</string>
     
 </resources>
