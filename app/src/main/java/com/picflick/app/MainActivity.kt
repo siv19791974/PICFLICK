@@ -742,6 +742,7 @@ private fun AuthenticatedContent(
             )
 
             is Screen.Contact -> ContactScreen(
+                userProfile = userProfile,
                 onBack = { onScreenChange(Screen.Home) }
             )
 
