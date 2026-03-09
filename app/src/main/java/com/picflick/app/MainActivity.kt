@@ -70,6 +70,7 @@ import com.picflick.app.ui.screens.ProfileScreen
 import com.picflick.app.ui.screens.SettingsScreen
 import com.picflick.app.ui.screens.PrivacyScreen
 import com.picflick.app.ui.screens.PrivacyPolicyScreen
+import com.picflick.app.ui.screens.PhilosophyScreen
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.ui.unit.sp
 import com.picflick.app.ui.screens.SplashScreen
@@ -154,6 +155,7 @@ sealed class Screen {
     data object SubscriptionStatus : Screen()        // NEW: Subscription details
     data object PlanOptions : Screen()              // NEW: Plan comparison and purchase
     data object PrivacyPolicy : Screen()            // NEW: Privacy Policy screen
+    data object Philosophy : Screen()                 // NEW: Our Philosophy screen
 }
 
 /**
@@ -191,7 +193,8 @@ fun MainScreen(
             is Screen.ManageStorage,
             is Screen.SubscriptionStatus,
             is Screen.PlanOptions,
-            is Screen.Filter -> {
+            is Screen.Filter,
+            is Screen.Philosophy -> {
                 currentScreen = Screen.Home
             }
             // UserProfile goes back to Friends
@@ -876,7 +879,8 @@ private fun AuthenticatedContent(
                 onNotificationsSettings = { onScreenChange(Screen.NotificationSettings) },
                 onPlanOptions = { onScreenChange(Screen.PlanOptions) },
                 onHelpSupport = { onScreenChange(Screen.Contact) },
-                onAbout = { onScreenChange(Screen.About) }
+                onAbout = { onScreenChange(Screen.About) },
+                onPhilosophy = { onScreenChange(Screen.Philosophy) }
             )
 
             is Screen.ManageStorage -> {
@@ -1352,6 +1356,10 @@ private fun AuthenticatedContent(
             is Screen.PrivacyPolicy -> PrivacyPolicyScreen(
                 onBack = { onScreenChange(Screen.Privacy) },
                 onContactUs = { onScreenChange(Screen.Settings) }
+            )
+
+            is Screen.Philosophy -> PhilosophyScreen(
+                onBack = { onScreenChange(Screen.Settings) }
             )
     }
 }

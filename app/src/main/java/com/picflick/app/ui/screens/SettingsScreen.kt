@@ -62,7 +62,8 @@ fun SettingsScreen(
     onNotificationsSettings: () -> Unit = {},
     onPlanOptions: () -> Unit = {},
     onHelpSupport: () -> Unit = {},
-    onAbout: () -> Unit = {}
+    onAbout: () -> Unit = {},
+    onPhilosophy: () -> Unit = {}
 ) {
     val context = LocalContext.current
     var showSignOutDialog by remember { mutableStateOf(false) }
@@ -199,7 +200,7 @@ fun SettingsScreen(
                     icon = Icons.Default.Menu,
                     title = "Our Philosophy",
                     subtitle = "What we stand for",
-                    onClick = onHelpSupport
+                    onClick = onPhilosophy
                 )
                 SettingsItem(
                     icon = Icons.Default.Lock,
