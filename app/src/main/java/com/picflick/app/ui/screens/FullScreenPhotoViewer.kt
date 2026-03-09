@@ -587,6 +587,8 @@ fun FullScreenPhotoViewer(
                                     } else Modifier
                                 )
                                 .graphicsLayer(
+                                    translationX = finalX,
+                                    translationY = finalY,
                                     scaleX = swipeScale,
                                     scaleY = swipeScale,
                                     alpha = swipeAlpha
