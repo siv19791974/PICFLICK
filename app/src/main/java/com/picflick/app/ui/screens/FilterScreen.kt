@@ -4,6 +4,8 @@ import android.graphics.Bitmap
 import android.graphics.ColorMatrix
 import android.graphics.ColorMatrixColorFilter
 import android.net.Uri
+import androidx.compose.animation.*
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -45,6 +47,7 @@ import com.picflick.app.data.getDailyUploadLimit
 import com.picflick.app.ui.theme.ThemeManager
 import com.picflick.app.ui.theme.isDarkModeBackground
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -118,6 +121,20 @@ fun FilterScreen(
     // Calculate remaining uploads
     val remainingUploads = maxDailyUploads - dailyUploadCount
     val canUpload = remainingUploads > 0
+    
+    // Animation state for countdown
+    var previousRemainingUploads by remember { mutableIntStateOf(remainingUploads) }
+    var showCountdownAnimation by remember { mutableStateOf(false) }
+    
+    // Watch for upload count changes and trigger animation
+    LaunchedEffect(dailyUploadCount) {
+        if (dailyUploadCount > 0 && remainingUploads < previousRemainingUploads) {
+            showCountdownAnimation = true
+            delay(1500) // Show animation for 1.5 seconds
+            showCountdownAnimation = false
+        }
+        previousRemainingUploads = remainingUploads
+    }
 
     // Upload function with loading state
     fun triggerUpload() {
@@ -171,7 +188,7 @@ fun FilterScreen(
                         )
                     }
                     
-                    // Centered countdown box
+                    // Centered countdown box with upload complete animation
                     val remainingUploads = maxDailyUploads - dailyUploadCount
                     val isLimitReached = remainingUploads <= 0
                     
@@ -179,29 +196,68 @@ fun FilterScreen(
                         modifier = Modifier.weight(1f),
                         contentAlignment = Alignment.Center
                     ) {
+                        // Animated background color when upload just completed
+                        val backgroundColor by androidx.compose.animation.animateColorAsState(
+                            targetValue = when {
+                                showCountdownAnimation -> Color(0xFF00C853) // Green success color
+                                isLimitReached -> Color.Red
+                                isDarkMode -> Color(0xFF2C2C2E)
+                                else -> Color.White
+                            },
+                            animationSpec = androidx.compose.animation.core.tween(300),
+                            label = "backgroundColor"
+                        )
+                        
+                        val textColor by androidx.compose.animation.animateColorAsState(
+                            targetValue = when {
+                                showCountdownAnimation -> Color.White
+                                isLimitReached -> Color.White
+                                isDarkMode -> Color.White
+                                else -> Color(0xFF1565C0)
+                            },
+                            animationSpec = androidx.compose.animation.core.tween(300),
+                            label = "textColor"
+                        )
+                        
                         Box(
                             modifier = Modifier
                                 .background(
-                                    if (isLimitReached) Color.Red else if (isDarkMode) Color(0xFF2C2C2E) else Color.White,
+                                    backgroundColor,
                                     RoundedCornerShape(20.dp)
                                 )
                                 .border(
-                                    width = if (isLimitReached) 0.dp else 2.dp,
-                                    color = if (isLimitReached) Color.Transparent else if (isDarkMode) Color.Gray else Color(0xFF1565C0),
+                                    width = if (showCountdownAnimation) 0.dp else if (isLimitReached) 0.dp else 2.dp,
+                                    color = if (showCountdownAnimation) Color.Transparent else if (isLimitReached) Color.Transparent else if (isDarkMode) Color.Gray else Color(0xFF1565C0),
                                     shape = RoundedCornerShape(20.dp)
                                 )
                                 .padding(horizontal = 12.dp, vertical = 6.dp)
                         ) {
-                            Text(
-                                text = if (isLimitReached) {
-                                    "SEE YOU TOMORROW!"
-                                } else {
-                                    "$remainingUploads PHOTOS LEFT"
+                            // Animated content for the number
+                            androidx.compose.animation.AnimatedContent(
+                                targetState = if (showCountdownAnimation) remainingUploads + 1 else remainingUploads,
+                                transitionSpec = {
+                                    // Slide up animation
+                                    (slideInVertically { height -> height } + fadeIn()) togetherWith
+                                    (slideOutVertically { height -> -height } + fadeOut())
                                 },
-                                color = if (isLimitReached) Color.White else if (isDarkMode) Color.White else Color(0xFF1565C0),
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold
-                            )
+                                label = "countdownAnimation"
+                            ) { targetCount ->
+                                Text(
+                                    text = if (isLimitReached) {
+                                        "SEE YOU TOMORROW!"
+                                    } else {
+                                        val count = if (showCountdownAnimation && targetCount > remainingUploads) remainingUploads else targetCount
+                                        if (showCountdownAnimation) {
+                                            "✓ $count PHOTOS LEFT"
+                                        } else {
+                                            "$count PHOTOS LEFT"
+                                        }
+                                    },
+                                    color = textColor,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
                         }
                     }
                     
