@@ -738,17 +738,67 @@ private fun AuthenticatedContent(
                 onBack = { onScreenChange(Screen.Home) }
             )
 
-            is Screen.Notifications -> NotificationsScreen(
-                userProfile = userProfile,
-                onBack = { onScreenChange(Screen.Home) },
-                onUserProfileClick = { userId ->
-                    if (userId == userProfile.uid) {
-                        onScreenChange(Screen.Profile)
-                    } else {
-                        onScreenChange(Screen.UserProfile(userId))
+            is Screen.Notifications -> {
+                // State for fullscreen photo viewer from notifications
+                var selectedNotificationPhoto by remember { mutableStateOf<Flick?>(null) }
+                
+                NotificationsScreen(
+                    userProfile = userProfile,
+                    onBack = { onScreenChange(Screen.Home) },
+                    onUserProfileClick = { userId ->
+                        if (userId == userProfile.uid) {
+                            onScreenChange(Screen.Profile)
+                        } else {
+                            onScreenChange(Screen.UserProfile(userId))
+                        }
+                    },
+                    onPhotoClick = { flickId, imageUrl, userId ->
+                        // Create a Flick from notification data
+                        selectedNotificationPhoto = Flick(
+                            id = flickId,
+                            userId = userId,
+                            userName = "",
+                            userPhotoUrl = "",
+                            imageUrl = imageUrl ?: "",
+                            description = "",
+                            timestamp = System.currentTimeMillis(),
+                            reactions = emptyMap(),
+                            commentCount = 0,
+                            privacy = "friends",
+                            taggedFriends = emptyList(),
+                            reportCount = 0
+                        )
+                    },
+                    onChatClick = { _, _, _, _ ->
+                        // Navigate to chats screen
+                        onScreenChange(Screen.Chats)
                     }
+                )
+                
+                // FullScreenPhotoViewer for notification photos
+                selectedNotificationPhoto?.let { flick ->
+                    FullScreenPhotoViewer(
+                        flick = flick,
+                        currentUser = userProfile,
+                        onDismiss = { selectedNotificationPhoto = null },
+                        onReaction = { reactionType ->
+                            reactionType?.let { 
+                                homeViewModel.toggleReaction(flick, userProfile.uid, userProfile.displayName, userProfile.photoUrl, it)
+                            }
+                        },
+                        onDeleteClick = {
+                            selectedNotificationPhoto = null
+                        },
+                        onUserProfileClick = { clickedUserId ->
+                            if (clickedUserId == userProfile.uid) {
+                                onScreenChange(Screen.Profile)
+                            } else {
+                                onScreenChange(Screen.UserProfile(clickedUserId))
+                            }
+                        }
+                    )
                 }
-            )
+            }
 
             is Screen.Settings -> SettingsScreen(
                 userProfile = userProfile,
