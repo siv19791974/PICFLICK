@@ -83,15 +83,9 @@ fun LegalScreen(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(
-                        text = "PicFlick",
+                        text = "Terms & Conditions",
                         fontSize = 28.sp,
                         fontWeight = FontWeight.Bold,
-                        color = accentColor
-                    )
-                    Text(
-                        text = "Terms & Conditions",
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.Medium,
                         color = textColor
                     )
                     Spacer(modifier = Modifier.height(8.dp))
