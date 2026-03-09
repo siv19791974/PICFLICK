@@ -22,6 +22,8 @@ import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import com.picflick.app.data.UserProfile
 import com.picflick.app.repository.FlickRepository
+import com.picflick.app.ui.theme.ThemeManager
+import com.picflick.app.ui.theme.isDarkModeBackground
 
 /**
  * Privacy Settings Screen - Privacy by Default
@@ -34,6 +36,7 @@ fun PrivacyScreen(
     userProfile: UserProfile,
     onBack: () -> Unit
 ) {
+    val isDarkMode = ThemeManager.isDarkMode.value
     val repository = remember { FlickRepository.getInstance() }
     var blockedUsers by remember { mutableStateOf<List<UserProfile>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
@@ -100,7 +103,7 @@ fun PrivacyScreen(
                 }
             }
         },
-        containerColor = Color(0xFF121212)
+        containerColor = isDarkModeBackground(isDarkMode)
     ) { padding ->
         LazyColumn(
             modifier = Modifier
