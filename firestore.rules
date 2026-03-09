@@ -30,14 +30,14 @@ service cloud.firestore {
     }
 
     function isFriendOf(ownerId) {
-      return isAuthenticated() && 
-        ownerId in get(/databases/$(database)/documents/users/$(request.auth.uid)).data.following &&
-        request.auth.uid in get(/databases/$(database)/documents/users/$(ownerId)).data.following;
+      return isAuthenticated() &&
+        ownerId in (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.following || []) &&
+        request.auth.uid in (get(/databases/$(database)/documents/users/$(ownerId)).data.following || []);
     }
 
     function isNotBlockedBy(ownerId) {
       return isAuthenticated() && 
-        !(request.auth.uid in get(/databases/$(database)/documents/users/$(ownerId)).data.blockedUsers);
+        !(request.auth.uid in (get(/databases/$(database)/documents/users/$(ownerId)).data.blockedUsers || []));
     }
 
     // ==================== USERS COLLECTION ====================
