@@ -18,8 +18,13 @@ import androidx.compose.material.icons.filled.Upgrade
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -46,6 +51,8 @@ import com.picflick.app.ui.theme.ThemeManager
 import com.picflick.app.ui.theme.isDarkModeBackground
 import com.picflick.app.viewmodel.BillingViewModel
 import com.picflick.app.viewmodel.SubscriptionProduct
+import com.google.firebase.firestore.FirebaseFirestore
+import kotlinx.coroutines.tasks.await
 
 /**
  * Manage Storage Screen - Full storage dashboard
@@ -70,6 +77,26 @@ fun ManageStorageScreen(
     val totalGB = storageLimit / (1024.0 * 1024.0 * 1024.0)
     val remainingGB = totalGB - usedGB
     val isDarkMode = ThemeManager.isDarkMode.value
+    
+    // Calculate actual photo count from Firestore
+    var actualPhotoCount by remember { mutableIntStateOf(userProfile.totalPhotos) }
+    var isLoadingCount by remember { mutableStateOf(true) }
+    
+    LaunchedEffect(userProfile.uid) {
+        try {
+            val db = FirebaseFirestore.getInstance()
+            val snapshot = db.collection("flicks")
+                .whereEqualTo("userId", userProfile.uid)
+                .get()
+                .await()
+            actualPhotoCount = snapshot.size()
+        } catch (e: Exception) {
+            // Fallback to profile count if query fails
+            actualPhotoCount = userProfile.totalPhotos
+        } finally {
+            isLoadingCount = false
+        }
+    }
     
     Scaffold(
         topBar = {
@@ -132,7 +159,7 @@ fun ManageStorageScreen(
                 tier = tier,
                 tierColor = tierColor,
                 isFounder = userProfile.isFounder,
-                photosCount = userProfile.totalPhotos,
+                photosCount = actualPhotoCount,
                 dailyUploads = userProfile.dailyUploadsToday,
                 dailyLimit = tier.getDailyUploadLimit(),
                 isDarkMode = isDarkMode
@@ -224,15 +251,23 @@ private fun StorageMeterCard(
                 fontSize = 48.sp,
                 fontWeight = FontWeight.Bold,
                 color = when {
-                    percent > 90 -> Color.Red
-                    percent > 75 -> Color(0xFFFF8F00)
-                    else -> Color(0xFF1565C0)
+                    percent < 60 -> Color(0xFF00C853)  // Green
+                    percent < 80 -> Color(0xFFFFD600)  // Yellow
+                    percent < 90 -> Color(0xFFFF6D00)  // Orange
+                    else -> Color.Red                   // Red
                 }
             )
             
             Spacer(modifier = Modifier.height(8.dp))
             
-            // Progress bar
+            // Progress bar with color coding
+            val barColor = when {
+                percent < 60 -> Color(0xFF00C853)  // Green
+                percent < 80 -> Color(0xFFFFD600)  // Yellow
+                percent < 90 -> Color(0xFFFF6D00)  // Orange
+                else -> Color.Red                   // Red
+            }
+            
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -245,14 +280,7 @@ private fun StorageMeterCard(
                         .fillMaxHeight()
                         .fillMaxWidth(percent / 100f)
                         .clip(RoundedCornerShape(6.dp))
-                        .background(
-                            brush = Brush.horizontalGradient(
-                                colors = listOf(
-                                    tierColor.copy(alpha = 0.7f),
-                                    tierColor
-                                )
-                            )
-                        )
+                        .background(barColor)
                 )
             }
             
