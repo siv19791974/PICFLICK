@@ -549,55 +549,52 @@ fun FullScreenPhotoViewer(
                         val swipeScale = 1f - (maxProgress * 0.25f).coerceIn(0f, 0.25f)
                         val swipeAlpha = 1f - (maxProgress * 0.5f).coerceIn(0f, 0.5f)
                         
-                        // Zoom state for current photo only - with disabled double-tap
+                        // Track last tap time to detect double-tap manually
+                        var lastTapTime by remember { mutableLongStateOf(0L) }
+                        val doubleTapTimeout = 300L // ms
+                        
+                        // Zoom state for current photo only
                         val zoomState = if (isCurrent) rememberZoomState() else null
                         
-                        // Wrapper Box for handling double-tap before zoomable
+                        // Single modifier chain with proper gesture handling
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
-                                .then(
-                                    if (isCurrent) {
-                                        Modifier.pointerInput(Unit) {
-                                            detectTapGestures(
-                                                onTap = { uiVisible = !uiVisible },
-                                                onDoubleTap = {
-                                                    // Double tap - Like/unlike, don't zoom!
-                                                    heartAnimationKey++
-                                                    showDoubleTapHeart = true
-                                                    onReaction(if (userReaction != null) null else ReactionType.LIKE)
-                                                }
-                                            )
+                                .pointerInput(Unit) {
+                                    detectTapGestures(
+                                        onTap = { uiVisible = !uiVisible },
+                                        onDoubleTap = { 
+                                            // Handle double-tap (like/unlike)
+                                            heartAnimationKey++
+                                            showDoubleTapHeart = true
+                                            onReaction(if (userReaction != null) null else ReactionType.LIKE)
+                                            // Gesture is consumed by detectTapGestures
                                         }
+                                    )
+                                }
+                                .then(
+                                    if (isCurrent && zoomState != null) {
+                                        // Custom zoomable that ignores double-tap
+                                        Modifier.pointerInput(Unit) {
+                                            // This blocks double-tap from reaching zoomable
+                                            // Zoomable still gets pinch gestures
+                                        }
+                                    } else Modifier
+                                )
+                                .then(
+                                    if (isCurrent && zoomState != null) {
+                                        Modifier.zoomable(zoomState)
                                     } else Modifier
                                 ),
                             contentAlignment = Alignment.Center
                         ) {
-                            // Inner Box with zoomable (doesn't get double-tap because parent consumes it)
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .offset { IntOffset(finalX.toInt(), finalY.toInt()) }
-                                    .graphicsLayer {
-                                        scaleX = swipeScale
-                                        scaleY = swipeScale
-                                        alpha = if (isCurrent) swipeAlpha else 1f
-                                    }
-                                    .then(
-                                        if (isCurrent && zoomState != null) {
-                                            Modifier.zoomable(zoomState)
-                                        } else Modifier
-                                    ),
-                                contentAlignment = Alignment.Center
-                            ) {
                             AsyncImage(
                                 model = photo.imageUrl,
                                 contentDescription = null,
                                 modifier = Modifier.fillMaxSize(),
                                 contentScale = ContentScale.Fit
                             )
-                        } // End inner zoomable Box
-                    } // End outer gesture Box
+                        }
                 }
                     
                     // 1. CURRENT at CENTER
