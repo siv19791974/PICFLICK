@@ -218,29 +218,26 @@ class FriendsViewModel : ViewModel() {
     }
 
     /**
-     * Follow a user
+     * Send a follow request to a user
      */
-    fun followUser(currentUserId: String, targetUser: UserProfile, currentUser: UserProfile) {
+    fun sendFollowRequest(currentUserId: String, targetUser: UserProfile, currentUser: UserProfile) {
         viewModelScope.launch {
             processingUserIds.add(targetUser.uid)
             
-            val result = repository.followUser(currentUserId, targetUser.uid, currentUser.displayName)
+            val result = repository.sendFollowRequest(
+                currentUserId, 
+                targetUser.uid, 
+                currentUser.displayName,
+                currentUser.photoUrl
+            )
             when (result) {
                 is Result.Success -> {
-                    val index = searchResults.indexOfFirst { it.uid == targetUser.uid }
-                    if (index != -1) {
-                        searchUsers(searchQuery, currentUserId)
-                    }
-                    val contactIndex = contactsOnApp.indexOfFirst { it.uid == targetUser.uid }
-                    if (contactIndex != -1) {
-                        contactsOnApp[contactIndex] = targetUser.copy(
-                            followers = targetUser.followers + currentUserId
-                        )
-                    }
+                    // Update suggested users - remove sent request from suggestions
                     val suggestedIndex = suggestedUsers.indexOfFirst { it.uid == targetUser.uid }
                     if (suggestedIndex != -1) {
                         suggestedUsers.removeAt(suggestedIndex)
                     }
+                    errorMessage = null
                 }
                 is Result.Error -> {
                     errorMessage = result.message
@@ -249,6 +246,78 @@ class FriendsViewModel : ViewModel() {
             }
             
             processingUserIds.remove(targetUser.uid)
+        }
+    }
+
+    /**
+     * Accept a follow request
+     */
+    fun acceptFollowRequest(currentUserId: String, requester: UserProfile) {
+        viewModelScope.launch {
+            processingUserIds.add(requester.uid)
+            
+            val result = repository.acceptFollowRequest(currentUserId, requester.uid, requester.displayName)
+            when (result) {
+                is Result.Success -> {
+                    // Refresh pending requests
+                    loadPendingRequests(currentUserId)
+                    errorMessage = null
+                }
+                is Result.Error -> {
+                    errorMessage = result.message
+                }
+                is Result.Loading -> { }
+            }
+            
+            processingUserIds.remove(requester.uid)
+        }
+    }
+
+    /**
+     * Reject a follow request
+     */
+    fun rejectFollowRequest(currentUserId: String, requesterId: String) {
+        viewModelScope.launch {
+            processingUserIds.add(requesterId)
+            
+            val result = repository.rejectFollowRequest(currentUserId, requesterId)
+            when (result) {
+                is Result.Success -> {
+                    // Refresh pending requests
+                    loadPendingRequests(currentUserId)
+                    errorMessage = null
+                }
+                is Result.Error -> {
+                    errorMessage = result.message
+                }
+                is Result.Loading -> { }
+            }
+            
+            processingUserIds.remove(requesterId)
+        }
+    }
+
+    /**
+     * Cancel a sent follow request
+     */
+    fun cancelFollowRequest(currentUserId: String, targetUserId: String) {
+        viewModelScope.launch {
+            processingUserIds.add(targetUserId)
+            
+            val result = repository.cancelFollowRequest(currentUserId, targetUserId)
+            when (result) {
+                is Result.Success -> {
+                    // Refresh suggested users
+                    loadSuggestedUsers(currentUserId)
+                    errorMessage = null
+                }
+                is Result.Error -> {
+                    errorMessage = result.message
+                }
+                is Result.Loading -> { }
+            }
+            
+            processingUserIds.remove(targetUserId)
         }
     }
 
@@ -272,6 +341,26 @@ class FriendsViewModel : ViewModel() {
             }
             
             processingUserIds.remove(targetUserId)
+        }
+    }
+
+    /**
+     * Load pending follow requests
+     */
+    fun loadPendingRequests(userId: String) {
+        isLoading = true
+        repository.getPendingFollowRequests(userId) { result ->
+            when (result) {
+                is Result.Success -> {
+                    // This would update a pendingRequests list in the ViewModel
+                    isLoading = false
+                }
+                is Result.Error -> {
+                    errorMessage = result.message
+                    isLoading = false
+                }
+                is Result.Loading -> { }
+            }
         }
     }
 
