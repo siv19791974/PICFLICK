@@ -1,0 +1,123 @@
+PICFLICK FIRESTORE RULES - COPY & PASTE VERSION
+================================================
+
+Copy everything below this line into Firebase Console:
+Firestore Database → Rules → Paste → Publish
+
+--------------------------------------------------
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && 
+        (request.auth.token.admin == true || 
+         request.auth.uid in ['YOUR_ADMIN_UID_HERE']);
+    }
+
+    function isNotBlockedBy(ownerId) {
+      return isAuthenticated() && 
+        !(request.auth.uid in get(/databases/$(database)/documents/users/$(ownerId)).data.blockedUsers);
+    }
+
+    // USERS
+    match /users/{userId} {
+      allow read: if isAuthenticated() && isNotBlockedBy(userId);
+      allow create: if isOwner(userId);
+      allow update: if isOwner(userId);
+      allow delete: if isOwner(userId);
+    }
+
+    // PHOTOS (FLICKS)
+    match /flicks/{flickId} {
+      allow read: if isAuthenticated() && (
+        resource.data.privacy == 'public' ||
+        isOwner(resource.data.userId) ||
+        isAdmin() ||
+        (request.auth.uid in get(/databases/$(database)/documents/users/$(request.auth.uid)).data.following &&
+         request.auth.uid in get(/databases/$(database)/documents/users/$(resource.data.userId)).data.following &&
+         isNotBlockedBy(resource.data.userId))
+      );
+      allow create: if isAuthenticated() && isOwner(request.resource.data.userId);
+      allow update: if isAuthenticated() && isOwner(resource.data.userId);
+      allow delete: if isAuthenticated() && (isOwner(resource.data.userId) || isAdmin());
+    }
+
+    // CHAT
+    match /chatSessions/{sessionId} {
+      allow read: if isAuthenticated() && request.auth.uid in resource.data.participants;
+      allow create: if isAuthenticated() && request.auth.uid in request.resource.data.participants;
+      allow update: if isAuthenticated() && request.auth.uid in resource.data.participants;
+    }
+
+    match /chatSessions/{sessionId}/messages/{messageId} {
+      allow read: if isAuthenticated() && request.auth.uid in get(/databases/$(database)/documents/chatSessions/$(sessionId)).data.participants;
+      allow create: if isAuthenticated() && request.auth.uid == request.resource.data.senderId;
+    }
+
+    // REACTIONS
+    match /flicks/{flickId}/reactions/{userId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && isOwner(userId);
+    }
+
+    // COMMENTS
+    match /flicks/{flickId}/comments/{commentId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && request.auth.uid == request.resource.data.userId;
+      allow delete: if isAuthenticated() && (isOwner(resource.data.userId) || isOwner(get(/databases/$(database)/documents/flicks/$(flickId)).data.userId) || isAdmin());
+    }
+
+    // NOTIFICATIONS
+    match /notifications/{notificationId} {
+      allow read: if isAuthenticated() && request.auth.uid == resource.data.userId;
+      allow create: if isAuthenticated() && request.auth.token.system == true;
+      allow update: if isAuthenticated() && isOwner(resource.data.userId);
+      allow delete: if isAuthenticated() && (isOwner(resource.data.userId) || isAdmin());
+    }
+
+    // REPORTS (PHOTO REPORTS)
+    match /reports/{reportId} {
+      allow read: if isAdmin();
+      allow create: if isAuthenticated() && request.auth.uid == request.resource.data.reporterId;
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // FEEDBACK (CONTACT FORM)
+    match /feedback/{feedbackId} {
+      allow read: if isAdmin();
+      allow create: if isAuthenticated() && request.auth.uid == request.resource.data.userId;
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // DEFAULT DENY
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
+
+--------------------------------------------------
+
+INSTRUCTIONS:
+1. Go to https://console.firebase.google.com
+2. Select your PicFlick project
+3. Click "Firestore Database" in left menu
+4. Click "Rules" tab at top
+5. DELETE all existing text
+6. PASTE the rules above (starting from "rules_version")
+7. REPLACE 'YOUR_ADMIN_UID_HERE' with your actual Firebase UID
+8. Click "PUBLISH" button
+
+DONE!
