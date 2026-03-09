@@ -1057,7 +1057,7 @@ private fun AuthenticatedContent(
                         },
                         onAddFriend = {
                             // Navigate to FindFriends and trigger follow
-                            friendsViewModel.followUser(
+                            friendsViewModel.sendFollowRequest(
                                 userProfile.uid,
                                 target,
                                 userProfile
