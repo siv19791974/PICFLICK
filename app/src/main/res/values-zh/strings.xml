@@ -1,0 +1,152 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">PICFLICK</string>
+    
+    <!-- Web Client ID for Google Sign-In - Should be moved to local.properties in production -->
+    <string name="default_web_client_id" translatable="false">830332240569-pko9aotmkb9qn86ao98ml20drrihe4l4.apps.googleusercontent.com</string>
+    
+    <!-- ==================== LOGIN SCREEN ==================== -->
+    <string name="login_welcome_title">\u6b22\u8fce\u6765\u5230 PicFlick</string>
+    <string name="login_welcome_subtitle">\u4e0e\u670b\u53cb\u5206\u4eab\u7167\u7247</string>
+    <string name="login_sign_in_button">\u4f7f\u7528 Google \u767b\u5f55</string>
+    <string name="login_logo_content_desc">PicFlick \u6807\u5fd7</string>
+    
+    <!-- Login Error Messages -->
+    <string name="login_error_firebase_auth">Firebase \u8ba4\u8bc1\u5931\u8d25</string>
+    <string name="login_error_parse_token">\u89e3\u6790 Google ID \u4ee4\u724c\u5931\u8d25</string>
+    <string name="login_error_unsupported_credential">\u4e0d\u652f\u6301\u7684\u51ed\u8bc1\u7c7b\u578b</string>
+    <string name="login_error_sign_in_failed">\u767b\u5f55\u5931\u8d25</string>
+    <string name="login_error_unexpected">\u610f\u5916\u9519\u8bef</string>
+    
+    <!-- ==================== NAVIGATION & COMMON ==================== -->
+    <string name="nav_back">\u8fd4\u56de</string>
+    <string name="nav_settings">\u8bbe\u7f6e</string>
+    <string name="nav_notifications">\u901a\u77e5</string>
+    <string name="nav_profile">\u4e2a\u4eba\u8d44\u6599</string>
+    <string name="nav_home">\u9996\u9875</string>
+    <string name="nav_chats">\u804a\u5929</string>
+    <string name="nav_friends">\u670b\u53cb</string>
+    <string name="nav_upload">\u4e0a\u4f20</string>
+    
+    <!-- ==================== HOME SCREEN ==================== -->
+    <string name="home_camera_content_desc">\u76f8\u673a</string>
+    <string name="home_gallery_content_desc">\u76f8\u518c</string>
+    <string name="home_privacy_friends">\u4ec5\u597d\u53cb</string>
+    <string name="home_privacy_public">\u516c\u5f00</string>
+    <string name="home_fab_upload">\u4e0a\u4f20\u7167\u7247</string>
+    
+    <!-- ==================== FILTER SCREEN ==================== -->
+    <string name="filter_title">\u5e94\u7528\u6ee4\u955c</string>
+    <string name="filter_back_camera">\u8fd4\u56de\u76f8\u673a</string>
+    <string name="filter_upload">\u4e0a\u4f20</string>
+    <string name="filter_photo_preview">\u5df2\u6ee4\u955c\u7167\u7247</string>
+    <string name="filter_caption_placeholder">\u6dfb\u52a0\u8bf4\u660e\u2026</string>
+    <string name="filter_find_friends">\u67e5\u627e\u670b\u53cb</string>
+    <string name="filter_remove_friend">\u79fb\u9664</string>
+    <string name="filter_tag_friends">\u5728\u7167\u7247\u4e2d\u6807\u8bb0\u670b\u53cb</string>
+    
+    <!-- Upload Status -->
+    <string name="upload_complete">\u4e0a\u4f20\u5b8c\u6210\uff01</string>
+    <string name="upload_failed">\u4e0a\u4f20\u5931\u8d25</string>
+    <string name="upload_limit_reached">\u5df2\u8fbe\u6bcf\u65e5\u4e0a\u4f20\u9650\u5236</string>
+    
+    <!-- ==================== CHAT SCREENS ==================== -->
+    <string name="chat_message_placeholder">\u6d88\u606f</string>
+    <string name="chat_send_content_desc">\u53d1\u9001</string>
+    <string name="chat_no_messages">\u6682\u65e0\u6d88\u606f</string>
+    <string name="chat_start_conversation">\u5f00\u59cb\u4e0e\u670b\u53cb\u804a\u5929\uff01</string>
+    <string name="chat_say_hello">\u6253\u62db\u547c\uff01</string>
+    <string name="chat_you_prefix">\u4f60\uff1a</string>
+    <string name="chat_unknown_user">\u672a\u77e5</string>
+    
+    <!-- ==================== PROFILE SCREEN ==================== -->
+    <string name="profile_photos_title">\u6211\u7684\u7167\u7247</string>
+    <string name="profile_photo_count">%d \u5f20\u7167\u7247</string>
+    <string name="profile_total_reactions">%d \u4e2a\u53cd\u5e94</string>
+    <string name="profile_streak">%d \u5929\u8fde\u7eed</string>
+    <string name="profile_edit_bio">\u7f16\u8f91\u4e2a\u4eba\u7b80\u4ecb</string>
+    <string name="profile_change_photo">\u66f4\u6362\u5934\u50cf</string>
+    
+    <!-- ==================== FRIENDS SCREEN ==================== -->
+    <string name="friends_search_placeholder">\u641c\u7d22\u670b\u53cb\u2026</string>
+    <string name="friends_no_results">\u672a\u627e\u5230\u7528\u6237</string>
+    <string name="friends_follow">\u5173\u6ce8</string>
+    <string name="friends_following">\u5df2\u5173\u6ce8</string>
+    <string name="friends_suggested">\u63a8\u8350\u597d\u53cb</string>
+    <string name="friends_contacts">PicFlick \u4e0a\u7684\u8054\u7cfb\u4eba</string>
+    
+    <!-- ==================== SETTINGS SCREEN ==================== -->
+    <string name="settings_title">\u8bbe\u7f6e</string>
+    <string name="settings_edit_profile">\u7f16\u8f91\u4e2a\u4eba\u8d44\u6599</string>
+    <string name="settings_manage_storage">\u7ba1\u7406\u5b58\u50a8</string>
+    <string name="settings_subscription">\u8ba2\u9605\u72b6\u6001</string>
+    <string name="settings_privacy">\u9690\u79c1\u8bbe\u7f6e</string>
+    <string name="settings_notifications">\u901a\u77e5\u8bbe\u7f6e</string>
+    <string name="settings_help">\u5e2e\u52a9\u4e0e\u652f\u6301</string>
+    <string name="settings_about">\u5173\u4e8e</string>
+    <string name="settings_sign_out">\u9000\u51fa\u767b\u5f55</string>
+    <string name="settings_delete_account">\u5220\u9664\u8d26\u6237</string>
+    
+    <!-- ==================== NOTIFICATIONS ==================== -->
+    <string name="notifications_title">\u901a\u77e5</string>
+    <string name="notifications_empty">\u6682\u65e0\u901a\u77e5</string>
+    <string name="notifications_mark_read">\u5168\u90e8\u6807\u4e3a\u5df2\u8bfb</string>
+    
+    <!-- Notification Types -->
+    <string name="notif_like">\u559c\u6b22\u4e86\u4f60\u7684\u7167\u7247</string>
+    <string name="notif_reaction">\u5bf9\u4f60\u7684\u7167\u7247\u505a\u51fa\u53cd\u5e94</string>
+    <string name="notif_comment">\u8bc4\u8bba\u4e86\u4f60\u7684\u7167\u7247</string>
+    <string name="notif_follow">\u5f00\u59cb\u5173\u6ce8\u4f60</string>
+    <string name="notif_message">\u7ed9\u4f60\u53d1\u9001\u4e86\u6d88\u606f</string>
+    <string name="notif_mention">\u63d0\u53ca\u4e86\u4f60</string>
+    
+    <!-- ==================== STORAGE & BILLING ==================== -->
+    <string name="storage_title">\u7ba1\u7406\u5b58\u50a8</string>
+    <string name="storage_used">\u5df2\u4f7f\u7528 %1$.1f GB / %2$d GB</string>
+    <string name="storage_photos_count">%d \u5f20\u7167\u7247</string>
+    <string name="storage_daily_uploads">\u4eca\u65e5\u5df2\u4e0a\u4f20 %1$d / %2$s</string>
+    <string name="storage_unlimited">\u65e0\u9650</string>
+    <string name="storage_upgrade">\u5347\u7ea7\u5b58\u50a8</string>
+    
+    <!-- Subscription Tiers -->
+    <string name="tier_free">\u514d\u8d39</string>
+    <string name="tier_standard">\u6807\u51c6</string>
+    <string name="tier_plus">\u9ad8\u7ea7</string>
+    <string name="tier_pro">\u4e13\u4e1a</string>
+    <string name="tier_ultra">\u81f3\u5c0a</string>
+    <string name="tier_founder">\u521b\u59cb\u4eba</string>
+    
+    <!-- ==================== ERRORS & MESSAGES ==================== -->
+    <string name="error_generic">\u51fa\u73b0\u4e86\u95ee\u9898</string>
+    <string name="error_network">\u7f51\u7edc\u9519\u8bef\u3002\u8bf7\u91cd\u8bd5\u3002</string>
+    <string name="error_permission_denied">\u6743\u9650\u88ab\u62d2\u7edd</string>
+    <string name="error_camera_failed">\u62cd\u7167\u5931\u8d25</string>
+    <string name="error_upload_failed">\u4e0a\u4f20\u7167\u7247\u5931\u8d25</string>
+    
+    <!-- Success Messages -->
+    <string name="success_photo_uploaded">\u7167\u7247\u4e0a\u4f20\u6210\u529f\uff01</string>
+    <string name="success_profile_updated">\u4e2a\u4eba\u8d44\u6599\u5df2\u66f4\u65b0\uff01</string>
+    <string name="success_changes_saved">\u5df2\u4fdd\u5b58\u66f4\u6539</string>
+    
+    <!-- ==================== DIALOGS ==================== -->
+    <string name="dialog_cancel">\u53d6\u6d88</string>
+    <string name="dialog_save">\u4fdd\u5b58</string>
+    <string name="dialog_delete">\u5220\u9664</string>
+    <string name="dialog_confirm">\u786e\u8ba4</string>
+    <string name="dialog_go_back">\u8fd4\u56de</string>
+    
+    <!-- Delete Confirmation -->
+    <string name="delete_photo_title">\u5220\u9664\u7167\u7247\uff1f</string>
+    <string name="delete_photo_message">\u6b64\u64cd\u4f5c\u4e0d\u53ef\u64a4\u9500\u3002</string>
+    <string name="delete_account_title">\u5220\u9664\u8d26\u6237\uff1f</string>
+    <string name="delete_account_message">\u6240\u6709\u6570\u636e\u5c06\u88ab\u6c38\u4e45\u5220\u9664\u3002</string>
+    
+    <!-- ==================== ABOUT SCREEN ==================== -->
+    <string name="about_title">\u5173\u4e8e PicFlick</string>
+    <string name="about_version">\u7248\u672c %s</string>
+    <string name="about_description">\u5728\u79c1\u5bc6\u3001\u65e0\u5e7f\u544a\u7684\u7a7a\u95f4\u4e2d\u4e0e\u670b\u53cb\u5206\u4eab\u7167\u7247\u3002</string>
+    <string name="about_privacy_policy">\u9690\u79c1\u653f\u7b56</string>
+    <string name="about_terms">\u670d\u52a1\u6761\u6b3e</string>
+    <string name="about_contact">\u8054\u7cfb\u6211\u4eec</string>
+    
+</resources>
