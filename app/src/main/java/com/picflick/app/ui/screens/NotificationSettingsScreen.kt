@@ -22,6 +22,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.picflick.app.data.NotificationPreferences
 import com.picflick.app.data.UserProfile
+import com.picflick.app.ui.theme.ThemeManager
+import com.picflick.app.ui.theme.isDarkModeBackground
 
 /**
  * Simplified Notification Settings Screen
@@ -35,6 +37,7 @@ fun NotificationSettingsScreen(
     onSavePreferences: (NotificationPreferences) -> Unit
 ) {
     var preferences by remember { mutableStateOf(userProfile.notificationPreferences) }
+    val isDarkMode = ThemeManager.isDarkMode.value
 
     Scaffold(
         topBar = {
@@ -61,16 +64,17 @@ fun NotificationSettingsScreen(
                         )
                     }
                     Text(
-                        text = "Notifications",
+                        text = "Notifications Settings",
                         modifier = Modifier.weight(1f),
                         color = Color.White,
                         fontWeight = FontWeight.Bold,
+                        fontSize = 16.sp,
                         textAlign = androidx.compose.ui.text.style.TextAlign.Center
                     )
                     // Save button on the right
                     TextButton(
                         onClick = { onSavePreferences(preferences) },
-                        modifier = Modifier.size(48.dp)
+                        modifier = Modifier.width(60.dp)
                     ) {
                         Text(
                             "Save",
@@ -82,7 +86,7 @@ fun NotificationSettingsScreen(
                 }
             }
         },
-        containerColor = Color.Black
+        containerColor = isDarkModeBackground(isDarkMode)
     ) { padding ->
         Column(
             modifier = Modifier
