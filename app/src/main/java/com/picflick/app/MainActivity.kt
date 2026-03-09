@@ -754,6 +754,15 @@ private fun AuthenticatedContent(
                 userProfile = userProfile,
                 onBack = { onScreenChange(Screen.Home) },
                 onSignOut = onSignOut,
+                onDeleteAccount = {
+                    authViewModel.deleteAccount { success, error ->
+                        if (success) {
+                            onSignOut()
+                        } else {
+                            Toast.makeText(context, error ?: "Failed to delete account", Toast.LENGTH_LONG).show()
+                        }
+                    }
+                },
                 onEditProfile = { onScreenChange(Screen.Profile) },
                 onManageStorage = { onScreenChange(Screen.ManageStorage) },
                 onSubscriptionStatus = { onScreenChange(Screen.SubscriptionStatus) },
