@@ -12,6 +12,8 @@ data class UserProfile(
     val bio: String = "",
     val followers: List<String> = emptyList(),
     val following: List<String> = emptyList(),
+    val pendingFollowRequests: List<String> = emptyList(), // Users who want to follow this user (pending approval)
+    val sentFollowRequests: List<String> = emptyList(), // Users this user has requested to follow (waiting for approval)
     val blockedUsers: List<String> = emptyList(), // Users this person has blocked
     val fcmToken: String = "", // Firebase Cloud Messaging token for push notifications
     val notificationPreferences: NotificationPreferences = NotificationPreferences(), // Notification settings
@@ -27,6 +29,37 @@ data class UserProfile(
     val isFounder: Boolean = false, // Early tester status
     val joinedAt: Long = System.currentTimeMillis()
 ) {
+    /**
+     * Check if user has a pending follow request from another user
+     */
+    fun hasPendingFollowRequest(fromUserId: String): Boolean = pendingFollowRequests.contains(fromUserId)
+    
+    /**
+     * Check if user has sent a follow request to another user
+     */
+    fun hasSentFollowRequest(toUserId: String): Boolean = sentFollowRequests.contains(toUserId)
+    
+    /**
+     * Get mutual followers count with another user
+     */
+    fun getMutualFollowers(otherUser: UserProfile): Int {
+        return followers.intersect(otherUser.followers.toSet()).size
+    }
+    
+    /**
+     * Check if this user is following another user
+     */
+    fun isFollowing(userId: String): Boolean = following.contains(userId)
+    
+    /**
+     * Check if this user is followed by another user
+     */
+    fun isFollowedBy(userId: String): Boolean = followers.contains(userId)
+    
+    /**
+     * Check if users are mutual friends (follow each other)
+     */
+    fun isMutualFriend(userId: String): Boolean = following.contains(userId) && followers.contains(userId)
     /**
      * Get the current subscription tier
      */

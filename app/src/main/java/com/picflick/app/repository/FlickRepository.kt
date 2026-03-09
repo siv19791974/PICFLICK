@@ -590,6 +590,262 @@ class FlickRepository private constructor() {
             .addOnFailureListener { e -> onResult(Result.Error(e, "Failed to unblock user")) }
     }
 
+    // ==================== FRIEND REQUEST SYSTEM ====================
+
+    /**
+     * Send a follow request to a user (requires approval)
+     */
+    suspend fun sendFollowRequest(
+        currentUserId: String,
+        targetUserId: String,
+        currentUserName: String,
+        currentUserPhotoUrl: String
+    ): Result<Unit> {
+        return try {
+            val batch = db.batch()
+
+            // Add to current user's sent requests
+            val currentUserRef = db.collection("users").document(currentUserId)
+            batch.update(currentUserRef, "sentFollowRequests", FieldValue.arrayUnion(targetUserId))
+
+            // Add to target user's pending requests
+            val targetUserRef = db.collection("users").document(targetUserId)
+            batch.update(targetUserRef, "pendingFollowRequests", FieldValue.arrayUnion(currentUserId))
+
+            batch.commit().await()
+
+            // Create friend request notification
+            createFriendRequestNotification(
+                requesterId = currentUserId,
+                requesterName = currentUserName,
+                requesterPhotoUrl = currentUserPhotoUrl,
+                targetUserId = targetUserId
+            )
+
+            Result.Success(Unit)
+        } catch (e: Exception) {
+            Result.Error(e, "Failed to send follow request")
+        }
+    }
+
+    /**
+     * Accept a follow request
+     */
+    suspend fun acceptFollowRequest(
+        currentUserId: String,
+        requesterId: String,
+        requesterName: String
+    ): Result<Unit> {
+        return try {
+            val batch = db.batch()
+
+            // Remove from pending requests
+            val currentUserRef = db.collection("users").document(currentUserId)
+            batch.update(currentUserRef, "pendingFollowRequests", FieldValue.arrayRemove(requesterId))
+
+            // Remove from requester's sent requests
+            val requesterRef = db.collection("users").document(requesterId)
+            batch.update(requesterRef, "sentFollowRequests", FieldValue.arrayRemove(currentUserId))
+
+            // Add to followers (the requester now follows current user)
+            batch.update(currentUserRef, "followers", FieldValue.arrayUnion(requesterId))
+            batch.update(requesterRef, "following", FieldValue.arrayUnion(currentUserId))
+
+            batch.commit().await()
+
+            // Create acceptance notification
+            createFollowAcceptedNotification(
+                accepterId = currentUserId,
+                accepterName = requesterName,
+                requesterId = requesterId
+            )
+
+            Result.Success(Unit)
+        } catch (e: Exception) {
+            Result.Error(e, "Failed to accept follow request")
+        }
+    }
+
+    /**
+     * Reject/Cancel a follow request
+     */
+    suspend fun rejectFollowRequest(
+        currentUserId: String,
+        requesterId: String
+    ): Result<Unit> {
+        return try {
+            val batch = db.batch()
+
+            // Remove from pending requests
+            val currentUserRef = db.collection("users").document(currentUserId)
+            batch.update(currentUserRef, "pendingFollowRequests", FieldValue.arrayRemove(requesterId))
+
+            // Remove from requester's sent requests
+            val requesterRef = db.collection("users").document(requesterId)
+            batch.update(requesterRef, "sentFollowRequests", FieldValue.arrayRemove(currentUserId))
+
+            batch.commit().await()
+            Result.Success(Unit)
+        } catch (e: Exception) {
+            Result.Error(e, "Failed to reject follow request")
+        }
+    }
+
+    /**
+     * Cancel a sent follow request
+     */
+    suspend fun cancelFollowRequest(
+        currentUserId: String,
+        targetUserId: String
+    ): Result<Unit> {
+        return try {
+            val batch = db.batch()
+
+            // Remove from sent requests
+            val currentUserRef = db.collection("users").document(currentUserId)
+            batch.update(currentUserRef, "sentFollowRequests", FieldValue.arrayRemove(targetUserId))
+
+            // Remove from target's pending requests
+            val targetUserRef = db.collection("users").document(targetUserId)
+            batch.update(targetUserRef, "pendingFollowRequests", FieldValue.arrayRemove(currentUserId))
+
+            batch.commit().await()
+            Result.Success(Unit)
+        } catch (e: Exception) {
+            Result.Error(e, "Failed to cancel follow request")
+        }
+    }
+
+    /**
+     * Get pending follow requests for a user
+     */
+    fun getPendingFollowRequests(
+        userId: String,
+        onResult: (Result<List<UserProfile>>) -> Unit
+    ) {
+        db.collection("users").document(userId).get()
+            .addOnSuccessListener { doc ->
+                val userProfile = doc.toObject(UserProfile::class.java)
+                val pendingIds = userProfile?.pendingFollowRequests ?: emptyList()
+
+                if (pendingIds.isEmpty()) {
+                    onResult(Result.Success(emptyList()))
+                    return@addOnSuccessListener
+                }
+
+                // Get profiles of users who sent requests
+                val profiles = mutableListOf<UserProfile>()
+                var completed = 0
+
+                pendingIds.forEach { id ->
+                    db.collection("users").document(id).get()
+                        .addOnSuccessListener { userDoc ->
+                            val profile = userDoc.toObject(UserProfile::class.java)
+                            if (profile != null) {
+                                profiles.add(profile)
+                            }
+                            completed++
+                            if (completed == pendingIds.size) {
+                                onResult(Result.Success(profiles))
+                            }
+                        }
+                        .addOnFailureListener { _ ->
+                            completed++
+                            if (completed == pendingIds.size) {
+                                onResult(Result.Success(profiles))
+                            }
+                        }
+                }
+            }
+            .addOnFailureListener { e ->
+                onResult(Result.Error(e, "Failed to load pending requests"))
+            }
+    }
+
+    /**
+     * Check if there's a pending follow request between two users
+     */
+    fun checkFollowRequestStatus(
+        currentUserId: String,
+        targetUserId: String,
+        onResult: (Result<Map<String, Boolean>>) -> Unit
+    ) {
+        db.collection("users").document(currentUserId).get()
+            .addOnSuccessListener { currentDoc ->
+                db.collection("users").document(targetUserId).get()
+                    .addOnSuccessListener { targetDoc ->
+                        val currentProfile = currentDoc.toObject(UserProfile::class.java)
+                        val targetProfile = targetDoc.toObject(UserProfile::class.java)
+
+                        val status = mapOf(
+                            "hasSentRequest" to (currentProfile?.sentFollowRequests?.contains(targetUserId) ?: false),
+                            "hasReceivedRequest" to (currentProfile?.pendingFollowRequests?.contains(targetUserId) ?: false),
+                            "isFollowing" to (currentProfile?.following?.contains(targetUserId) ?: false),
+                            "isFollowedBy" to (currentProfile?.followers?.contains(targetUserId) ?: false),
+                            "targetHasSentRequest" to (targetProfile?.sentFollowRequests?.contains(currentUserId) ?: false)
+                        )
+
+                        onResult(Result.Success(status))
+                    }
+                    .addOnFailureListener { e ->
+                        onResult(Result.Error(e, "Failed to check follow status"))
+                    }
+            }
+            .addOnFailureListener { e ->
+                onResult(Result.Error(e, "Failed to check follow status"))
+            }
+    }
+
+    /**
+     * Create friend request notification
+     */
+    private fun createFriendRequestNotification(
+        requesterId: String,
+        requesterName: String,
+        requesterPhotoUrl: String,
+        targetUserId: String
+    ) {
+        val notification = hashMapOf(
+            "id" to UUID.randomUUID().toString(),
+            "userId" to targetUserId,
+            "senderId" to requesterId,
+            "senderName" to requesterName,
+            "senderPhotoUrl" to requesterPhotoUrl,
+            "type" to "FRIEND_REQUEST",
+            "title" to "$requesterName wants to follow you",
+            "message" to "Accept or decline their request",
+            "isRead" to false,
+            "timestamp" to System.currentTimeMillis()
+        )
+
+        db.collection("notifications").add(notification)
+    }
+
+    /**
+     * Create follow accepted notification
+     */
+    private fun createFollowAcceptedNotification(
+        accepterId: String,
+        accepterName: String,
+        requesterId: String
+    ) {
+        val notification = hashMapOf(
+            "id" to UUID.randomUUID().toString(),
+            "userId" to requesterId,
+            "senderId" to accepterId,
+            "senderName" to accepterName,
+            "type" to "FOLLOW_ACCEPTED",
+            "title" to "$accepterName accepted your follow request",
+            "message" to "You can now see their photos in your feed",
+            "isRead" to false,
+            "timestamp" to System.currentTimeMillis()
+        )
+
+        db.collection("notifications").add(notification)
+    }
+
+    // ==================== END FRIEND REQUEST SYSTEM ====================
+
     /**
      * Get following users
      */
