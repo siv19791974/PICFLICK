@@ -71,18 +71,8 @@ fun NotificationSettingsScreen(
                         fontSize = 15.sp,
                         textAlign = androidx.compose.ui.text.style.TextAlign.Center
                     )
-                    // Save button on the right
-                    TextButton(
-                        onClick = { onSavePreferences(preferences) },
-                        modifier = Modifier.width(60.dp)
-                    ) {
-                        Text(
-                            "Save",
-                            color = Color(0xFFD7ECFF),
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 12.sp
-                        )
-                    }
+                    // Spacer for balance (same width as back button)
+                    Spacer(modifier = Modifier.size(48.dp))
                 }
             }
         },
@@ -96,25 +86,26 @@ fun NotificationSettingsScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            // Master Switch
+            // Master Switch - styled like a Settings section header item
+            SettingsSectionHeader(title = "NOTIFICATIONS", isDarkMode = isDarkMode)
+            
             MasterToggle(
                 title = "Enable Notifications",
                 subtitle = "Receive notifications for activity",
                 checked = preferences.notificationsEnabled,
                 onCheckedChange = {
                     preferences = preferences.copy(notificationsEnabled = it)
-                }
+                    // Auto-save when master toggle changes
+                    onSavePreferences(preferences.copy(notificationsEnabled = it))
+                },
+                isDarkMode = isDarkMode
             )
 
             if (preferences.notificationsEnabled) {
+                HorizontalDivider(color = if (isDarkMode) Color(0xFF2C2C2E) else Color.LightGray, thickness = 0.5.dp)
+                
                 // Notification Type Toggles
-                Text(
-                    text = "NOTIFY ME ABOUT",
-                    color = Color.Gray,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(top = 8.dp, bottom = 4.dp)
-                )
+                SettingsSectionHeader(title = "NOTIFY ME ABOUT", isDarkMode = isDarkMode)
 
                 NotificationToggle(
                     title = "Likes",
@@ -196,40 +187,34 @@ fun NotificationSettingsScreen(
                     onCheckedChange = { preferences = preferences.copy(systemAnnouncements = it) }
                 )
 
-                HorizontalDivider(
-                    color = Color(0xFF2C2C2E),
-                    thickness = 0.5.dp,
-                    modifier = Modifier.padding(vertical = 8.dp)
-                )
+                HorizontalDivider(color = if (isDarkMode) Color(0xFF2C2C2E) else Color.LightGray, thickness = 0.5.dp)
 
                 // Quiet Hours
+                SettingsSectionHeader(title = "QUIET HOURS", isDarkMode = isDarkMode)
                 QuietHoursSection(
                     preferences = preferences,
-                    onPreferencesChange = { preferences = it }
+                    onPreferencesChange = { preferences = it },
+                    isDarkMode = isDarkMode
                 )
 
-                HorizontalDivider(
-                    color = Color(0xFF2C2C2E),
-                    thickness = 0.5.dp,
-                    modifier = Modifier.padding(vertical = 8.dp)
-                )
+                HorizontalDivider(color = if (isDarkMode) Color(0xFF2C2C2E) else Color.LightGray, thickness = 0.5.dp)
 
                 // Display Settings
+                SettingsSectionHeader(title = "DISPLAY", isDarkMode = isDarkMode)
                 DisplaySettingsSection(
                     preferences = preferences,
-                    onPreferencesChange = { preferences = it }
+                    onPreferencesChange = { preferences = it },
+                    isDarkMode = isDarkMode
                 )
 
-                HorizontalDivider(
-                    color = Color(0xFF2C2C2E),
-                    thickness = 0.5.dp,
-                    modifier = Modifier.padding(vertical = 8.dp)
-                )
+                HorizontalDivider(color = if (isDarkMode) Color(0xFF2C2C2E) else Color.LightGray, thickness = 0.5.dp)
 
                 // Email Notifications
+                SettingsSectionHeader(title = "EMAIL", isDarkMode = isDarkMode)
                 EmailSection(
                     preferences = preferences,
-                    onPreferencesChange = { preferences = it }
+                    onPreferencesChange = { preferences = it },
+                    isDarkMode = isDarkMode
                 )
             }
 
@@ -243,14 +228,16 @@ private fun MasterToggle(
     title: String,
     subtitle: String,
     checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit
+    onCheckedChange: (Boolean) -> Unit,
+    isDarkMode: Boolean
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
-            containerColor = if (checked) Color(0xFFD7ECFF).copy(alpha = 0.1f) else Color(0xFF1C1C1E)
+            containerColor = if (isDarkMode) Color(0xFF1C1C1E) else Color.White
         ),
-        shape = RoundedCornerShape(16.dp)
+        shape = RoundedCornerShape(12.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Row(
             modifier = Modifier
@@ -262,7 +249,7 @@ private fun MasterToggle(
             Icon(
                 imageVector = Icons.Default.Notifications,
                 contentDescription = null,
-                tint = if (checked) Color(0xFFD7ECFF) else Color.Gray,
+                tint = if (checked) Color(0xFF1565C0) else if (isDarkMode) Color.Gray else Color.DarkGray,
                 modifier = Modifier.size(32.dp)
             )
 
@@ -271,7 +258,7 @@ private fun MasterToggle(
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = title,
-                    color = Color.White,
+                    color = if (isDarkMode) Color.White else Color.Black,
                     fontSize = 17.sp,
                     fontWeight = FontWeight.Bold,
                     maxLines = 1,
@@ -279,7 +266,7 @@ private fun MasterToggle(
                 )
                 Text(
                     text = subtitle,
-                    color = Color.Gray,
+                    color = if (isDarkMode) Color.Gray else Color.DarkGray,
                     fontSize = 13.sp,
                     maxLines = 1,
                     overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
@@ -290,8 +277,8 @@ private fun MasterToggle(
                 checked = checked,
                 onCheckedChange = onCheckedChange,
                 colors = SwitchDefaults.colors(
-                    checkedThumbColor = Color(0xFFD7ECFF),
-                    checkedTrackColor = Color(0xFFD7ECFF).copy(alpha = 0.5f)
+                    checkedThumbColor = Color(0xFF1565C0),
+                    checkedTrackColor = Color(0xFF1565C0).copy(alpha = 0.5f)
                 )
             )
         }
@@ -304,16 +291,18 @@ private fun NotificationToggle(
     subtitle: String,
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit
+    onCheckedChange: (Boolean) -> Unit,
+    isDarkMode: Boolean = ThemeManager.isDarkMode.value
 ) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .clickable { onCheckedChange(!checked) },
         colors = CardDefaults.cardColors(
-            containerColor = Color(0xFF1C1C1E)
+            containerColor = if (isDarkMode) Color(0xFF1C1C1E) else Color.White
         ),
-        shape = RoundedCornerShape(12.dp)
+        shape = RoundedCornerShape(12.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Row(
             modifier = Modifier
@@ -325,7 +314,11 @@ private fun NotificationToggle(
                 modifier = Modifier
                     .size(40.dp)
                     .background(
-                        if (checked) Color(0xFFD7ECFF).copy(alpha = 0.2f) else Color(0xFF2C2C2E),
+                        if (checked) {
+                            if (isDarkMode) Color(0xFF1565C0).copy(alpha = 0.2f) else Color(0xFFE3F2FD)
+                        } else {
+                            if (isDarkMode) Color(0xFF2C2C2E) else Color(0xFFE0E0E0)
+                        },
                         RoundedCornerShape(10.dp)
                     ),
                 contentAlignment = Alignment.Center
@@ -333,7 +326,7 @@ private fun NotificationToggle(
                 Icon(
                     imageVector = icon,
                     contentDescription = null,
-                    tint = if (checked) Color(0xFFD7ECFF) else Color.Gray,
+                    tint = if (checked) Color(0xFF1565C0) else if (isDarkMode) Color.Gray else Color.DarkGray,
                     modifier = Modifier.size(20.dp)
                 )
             }
@@ -343,13 +336,13 @@ private fun NotificationToggle(
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = title,
-                    color = Color.White,
+                    color = if (isDarkMode) Color.White else Color.Black,
                     fontWeight = FontWeight.Medium,
                     fontSize = 16.sp
                 )
                 Text(
                     text = subtitle,
-                    color = Color.Gray,
+                    color = if (isDarkMode) Color.Gray else Color.DarkGray,
                     fontSize = 13.sp
                 )
             }
@@ -358,10 +351,10 @@ private fun NotificationToggle(
                 checked = checked,
                 onCheckedChange = onCheckedChange,
                 colors = SwitchDefaults.colors(
-                    checkedThumbColor = Color(0xFFD7ECFF),
-                    checkedTrackColor = Color(0xFFD7ECFF).copy(alpha = 0.5f),
-                    uncheckedThumbColor = Color.Gray,
-                    uncheckedTrackColor = Color(0xFF2C2C2E)
+                    checkedThumbColor = Color(0xFF1565C0),
+                    checkedTrackColor = Color(0xFF1565C0).copy(alpha = 0.5f),
+                    uncheckedThumbColor = if (isDarkMode) Color.Gray else Color.Gray,
+                    uncheckedTrackColor = if (isDarkMode) Color(0xFF2C2C2E) else Color.LightGray
                 )
             )
         }
@@ -369,23 +362,31 @@ private fun NotificationToggle(
 }
 
 @Composable
+private fun SettingsSectionHeader(
+    title: String,
+    isDarkMode: Boolean
+) {
+    Text(
+        text = title,
+        color = if (isDarkMode) Color.Gray else Color.DarkGray,
+        fontSize = 12.sp,
+        fontWeight = FontWeight.Bold,
+        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+    )
+}
+
+@Composable
 private fun QuietHoursSection(
     preferences: NotificationPreferences,
-    onPreferencesChange: (NotificationPreferences) -> Unit
+    onPreferencesChange: (NotificationPreferences) -> Unit,
+    isDarkMode: Boolean
 ) {
     Column {
-        Text(
-            text = "QUIET HOURS",
-            color = Color.Gray,
-            fontSize = 12.sp,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(bottom = 8.dp)
-        )
-
         Card(
             modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(containerColor = Color(0xFF1C1C1E)),
-            shape = RoundedCornerShape(12.dp)
+            colors = CardDefaults.cardColors(containerColor = if (isDarkMode) Color(0xFF1C1C1E) else Color.White),
+            shape = RoundedCornerShape(12.dp),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
                 Row(
@@ -397,13 +398,13 @@ private fun QuietHoursSection(
                     Icon(
                         Icons.Default.DoNotDisturb,
                         null,
-                        tint = if (preferences.quietHoursEnabled) Color(0xFFFF6B6B) else Color.Gray,
+                        tint = if (preferences.quietHoursEnabled) Color(0xFFFF6B6B) else if (isDarkMode) Color.Gray else Color.DarkGray,
                         modifier = Modifier.size(24.dp)
                     )
                     Spacer(modifier = Modifier.width(12.dp))
                     Column(modifier = Modifier.weight(1f)) {
-                        Text("Do Not Disturb", color = Color.White, fontWeight = FontWeight.Medium)
-                        Text("Silence push notifications", color = Color.Gray, fontSize = 13.sp)
+                        Text("Do Not Disturb", color = if (isDarkMode) Color.White else Color.Black, fontWeight = FontWeight.Medium)
+                        Text("Silence push notifications", color = if (isDarkMode) Color.Gray else Color.DarkGray, fontSize = 13.sp)
                     }
                     Switch(
                         checked = preferences.quietHoursEnabled,
@@ -425,20 +426,20 @@ private fun QuietHoursSection(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text("From", color = Color.Gray, fontSize = 12.sp)
+                            Text("From", color = if (isDarkMode) Color.Gray else Color.DarkGray, fontSize = 12.sp)
                             Text(
                                 formatHour(preferences.quietHoursStart),
-                                color = Color.White,
+                                color = if (isDarkMode) Color.White else Color.Black,
                                 fontSize = 20.sp,
                                 fontWeight = FontWeight.Bold
                             )
                         }
-                        Icon(Icons.AutoMirrored.Filled.ArrowForward, null, tint = Color.Gray)
+                        Icon(Icons.AutoMirrored.Filled.ArrowForward, null, tint = if (isDarkMode) Color.Gray else Color.DarkGray)
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text("To", color = Color.Gray, fontSize = 12.sp)
+                            Text("To", color = if (isDarkMode) Color.Gray else Color.DarkGray, fontSize = 12.sp)
                             Text(
                                 formatHour(preferences.quietHoursEnd),
-                                color = Color.White,
+                                color = if (isDarkMode) Color.White else Color.Black,
                                 fontSize = 20.sp,
                                 fontWeight = FontWeight.Bold
                             )
@@ -447,13 +448,14 @@ private fun QuietHoursSection(
 
                     Spacer(modifier = Modifier.height(12.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        QuietPresetButton("Night (10PM-8AM)", preferences.quietHoursStart == 22) {
-                            onPreferencesChange(preferences.copy(quietHoursStart = 22, quietHoursEnd = 8))
-                        }
-                        QuietPresetButton("Work (9AM-5PM)", preferences.quietHoursStart == 9) {
-                            onPreferencesChange(preferences.copy(quietHoursStart = 9, quietHoursEnd = 17))
-                        }
+                    val isDark = isDarkMode
+                    QuietPresetButton("Night (10PM-8AM)", preferences.quietHoursStart == 22, isDark) {
+                        onPreferencesChange(preferences.copy(quietHoursStart = 22, quietHoursEnd = 8))
                     }
+                    QuietPresetButton("Work (9AM-5PM)", preferences.quietHoursStart == 9, isDark) {
+                        onPreferencesChange(preferences.copy(quietHoursStart = 9, quietHoursEnd = 17))
+                    }
+                }
                 }
             }
         }
@@ -468,18 +470,18 @@ private fun formatHour(hour: Int): String = when {
 }
 
 @Composable
-private fun QuietPresetButton(label: String, isSelected: Boolean, onClick: () -> Unit) {
+private fun QuietPresetButton(label: String, isSelected: Boolean, isDarkMode: Boolean, onClick: () -> Unit) {
     Button(
         onClick = onClick,
         colors = ButtonDefaults.buttonColors(
-            containerColor = if (isSelected) Color(0xFFD7ECFF) else Color(0xFF2C2C2E)
+            containerColor = if (isSelected) Color(0xFF1565C0) else if (isDarkMode) Color(0xFF2C2C2E) else Color.LightGray
         ),
         shape = RoundedCornerShape(8.dp),
         modifier = Modifier.fillMaxWidth()
     ) {
         Text(
             label,
-            color = if (isSelected) Color.Black else Color.White,
+            color = if (isSelected) Color.White else if (isDarkMode) Color.White else Color.Black,
             fontSize = 12.sp
         )
     }
@@ -488,28 +490,23 @@ private fun QuietPresetButton(label: String, isSelected: Boolean, onClick: () ->
 @Composable
 private fun DisplaySettingsSection(
     preferences: NotificationPreferences,
-    onPreferencesChange: (NotificationPreferences) -> Unit
+    onPreferencesChange: (NotificationPreferences) -> Unit,
+    isDarkMode: Boolean
 ) {
     Column {
-        Text(
-            text = "DISPLAY & SOUND",
-            color = Color.Gray,
-            fontSize = 12.sp,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(bottom = 8.dp)
-        )
-
         Card(
             modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(containerColor = Color(0xFF1C1C1E)),
-            shape = RoundedCornerShape(12.dp)
+            colors = CardDefaults.cardColors(containerColor = if (isDarkMode) Color(0xFF1C1C1E) else Color.White),
+            shape = RoundedCornerShape(12.dp),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
         ) {
             Column(modifier = Modifier.padding(12.dp)) {
                 DisplayToggle(
                     "Show Previews",
                     "Display content in notifications",
                     Icons.Default.Visibility,
-                    preferences.showNotificationPreviews
+                    preferences.showNotificationPreviews,
+                    isDarkMode
                 ) {
                     onPreferencesChange(preferences.copy(showNotificationPreviews = it))
                 }
@@ -517,7 +514,8 @@ private fun DisplaySettingsSection(
                     "Sound",
                     "Play sound for notifications",
                     Icons.AutoMirrored.Filled.VolumeUp,
-                    preferences.notificationSoundEnabled
+                    preferences.notificationSoundEnabled,
+                    isDarkMode
                 ) {
                     onPreferencesChange(preferences.copy(notificationSoundEnabled = it))
                 }
@@ -525,7 +523,8 @@ private fun DisplaySettingsSection(
                     "Vibration",
                     "Vibrate for notifications",
                     Icons.Default.Vibration,
-                    preferences.notificationVibrationEnabled
+                    preferences.notificationVibrationEnabled,
+                    isDarkMode
                 ) {
                     onPreferencesChange(preferences.copy(notificationVibrationEnabled = it))
                 }
@@ -540,6 +539,7 @@ private fun DisplayToggle(
     subtitle: String,
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     checked: Boolean,
+    isDarkMode: Boolean,
     onCheckedChange: (Boolean) -> Unit
 ) {
     Row(
@@ -549,17 +549,17 @@ private fun DisplayToggle(
             .padding(vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Icon(icon, null, tint = if (checked) Color(0xFFD7ECFF) else Color.Gray, modifier = Modifier.size(20.dp))
+        Icon(icon, null, tint = if (checked) Color(0xFF1565C0) else if (isDarkMode) Color.Gray else Color.DarkGray, modifier = Modifier.size(20.dp))
         Spacer(modifier = Modifier.width(12.dp))
         Column(modifier = Modifier.weight(1f)) {
-            Text(title, color = Color.White, fontWeight = FontWeight.Medium)
-            Text(subtitle, color = Color.Gray, fontSize = 13.sp)
+            Text(title, color = if (isDarkMode) Color.White else Color.Black, fontWeight = FontWeight.Medium)
+            Text(subtitle, color = if (isDarkMode) Color.Gray else Color.DarkGray, fontSize = 13.sp)
         }
         Switch(
             checked = checked,
             onCheckedChange = onCheckedChange,
             colors = SwitchDefaults.colors(
-                checkedThumbColor = Color(0xFFD7ECFF),
+                checkedThumbColor = Color(0xFF1565C0),
                 checkedTrackColor = Color(0xFFD7ECFF).copy(alpha = 0.5f)
             )
         )
@@ -569,21 +569,15 @@ private fun DisplayToggle(
 @Composable
 private fun EmailSection(
     preferences: NotificationPreferences,
-    onPreferencesChange: (NotificationPreferences) -> Unit
+    onPreferencesChange: (NotificationPreferences) -> Unit,
+    isDarkMode: Boolean
 ) {
     Column {
-        Text(
-            text = "EMAIL NOTIFICATIONS",
-            color = Color.Gray,
-            fontSize = 12.sp,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(bottom = 8.dp)
-        )
-
         Card(
             modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(containerColor = Color(0xFF1C1C1E)),
-            shape = RoundedCornerShape(12.dp)
+            colors = CardDefaults.cardColors(containerColor = if (isDarkMode) Color(0xFF1C1C1E) else Color.White),
+            shape = RoundedCornerShape(12.dp),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
                 Row(
@@ -592,11 +586,11 @@ private fun EmailSection(
                     },
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(Icons.Default.Email, null, tint = if (preferences.emailNotificationsEnabled) Color(0xFFD7ECFF) else Color.Gray)
+                    Icon(Icons.Default.Email, null, tint = if (preferences.emailNotificationsEnabled) Color(0xFF1565C0) else if (isDarkMode) Color.Gray else Color.DarkGray)
                     Spacer(modifier = Modifier.width(12.dp))
                     Column(modifier = Modifier.weight(1f)) {
-                        Text("Enable Email Notifications", color = Color.White, fontWeight = FontWeight.Medium)
-                        Text("Important updates via email", color = Color.Gray, fontSize = 13.sp)
+                        Text("Enable Email Notifications", color = if (isDarkMode) Color.White else Color.Black, fontWeight = FontWeight.Medium)
+                        Text("Important updates via email", color = if (isDarkMode) Color.Gray else Color.DarkGray, fontSize = 13.sp)
                     }
                     Switch(
                         checked = preferences.emailNotificationsEnabled,
@@ -604,21 +598,21 @@ private fun EmailSection(
                             onPreferencesChange(preferences.copy(emailNotificationsEnabled = it))
                         },
                         colors = SwitchDefaults.colors(
-                            checkedThumbColor = Color(0xFFD7ECFF),
-                            checkedTrackColor = Color(0xFFD7ECFF).copy(alpha = 0.5f)
+                            checkedThumbColor = Color(0xFF1565C0),
+                            checkedTrackColor = Color(0xFF1565C0).copy(alpha = 0.5f)
                         )
                     )
                 }
 
                 if (preferences.emailNotificationsEnabled) {
                     Spacer(modifier = Modifier.height(16.dp))
-                    EmailToggle("Security Alerts", "Login from new devices", preferences.emailForSecurityAlerts) {
+                    EmailToggle("Security Alerts", "Login from new devices", preferences.emailForSecurityAlerts, isDarkMode) {
                         onPreferencesChange(preferences.copy(emailForSecurityAlerts = it))
                     }
-                    EmailToggle("Account Changes", "Profile updates", preferences.emailForAccountChanges) {
+                    EmailToggle("Account Changes", "Profile updates", preferences.emailForAccountChanges, isDarkMode) {
                         onPreferencesChange(preferences.copy(emailForAccountChanges = it))
                     }
-                    EmailToggle("Weekly Digest", "Summary of your activity", preferences.emailWeeklyDigest) {
+                    EmailToggle("Weekly Digest", "Summary of your activity", preferences.emailWeeklyDigest, isDarkMode) {
                         onPreferencesChange(preferences.copy(emailWeeklyDigest = it))
                     }
                 }
@@ -628,7 +622,7 @@ private fun EmailSection(
 }
 
 @Composable
-private fun EmailToggle(title: String, subtitle: String, checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
+private fun EmailToggle(title: String, subtitle: String, checked: Boolean, isDarkMode: Boolean, onCheckedChange: (Boolean) -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -637,15 +631,15 @@ private fun EmailToggle(title: String, subtitle: String, checked: Boolean, onChe
         verticalAlignment = Alignment.CenterVertically
     ) {
         Column(modifier = Modifier.weight(1f)) {
-            Text(title, color = Color.White, fontWeight = FontWeight.Medium)
-            Text(subtitle, color = Color.Gray, fontSize = 13.sp)
+            Text(title, color = if (isDarkMode) Color.White else Color.Black, fontWeight = FontWeight.Medium)
+            Text(subtitle, color = if (isDarkMode) Color.Gray else Color.DarkGray, fontSize = 13.sp)
         }
         Switch(
             checked = checked,
             onCheckedChange = onCheckedChange,
             colors = SwitchDefaults.colors(
-                checkedThumbColor = Color(0xFFD7ECFF),
-                checkedTrackColor = Color(0xFFD7ECFF).copy(alpha = 0.5f)
+                checkedThumbColor = Color(0xFF1565C0),
+                checkedTrackColor = Color(0xFF1565C0).copy(alpha = 0.5f)
             )
         )
     }
