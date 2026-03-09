@@ -108,29 +108,14 @@ fun SettingsScreen(
             ProfileHeaderWithStorage(
                 userProfile = userProfile,
                 onManageStorage = onManageStorage,
-                onSubscriptionStatus = onSubscriptionStatus
+                onSubscriptionStatus = onSubscriptionStatus,
+                isDarkMode = isDarkMode
             )
 
             HorizontalDivider(color = if (isDarkMode) Color(0xFF2C2C2E) else Color.LightGray, thickness = 0.5.dp)
 
-            // Account Section
-            SettingsSection(title = "ACCOUNT") {
-                SettingsItem(
-                    icon = Icons.Default.Cloud,
-                    title = "Manage Storage",
-                    subtitle = getStorageSubtitle(userProfile),
-                    onClick = onManageStorage,
-                    iconBackgroundColor = Color(0xFFE3F2FD),
-                    iconColor = Color(0xFF1565C0)
-                )
-                SettingsItem(
-                    icon = Icons.Default.AccountCircle,
-                    title = "Subscription",
-                    subtitle = getSubscriptionSubtitle(userProfile),
-                    onClick = onSubscriptionStatus,
-                    iconBackgroundColor = userProfile.subscriptionTier.getColor().copy(alpha = 0.2f),
-                    iconColor = userProfile.subscriptionTier.getColor()
-                )
+            // Account Section - Manage Storage and Subscription moved to Profile Header
+            SettingsSection(title = "ACCOUNT", isDarkMode = isDarkMode) {
                 SettingsItem(
                     icon = Icons.Default.Lock,
                     title = "Privacy",
@@ -148,7 +133,7 @@ fun SettingsScreen(
             HorizontalDivider(color = if (isDarkMode) Color(0xFF2C2C2E) else Color.LightGray, thickness = 0.5.dp)
 
             // Preferences Section
-            SettingsSection(title = "PREFERENCES") {
+            SettingsSection(title = "PREFERENCES", isDarkMode = isDarkMode) {
                 SettingsItem(
                     icon = Icons.Default.Menu,
                     title = "Appearance",
@@ -167,7 +152,7 @@ fun SettingsScreen(
             HorizontalDivider(color = if (isDarkMode) Color(0xFF2C2C2E) else Color.LightGray, thickness = 0.5.dp)
 
             // Support Section
-            SettingsSection(title = "SUPPORT") {
+            SettingsSection(title = "SUPPORT", isDarkMode = isDarkMode) {
                 SettingsItem(
                     icon = Icons.Default.Menu,
                     title = "Help Center",
@@ -185,7 +170,7 @@ fun SettingsScreen(
             HorizontalDivider(color = if (isDarkMode) Color(0xFF2C2C2E) else Color.LightGray, thickness = 0.5.dp)
 
             // Danger Zone
-            SettingsSection(title = "DANGER ZONE") {
+            SettingsSection(title = "DANGER ZONE", isDarkMode = isDarkMode) {
                 SettingsItem(
                     icon = Icons.Default.Close,
                     title = "Sign Out",
@@ -382,7 +367,8 @@ fun SettingsScreen(
 private fun ProfileHeaderWithStorage(
     userProfile: UserProfile,
     onManageStorage: () -> Unit,
-    onSubscriptionStatus: () -> Unit
+    onSubscriptionStatus: () -> Unit,
+    isDarkMode: Boolean
 ) {
     val tier = userProfile.subscriptionTier
     val tierColor = tier.getColor()
@@ -477,13 +463,13 @@ private fun ProfileHeaderWithStorage(
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = userProfile.displayName,
-                    color = Color.White,
+                    color = if (isDarkMode) Color.White else Color.Black,
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Bold
                 )
                 Text(
                     text = userProfile.email,
-                    color = Color.Gray,
+                    color = if (isDarkMode) Color.Gray else Color.DarkGray,
                     fontSize = 14.sp
                 )
                 
@@ -746,7 +732,7 @@ private fun SettingsItem(
     subtitle: String? = null,
     onClick: () -> Unit,
     showArrow: Boolean = true,
-    titleColor: Color = Color.White
+    titleColor: Color = if (ThemeManager.isDarkMode.value) Color.White else Color.Black
 ) {
     Row(
         modifier = Modifier
@@ -760,13 +746,13 @@ private fun SettingsItem(
             modifier = Modifier
                 .size(32.dp)
                 .clip(RoundedCornerShape(8.dp))
-                .background(Color(0xFF2C2C2E)),
+                .background(if (ThemeManager.isDarkMode.value) Color(0xFF2C2C2E) else Color(0xFFE3F2FD)),
             contentAlignment = Alignment.Center
         ) {
             Icon(
                 imageVector = icon,
                 contentDescription = null,
-                tint = if (titleColor == Color.Red) Color.Red else Color.White,
+                tint = if (titleColor == Color.Red) Color.Red else if (ThemeManager.isDarkMode.value) Color.White else Color(0xFF1565C0),
                 modifier = Modifier.size(18.dp)
             )
         }
@@ -784,7 +770,7 @@ private fun SettingsItem(
             if (subtitle != null) {
                 Text(
                     text = subtitle,
-                    color = Color.Gray,
+                    color = if (ThemeManager.isDarkMode.value) Color.Gray else Color.DarkGray,
                     fontSize = 13.sp
                 )
             }
