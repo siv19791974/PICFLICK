@@ -211,11 +211,12 @@ fun SettingsScreen(
                     onClick = { showAppearanceDialog = true },
                     showArrow = false
                 )
+                // Language option removed - app uses device default language
                 SettingsItem(
-                    icon = Icons.Default.Person,
-                    title = "Language",
-                    subtitle = "$currentFlag $currentLangName",
-                    onClick = { showLanguageDialog = true },
+                    icon = Icons.Default.Edit,
+                    title = "Storage & Data",
+                    subtitle = cacheSize,
+                    onClick = { showClearCacheDialog = true },
                     showArrow = false
                 )
                 SettingsItem(
