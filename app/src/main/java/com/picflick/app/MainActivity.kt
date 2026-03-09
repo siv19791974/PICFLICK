@@ -69,6 +69,7 @@ import com.picflick.app.ui.screens.PlanOptionsScreen
 import com.picflick.app.ui.screens.ProfileScreen
 import com.picflick.app.ui.screens.SettingsScreen
 import com.picflick.app.ui.screens.PrivacyScreen
+import com.picflick.app.ui.screens.PrivacyPolicyScreen
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.ui.unit.sp
 import com.picflick.app.ui.screens.SplashScreen
