@@ -147,14 +147,37 @@ fun FilterScreen(
             .fillMaxSize()
             .imePadding(),
         topBar = {
-            TopAppBar(
-                title = {
+            // Custom compact 48dp title bar
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(48.dp)
+                    .background(Color.Black),
+                contentAlignment = Alignment.CenterStart
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // Close/Camera icon
+                    IconButton(
+                        onClick = onNavigateToCamera,
+                        modifier = Modifier.size(48.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = stringResource(R.string.filter_back_camera),
+                            tint = Color.White,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+                    
                     // Centered countdown box
                     val remainingUploads = maxDailyUploads - dailyUploadCount
                     val isLimitReached = remainingUploads <= 0
                     
                     Box(
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier.weight(1f),
                         contentAlignment = Alignment.Center
                     ) {
                         Box(
@@ -168,73 +191,58 @@ fun FilterScreen(
                                     color = if (isLimitReached) Color.Transparent else if (isDarkMode) Color.Gray else Color(0xFF1565C0),
                                     shape = RoundedCornerShape(20.dp)
                                 )
-                                .padding(horizontal = 16.dp, vertical = 8.dp)
+                                .padding(horizontal = 12.dp, vertical = 6.dp)
                         ) {
                             Text(
                                 text = if (isLimitReached) {
                                     "SEE YOU TOMORROW!"
                                 } else {
-                                    "$remainingUploads PHOTOS REMAINING TODAY"
+                                    "$remainingUploads PHOTOS LEFT"
                                 },
                                 color = if (isLimitReached) Color.White else if (isDarkMode) Color.White else Color(0xFF1565C0),
-                                fontSize = 12.sp,
+                                fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold
                             )
                         }
                     }
-                },
-                navigationIcon = {
-                    // Close/Camera icon
-                    IconButton(
-                        onClick = onNavigateToCamera,
-                        modifier = Modifier
-                            .size(44.dp)
-                            .background(if (isDarkMode) Color(0xFF2C2C2E) else Color.White, CircleShape)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Close,
-                            contentDescription = stringResource(R.string.filter_back_camera),
-                            tint = if (isDarkMode) Color.White else Color.Black,
-                            modifier = Modifier.size(24.dp)
-                        )
-                    }
-                },
-                actions = {
-                    val canUpload = (maxDailyUploads - dailyUploadCount) > 0
                     
                     // Upload tick button
+                    val canUpload = (maxDailyUploads - dailyUploadCount) > 0
+                    
                     IconButton(
                         onClick = { triggerUpload() },
                         enabled = !isLoading && bitmap != null && canUpload && !isUploading,
-                        modifier = Modifier
-                            .size(44.dp)
-                            .background(
-                                if (canUpload && !isLoading && bitmap != null) {
-                                    if (isDarkMode) Color(0xFF4CAF50) else Color(0xFF1565C0) // Green in dark, Blue in light
-                                } else Color.Gray,
-                                CircleShape
-                            )
+                        modifier = Modifier.size(48.dp)
                     ) {
-                        if (isUploading) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(24.dp),
-                                color = Color.White,
-                                strokeWidth = 2.dp
-                            )
-                        } else {
-                            Icon(
-                                imageVector = Icons.Default.Check,
-                                contentDescription = "Upload",
-                                tint = Color.White,
-                                modifier = Modifier.size(24.dp)
-                            )
+                        Box(
+                            modifier = Modifier
+                                .size(36.dp)
+                                .background(
+                                    if (canUpload && !isLoading && bitmap != null) {
+                                        if (isDarkMode) Color(0xFF4CAF50) else Color(0xFF1565C0)
+                                    } else Color.Gray,
+                                    CircleShape
+                                ),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            if (isUploading) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(20.dp),
+                                    color = Color.White,
+                                    strokeWidth = 2.dp
+                                )
+                            } else {
+                                Icon(
+                                    imageVector = Icons.Default.Check,
+                                    contentDescription = "Upload",
+                                    tint = Color.White,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
                         }
                     }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.Black
-                )
-            )
+                }
+            }
         },
         containerColor = isDarkModeBackground(isDarkMode)
     ) { padding ->
