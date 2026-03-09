@@ -169,14 +169,14 @@ fun LoginScreen(
         // Logo
         Image(
             painter = painterResource(id = R.drawable.logo),
-            contentDescription = "PicFlick Logo",
+            contentDescription = stringResource(R.string.login_logo_content_desc),
             modifier = Modifier.size(150.dp)
         )
 
         Spacer(modifier = Modifier.height(48.dp))
 
         Text(
-            text = "Welcome to PicFlick",
+            text = stringResource(R.string.login_welcome_title),
             fontSize = 28.sp,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onBackground
@@ -185,7 +185,7 @@ fun LoginScreen(
         Spacer(modifier = Modifier.height(16.dp))
 
         Text(
-            text = "Share photos with friends",
+            text = stringResource(R.string.login_welcome_subtitle),
             fontSize = 16.sp,
             color = Color.Gray
         )
@@ -215,7 +215,7 @@ fun LoginScreen(
             } else {
                 Icon(Icons.Default.AccountCircle, contentDescription = null)
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Sign in with Google")
+                Text(stringResource(R.string.login_sign_in_button))
             }
         }
     }
