@@ -834,8 +834,17 @@ private fun AuthenticatedContent(
                     onUpgrade = { tier: SubscriptionTier ->
                         activity?.let { act: Activity ->
                             val product: SubscriptionProduct? = bvm.getProductForTier(tier)
-                            product?.let { p: SubscriptionProduct ->
-                                bvm.purchaseSubscription(act, p)
+                            if (product != null) {
+                                bvm.purchaseSubscription(act, product)
+                            } else {
+                                // Show error if product not found
+                                android.widget.Toast.makeText(
+                                    context,
+                                    "Subscription products not loaded yet. Please try again in a moment.",
+                                    android.widget.Toast.LENGTH_LONG
+                                ).show()
+                                // Retry loading products
+                                bvm.queryProducts()
                             }
                         }
                     }
@@ -851,16 +860,34 @@ private fun AuthenticatedContent(
                     onUpgrade = { tier: SubscriptionTier ->
                         activity?.let { act: Activity ->
                             val product: SubscriptionProduct? = bvm.getProductForTier(tier)
-                            product?.let { p: SubscriptionProduct ->
-                                bvm.purchaseSubscription(act, p)
+                            if (product != null) {
+                                bvm.purchaseSubscription(act, product)
+                            } else {
+                                // Show error if product not found
+                                android.widget.Toast.makeText(
+                                    context,
+                                    "Subscription products not loaded yet. Please try again in a moment.",
+                                    android.widget.Toast.LENGTH_LONG
+                                ).show()
+                                // Retry loading products
+                                bvm.queryProducts()
                             }
                         }
                     },
                     onDowngrade = { tier: SubscriptionTier ->
                         activity?.let { act: Activity ->
                             val product: SubscriptionProduct? = bvm.getProductForTier(tier)
-                            product?.let { p: SubscriptionProduct ->
-                                bvm.purchaseSubscription(act, p)
+                            if (product != null) {
+                                bvm.purchaseSubscription(act, product)
+                            } else {
+                                // Show error if product not found
+                                android.widget.Toast.makeText(
+                                    context,
+                                    "Subscription products not loaded yet. Please try again in a moment.",
+                                    android.widget.Toast.LENGTH_LONG
+                                ).show()
+                                // Retry loading products
+                                bvm.queryProducts()
                             }
                         }
                     },

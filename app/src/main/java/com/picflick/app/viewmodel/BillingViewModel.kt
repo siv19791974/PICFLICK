@@ -125,7 +125,7 @@ class BillingViewModel : ViewModel() {
     /**
      * Query available subscription products
      */
-    private fun queryProducts() {
+    fun queryProducts() {
         val productList = listOf(
             QueryProductDetailsParams.Product.newBuilder()
                 .setProductId(PRODUCT_STANDARD_MONTHLY)
