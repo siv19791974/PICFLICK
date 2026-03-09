@@ -82,15 +82,9 @@ fun PhilosophyScreen(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(
-                        text = "PicFlick",
-                        fontSize = 32.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = accentColor
-                    )
-                    Text(
                         text = "Back to Basics",
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.Medium,
+                        fontSize = 28.sp,
+                        fontWeight = FontWeight.Bold,
                         color = textColor
                     )
                     Spacer(modifier = Modifier.height(8.dp))
