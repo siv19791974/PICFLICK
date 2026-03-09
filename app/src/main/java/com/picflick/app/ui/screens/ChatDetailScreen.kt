@@ -8,6 +8,10 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.ExperimentalMaterialApi
+import androidx.compose.material.pullrefresh.PullRefreshIndicator
+import androidx.compose.material.pullrefresh.pullRefresh
+import androidx.compose.material.pullrefresh.rememberPullRefreshState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Send
@@ -35,7 +39,7 @@ import java.util.*
 /**
  * WhatsApp-style Chat Detail Screen
  */
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterialApi::class)
 @Composable
 fun ChatDetailScreen(
     chatSession: ChatSession,
@@ -52,6 +56,12 @@ fun ChatDetailScreen(
     var messageText by remember { mutableStateOf("") }
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
+
+    // Pull-to-refresh state
+    val pullRefreshState = rememberPullRefreshState(
+        refreshing = viewModel.isLoading,
+        onRefresh = { viewModel.loadMessages(chatId) }
+    )
 
     // Load messages
     LaunchedEffect(chatId) {
@@ -211,64 +221,77 @@ fun ChatDetailScreen(
             }
         }
     ) { padding ->
-        Column(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .background(PicFlickBannerBackground)
+                .pullRefresh(pullRefreshState)
         ) {
-            // Messages list
-            when {
-                viewModel.isLoading && viewModel.messages.isEmpty() -> {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        CircularProgressIndicator()
-                    }
-                }
-                viewModel.messages.isEmpty() -> {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text(
-                                text = "No messages yet",
-                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
-                            )
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Text(
-                                text = "Say hello!",
-                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
-                                fontSize = 14.sp
-                            )
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(PicFlickBannerBackground)
+            ) {
+                // Messages list
+                when {
+                    viewModel.isLoading && viewModel.messages.isEmpty() -> {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator()
                         }
                     }
-                }
-                else -> {
-                    LazyColumn(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(horizontal = 8.dp),
-                        state = listState,
-                        contentPadding = PaddingValues(vertical = 8.dp)
-                    ) {
-                        items(
-                            items = viewModel.messages,
-                            key = { it.id }
-                        ) { message ->
-                            val isMe = message.senderId == currentUser.uid
-                            ChatBubble(
-                                message = message,
-                                isMe = isMe,
-                                otherUserPhoto = if (isMe) "" else otherUserPhoto
-                            )
-                            Spacer(modifier = Modifier.height(4.dp))
+                    viewModel.messages.isEmpty() -> {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text(
+                                    text = "No messages yet",
+                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(
+                                    text = "Say hello!",
+                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
+                                    fontSize = 14.sp
+                                )
+                            }
+                        }
+                    }
+                    else -> {
+                        LazyColumn(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(horizontal = 8.dp),
+                            state = listState,
+                            contentPadding = PaddingValues(vertical = 8.dp)
+                        ) {
+                            items(
+                                items = viewModel.messages,
+                                key = { it.id }
+                            ) { message ->
+                                val isMe = message.senderId == currentUser.uid
+                                ChatBubble(
+                                    message = message,
+                                    isMe = isMe,
+                                    otherUserPhoto = if (isMe) "" else otherUserPhoto
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
+                            }
                         }
                     }
                 }
             }
+
+            // PullRefreshIndicator
+            PullRefreshIndicator(
+                refreshing = viewModel.isLoading,
+                state = pullRefreshState,
+                modifier = Modifier.align(Alignment.TopCenter)
+            )
         }
     }
 }
