@@ -132,7 +132,8 @@ fun FindFriendsScreen(
                     android.widget.Toast.makeText(context, "Unfollowed ${user.displayName}", android.widget.Toast.LENGTH_SHORT).show()
                     onProfileRefresh() // Refresh profile to update UI
                 },
-                onUserClick = onNavigateToProfile
+                onUserClick = onNavigateToProfile,
+                onFindFriendsClick = { selectedTab = 1 } // Switch to Discover tab
             )
             1 -> DiscoverTab(
                 viewModel = viewModel,
@@ -610,7 +611,8 @@ private fun FriendsTab(
     viewModel: FriendsViewModel,
     userProfile: UserProfile,
     onUnfollow: (UserProfile) -> Unit,
-    onUserClick: (String) -> Unit
+    onUserClick: (String) -> Unit,
+    onFindFriendsClick: () -> Unit = {} // NEW: Callback to switch to Discover tab
 ) {
     val isDarkMode = ThemeManager.isDarkMode.value
     val followingUsers = viewModel.followingUsers
@@ -655,6 +657,13 @@ private fun FriendsTab(
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
                     textAlign = androidx.compose.ui.text.style.TextAlign.Center
                 )
+                Spacer(modifier = Modifier.height(24.dp))
+                Button(
+                    onClick = onFindFriendsClick,
+                    shape = RoundedCornerShape(20.dp)
+                ) {
+                    Text("Find Friends")
+                }
             }
         } else {
             LazyColumn(
