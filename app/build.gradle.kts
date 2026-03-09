@@ -85,6 +85,7 @@ dependencies {
     implementation(libs.firebase.storage)
     implementation(libs.firebase.messaging)
     implementation(libs.firebase.functions)
+    implementation(libs.firebase.crashlytics)  // Crash reporting for production monitoring
 
     // Credential Manager (Modern Google Sign In)
     implementation(libs.androidx.credentials)
