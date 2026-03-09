@@ -87,7 +87,7 @@ fun ChatsScreen(
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Icon(
                                 imageVector = Icons.Default.Person,
-                                contentDescription = null,
+                                contentDescription = stringResource(R.string.content_desc_person),
                                 modifier = Modifier.size(80.dp),
                                 tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
                             )

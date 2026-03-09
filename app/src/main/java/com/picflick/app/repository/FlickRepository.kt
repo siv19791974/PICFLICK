@@ -138,8 +138,8 @@ class FlickRepository private constructor() {
 
                 onResult(Result.Success(allFlicks))
             } catch (e: Exception) {
-                e.printStackTrace() // Log the error for debugging
-                onResult(Result.Error(e, "Failed to load photos: ${e.message}"))
+                android.util.Log.e("FlickRepository", "Failed to load photos for feed", e)
+                onResult(Result.Error(e, "Failed to load photos. Check your connection and try again."))
             }
         }
     }
@@ -170,8 +170,8 @@ class FlickRepository private constructor() {
 
                 onResult(Result.Success(trendingFlicks))
             } catch (e: Exception) {
-                e.printStackTrace()
-                onResult(Result.Error(e, "Failed to load explore photos: ${e.message}"))
+                android.util.Log.e("FlickRepository", "Failed to load explore photos", e)
+                onResult(Result.Error(e, "Failed to load explore photos. Check your connection and try again."))
             }
         }
     }
@@ -732,8 +732,8 @@ class FlickRepository private constructor() {
                     db.collection("notifications").add(notification).await()
                 }
             } catch (e: Exception) {
-                // Silently fail - don't block photo upload
-                e.printStackTrace()
+                // Silently fail - don't block photo upload, but log for debugging
+                android.util.Log.w("FlickRepository", "Failed to create notification", e)
             }
         }
     }
