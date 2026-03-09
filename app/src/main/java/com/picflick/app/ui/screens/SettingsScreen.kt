@@ -219,12 +219,6 @@ fun SettingsScreen(
                     onClick = { showClearCacheDialog = true },
                     showArrow = false
                 )
-                SettingsItem(
-                    icon = Icons.Default.Edit,
-                    title = "Storage & Data",
-                    subtitle = "Clear cache: $cacheSize",
-                    onClick = { showClearCacheDialog = true }
-                )
             }
 
             HorizontalDivider(color = if (isDarkMode) Color(0xFF2C2C2E) else Color.LightGray, thickness = 0.5.dp)
