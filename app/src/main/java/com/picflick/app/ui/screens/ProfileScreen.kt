@@ -756,21 +756,15 @@ private fun TierBadgeStatItem(
     isDarkMode: Boolean
 ) {
     val tierColor = tier.getColor()
-    val tierName = when (tier) {
-        com.picflick.app.data.SubscriptionTier.FREE -> "Free"
-        com.picflick.app.data.SubscriptionTier.STANDARD -> "Std"
-        com.picflick.app.data.SubscriptionTier.PLUS -> "Plus"
-        com.picflick.app.data.SubscriptionTier.PRO -> "Pro"
-        com.picflick.app.data.SubscriptionTier.ULTRA -> "Ultra"
-    }
     
     Column(
-        horizontalAlignment = Alignment.CenterHorizontally
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier.wrapContentHeight()
     ) {
-        // Colored tier badge - sized to match 22.sp text height
+        // Colored tier badge - exactly matching 22.sp text height
         Box(
             modifier = Modifier
-                .size(26.dp)  // Slightly larger to align with 22.sp text visually
+                .size(22.dp)  // Exact match to 22.sp text
                 .clip(CircleShape)
                 .background(
                     brush = Brush.sweepGradient(
@@ -786,8 +780,24 @@ private fun TierBadgeStatItem(
                     width = 2.dp,
                     color = if (isDarkMode) Color.White.copy(alpha = 0.5f) else Color.Black.copy(alpha = 0.3f),
                     shape = CircleShape
-                )
-        )
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            // Optional: Show tier initial inside badge
+            val initial = when (tier) {
+                com.picflick.app.data.SubscriptionTier.FREE -> "F"
+                com.picflick.app.data.SubscriptionTier.STANDARD -> "S"
+                com.picflick.app.data.SubscriptionTier.PLUS -> "P"
+                com.picflick.app.data.SubscriptionTier.PRO -> "P"
+                com.picflick.app.data.SubscriptionTier.ULTRA -> "U"
+            }
+            Text(
+                text = initial,
+                fontSize = 10.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color.White
+            )
+        }
         Spacer(modifier = Modifier.height(4.dp))
         Text(
             text = "Plan",
