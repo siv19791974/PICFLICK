@@ -584,33 +584,33 @@ fun FullScreenPhotoViewer(
                         // Zoom state for current photo only
                         val zoomState = if (isCurrent) rememberZoomState() else null
                         
-                        // Single modifier chain with proper gesture handling
-                        // ZOOMABLE FIRST so it gets pinch gestures before detectTapGestures
+                        // Modifier chain: zoomable LAST (outermost) gets pinch FIRST
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
-                                .then(
-                                    if (isCurrent && zoomState != null) {
-                                        Modifier.zoomable(zoomState)
-                                    } else Modifier
-                                )
-                                .pointerInput(Unit) {
-                                    detectTapGestures(
-                                        onTap = { uiVisible = !uiVisible },
-                                        onDoubleTap = { 
-                                            // Handle double-tap (like/unlike)
-                                            heartAnimationKey++
-                                            showDoubleTapHeart = true
-                                            onReaction(if (userReaction != null) null else ReactionType.LIKE)
-                                        }
-                                    )
-                                }
                                 .graphicsLayer(
                                     translationX = finalX,
                                     translationY = finalY,
                                     scaleX = swipeScale,
                                     scaleY = swipeScale,
                                     alpha = swipeAlpha
+                                )
+                                .pointerInput(Unit) {
+                                    detectTapGestures(
+                                        onTap = { uiVisible = !uiVisible },
+                                        onDoubleTap = { 
+                                            heartAnimationKey++
+                                            showDoubleTapHeart = true
+                                            onReaction(if (userReaction != null) null else ReactionType.LIKE)
+                                        }
+                                    )
+                                }
+                                .then(
+                                    // ZOOMABLE LAST = OUTERMOST = gets events FIRST
+                                    // This allows it to intercept pinch gestures before detectTapGestures
+                                    if (isCurrent && zoomState != null) {
+                                        Modifier.zoomable(zoomState)
+                                    } else Modifier
                                 ),
                             contentAlignment = Alignment.Center
                         ) {
