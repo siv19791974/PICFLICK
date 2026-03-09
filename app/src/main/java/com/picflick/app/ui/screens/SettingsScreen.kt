@@ -534,11 +534,12 @@ private fun ProfileHeaderWithStorage(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            // Manage Storage Button
-            QuickActionButton(
-                text = "Manage Storage",
+            // Manage Storage Button with Storage Bar
+            ManageStorageButton(
+                usedBytes = storageUsed,
+                totalBytes = storageLimit,
+                percent = storagePercent,
                 onClick = onManageStorage,
-                color = Color(0xFF1565C0),
                 modifier = Modifier.fillMaxWidth(),
                 isDarkMode = isDarkMode
             )
@@ -674,6 +675,96 @@ private fun QuickActionButton(
                 color = if (isDarkMode) Color.White else Color.Black,
                 fontSize = 13.sp,
                 fontWeight = FontWeight.Medium
+            )
+        }
+    }
+}
+
+@Composable
+private fun ManageStorageButton(
+    usedBytes: Long,
+    totalBytes: Long,
+    percent: Int,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    isDarkMode: Boolean
+) {
+    // Color coding: Green (0-60%), Yellow (60-80%), Orange (80-90%), Red (90-100%)
+    val barColor = when {
+        percent < 60 -> Color(0xFF00C853)  // Green
+        percent < 80 -> Color(0xFFFFD600)  // Yellow
+        percent < 90 -> Color(0xFFFF6D00)  // Orange
+        else -> Color.Red                   // Red
+    }
+    
+    val usedGB = usedBytes / (1024.0 * 1024.0 * 1024.0)
+    val totalGB = totalBytes / (1024.0 * 1024.0 * 1024.0)
+    
+    Card(
+        modifier = modifier
+            .clickable(onClick = onClick),
+        colors = CardDefaults.cardColors(
+            containerColor = if (isDarkMode) Color(0xFF1C1C1E) else Color.White
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .padding(12.dp)
+                .fillMaxWidth(),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            // Icon circle with blue color
+            Box(
+                modifier = Modifier
+                    .size(36.dp)
+                    .clip(CircleShape)
+                    .background(Color(0xFF1565C0).copy(alpha = 0.15f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Cloud,
+                    contentDescription = null,
+                    tint = Color(0xFF1565C0),
+                    modifier = Modifier.size(22.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(6.dp))
+
+            // Storage Percentage
+            Text(
+                text = "$percent%",
+                color = barColor,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Bold
+            )
+            
+            // Storage Bar
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 4.dp)
+                    .height(4.dp)
+                    .clip(RoundedCornerShape(2.dp))
+                    .background(Color(0xFFE0E0E0))
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .fillMaxWidth(percent / 100f)
+                        .clip(RoundedCornerShape(2.dp))
+                        .background(barColor)
+                )
+            }
+            
+            Spacer(modifier = Modifier.height(4.dp))
+            
+            // GB used / total
+            Text(
+                text = String.format("%.1f / %.0f GB", usedGB, totalGB),
+                color = if (isDarkMode) Color.Gray else Color.DarkGray,
+                fontSize = 11.sp
             )
         }
     }
