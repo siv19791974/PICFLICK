@@ -502,31 +502,37 @@ fun FullScreenPhotoViewer(
                                 },
                                 onDragEnd = {
                                     isDragging = false
-                                    // Navigate based on drag direction
+                                    val shouldNavigateVertical = isDraggingVertically && kotlin.math.abs(rawDragY) > 150f
+                                    val shouldNavigateHorizontal = !isDraggingVertically && kotlin.math.abs(rawDragX) > 150f
+                                    
                                     when {
                                         // Vertical swipe - threshold 150f
-                                        isDraggingVertically && kotlin.math.abs(rawDragY) > 150f -> {
+                                        shouldNavigateVertical -> {
                                             if (rawDragY < 0 && currentPageIndex < validPhotos.size - 1) {
                                                 currentPageIndex++ // UP = NEXT
                                             } else if (rawDragY > 0 && currentPageIndex > 0) {
                                                 currentPageIndex-- // DOWN = PREV
                                             }
+                                            // Don't spring - let the page change handle the reset
                                         }
                                         // Horizontal swipe - threshold 150f
-                                        !isDraggingVertically && kotlin.math.abs(rawDragX) > 150f -> {
+                                        shouldNavigateHorizontal -> {
                                             if (rawDragX < 0 && currentPageIndex < validPhotos.size - 1) {
                                                 currentPageIndex++ // LEFT = NEXT
                                             } else if (rawDragX > 0 && currentPageIndex > 0) {
                                                 currentPageIndex-- // RIGHT = PREV
                                             }
+                                            // Don't spring - let the page change handle the reset
                                         }
-                                    }
-                                    // Spring back to center
-                                    coroutineScope.launch {
-                                        dragXAnim.animateTo(0f, springSpec)
-                                    }
-                                    coroutineScope.launch {
-                                        dragYAnim.animateTo(0f, springSpec)
+                                        else -> {
+                                            // Spring back to center - no navigation
+                                            coroutineScope.launch {
+                                                dragXAnim.animateTo(0f, springSpec)
+                                            }
+                                            coroutineScope.launch {
+                                                dragYAnim.animateTo(0f, springSpec)
+                                            }
+                                        }
                                     }
                                     rawDragX = 0f
                                     rawDragY = 0f
