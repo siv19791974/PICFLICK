@@ -731,20 +731,30 @@ private fun ModernStatItem(
     label: String,
     isDarkMode: Boolean
 ) {
+    val textColor = if (isDarkMode) Color.White else Color.Black
+    val subtitleColor = if (isDarkMode) Color.Gray else Color.DarkGray
+    
     Column(
-        horizontalAlignment = Alignment.CenterHorizontally
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier.wrapContentHeight()
     ) {
-        Text(
-            text = value,
-            fontSize = 22.sp,
-            fontWeight = FontWeight.Bold,
-            color = if (isDarkMode) Color.White else Color.Black
-        )
+        // Fixed height container for value (28.dp matches badge height)
+        Box(
+            modifier = Modifier.height(28.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = value,
+                fontSize = 22.sp,
+                fontWeight = FontWeight.Bold,
+                color = textColor
+            )
+        }
         Spacer(modifier = Modifier.height(4.dp))
         Text(
             text = label,
             fontSize = 13.sp,
-            color = if (isDarkMode) Color.Gray else Color.DarkGray,
+            color = subtitleColor,
             fontWeight = FontWeight.Medium
         )
     }
@@ -756,53 +766,60 @@ private fun TierBadgeStatItem(
     isDarkMode: Boolean
 ) {
     val tierColor = tier.getColor()
+    val subtitleColor = if (isDarkMode) Color.Gray else Color.DarkGray
     
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier.wrapContentHeight()
     ) {
-        // Colored tier badge - exactly matching 22.sp text height
+        // Fixed height container matching ModernStatItem (28.dp)
         Box(
-            modifier = Modifier
-                .size(22.dp)  // Exact match to 22.sp text
-                .clip(CircleShape)
-                .background(
-                    brush = Brush.sweepGradient(
-                        colors = listOf(
-                            tierColor,
-                            tier.getDarkColor(),
-                            tier.getLightColor(),
-                            tierColor
-                        )
-                    )
-                )
-                .border(
-                    width = 2.dp,
-                    color = if (isDarkMode) Color.White.copy(alpha = 0.5f) else Color.Black.copy(alpha = 0.3f),
-                    shape = CircleShape
-                ),
+            modifier = Modifier.height(28.dp),
             contentAlignment = Alignment.Center
         ) {
-            // Optional: Show tier initial inside badge
-            val initial = when (tier) {
-                com.picflick.app.data.SubscriptionTier.FREE -> "F"
-                com.picflick.app.data.SubscriptionTier.STANDARD -> "S"
-                com.picflick.app.data.SubscriptionTier.PLUS -> "P"
-                com.picflick.app.data.SubscriptionTier.PRO -> "P"
-                com.picflick.app.data.SubscriptionTier.ULTRA -> "U"
+            // Colored tier badge
+            Box(
+                modifier = Modifier
+                    .size(24.dp)  // Slightly smaller than container for visual balance
+                    .clip(CircleShape)
+                    .background(
+                        brush = Brush.sweepGradient(
+                            colors = listOf(
+                                tierColor,
+                                tier.getDarkColor(),
+                                tier.getLightColor(),
+                                tierColor
+                            )
+                        )
+                    )
+                    .border(
+                        width = 2.dp,
+                        color = if (isDarkMode) Color.White.copy(alpha = 0.5f) else Color.Black.copy(alpha = 0.3f),
+                        shape = CircleShape
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                // Tier initial inside badge
+                val initial = when (tier) {
+                    com.picflick.app.data.SubscriptionTier.FREE -> "F"
+                    com.picflick.app.data.SubscriptionTier.STANDARD -> "S"
+                    com.picflick.app.data.SubscriptionTier.PLUS -> "P"
+                    com.picflick.app.data.SubscriptionTier.PRO -> "P"
+                    com.picflick.app.data.SubscriptionTier.ULTRA -> "U"
+                }
+                Text(
+                    text = initial,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
+                )
             }
-            Text(
-                text = initial,
-                fontSize = 10.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color.White
-            )
         }
         Spacer(modifier = Modifier.height(4.dp))
         Text(
             text = "Plan",
             fontSize = 13.sp,
-            color = if (isDarkMode) Color.Gray else Color.DarkGray,
+            color = subtitleColor,
             fontWeight = FontWeight.Medium
         )
     }
