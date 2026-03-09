@@ -146,6 +146,7 @@
     <string name="about_description">Share photos with friends in a private, ad-free space.</string>
     <string name="about_privacy_policy">Privacy Policy</string>
     <string name="about_terms">Terms of Service</string>
+    <string name="about_contact">Contact Us</string>
     <string name="storage_photos_stored">Photos stored</string>
     <string name="storage_avg_photo_size">Average photo size</string>
     <string name="storage_current_quality">Current quality</string>
