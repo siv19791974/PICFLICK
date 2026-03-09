@@ -49,7 +49,8 @@ fun FindFriendsScreen(
     viewModel: FriendsViewModel,
     userProfile: UserProfile,
     onBack: () -> Unit,
-    onNavigateToProfile: (String) -> Unit = {}
+    onNavigateToProfile: (String) -> Unit = {},
+    onProfileRefresh: () -> Unit = {} // Callback to refresh user profile after follow/unfollow
 ) {
     val context = LocalContext.current
     val isDarkMode = ThemeManager.isDarkMode.value
@@ -129,6 +130,7 @@ fun FindFriendsScreen(
                 onUnfollow = { user ->
                     viewModel.unfollowUser(userProfile.uid, user.uid)
                     android.widget.Toast.makeText(context, "Unfollowed ${user.displayName}", android.widget.Toast.LENGTH_SHORT).show()
+                    onProfileRefresh() // Refresh profile to update UI
                 },
                 onUserClick = onNavigateToProfile
             )
@@ -137,11 +139,18 @@ fun FindFriendsScreen(
                 userProfile = userProfile,
                 onFollowClick = { user, action ->
                     when (action) {
-                        "unfollow" -> viewModel.unfollowUser(userProfile.uid, user.uid)
-                        "accept" -> viewModel.acceptFollowRequest(userProfile.uid, user)
+                        "unfollow" -> {
+                            viewModel.unfollowUser(userProfile.uid, user.uid)
+                            onProfileRefresh() // Refresh to update button state
+                        }
+                        "accept" -> {
+                            viewModel.acceptFollowRequest(userProfile.uid, user)
+                            onProfileRefresh() // Refresh to update button state
+                        }
                         "send_request" -> {
                             viewModel.sendFollowRequest(userProfile.uid, user, userProfile)
                             android.widget.Toast.makeText(context, "Friend request sent to ${user.displayName}", android.widget.Toast.LENGTH_SHORT).show()
+                            onProfileRefresh() // Refresh to update button state
                         }
                     }
                 },
@@ -156,11 +165,18 @@ fun FindFriendsScreen(
                 },
                 onFollowClick = { user, action ->
                     when (action) {
-                        "unfollow" -> viewModel.unfollowUser(userProfile.uid, user.uid)
-                        "accept" -> viewModel.acceptFollowRequest(userProfile.uid, user)
+                        "unfollow" -> {
+                            viewModel.unfollowUser(userProfile.uid, user.uid)
+                            onProfileRefresh() // Refresh to update button state
+                        }
+                        "accept" -> {
+                            viewModel.acceptFollowRequest(userProfile.uid, user)
+                            onProfileRefresh() // Refresh to update button state
+                        }
                         "send_request" -> {
                             viewModel.sendFollowRequest(userProfile.uid, user, userProfile)
                             android.widget.Toast.makeText(context, "Friend request sent to ${user.displayName}", android.widget.Toast.LENGTH_SHORT).show()
+                            onProfileRefresh() // Refresh to update button state
                         }
                     }
                 },

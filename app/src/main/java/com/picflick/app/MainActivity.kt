@@ -801,7 +801,8 @@ private fun AuthenticatedContent(
                 onBack = { onScreenChange(Screen.Home) },
                 onNavigateToProfile = { userId ->
                     onScreenChange(Screen.UserProfile(userId))
-                }
+                },
+                onProfileRefresh = { authViewModel.reloadUserProfile() } // Refresh profile after follow/unfollow
             )
 
             is Screen.About -> AboutScreen(
