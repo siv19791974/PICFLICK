@@ -124,8 +124,8 @@ class FriendsViewModel : ViewModel() {
      * Send a follow request
      */
     fun sendFollowRequest(currentUserId: String, targetUser: UserProfile, currentUserProfile: UserProfile) {
-        viewModelScope.launch {
-            repository.followUser(currentUserId, targetUser.uid)
+        repository.followUser(currentUserId, targetUser.uid) { result ->
+            // Handle result silently
         }
     }
 
@@ -133,8 +133,8 @@ class FriendsViewModel : ViewModel() {
      * Unfollow a user
      */
     fun unfollowUser(currentUserId: String, targetUserId: String) {
-        viewModelScope.launch {
-            repository.unfollowUser(currentUserId, targetUserId)
+        repository.unfollowUser(currentUserId, targetUserId) { result ->
+            // Handle result silently
         }
     }
 
@@ -143,7 +143,7 @@ class FriendsViewModel : ViewModel() {
      */
     fun acceptFollowRequest(currentUserId: String, requester: UserProfile) {
         viewModelScope.launch {
-            repository.acceptFollowRequest(currentUserId, requester.uid)
+            repository.acceptFollowRequest(currentUserId, requester.uid, requester.displayName)
         }
     }
 
@@ -178,7 +178,7 @@ class FriendsViewModel : ViewModel() {
 
                 // Find matching PicFlick users
                 if (phoneNumbers.isNotEmpty()) {
-                    repository.findUsersByPhoneNumbers(phoneNumbers.toList(), currentUserId) { result ->
+                    repository.findUsersByPhoneNumbers(phoneNumbers.toList()) { result ->
                         when (result) {
                             is Result.Success -> {
                                 contactUsers.clear()
