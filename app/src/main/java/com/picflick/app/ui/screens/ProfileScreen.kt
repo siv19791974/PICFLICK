@@ -3,6 +3,7 @@ package com.picflick.app.ui.screens
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -278,6 +279,11 @@ fun ProfileScreen(
             ModernStatItem(
                 value = currentStreak.toString(),
                 label = "Streak",
+                isDarkMode = isDarkMode
+            )
+            // SIXTH ITEM - Subscription Tier Badge
+            TierBadgeStatItem(
+                tier = userProfile.subscriptionTier,
                 isDarkMode = isDarkMode
             )
         }
@@ -737,6 +743,54 @@ private fun ModernStatItem(
         Spacer(modifier = Modifier.height(4.dp))
         Text(
             text = label,
+            fontSize = 13.sp,
+            color = if (isDarkMode) Color.Gray else Color.DarkGray,
+            fontWeight = FontWeight.Medium
+        )
+    }
+}
+
+@Composable
+private fun TierBadgeStatItem(
+    tier: com.picflick.app.data.SubscriptionTier,
+    isDarkMode: Boolean
+) {
+    val tierColor = tier.getColor()
+    val tierName = when (tier) {
+        com.picflick.app.data.SubscriptionTier.FREE -> "Free"
+        com.picflick.app.data.SubscriptionTier.STANDARD -> "Std"
+        com.picflick.app.data.SubscriptionTier.PLUS -> "Plus"
+        com.picflick.app.data.SubscriptionTier.PRO -> "Pro"
+        com.picflick.app.data.SubscriptionTier.ULTRA -> "Ultra"
+    }
+    
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        // Colored tier badge/dot
+        Box(
+            modifier = Modifier
+                .size(22.dp)
+                .clip(CircleShape)
+                .background(
+                    brush = Brush.sweepGradient(
+                        colors = listOf(
+                            tierColor,
+                            tier.getDarkColor(),
+                            tier.getLightColor(),
+                            tierColor
+                        )
+                    )
+                )
+                .border(
+                    width = 2.dp,
+                    color = if (isDarkMode) Color.White.copy(alpha = 0.5f) else Color.Black.copy(alpha = 0.3f),
+                    shape = CircleShape
+                )
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            text = "PLAN",
             fontSize = 13.sp,
             color = if (isDarkMode) Color.Gray else Color.DarkGray,
             fontWeight = FontWeight.Medium
