@@ -27,6 +27,7 @@ data class UserProfile(
     val dailyUploadsToday: Int = 0, // Uploads used today
     val lastUploadResetDate: String = "", // Date string for tracking daily resets
     val isFounder: Boolean = false, // Early tester status
+    val defaultPrivacy: String = "friends", // Default privacy for new posts: "friends" or "public"
     val joinedAt: Long = System.currentTimeMillis()
 ) {
     /**
