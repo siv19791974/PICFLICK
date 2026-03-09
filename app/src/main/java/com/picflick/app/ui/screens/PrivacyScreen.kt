@@ -9,6 +9,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -35,7 +36,9 @@ import com.picflick.app.ui.theme.isDarkModeSurface
 @Composable
 fun PrivacyScreen(
     userProfile: UserProfile,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    onFindFriends: () -> Unit = {},
+    onPrivacyPolicy: () -> Unit = {}
 ) {
     val isDarkMode = ThemeManager.isDarkMode.value
     val repository = remember { FlickRepository.getInstance() }
@@ -136,7 +139,18 @@ fun PrivacyScreen(
 
             // Who Can Find You
             item {
-                WhoCanFindYouSection(isDarkMode = isDarkMode)
+                WhoCanFindYouSection(
+                    isDarkMode = isDarkMode,
+                    onClick = onFindFriends
+                )
+            }
+
+            // Privacy Policy Link
+            item {
+                PrivacyPolicyLink(
+                    isDarkMode = isDarkMode,
+                    onClick = onPrivacyPolicy
+                )
             }
 
             // Blocked Users Section
@@ -372,10 +386,14 @@ private fun PrivacyOption(
 }
 
 @Composable
-private fun WhoCanFindYouSection(isDarkMode: Boolean) {
+private fun WhoCanFindYouSection(
+    isDarkMode: Boolean,
+    onClick: () -> Unit
+) {
     val textColor = if (isDarkMode) Color.White else Color.Black
     val subtitleColor = if (isDarkMode) Color.Gray else Color.DarkGray
     val cardBackground = if (isDarkMode) Color(0xFF1C1C1E) else Color.White
+    val accentColor = Color(0xFF1565C0)
 
     Column(
         modifier = Modifier.fillMaxWidth()
@@ -389,40 +407,118 @@ private fun WhoCanFindYouSection(isDarkMode: Boolean) {
         )
 
         Card(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable(onClick = onClick),
             colors = CardDefaults.cardColors(
                 containerColor = cardBackground
             ),
             shape = RoundedCornerShape(12.dp)
         ) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.PersonSearch,
-                        contentDescription = null,
-                        tint = textColor,
-                        modifier = Modifier.size(24.dp)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Default.PersonSearch,
+                    contentDescription = null,
+                    tint = accentColor,
+                    modifier = Modifier.size(24.dp)
+                )
+
+                Spacer(modifier = Modifier.width(12.dp))
+
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Friend Discovery",
+                        color = textColor,
+                        fontWeight = FontWeight.Medium,
+                        fontSize = 16.sp
                     )
-
-                    Spacer(modifier = Modifier.width(12.dp))
-
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = "Friend Discovery",
-                            color = textColor,
-                            fontWeight = FontWeight.Medium,
-                            fontSize = 16.sp
-                        )
-                        Text(
-                            text = "People can find you by username only",
-                            color = subtitleColor,
-                            fontSize = 13.sp
-                        )
-                    }
+                    Text(
+                        text = "Tap to find friends on PicFlick",
+                        color = subtitleColor,
+                        fontSize = 13.sp
+                    )
                 }
+
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                    contentDescription = "Go",
+                    tint = subtitleColor,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun PrivacyPolicyLink(
+    isDarkMode: Boolean,
+    onClick: () -> Unit
+) {
+    val textColor = if (isDarkMode) Color.White else Color.Black
+    val subtitleColor = if (isDarkMode) Color.Gray else Color.DarkGray
+    val accentColor = Color(0xFF1565C0)
+
+    Column(
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Text(
+            text = "LEGAL",
+            color = subtitleColor,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(bottom = 8.dp)
+        )
+
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable(onClick = onClick),
+            colors = CardDefaults.cardColors(
+                containerColor = if (isDarkMode) Color(0xFF1C1C1E) else Color.White
+            ),
+            shape = RoundedCornerShape(12.dp)
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Policy,
+                    contentDescription = null,
+                    tint = accentColor,
+                    modifier = Modifier.size(24.dp)
+                )
+
+                Spacer(modifier = Modifier.width(12.dp))
+
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Privacy Policy",
+                        color = textColor,
+                        fontWeight = FontWeight.Medium,
+                        fontSize = 16.sp
+                    )
+                    Text(
+                        text = "Read how we protect your data",
+                        color = subtitleColor,
+                        fontSize = 13.sp
+                    )
+                }
+
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                    contentDescription = "Go",
+                    tint = subtitleColor,
+                    modifier = Modifier.size(20.dp)
+                )
             }
         }
     }

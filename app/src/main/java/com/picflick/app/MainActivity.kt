@@ -1332,7 +1332,14 @@ private fun AuthenticatedContent(
 
             is Screen.Privacy -> PrivacyScreen(
                 userProfile = userProfile,
-                onBack = { onScreenChange(Screen.Settings) }
+                onBack = { onScreenChange(Screen.Settings) },
+                onFindFriends = { onScreenChange(Screen.FindFriends) },
+                onPrivacyPolicy = {
+                    // Open privacy policy in browser
+                    val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, 
+                        Uri.parse("https://picflick.app/privacy"))
+                    context.startActivity(intent)
+                }
             )
 
             is Screen.NotificationSettings -> NotificationSettingsScreen(
