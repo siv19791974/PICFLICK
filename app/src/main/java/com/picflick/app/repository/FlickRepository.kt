@@ -1390,4 +1390,73 @@ class FlickRepository private constructor() {
             Result.Error(e, "Failed to save notification preferences")
         }
     }
+
+    /**
+     * Delete all user data - photos, profile, friends, chats, notifications
+     * Used for account deletion
+     */
+    suspend fun deleteUserData(userId: String): Result<Unit> {
+        return try {
+            // 1. Delete all user's photos (flicks)
+            val flicksSnapshot = db.collection(Constants.FirebaseCollections.FLICKS)
+                .whereEqualTo("userId", userId)
+                .get()
+                .await()
+            
+            flicksSnapshot.documents.forEach { doc ->
+                doc.reference.delete().await()
+            }
+
+            // 2. Delete user's chats and messages
+            val chatSessions = db.collection(Constants.FirebaseCollections.CHAT_SESSIONS)
+                .whereArrayContains("participants", userId)
+                .get()
+                .await()
+            
+            chatSessions.documents.forEach { doc ->
+                // Delete all messages in the chat
+                val messages = doc.reference.collection("messages").get().await()
+                messages.documents.forEach { msg ->
+                    msg.reference.delete().await()
+                }
+                // Delete the chat session
+                doc.reference.delete().await()
+            }
+
+            // 3. Delete user's notifications
+            val notifications = db.collection(Constants.FirebaseCollections.NOTIFICATIONS)
+                .whereEqualTo("userId", userId)
+                .get()
+                .await()
+            
+            notifications.documents.forEach { doc ->
+                doc.reference.delete().await()
+            }
+
+            // 4. Remove user from others' followers/following lists
+            val allUsers = db.collection(Constants.FirebaseCollections.USERS).get().await()
+            allUsers.documents.forEach { userDoc ->
+                val userData = userDoc.toObject(UserProfile::class.java)
+                if (userData.followers.contains(userId) || userData.following.contains(userId)) {
+                    val updatedFollowers = userData.followers.filter { it != userId }
+                    val updatedFollowing = userData.following.filter { it != userId }
+                    userDoc.reference.update(
+                        mapOf(
+                            "followers" to updatedFollowers,
+                            "following" to updatedFollowing
+                        )
+                    ).await()
+                }
+            }
+
+            // 5. Delete user profile
+            db.collection(Constants.FirebaseCollections.USERS).document(userId)
+                .delete()
+                .await()
+
+            Result.Success(Unit)
+        } catch (e: Exception) {
+            Result.Error(e, "Failed to delete user data: ${e.message}")
+        }
+    }
 }

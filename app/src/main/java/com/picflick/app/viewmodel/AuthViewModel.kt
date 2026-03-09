@@ -199,6 +199,49 @@ class AuthViewModel : ViewModel() {
     }
 
     /**
+     * Delete user account and all associated data
+     * This permanently removes the user from Firebase Auth and Firestore
+     */
+    fun deleteAccount(onComplete: (Boolean, String?) -> Unit) {
+        viewModelScope.launch {
+            try {
+                val user = auth.currentUser
+                if (user == null) {
+                    onComplete(false, "No user signed in")
+                    return@launch
+                }
+
+                val userId = user.uid
+
+                // 1. Delete user data from Firestore
+                repository.deleteUserData(userId) { result ->
+                    when (result) {
+                        is Result.Success -> {
+                            // 2. Delete Firebase Auth user
+                            user.delete()
+                                .addOnSuccessListener {
+                                    // Clear local state
+                                    userProfile = null
+                                    currentUser = null
+                                    onComplete(true, null)
+                                }
+                                .addOnFailureListener { e ->
+                                    onComplete(false, "Failed to delete account: ${e.message}")
+                                }
+                        }
+                        is Result.Error -> {
+                            onComplete(false, "Failed to delete user data: ${result.message}")
+                        }
+                        is Result.Loading -> { }
+                    }
+                }
+            } catch (e: Exception) {
+                onComplete(false, "Unexpected error: ${e.message}")
+            }
+        }
+    }
+
+    /**
      * Clear any error message
      */
     fun clearError() {

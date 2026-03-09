@@ -108,6 +108,13 @@ dependencies {
     // Google Play Billing
     implementation(libs.billing.ktx)
     
+    // Google Play In-App Review API - Prompt users to rate the app
+    implementation(libs.play.review)
+    implementation(libs.play.review.ktx)
+    
+    // Firebase Analytics - Track user engagement and app usage
+    implementation(libs.firebase.analytics)
+    
     // Testing
     testImplementation(libs.junit)
     testImplementation(libs.mockk)
