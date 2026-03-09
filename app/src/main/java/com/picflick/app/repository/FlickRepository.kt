@@ -1131,6 +1131,96 @@ class FlickRepository private constructor() {
     }
 
     /**
+     * Add a reply to a comment
+     */
+    suspend fun addReply(
+        flickId: String,
+        parentCommentId: String,
+        userId: String,
+        userName: String,
+        userPhotoUrl: String,
+        text: String
+    ): Result<Unit> {
+        return try {
+            val reply = Comment(
+                id = UUID.randomUUID().toString(),
+                flickId = flickId,
+                userId = userId,
+                userName = userName,
+                userPhotoUrl = userPhotoUrl,
+                text = text,
+                timestamp = System.currentTimeMillis(),
+                parentCommentId = parentCommentId
+            )
+
+            // Add reply
+            db.collection("comments").add(reply).await()
+
+            // Update parent comment reply count
+            db.collection("comments").document(parentCommentId)
+                .update("replyCount", FieldValue.increment(1))
+                .await()
+
+            // Update flick comment count
+            db.collection("flicks").document(flickId)
+                .update("commentCount", FieldValue.increment(1))
+                .await()
+
+            Result.Success(Unit)
+        } catch (e: Exception) {
+            Result.Error(e, "Failed to add reply")
+        }
+    }
+
+    /**
+     * Like a comment
+     */
+    suspend fun likeComment(commentId: String, userId: String): Result<Unit> {
+        return try {
+            db.collection("comments").document(commentId)
+                .update("likes", FieldValue.arrayUnion(userId))
+                .await()
+            Result.Success(Unit)
+        } catch (e: Exception) {
+            Result.Error(e, "Failed to like comment")
+        }
+    }
+
+    /**
+     * Unlike a comment
+     */
+    suspend fun unlikeComment(commentId: String, userId: String): Result<Unit> {
+        return try {
+            db.collection("comments").document(commentId)
+                .update("likes", FieldValue.arrayRemove(userId))
+                .await()
+            Result.Success(Unit)
+        } catch (e: Exception) {
+            Result.Error(e, "Failed to unlike comment")
+        }
+    }
+
+    /**
+     * Get replies for a specific comment
+     */
+    fun getReplies(parentCommentId: String, onResult: (Result<List<Comment>>) -> Unit): ListenerRegistration {
+        return db.collection("comments")
+            .whereEqualTo("parentCommentId", parentCommentId)
+            .orderBy("timestamp", Query.Direction.ASCENDING)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    onResult(Result.Error(error, "Failed to load replies"))
+                    return@addSnapshotListener
+                }
+
+                if (snapshot != null) {
+                    val replies = snapshot.toObjects(Comment::class.java)
+                    onResult(Result.Success(replies))
+                }
+            }
+    }
+
+    /**
      * Delete a comment
      */
     suspend fun deleteComment(commentId: String, flickId: String): Result<Unit> {
