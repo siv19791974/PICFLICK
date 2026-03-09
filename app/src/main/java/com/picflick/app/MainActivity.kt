@@ -230,6 +230,11 @@ fun MainScreen(
         billingViewModelInstance.initialize(context)
     }
     
+    // Restore cached profile when app resumes (prevents data loss)
+    LaunchedEffect(Unit) {
+        authViewModel.restoreCachedProfile()
+    }
+    
     // State for profile photo upload
     var profilePhotoToUpload by remember { mutableStateOf<Uri?>(null) }
     

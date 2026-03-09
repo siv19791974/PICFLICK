@@ -49,6 +49,16 @@ class AuthViewModel : ViewModel() {
     }
 
     /**
+     * Restore cached profile immediately (call this when app resumes)
+     */
+    fun restoreCachedProfile() {
+        // If we have a user but no profile, reload it
+        if (currentUser != null && userProfile == null) {
+            loadUserProfile(currentUser!!.uid)
+        }
+    }
+
+    /**
      * Public function to reload user profile from Firestore
      * Call this when you want to force a refresh (e.g., pull-to-refresh)
      */

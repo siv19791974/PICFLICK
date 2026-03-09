@@ -463,7 +463,7 @@ fun FullScreenPhotoViewer(
             Box(modifier = Modifier.fillMaxSize()) {
                 
                 // SIMPLE 2D PAGER - Just direct positioning with Zoomable for pinch
-                // Use Animatable with spring for smooth snap-back animation
+                // NO SPRING - direct snap only
                 val dragXAnim = remember { Animatable(0f) }
                 val dragYAnim = remember { Animatable(0f) }
                 var rawDragX by remember { mutableFloatStateOf(0f) }
@@ -471,11 +471,6 @@ fun FullScreenPhotoViewer(
                 var isDraggingVertically by remember { mutableStateOf(false) }
                 var isDragging by remember { mutableStateOf(false) }
                 
-                // Spring spec for smooth snap animation
-                val springSpec: androidx.compose.animation.core.SpringSpec<Float> = spring(
-                    dampingRatio = Spring.DampingRatioMediumBouncy,
-                    stiffness = Spring.StiffnessLow
-                )
                 var currentPageIndex by remember { mutableIntStateOf(currentIndex) }
                 
                 // Reset drag when photo changes
@@ -513,7 +508,6 @@ fun FullScreenPhotoViewer(
                                             } else if (rawDragY > 0 && currentPageIndex > 0) {
                                                 currentPageIndex-- // DOWN = PREV
                                             }
-                                            // Don't spring - let the page change handle the reset
                                         }
                                         // Horizontal swipe - threshold 150f
                                         shouldNavigateHorizontal -> {
@@ -522,15 +516,14 @@ fun FullScreenPhotoViewer(
                                             } else if (rawDragX > 0 && currentPageIndex > 0) {
                                                 currentPageIndex-- // RIGHT = PREV
                                             }
-                                            // Don't spring - let the page change handle the reset
                                         }
                                         else -> {
-                                            // Spring back to center - no navigation
+                                            // NO SPRING - just snap back
                                             coroutineScope.launch {
-                                                dragXAnim.animateTo(0f, springSpec)
+                                                dragXAnim.snapTo(0f)
                                             }
                                             coroutineScope.launch {
-                                                dragYAnim.animateTo(0f, springSpec)
+                                                dragYAnim.snapTo(0f)
                                             }
                                         }
                                     }
