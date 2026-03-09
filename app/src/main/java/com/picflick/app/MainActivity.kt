@@ -185,7 +185,6 @@ fun MainScreen(
             is Screen.Friends,
             is Screen.Chats,
             is Screen.FindFriends,
-            is Screen.About,
             is Screen.Contact,
             is Screen.Notifications,
             is Screen.Explore,
@@ -199,6 +198,10 @@ fun MainScreen(
             is Screen.Philosophy,
             is Screen.Legal -> {
                 currentScreen = Screen.Home
+            }
+            // About goes back to Settings
+            is Screen.About -> {
+                currentScreen = Screen.Settings
             }
             // UserProfile goes back to Friends
             is Screen.UserProfile -> {
@@ -789,7 +792,11 @@ private fun AuthenticatedContent(
             )
 
             is Screen.About -> AboutScreen(
-                onBack = { onScreenChange(Screen.Home) }
+                onBack = { onScreenChange(Screen.Settings) },
+                onPrivacyPolicy = { onScreenChange(Screen.PrivacyPolicy) },
+                onLegal = { onScreenChange(Screen.Legal) },
+                onPhilosophy = { onScreenChange(Screen.Philosophy) },
+                onContactUs = { onScreenChange(Screen.Contact) }
             )
 
             is Screen.Contact -> ContactScreen(
