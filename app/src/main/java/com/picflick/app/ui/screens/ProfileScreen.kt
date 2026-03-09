@@ -77,7 +77,7 @@ fun ProfileScreen(
     
     // Bio edit dialog state
     var showBioDialog by remember { mutableStateOf(false) }
-    var bioText by remember { mutableStateOf(userProfile.bio) }
+    var bioText by remember(userProfile.bio) { mutableStateOf(userProfile.bio) }
     
     // Bio edit dialog
     if (showBioDialog) {
