@@ -39,10 +39,7 @@
             android:name=".MainActivity"
             android:exported="true"
             android:label="@string/app_name"
-            android:theme="@style/Theme.PICFLICK"
-            android:screenOrientation="portrait"
-            android:configChanges="screenSize|keyboardHidden"
-            android:resizeableActivity="false">
+            android:theme="@style/Theme.PICFLICK">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
