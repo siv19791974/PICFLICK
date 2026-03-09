@@ -253,8 +253,8 @@ fun ProfileScreen(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 8.dp),
-            horizontalArrangement = Arrangement.SpaceEvenly
+                .padding(horizontal = 4.dp),  // Reduced from 8dp
+            horizontalArrangement = Arrangement.SpaceAround  // Better distribution than SpaceEvenly
         ) {
             ModernStatItem(
                 value = photoCount.toString(),
@@ -736,11 +736,11 @@ private fun ModernStatItem(
     
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier.wrapContentHeight()
+        modifier = Modifier.wrapContentWidth()  // Don't expand unnecessarily
     ) {
-        // Fixed height container for value (28.dp matches badge height)
+        // Fixed height container for value (30.dp matches badge height)
         Box(
-            modifier = Modifier.height(28.dp),
+            modifier = Modifier.height(30.dp),
             contentAlignment = Alignment.Center
         ) {
             Text(
@@ -770,17 +770,17 @@ private fun TierBadgeStatItem(
     
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier.wrapContentHeight()
+        modifier = Modifier.wrapContentWidth()  // Don't expand unnecessarily
     ) {
-        // Fixed height container matching ModernStatItem (28.dp)
+        // Fixed height container matching ModernStatItem (30.dp for larger badge)
         Box(
-            modifier = Modifier.height(28.dp),
+            modifier = Modifier.height(30.dp),
             contentAlignment = Alignment.Center
         ) {
-            // Colored tier badge
+            // Colored tier badge - slightly larger for visibility
             Box(
                 modifier = Modifier
-                    .size(24.dp)  // Slightly smaller than container for visual balance
+                    .size(26.dp)  // Increased from 24dp
                     .clip(CircleShape)
                     .background(
                         brush = Brush.sweepGradient(

@@ -1,7 +1,5 @@
 package com.picflick.app.ui.screens
 
-import android.content.Intent
-import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -9,14 +7,13 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Email
-import androidx.compose.material.icons.filled.OpenInBrowser
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -30,7 +27,8 @@ import com.picflick.app.ui.theme.isDarkModeBackground
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PrivacyPolicyScreen(
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    onContactUs: () -> Unit = {}
 ) {
     val isDarkMode = ThemeManager.isDarkMode.value
     val context = LocalContext.current
@@ -202,18 +200,12 @@ Continued use of PicFlick after changes constitutes acceptance of the revised po
                 )
             }
 
-            // Contact
+            // Contact - Link to Contact Us in Settings
             item {
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable {
-                            val intent = Intent(Intent.ACTION_SENDTO).apply {
-                                data = Uri.parse("mailto:privacy@picflick.app")
-                                putExtra(Intent.EXTRA_SUBJECT, "PicFlick Privacy Question")
-                            }
-                            context.startActivity(intent)
-                        },
+                        .clickable { onContactUs() },
                     colors = CardDefaults.cardColors(
                         containerColor = accentColor.copy(alpha = 0.1f)
                     ),
@@ -240,13 +232,13 @@ Continued use of PicFlick after changes constitutes acceptance of the revised po
                                 fontSize = 16.sp
                             )
                             Text(
-                                text = "privacy@picflick.app",
-                                color = accentColor,
+                                text = "Go to Settings > Contact Us",
+                                color = subtitleColor,
                                 fontSize = 14.sp
                             )
                         }
                         Icon(
-                            imageVector = Icons.Default.OpenInBrowser,
+                            imageVector = androidx.compose.material.icons.automirrored.filled.ArrowForward,
                             contentDescription = null,
                             tint = subtitleColor,
                             modifier = Modifier.size(20.dp)
