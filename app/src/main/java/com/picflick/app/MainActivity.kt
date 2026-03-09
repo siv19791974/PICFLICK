@@ -819,7 +819,6 @@ private fun AuthenticatedContent(
                     }
                 },
                 onManageStorage = { onScreenChange(Screen.ManageStorage) },
-                onSubscriptionStatus = { onScreenChange(Screen.SubscriptionStatus) },
                 onPrivacySettings = { onScreenChange(Screen.Privacy) },
                 onNotificationsSettings = { onScreenChange(Screen.NotificationSettings) },
                 onHelpSupport = { onScreenChange(Screen.Contact) },
