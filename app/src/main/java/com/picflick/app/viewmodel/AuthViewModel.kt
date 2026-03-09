@@ -214,26 +214,24 @@ class AuthViewModel : ViewModel() {
                 val userId = user.uid
 
                 // 1. Delete user data from Firestore
-                repository.deleteUserData(userId) { result ->
-                    when (result) {
-                        is Result.Success -> {
-                            // 2. Delete Firebase Auth user
-                            user.delete()
-                                .addOnSuccessListener {
-                                    // Clear local state
-                                    userProfile = null
-                                    currentUser = null
-                                    onComplete(true, null)
-                                }
-                                .addOnFailureListener { e ->
-                                    onComplete(false, "Failed to delete account: ${e.message}")
-                                }
-                        }
-                        is Result.Error -> {
-                            onComplete(false, "Failed to delete user data: ${result.message}")
-                        }
-                        is Result.Loading -> { }
+                when (val result = repository.deleteUserData(userId)) {
+                    is Result.Success -> {
+                        // 2. Delete Firebase Auth user
+                        user.delete()
+                            .addOnSuccessListener {
+                                // Clear local state
+                                userProfile = null
+                                currentUser = null
+                                onComplete(true, null)
+                            }
+                            .addOnFailureListener { e ->
+                                onComplete(false, "Failed to delete account: ${e.message}")
+                            }
                     }
+                    is Result.Error -> {
+                        onComplete(false, "Failed to delete user data: ${result.message}")
+                    }
+                    is Result.Loading -> { }
                 }
             } catch (e: Exception) {
                 onComplete(false, "Unexpected error: ${e.message}")
