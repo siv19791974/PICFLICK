@@ -3,12 +3,7 @@ package com.picflick.app.ui.screens
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.material.ExperimentalMaterialApi
-import androidx.compose.material.pullrefresh.PullRefreshIndicator
-import androidx.compose.material.pullrefresh.pullRefresh
-import androidx.compose.material.pullrefresh.rememberPullRefreshState
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
@@ -20,13 +15,18 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.pullrefresh.PullRefreshIndicator
+import androidx.compose.material.pullrefresh.pullRefresh
+import androidx.compose.material.pullrefresh.rememberPullRefreshState
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.layout.ContentScale
@@ -37,8 +37,11 @@ import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import com.picflick.app.data.Flick
 import com.picflick.app.data.UserProfile
-import com.picflick.app.ui.theme.isDarkModeBackground
+import com.picflick.app.data.getColor
+import com.picflick.app.data.getDarkColor
+import com.picflick.app.data.getLightColor
 import com.picflick.app.ui.theme.ThemeManager
+import com.picflick.app.ui.theme.isDarkModeBackground
 
 /**
  * Modern Profile screen with enhanced UI
@@ -128,50 +131,75 @@ fun ProfileScreen(
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        // Profile Photo with better styling
+        // Profile Photo with Tier Color Ring
+        val tier = userProfile.subscriptionTier
+        val tierColor = tier.getColor()
+        
         Box(
             modifier = Modifier
-                .size(150.dp)
-                .clip(CircleShape)
-                .background(Color.DarkGray.copy(alpha = 0.3f))
-                .border(3.dp, if (isDarkMode) Color.White.copy(alpha = 0.8f) else Color.Black.copy(alpha = 0.8f), CircleShape)
-                .clickable { 
-                    if (userProfile.photoUrl.isNotEmpty()) {
-                        onProfilePhotoClick()
-                    } else {
-                        // If no photo, open image picker
-                        imagePicker.launch("image/*")
-                    }
-                },
+                .size(156.dp), // Slightly larger to fit 6.dp ring
             contentAlignment = Alignment.Center
         ) {
-            AsyncImage(
-                model = userProfile.photoUrl,
-                contentDescription = "Profile photo",
-                modifier = Modifier.fillMaxSize(),
-                error = painterResource(id = android.R.drawable.ic_menu_myplaces),
-                contentScale = androidx.compose.ui.layout.ContentScale.Crop
-            )
-
-            // Edit icon overlay - positioned at bottom right
-            // Only shown when there's a photo, clicking it opens image picker to change photo
-            if (userProfile.photoUrl.isNotEmpty()) {
+            // Outer ring with tier color - DOUBLE THICKNESS (6.dp)
+            Box(
+                modifier = Modifier
+                    .size(156.dp)
+                    .clip(CircleShape)
+                    .background(
+                        brush = Brush.sweepGradient(
+                            colors = listOf(
+                                tierColor,
+                                tier.getDarkColor(),
+                                tier.getLightColor(),
+                                tierColor
+                            )
+                        )
+                    )
+                    .padding(6.dp) // 6.dp thick ring
+            ) {
+                // Inner photo container
                 Box(
                     modifier = Modifier
-                        .align(Alignment.BottomEnd)
-                        .offset((-8).dp, (-8).dp)
-                        .size(44.dp)
-                        .background(MaterialTheme.colorScheme.primary, CircleShape)
-                        .border(3.dp, Color.Black, CircleShape)
-                        .clickable { imagePicker.launch("image/*") },
+                        .fillMaxSize()
+                        .clip(CircleShape)
+                        .background(Color(0xFF2C2C2E))
+                        .clickable { 
+                            if (userProfile.photoUrl.isNotEmpty()) {
+                                onProfilePhotoClick()
+                            } else {
+                                imagePicker.launch("image/*")
+                            }
+                        },
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Edit,
-                        contentDescription = "Change Photo",
-                        tint = Color.White,
-                        modifier = Modifier.size(22.dp)
+                    AsyncImage(
+                        model = userProfile.photoUrl,
+                        contentDescription = "Profile photo",
+                        modifier = Modifier.fillMaxSize(),
+                        error = painterResource(id = android.R.drawable.ic_menu_myplaces),
+                        contentScale = androidx.compose.ui.layout.ContentScale.Crop
                     )
+
+                    // Edit icon overlay
+                    if (userProfile.photoUrl.isNotEmpty()) {
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.BottomEnd)
+                                .offset((-8).dp, (-8).dp)
+                                .size(44.dp)
+                                .background(MaterialTheme.colorScheme.primary, CircleShape)
+                                .border(3.dp, Color.Black, CircleShape)
+                                .clickable { imagePicker.launch("image/*") },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Edit,
+                                contentDescription = "Change Photo",
+                                tint = Color.White,
+                                modifier = Modifier.size(22.dp)
+                            )
+                        }
+                    }
                 }
             }
         }
