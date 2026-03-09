@@ -83,7 +83,7 @@ fun BottomNavBar(
         NavigationBarItem(
             icon = {
                 Icon(
-                    if (currentRoute == "friends") Icons.Filled.Share else Icons.Outlined.Share,
+                    if (currentRoute == "friends") Icons.Filled.People else Icons.Outlined.People,
                     contentDescription = "Friends",
                     tint = if (currentRoute == "friends") Color.White else Color.LightGray
                 )
