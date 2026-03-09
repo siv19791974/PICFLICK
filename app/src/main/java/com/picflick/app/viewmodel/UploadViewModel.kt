@@ -44,37 +44,60 @@ class UploadViewModel : ViewModel() {
         private set
 
     /**
-     * Load today's upload count for a user
+     * Load today's upload count for a user from their profile
+     * This tracks upload ACTIONS, not current photos (persists even if photos are deleted)
      */
-    fun loadDailyUploadCount(userId: String) {
+    fun loadDailyUploadCount(userProfile: UserProfile) {
         viewModelScope.launch {
             try {
                 isLoadingUploadCount = true
                 
-                // Get start of today timestamp
-                val calendar = Calendar.getInstance().apply {
-                    set(Calendar.HOUR_OF_DAY, 0)
-                    set(Calendar.MINUTE, 0)
-                    set(Calendar.SECOND, 0)
-                    set(Calendar.MILLISECOND, 0)
+                // Get today's date string for comparison
+                val calendar = Calendar.getInstance()
+                val todayDate = "${calendar.get(Calendar.YEAR)}-${calendar.get(Calendar.MONTH) + 1}-${calendar.get(Calendar.DAY_OF_MONTH)}"
+                
+                // Check if we need to reset the counter (new day)
+                if (userProfile.lastUploadResetDate != todayDate) {
+                    // It's a new day - reset the counter in Firestore
+                    firestore.collection("users").document(userProfile.uid)
+                        .update(mapOf(
+                            "dailyUploadsToday" to 0,
+                            "lastUploadResetDate" to todayDate
+                        ))
+                        .await()
+                    dailyUploadCount = 0
+                } else {
+                    // Same day - use the stored count
+                    dailyUploadCount = userProfile.dailyUploadsToday
                 }
-                val startOfDay = calendar.timeInMillis
-                
-                // Query flicks created today by this user
-                val querySnapshot = firestore.collection("flicks")
-                    .whereEqualTo("userId", userId)
-                    .whereGreaterThanOrEqualTo("timestamp", startOfDay)
-                    .get()
-                    .await()
-                
-                dailyUploadCount = querySnapshot.size()
                 
             } catch (e: Exception) {
-                // If error, assume 0 uploads to be safe
-                dailyUploadCount = 0
+                // If error, use the profile value or assume 0
+                dailyUploadCount = userProfile.dailyUploadsToday
             } finally {
                 isLoadingUploadCount = false
             }
+        }
+    }
+
+    /**
+     * Increment the daily upload count in Firestore
+     * Call this after successful upload
+     */
+    private suspend fun incrementDailyUploadCount(userId: String) {
+        try {
+            val calendar = Calendar.getInstance()
+            val todayDate = "${calendar.get(Calendar.YEAR)}-${calendar.get(Calendar.MONTH) + 1}-${calendar.get(Calendar.DAY_OF_MONTH)}"
+            
+            firestore.collection("users").document(userId)
+                .update(mapOf(
+                    "dailyUploadsToday" to com.google.firebase.firestore.FieldValue.increment(1),
+                    "lastUploadResetDate" to todayDate
+                ))
+                .await()
+        } catch (e: Exception) {
+            // Silently fail - the upload succeeded, just the counter update failed
+            android.util.Log.w("UploadViewModel", "Failed to update daily upload count", e)
         }
     }
 
@@ -133,7 +156,8 @@ class UploadViewModel : ViewModel() {
                     throw Exception(result.message)
                 }
                 
-                // Increment daily count
+                // Increment daily count in Firestore (persists even if photo is deleted later)
+                incrementDailyUploadCount(userProfile.uid)
                 dailyUploadCount++
 
                 uploadSuccess = true

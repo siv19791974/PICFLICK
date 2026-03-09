@@ -237,8 +237,8 @@ fun MainScreen(
     
     // Load daily upload count when user is authenticated
     LaunchedEffect(userProfile?.uid) {
-        userProfile?.uid?.let { uid ->
-            uploadViewModel.loadDailyUploadCount(uid)
+        userProfile?.let { profile ->
+            uploadViewModel.loadDailyUploadCount(profile)
         }
     }
 
@@ -881,7 +881,6 @@ private fun AuthenticatedContent(
                         currentUser = userProfile,
                         friends = friendsViewModel.followingUsers,
                         dailyUploadCount = uploadViewModel.dailyUploadCount,
-                        maxDailyUploads = 5,
                         onBack = { onScreenChange(Screen.Home) },
                         onUpload = { filteredUri, filter, taggedFriends, description ->
                             uploadViewModel.uploadPhoto(
