@@ -56,6 +56,7 @@ fun ChatDetailScreen(
     val otherUserPhoto = chatSession.participantPhotos[otherUserId] ?: ""
 
     var messageText by remember { mutableStateOf("") }
+    var replyToMessage by remember { mutableStateOf<ChatMessage?>(null) }
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
 
@@ -168,56 +169,71 @@ fun ChatDetailScreen(
                 color = PicFlickBannerBackground,
                 tonalElevation = 2.dp
             ) {
-                Row(
+                Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 8.dp, vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                        .padding(horizontal = 8.dp, vertical = 8.dp)
                 ) {
-                    // Text field with emoji placeholder
-                    TextField(
-                        value = messageText,
-                        onValueChange = { messageText = it },
-                        placeholder = { Text("Message") },
-                        modifier = Modifier
-                            .weight(1f)
-                            .heightIn(min = 48.dp, max = 120.dp),
-                        colors = TextFieldDefaults.colors(
-                            focusedContainerColor = MaterialTheme.colorScheme.surface,
-                            unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-                            focusedIndicatorColor = Color.Transparent,
-                            unfocusedIndicatorColor = Color.Transparent
-                        ),
-                        shape = RoundedCornerShape(24.dp),
-                        maxLines = 5
-                    )
-
-                    Spacer(modifier = Modifier.width(8.dp))
-
-                    // Send button
-                    FloatingActionButton(
-                        onClick = {
-                            if (messageText.isNotBlank()) {
-                                viewModel.sendMessage(
-                                    chatId = chatId,
-                                    text = messageText.trim(),
-                                    senderId = currentUser.uid,
-                                    recipientId = otherUserId,
-                                    senderName = currentUser.displayName,
-                                    senderPhotoUrl = currentUser.photoUrl
-                                ) {
-                                    messageText = ""
-                                }
-                            }
-                        },
-                        modifier = Modifier.size(48.dp),
-                        containerColor = MaterialTheme.colorScheme.primary
-                    ) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.Send,
-                            contentDescription = "Send",
-                            tint = Color.White
+                    // Reply preview
+                    if (replyToMessage != null) {
+                        ReplyPreview(
+                            message = replyToMessage!!,
+                            onCancel = { replyToMessage = null }
                         )
+                        Spacer(modifier = Modifier.height(4.dp))
+                    }
+                    
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        // Text field with emoji placeholder
+                        TextField(
+                            value = messageText,
+                            onValueChange = { messageText = it },
+                            placeholder = { Text(if (replyToMessage != null) "Reply to message..." else "Message") },
+                            modifier = Modifier
+                                .weight(1f)
+                                .heightIn(min = 48.dp, max = 120.dp),
+                            colors = TextFieldDefaults.colors(
+                                focusedContainerColor = MaterialTheme.colorScheme.surface,
+                                unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                                focusedIndicatorColor = Color.Transparent,
+                                unfocusedIndicatorColor = Color.Transparent
+                            ),
+                            shape = RoundedCornerShape(24.dp),
+                            maxLines = 5
+                        )
+
+                        Spacer(modifier = Modifier.width(8.dp))
+
+                        // Send button
+                        FloatingActionButton(
+                            onClick = {
+                                if (messageText.isNotBlank()) {
+                                    viewModel.sendMessage(
+                                        chatId = chatId,
+                                        text = messageText.trim(),
+                                        senderId = currentUser.uid,
+                                        recipientId = otherUserId,
+                                        senderName = currentUser.displayName,
+                                        senderPhotoUrl = currentUser.photoUrl,
+                                        replyToMessage = replyToMessage
+                                    ) {
+                                        messageText = ""
+                                        replyToMessage = null
+                                    }
+                                }
+                            },
+                            modifier = Modifier.size(48.dp),
+                            containerColor = MaterialTheme.colorScheme.primary
+                        ) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.Send,
+                                contentDescription = "Send",
+                                tint = Color.White
+                            )
+                        }
                     }
                 }
             }
@@ -279,7 +295,8 @@ fun ChatDetailScreen(
                                 ChatBubble(
                                     message = message,
                                     isMe = isMe,
-                                    otherUserPhoto = if (isMe) "" else otherUserPhoto
+                                    otherUserPhoto = if (isMe) "" else otherUserPhoto,
+                                    onReplyClick = { replyToMessage = message }
                                 )
                                 Spacer(modifier = Modifier.height(4.dp))
                             }
@@ -298,11 +315,13 @@ fun ChatDetailScreen(
     }
 }
 
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 private fun ChatBubble(
     message: ChatMessage,
     isMe: Boolean,
-    otherUserPhoto: String
+    otherUserPhoto: String,
+    onReplyClick: () -> Unit = {}
 ) {
     val bubbleColor = if (isMe) {
         Color(0xFFDCF8C6) // WhatsApp light green for sent
@@ -327,7 +346,12 @@ private fun ChatBubble(
     }
 
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .combinedClickable(
+                onClick = { },
+                onLongClick = { onReplyClick() }
+            ),
         horizontalArrangement = if (isMe) Arrangement.End else Arrangement.Start,
         verticalAlignment = Alignment.Top
     ) {
@@ -363,6 +387,16 @@ private fun ChatBubble(
                     .padding(horizontal = 12.dp, vertical = 8.dp)
             ) {
                 Column {
+                    // Show quoted message if this is a reply
+                    if (message.isReply()) {
+                        QuotedMessage(
+                            quotedSenderName = message.quotedSenderName ?: "Unknown",
+                            quotedText = message.quotedText ?: "",
+                            isMe = isMe
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                    }
+                    
                     Text(
                         text = message.text,
                         fontSize = 15.sp,
