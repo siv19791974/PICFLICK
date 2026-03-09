@@ -40,6 +40,10 @@ class FriendsViewModel : ViewModel() {
 
     var searchQuery by mutableStateOf("")
         private set
+    
+    // Track which users are being followed/unfollowed (for button loading state)
+    var processingUserIds = mutableStateListOf<String>()
+        private set
 
     init {
         // Load suggested users on init
@@ -218,23 +222,21 @@ class FriendsViewModel : ViewModel() {
      */
     fun followUser(currentUserId: String, targetUser: UserProfile, currentUser: UserProfile) {
         viewModelScope.launch {
+            processingUserIds.add(targetUser.uid)
+            
             val result = repository.followUser(currentUserId, targetUser.uid, currentUser.displayName)
             when (result) {
                 is Result.Success -> {
-                    // Update local state to reflect the follow
                     val index = searchResults.indexOfFirst { it.uid == targetUser.uid }
                     if (index != -1) {
-                        // Refresh search results to show updated state
                         searchUsers(searchQuery, currentUserId)
                     }
-                    // Also refresh contacts on app
                     val contactIndex = contactsOnApp.indexOfFirst { it.uid == targetUser.uid }
                     if (contactIndex != -1) {
                         contactsOnApp[contactIndex] = targetUser.copy(
                             followers = targetUser.followers + currentUserId
                         )
                     }
-                    // Update suggested users - remove followed user from suggestions
                     val suggestedIndex = suggestedUsers.indexOfFirst { it.uid == targetUser.uid }
                     if (suggestedIndex != -1) {
                         suggestedUsers.removeAt(suggestedIndex)
@@ -243,8 +245,10 @@ class FriendsViewModel : ViewModel() {
                 is Result.Error -> {
                     errorMessage = result.message
                 }
-                is Result.Loading -> { /* Do nothing */ }
+                is Result.Loading -> { }
             }
+            
+            processingUserIds.remove(targetUser.uid)
         }
     }
 
@@ -253,19 +257,21 @@ class FriendsViewModel : ViewModel() {
      */
     fun unfollowUser(currentUserId: String, targetUserId: String) {
         viewModelScope.launch {
+            processingUserIds.add(targetUserId)
+            
             val result = repository.unfollowUser(currentUserId, targetUserId)
             when (result) {
                 is Result.Success -> {
-                    // Refresh search results
                     searchUsers(searchQuery, currentUserId)
-                    // Refresh suggested users to include the unfollowed user back
                     loadSuggestedUsers(currentUserId)
                 }
                 is Result.Error -> {
                     errorMessage = result.message
                 }
-                is Result.Loading -> { /* Do nothing */ }
+                is Result.Loading -> { }
             }
+            
+            processingUserIds.remove(targetUserId)
         }
     }
 

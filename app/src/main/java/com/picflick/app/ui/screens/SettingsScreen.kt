@@ -352,7 +352,11 @@ fun SettingsScreen(
                     )
                 }
             },
-            confirmButton = {},
+            confirmButton = {
+                TextButton(onClick = { showAppearanceDialog = false }) {
+                    Text("OK", color = Color(0xFFD7ECFF))
+                }
+            },
             dismissButton = {
                 TextButton(onClick = { showAppearanceDialog = false }) {
                     Text("Close")
