@@ -13,7 +13,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import java.util.Calendar
-import java.util.UUID
+import com.picflick.app.Constants
 
 /**
  * Repository class for handling all Firebase Firestore and Storage operations
@@ -107,7 +107,7 @@ class FlickRepository private constructor() {
                 // Query user's own photos (simple query - no composite index needed)
                 val ownFlicksSnapshot = db.collection("flicks")
                     .whereEqualTo("userId", userId)
-                    .limit(50)
+                    .limit(Constants.Pagination.FLICKS_PER_PAGE.toLong())
                     .get()
                     .await()
 
@@ -115,12 +115,12 @@ class FlickRepository private constructor() {
 
                 // Query friends' photos (simplified to avoid composite index)
                 val friendsFlicks = if (friends.isNotEmpty()) {
-                    friends.chunked(10).flatMap { friendBatch ->
+                    friends.chunked(Constants.Pagination.MAX_FRIENDS_BATCH).flatMap { friendBatch ->
                         // Query without orderBy to avoid composite index requirement
                         val batchSnapshot = db.collection("flicks")
                             .whereIn("userId", friendBatch)
                             .whereEqualTo("privacy", "friends")
-                            .limit(50)
+                            .limit(Constants.Pagination.FLICKS_PER_PAGE.toLong())
                             .get()
                             .await()
                         batchSnapshot.toObjects(Flick::class.java)
@@ -133,7 +133,7 @@ class FlickRepository private constructor() {
                 val allFlicks = (ownFlicks + friendsFlicks)
                     .distinctBy { it.id }
                     .sortedByDescending { it.timestamp }
-                    .take(50)
+                    .take(Constants.Pagination.FLICKS_PER_PAGE)
 
                 onResult(Result.Success(allFlicks))
             } catch (e: Exception) {
@@ -155,7 +155,7 @@ class FlickRepository private constructor() {
 
                 val flicksSnapshot = db.collection("flicks")
                     .whereGreaterThan("timestamp", weekAgo)
-                    .limit(100)
+                    .limit(Constants.Pagination.EXPLORE_FLICKS_LIMIT.toLong())
                     .get()
                     .await()
 
@@ -165,7 +165,7 @@ class FlickRepository private constructor() {
                 val trendingFlicks = flicks
                     .sortedByDescending { it.timestamp } // Sort in memory
                     .sortedByDescending { it.getTotalReactions() + (it.commentCount * 2) }
-                    .take(50)
+                    .take(Constants.Pagination.FLICKS_PER_PAGE)
 
                 onResult(Result.Success(trendingFlicks))
             } catch (e: Exception) {
@@ -179,9 +179,9 @@ class FlickRepository private constructor() {
      * Get flicks - DEPRECATED: Use getFlicksForUser() for privacy
      */
     fun getFlicks(onResult: (Result<List<Flick>>) -> Unit) {
-        db.collection("flicks")
+        db.collection(Constants.FirebaseCollections.FLICKS)
             .orderBy("timestamp", Query.Direction.DESCENDING)
-            .limit(50)
+            .limit(Constants.Pagination.FLICKS_PER_PAGE.toLong())
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
                     onResult(Result.Error(Exception(error.message), "Failed to load photos"))
