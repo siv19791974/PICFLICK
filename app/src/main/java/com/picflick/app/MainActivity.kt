@@ -825,8 +825,6 @@ private fun AuthenticatedContent(
                 onNotificationsSettings = { onScreenChange(Screen.NotificationSettings) },
                 onHelpSupport = { onScreenChange(Screen.Contact) },
                 onAbout = { onScreenChange(Screen.About) }
-                // FIREBENDER callbacks removed - for developer testing only
-                // Use Firebase Console to manually add/remove FIREBENDER for testing
             )
 
             is Screen.ManageStorage -> {
