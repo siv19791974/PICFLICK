@@ -192,18 +192,16 @@ private fun DiscoverTab(
         refreshing = viewModel.isLoading,
         onRefresh = { 
             if (viewModel.searchQuery.isBlank()) {
-                viewModel.loadSuggestedUsers(userProfile.uid)
+                viewModel.loadAllUsers(userProfile.uid)
             } else {
                 viewModel.searchUsers(viewModel.searchQuery, userProfile.uid)
             }
         }
     )
 
-    // Reload suggestions when screen opens with user context
+    // Reload all users when screen opens
     LaunchedEffect(userProfile.uid) {
-        if (viewModel.suggestedUsers.isEmpty()) {
-            viewModel.loadSuggestedUsers(userProfile.uid)
-        }
+        viewModel.loadAllUsers(userProfile.uid)
     }
 
     Box(
@@ -228,10 +226,10 @@ private fun DiscoverTab(
                 singleLine = true
             )
 
-            // Suggested Friends Section
+            // All Users Section
             if (viewModel.searchQuery.isBlank() && viewModel.suggestedUsers.isNotEmpty()) {
                 Text(
-                    text = "Suggested for you",
+                    text = "People on PicFlick",
                     style = MaterialTheme.typography.titleMedium,
                     color = if (isDarkMode) Color.White else Color.Black,
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)

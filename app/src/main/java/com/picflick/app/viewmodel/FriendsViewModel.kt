@@ -132,6 +132,26 @@ class FriendsViewModel : ViewModel() {
     }
 
     /**
+     * Load ALL users on PicFlick (for Discover tab - shows everyone including followed)
+     */
+    fun loadAllUsers(currentUserId: String) {
+        isLoading = true
+        repository.getAllUsers(currentUserId) { result ->
+            when (result) {
+                is Result.Success -> {
+                    suggestedUsers.clear()
+                    suggestedUsers.addAll(result.data)
+                }
+                is Result.Error -> {
+                    // Handle error silently
+                }
+                is Result.Loading -> { }
+            }
+            isLoading = false
+        }
+    }
+
+    /**
      * Send a follow request
      */
     fun sendFollowRequest(currentUserId: String, targetUser: UserProfile, currentUserProfile: UserProfile) {
