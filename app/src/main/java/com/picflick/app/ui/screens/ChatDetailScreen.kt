@@ -88,81 +88,85 @@ fun ChatDetailScreen(
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         topBar = {
-            TopAppBar(
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = PicFlickBannerBackground
-                ),
-                title = {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        // Profile photo - clickable to view profile
-                        Box(
-                            modifier = Modifier
-                                .size(40.dp)
-                                .clickable { onUserProfileClick(otherUserId) }
-                        ) {
-                            if (otherUserPhoto.isNotEmpty()) {
-                                AsyncImage(
-                                    model = otherUserPhoto,
-                                    contentDescription = otherUserName,
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .clip(CircleShape),
-                                    contentScale = ContentScale.Crop
-                                )
-                            } else {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .clip(CircleShape)
-                                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Person,
-                                        contentDescription = null,
-                                        modifier = Modifier.size(24.dp),
-                                        tint = MaterialTheme.colorScheme.primary
-                                    )
-                                }
-                            }
-
-                            // Online indicator
-                            Box(
-                                modifier = Modifier
-                                    .size(10.dp)
-                                    .clip(CircleShape)
-                                    .background(Color(0xFF25D366))
-                                    .align(Alignment.BottomEnd)
-                            )
-                        }
-
-                        Spacer(modifier = Modifier.width(12.dp))
-
-                        Column {
-                            Text(
-                                text = otherUserName,
-                                fontSize = 16.sp,
-                                fontWeight = FontWeight.Medium,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                            Text(
-                                text = "online",
-                                fontSize = 12.sp,
-                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-                            )
-                        }
-                    }
-                },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
+            // Custom compact 48dp title bar
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(48.dp)
+                    .background(PicFlickBannerBackground),
+                contentAlignment = Alignment.CenterStart
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    IconButton(
+                        onClick = onBack,
+                        modifier = Modifier.size(48.dp)
+                    ) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Back",
                             tint = MaterialTheme.colorScheme.onSurface
                         )
                     }
+                    // Profile photo - clickable to view profile
+                    Box(
+                        modifier = Modifier
+                            .size(36.dp)
+                            .clickable { onUserProfileClick(otherUserId) }
+                    ) {
+                        if (otherUserPhoto.isNotEmpty()) {
+                            AsyncImage(
+                                model = otherUserPhoto,
+                                contentDescription = otherUserName,
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .clip(CircleShape),
+                                contentScale = ContentScale.Crop
+                            )
+                        } else {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .clip(CircleShape)
+                                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Person,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(24.dp),
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                        }
+                        // Online indicator
+                        Box(
+                            modifier = Modifier
+                                .size(10.dp)
+                                .clip(CircleShape)
+                                .background(Color(0xFF25D366))
+                                .align(Alignment.BottomEnd)
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    // User info column
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = otherUserName,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Text(
+                            text = "online",
+                            fontSize = 11.sp,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                        )
+                    }
                 }
-            )
+            }
         },
         bottomBar = {
             // Message input area - WhatsApp style
