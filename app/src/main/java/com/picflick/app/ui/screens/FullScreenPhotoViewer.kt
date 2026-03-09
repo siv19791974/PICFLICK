@@ -549,47 +549,56 @@ fun FullScreenPhotoViewer(
                         val swipeScale = 1f - (maxProgress * 0.25f).coerceIn(0f, 0.25f)
                         val swipeAlpha = 1f - (maxProgress * 0.5f).coerceIn(0f, 0.5f)
                         
-                        // Zoom state for current photo only
+                        // Zoom state for current photo only - with disabled double-tap
                         val zoomState = if (isCurrent) rememberZoomState() else null
                         
+                        // Wrapper Box for handling double-tap before zoomable
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
-                                .offset { IntOffset(finalX.toInt(), finalY.toInt()) }
-                                .graphicsLayer {
-                                    scaleX = swipeScale
-                                    scaleY = swipeScale
-                                    alpha = if (isCurrent) swipeAlpha else 1f
-                                }
                                 .then(
-                                    if (isCurrent && zoomState != null) {
-                                        // Current photo: consume double-tap for like, then zoomable
-                                        Modifier
-                                            .pointerInput(Unit) {
-                                                detectTapGestures(
-                                                    onTap = { uiVisible = !uiVisible },
-                                                    onDoubleTap = {
-                                                        // Double tap to like/unlike - consume gesture to prevent zoom
-                                                        heartAnimationKey++
-                                                        showDoubleTapHeart = true
-                                                        // Toggle reaction (like)
-                                                        onReaction(if (userReaction != null) null else ReactionType.LIKE)
-                                                    }
-                                                )
-                                            }
-                                            .zoomable(zoomState)
+                                    if (isCurrent) {
+                                        Modifier.pointerInput(Unit) {
+                                            detectTapGestures(
+                                                onTap = { uiVisible = !uiVisible },
+                                                onDoubleTap = {
+                                                    // Double tap - Like/unlike, don't zoom!
+                                                    heartAnimationKey++
+                                                    showDoubleTapHeart = true
+                                                    onReaction(if (userReaction != null) null else ReactionType.LIKE)
+                                                }
+                                            )
+                                        }
                                     } else Modifier
                                 ),
                             contentAlignment = Alignment.Center
                         ) {
+                            // Inner Box with zoomable (doesn't get double-tap because parent consumes it)
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .offset { IntOffset(finalX.toInt(), finalY.toInt()) }
+                                    .graphicsLayer {
+                                        scaleX = swipeScale
+                                        scaleY = swipeScale
+                                        alpha = if (isCurrent) swipeAlpha else 1f
+                                    }
+                                    .then(
+                                        if (isCurrent && zoomState != null) {
+                                            Modifier.zoomable(zoomState)
+                                        } else Modifier
+                                    ),
+                                contentAlignment = Alignment.Center
+                            ) {
                             AsyncImage(
                                 model = photo.imageUrl,
                                 contentDescription = null,
                                 modifier = Modifier.fillMaxSize(),
                                 contentScale = ContentScale.Fit
                             )
-                        }
-                    }
+                        } // End inner zoomable Box
+                    } // End outer gesture Box
+                }
                     
                     // 1. CURRENT at CENTER
                     if (currentPageIndex < validPhotos.size) {
