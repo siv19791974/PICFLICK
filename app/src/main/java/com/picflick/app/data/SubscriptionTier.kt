@@ -34,10 +34,10 @@ object TierColors {
     val FreeDark = Color(0xFF757575)
     val FreeLight = Color(0xFFBDBDBD)
 
-    // White - Standard tier (clean)
-    val Standard = Color(0xFFF5F5F5)
-    val StandardDark = Color(0xFFD4D4D4)
-    val StandardLight = Color(0xFFFFFFFF)
+    // Light Green - Standard tier (fresh, clean)
+    val Standard = Color(0xFF81C784)
+    val StandardDark = Color(0xFF4CAF50)
+    val StandardLight = Color(0xFFA5D6A7)
 
     // Bronze - Plus tier (warm, entry premium)
     val Plus = Color(0xFFCD7F32)
