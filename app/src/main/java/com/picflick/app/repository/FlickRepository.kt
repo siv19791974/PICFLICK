@@ -1096,20 +1096,24 @@ class FlickRepository private constructor() {
         onUpdate: (List<Notification>) -> Unit,
         onError: (String) -> Unit
     ): com.google.firebase.firestore.ListenerRegistration {
+        android.util.Log.d("FlickRepository", "Setting up notification listener for user: $userId")
         return db.collection(Constants.FirebaseCollections.NOTIFICATIONS)
             .whereEqualTo("userId", userId)
             .orderBy("timestamp", Query.Direction.DESCENDING)
             .limit(Constants.Pagination.NOTIFICATIONS_PER_PAGE.toLong())
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
+                    android.util.Log.e("FlickRepository", "Notification listener error: ${error.message}")
                     onError(error.message ?: "Failed to load notifications")
                     return@addSnapshotListener
                 }
 
                 if (snapshot != null) {
+                    android.util.Log.d("FlickRepository", "Notification snapshot received: ${snapshot.documents.size} documents")
                     val notifications = snapshot.documents.mapNotNull { doc ->
                         try {
                             val data = doc.data ?: return@mapNotNull null
+                            android.util.Log.d("FlickRepository", "Processing notification doc: ${doc.id}, type: ${data["type"]}, userId: ${data["userId"]}")
                             Notification(
                                 id = doc.id,
                                 userId = data["userId"] as? String ?: "",
@@ -1125,10 +1129,14 @@ class FlickRepository private constructor() {
                                 timestamp = (data["timestamp"] as? Long) ?: System.currentTimeMillis()
                             )
                         } catch (e: Exception) {
+                            android.util.Log.e("FlickRepository", "Error parsing notification: ${e.message}")
                             null
                         }
                     }
+                    android.util.Log.d("FlickRepository", "Parsed ${notifications.size} valid notifications")
                     onUpdate(notifications)
+                } else {
+                    android.util.Log.d("FlickRepository", "Notification snapshot is null")
                 }
             }
     }
