@@ -301,7 +301,10 @@ fun MainScreen(
     // Load notifications when user is authenticated
     LaunchedEffect(userProfile?.uid) {
         userProfile?.uid?.let { uid ->
+            android.util.Log.d("MainActivity", "Loading notifications for user: $uid")
             notificationViewModel.loadNotifications(uid)
+        } ?: run {
+            android.util.Log.w("MainActivity", "Cannot load notifications - userProfile or uid is null")
         }
     }
     
