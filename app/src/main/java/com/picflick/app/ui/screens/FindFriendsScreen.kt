@@ -636,7 +636,7 @@ private fun UserResultItem(
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 4.dp),
         colors = CardDefaults.cardColors(
-            containerColor = if (isDarkMode) Color(0xFF1E3A5F) else Color(0xFFE8F4FD) // Nice blue darker than background
+            containerColor = if (isDarkMode) Color(0xFF2A4A73) else Color(0xFFB8D4F0) // Mid blue - darker than background
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
