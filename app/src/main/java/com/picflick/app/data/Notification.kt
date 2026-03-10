@@ -34,3 +34,14 @@ enum class NotificationType {
     SYSTEM          // System announcements
 }
 
+/**
+ * Safely parse notification type from string value
+ */
+fun parseNotificationType(value: String?): NotificationType {
+    return try {
+        value?.let { NotificationType.valueOf(it) } ?: NotificationType.LIKE
+    } catch (e: IllegalArgumentException) {
+        NotificationType.LIKE
+    }
+}
+
