@@ -824,19 +824,25 @@ class FlickRepository private constructor() {
         targetUserId: String
     ): Result<Unit> {
         return try {
+            android.util.Log.d("FriendRequest", "CANCEL: $currentUserId -> $targetUserId")
+            
             val batch = db.batch()
 
             // Remove from sent requests
             val currentUserRef = db.collection("users").document(currentUserId)
             batch.update(currentUserRef, "sentFollowRequests", FieldValue.arrayRemove(targetUserId))
+            android.util.Log.d("FriendRequest", "Removing $targetUserId from $currentUserId.sentFollowRequests")
 
             // Remove from target's pending requests
             val targetUserRef = db.collection("users").document(targetUserId)
             batch.update(targetUserRef, "pendingFollowRequests", FieldValue.arrayRemove(currentUserId))
+            android.util.Log.d("FriendRequest", "Removing $currentUserId from $targetUserId.pendingFollowRequests")
 
             batch.commit().await()
+            android.util.Log.d("FriendRequest", "CANCEL SUCCESS: $currentUserId -> $targetUserId")
             Result.Success(Unit)
         } catch (e: Exception) {
+            android.util.Log.e("FriendRequest", "CANCEL FAILED: ${e.message}")
             Result.Error(e, "Failed to cancel follow request")
         }
     }
