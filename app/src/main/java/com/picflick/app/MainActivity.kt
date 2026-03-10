@@ -578,74 +578,14 @@ fun MainScreen(
                     }
                 )
             } else {
-                // DEBUG: userProfile is null - show loading or error
+                // Loading state - profile not loaded yet
                 Box(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
                 ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        val currentUser = authViewModel.currentUser
-                        val errorMsg = authViewModel.errorMessage
-                        
-                        Text(
-                            text = "DEBUG INFO",
-                            color = Color.Yellow,
-                            fontSize = 20.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Spacer(modifier = Modifier.height(16.dp))
-                        
-                        Text(
-                            text = "currentUser: ${currentUser?.uid ?: "NULL"}",
-                            color = if (currentUser != null) Color.Green else Color.Red,
-                            fontSize = 14.sp
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
-                        
-                        Text(
-                            text = "userProfile: NULL",
-                            color = Color.Red,
-                            fontSize = 14.sp
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
-                        
-                        if (errorMsg != null) {
-                            Text(
-                                text = "Error: $errorMsg",
-                                color = Color.Red,
-                                fontSize = 12.sp
-                            )
-                            Spacer(modifier = Modifier.height(8.dp))
-                        }
-                        
-                        Spacer(modifier = Modifier.height(16.dp))
-                        
-                        if (currentUser == null) {
-                            Text(
-                                text = "Firebase Auth not ready yet...",
-                                color = Color.Yellow,
-                                fontSize = 14.sp
-                            )
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Button(
-                                onClick = { 
-                                    // Force re-auth check
-                                    val user = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser
-                                    if (user != null) {
-                                        authViewModel.reloadUserProfile()
-                                    }
-                                }
-                            ) {
-                                Text("Check Auth & Retry")
-                            }
-                        } else {
-                            Button(
-                                onClick = { authViewModel.reloadUserProfile() }
-                            ) {
-                                Text("Retry Load Profile")
-                            }
-                        }
-                    }
+                    CircularProgressIndicator(
+                        color = MaterialTheme.colorScheme.primary
+                    )
                 }
             }
         }
