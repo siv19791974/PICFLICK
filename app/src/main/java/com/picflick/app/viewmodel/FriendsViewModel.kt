@@ -156,9 +156,14 @@ class FriendsViewModel : ViewModel() {
      */
     fun sendFollowRequest(currentUserId: String, targetUser: UserProfile, currentUserProfile: UserProfile) {
         addProcessingUser(targetUser.uid)
-        repository.followUser(currentUserId, targetUser.uid) { result ->
+        viewModelScope.launch {
+            repository.sendFollowRequest(
+                currentUserId = currentUserId,
+                targetUserId = targetUser.uid,
+                currentUserName = currentUserProfile.displayName,
+                currentUserPhotoUrl = currentUserProfile.photoUrl
+            )
             removeProcessingUser(targetUser.uid)
-            // Handle result silently
         }
     }
 

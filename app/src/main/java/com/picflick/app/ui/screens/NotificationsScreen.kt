@@ -115,16 +115,8 @@ fun NotificationsScreen(
                 }
             }
 
-            // Mark all read button
-            TextButton(
-                onClick = { viewModel.markAllAsRead(userProfile.uid) },
-                enabled = unreadCount > 0
-            ) {
-                Text(
-                    text = "Mark all read",
-                    color = if (unreadCount > 0) Color(0xFF4FC3F7) else if (isDarkMode) Color.Gray else Color.DarkGray
-                )
-            }
+            // Spacer to balance the layout (back button on left, title center, spacer on right)
+            Spacer(modifier = Modifier.width(48.dp))
         }
 
         // Modern PullRefresh content
@@ -202,6 +194,9 @@ fun NotificationsScreen(
                                         // Navigate to follower's profile
                                         onUserProfileClick(notification.senderId)
                                     }
+                                    NotificationType.FRIEND_REQUEST -> {
+                                        // Don't navigate, buttons handle the action
+                                    }
                                     NotificationType.MESSAGE -> {
                                         // Navigate to chat - need to get chat session
                                         // For now, just show the chat list
@@ -217,6 +212,16 @@ fun NotificationsScreen(
                             },
                             onUserProfileClick = { senderId ->
                                 onUserProfileClick(senderId)
+                            },
+                            onAcceptFriendRequest = { senderId ->
+                                // Accept the friend request
+                                viewModel.acceptFollowRequest(userProfile.uid, senderId)
+                                viewModel.markAsRead(notification.id)
+                            },
+                            onDeclineFriendRequest = { senderId ->
+                                // Decline the friend request (just remove from pending)
+                                viewModel.declineFollowRequest(userProfile.uid, senderId)
+                                viewModel.markAsRead(notification.id)
                             }
                         )
                     }
@@ -242,7 +247,9 @@ private fun NotificationItem(
     isDarkMode: Boolean,
     onClick: () -> Unit,
     onDelete: () -> Unit,
-    onUserProfileClick: (String) -> Unit = {}
+    onUserProfileClick: (String) -> Unit = {},
+    onAcceptFriendRequest: (String) -> Unit = {},
+    onDeclineFriendRequest: (String) -> Unit = {}
 ) {
     val backgroundColor = if (isDarkMode) {
         if (notification.isRead) Color(0xFF1A1A1A) else Color(0xFF2D2D2D)
@@ -257,115 +264,150 @@ private fun NotificationItem(
         colors = CardDefaults.cardColors(containerColor = backgroundColor),
         shape = RoundedCornerShape(12.dp)
     ) {
-        Row(
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically
+                .padding(12.dp)
         ) {
-            // Sender avatar with notification icon overlay - clickable to view profile
-            Box(
-                modifier = Modifier.clickable { onUserProfileClick(notification.senderId) }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                AsyncImage(
-                    model = notification.senderPhotoUrl,
-                    contentDescription = null,
-                    modifier = Modifier
-                        .size(50.dp)
-                        .clip(CircleShape)
-                        .background(if (isDarkMode) Color.Gray else Color.LightGray),
-                    contentScale = ContentScale.Crop
-                )
-
-                // Notification type icon (small overlay)
+                // Sender avatar with notification icon overlay - clickable to view profile
                 Box(
-                    modifier = Modifier
-                        .size(20.dp)
-                        .align(Alignment.BottomEnd)
-                        .background(
-                            color = getNotificationColor(notification.type),
-                            shape = CircleShape
-                        ),
-                    contentAlignment = Alignment.Center
+                    modifier = Modifier.clickable { onUserProfileClick(notification.senderId) }
+                ) {
+                    AsyncImage(
+                        model = notification.senderPhotoUrl,
+                        contentDescription = null,
+                        modifier = Modifier
+                            .size(50.dp)
+                            .clip(CircleShape)
+                            .background(if (isDarkMode) Color.Gray else Color.LightGray),
+                        contentScale = ContentScale.Crop
+                    )
+
+                    // Notification type icon (small overlay)
+                    Box(
+                        modifier = Modifier
+                            .size(20.dp)
+                            .align(Alignment.BottomEnd)
+                            .background(
+                                color = getNotificationColor(notification.type),
+                                shape = CircleShape
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = getNotificationIcon(notification.type),
+                            contentDescription = null,
+                            modifier = Modifier.size(12.dp),
+                            tint = if (isDarkMode) Color.White else Color.Black
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.width(12.dp))
+
+                // Notification content
+                Column(
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text(
+                        text = notification.title,
+                        fontSize = 14.sp,
+                        fontWeight = if (notification.isRead) FontWeight.Normal else FontWeight.Bold,
+                        color = if (isDarkMode) Color.White else Color.Black,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+
+                    Spacer(modifier = Modifier.height(2.dp))
+
+                    Text(
+                        text = notification.message,
+                        fontSize = 13.sp,
+                        color = if (isDarkMode) Color.LightGray else Color.DarkGray,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
+                    )
+
+                    Spacer(modifier = Modifier.height(4.dp))
+
+                    Text(
+                        text = formatTimestamp(notification.timestamp),
+                        fontSize = 11.sp,
+                        color = if (isDarkMode) Color.Gray else Color.DarkGray
+                    )
+                }
+
+                // Photo thumbnail (if applicable)
+                if (notification.flickImageUrl != null) {
+                    Spacer(modifier = Modifier.width(8.dp))
+                    AsyncImage(
+                        model = notification.flickImageUrl,
+                        contentDescription = null,
+                        modifier = Modifier
+                            .size(50.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(Color.DarkGray),
+                        contentScale = ContentScale.Crop
+                    )
+                }
+
+                // Delete button
+                IconButton(
+                    onClick = onDelete,
+                    modifier = Modifier.size(32.dp)
                 ) {
                     Icon(
-                        imageVector = getNotificationIcon(notification.type),
-                        contentDescription = null,
-                        modifier = Modifier.size(12.dp),
-                        tint = if (isDarkMode) Color.White else Color.Black
+                        imageVector = Icons.Outlined.Delete,
+                        contentDescription = "Delete",
+                        tint = Color.Gray,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+
+                // Unread indicator dot
+                if (!notification.isRead) {
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Box(
+                        modifier = Modifier
+                            .size(8.dp)
+                            .background(Color.Red, CircleShape)
                     )
                 }
             }
 
-            Spacer(modifier = Modifier.width(12.dp))
-
-            // Notification content
-            Column(
-                modifier = Modifier.weight(1f)
-            ) {
-                Text(
-                    text = notification.title,
-                    fontSize = 14.sp,
-                    fontWeight = if (notification.isRead) FontWeight.Normal else FontWeight.Bold,
-                    color = if (isDarkMode) Color.White else Color.Black,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-
-                Spacer(modifier = Modifier.height(2.dp))
-
-                Text(
-                    text = notification.message,
-                    fontSize = 13.sp,
-                    color = if (isDarkMode) Color.LightGray else Color.DarkGray,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
-                )
-
-                Spacer(modifier = Modifier.height(4.dp))
-
-                Text(
-                    text = formatTimestamp(notification.timestamp),
-                    fontSize = 11.sp,
-                    color = if (isDarkMode) Color.Gray else Color.DarkGray
-                )
-            }
-
-            // Photo thumbnail (if applicable)
-            if (notification.flickImageUrl != null) {
-                Spacer(modifier = Modifier.width(8.dp))
-                AsyncImage(
-                    model = notification.flickImageUrl,
-                    contentDescription = null,
-                    modifier = Modifier
-                        .size(50.dp)
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(Color.DarkGray),
-                    contentScale = ContentScale.Crop
-                )
-            }
-
-            // Delete button
-            IconButton(
-                onClick = onDelete,
-                modifier = Modifier.size(32.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Outlined.Delete,
-                    contentDescription = "Delete",
-                    tint = Color.Gray,
-                    modifier = Modifier.size(18.dp)
-                )
-            }
-
-            // Unread indicator dot
-            if (!notification.isRead) {
-                Spacer(modifier = Modifier.width(4.dp))
-                Box(
-                    modifier = Modifier
-                        .size(8.dp)
-                        .background(Color.Red, CircleShape)
-                )
+            // Accept/Decline buttons for FRIEND_REQUEST
+            if (notification.type == NotificationType.FRIEND_REQUEST && !notification.isRead) {
+                Spacer(modifier = Modifier.height(12.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Button(
+                        onClick = { onAcceptFriendRequest(notification.senderId) },
+                        modifier = Modifier.weight(1f),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFF4CAF50) // Green
+                        ),
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Text("Accept")
+                    }
+                    
+                    OutlinedButton(
+                        onClick = { onDeclineFriendRequest(notification.senderId) },
+                        modifier = Modifier.weight(1f),
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            contentColor = Color(0xFFFF4444) // Red
+                        ),
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Text("Decline")
+                    }
+                }
             }
         }
     }

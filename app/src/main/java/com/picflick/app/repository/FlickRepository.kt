@@ -770,6 +770,14 @@ class FlickRepository private constructor() {
     }
 
     /**
+     * Decline a friend request (alias for rejectFollowRequest)
+     */
+    suspend fun declineFollowRequest(
+        currentUserId: String,
+        requesterId: String
+    ): Result<Unit> = rejectFollowRequest(currentUserId, requesterId)
+
+    /**
      * Cancel a sent follow request
      */
     suspend fun cancelFollowRequest(
@@ -890,8 +898,8 @@ class FlickRepository private constructor() {
             "senderName" to requesterName,
             "senderPhotoUrl" to requesterPhotoUrl,
             "type" to "FRIEND_REQUEST",
-            "title" to "$requesterName wants to follow you",
-            "message" to "Accept or decline their request",
+            "title" to "$requesterName has requested you to be their friend",
+            "message" to "Tap to accept or decline",
             "isRead" to false,
             "timestamp" to System.currentTimeMillis()
         )
