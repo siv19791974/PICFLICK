@@ -19,9 +19,11 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.picflick.app.data.UserProfile
@@ -85,7 +87,10 @@ fun FriendsScreen(
                         items(viewModel.followingUsers) { friend ->
                             FriendListItem(
                                 friend = friend,
-                                onProfilePhotoClick = { onProfilePhotoClick(friend) }
+                                onProfilePhotoClick = { onProfilePhotoClick(friend) },
+                                onDeleteFriend = {
+                                    viewModel.unfollowUser(userProfile.uid, friend.uid)
+                                }
                             )
                         }
                     }
@@ -124,50 +129,82 @@ fun FriendsScreen(
 @Composable
 private fun FriendListItem(
     friend: UserProfile,
-    onProfilePhotoClick: () -> Unit = {}
+    onProfilePhotoClick: () -> Unit = {},
+    onDeleteFriend: () -> Unit = {}
 ) {
+    val isDarkMode = ThemeManager.isDarkMode.value
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 4.dp)
     ) {
-        Row(
-            modifier = Modifier.padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically
+        Column(
+            modifier = Modifier.padding(12.dp)
         ) {
-            // Profile photo - clickable to view full screen
-            if (friend.photoUrl.isNotEmpty()) {
-                AsyncImage(
-                    model = friend.photoUrl,
-                    contentDescription = null,
-                    modifier = Modifier
-                        .size(48.dp)
-                        .clip(CircleShape)
-                        .clickable { onProfilePhotoClick() },
-                    contentScale = ContentScale.Crop,
-                    error = painterResource(id = android.R.drawable.ic_menu_myplaces)
-                )
-            } else {
-                Icon(
-                    imageVector = Icons.Default.Person,
-                    contentDescription = null,
-                    modifier = Modifier.size(48.dp)
-                )
+            // Top row: Profile photo + user info - clickable to view profile
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { onProfilePhotoClick() },
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Profile photo
+                if (friend.photoUrl.isNotEmpty()) {
+                    AsyncImage(
+                        model = friend.photoUrl,
+                        contentDescription = null,
+                        modifier = Modifier
+                            .size(56.dp)
+                            .clip(CircleShape),
+                        contentScale = ContentScale.Crop,
+                        error = painterResource(id = android.R.drawable.ic_menu_myplaces)
+                    )
+                } else {
+                    Box(
+                        modifier = Modifier
+                            .size(56.dp)
+                            .clip(CircleShape)
+                            .background(if (isDarkMode) Color(0xFF3A3A3C) else Color(0xFFE0E0E0)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Person,
+                            contentDescription = null,
+                            modifier = Modifier.size(32.dp),
+                            tint = if (isDarkMode) Color.Gray else Color.DarkGray
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.width(12.dp))
+
+                // User info
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = friend.displayName,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Text(
+                        text = "${friend.followers.size} followers",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                    )
+                }
             }
-
-            Spacer(modifier = Modifier.width(12.dp))
-
-            // User info
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = friend.displayName,
-                    style = MaterialTheme.typography.titleMedium
+            
+            Spacer(modifier = Modifier.height(12.dp))
+            
+            // Delete Friend button - full width at bottom
+            OutlinedButton(
+                onClick = onDeleteFriend,
+                shape = RoundedCornerShape(20.dp),
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.outlinedButtonColors(
+                    contentColor = Color(0xFFFF4444) // Red
                 )
-                Text(
-                    text = "${friend.followers.size} followers",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-                )
+            ) {
+                Text("Delete Friend")
             }
         }
     }
