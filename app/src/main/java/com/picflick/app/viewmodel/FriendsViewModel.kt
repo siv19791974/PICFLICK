@@ -2,7 +2,6 @@ package com.picflick.app.viewmodel
 
 import android.content.Context
 import android.provider.ContactsContract
-import android.util.Log
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -31,9 +30,6 @@ class FriendsViewModel : ViewModel() {
         private set
 
     var isLoading by mutableStateOf(false)
-        private set
-
-    var errorMessage by mutableStateOf<String?>(null)
         private set
 
     var searchQuery by mutableStateOf("")
@@ -140,22 +136,14 @@ class FriendsViewModel : ViewModel() {
      */
     fun loadAllUsers(currentUserId: String) {
         isLoading = true
-        errorMessage = null
-        Log.d("FriendsViewModel", "Loading all users, currentUserId: $currentUserId")
         repository.getAllUsers(currentUserId) { result ->
             when (result) {
                 is Result.Success -> {
-                    Log.d("FriendsViewModel", "Loaded ${result.data.size} users")
                     suggestedUsers.clear()
                     suggestedUsers.addAll(result.data)
-                    errorMessage = null
                 }
                 is Result.Error -> {
-                    // Log error for debugging
-                    val error = result.exception?.message ?: "Unknown error"
-                    Log.e("FriendsViewModel", "Failed to load all users: $error")
-                    result.exception?.printStackTrace()
-                    errorMessage = "Error: $error"
+                    // Handle error silently
                 }
                 is Result.Loading -> { }
             }
