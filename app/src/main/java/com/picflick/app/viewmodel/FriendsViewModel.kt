@@ -157,12 +157,16 @@ class FriendsViewModel : ViewModel() {
     fun sendFollowRequest(currentUserId: String, targetUser: UserProfile, currentUserProfile: UserProfile) {
         addProcessingUser(targetUser.uid)
         viewModelScope.launch {
-            repository.sendFollowRequest(
+            val result = repository.sendFollowRequest(
                 currentUserId = currentUserId,
                 targetUserId = targetUser.uid,
                 currentUserName = currentUserProfile.displayName,
                 currentUserPhotoUrl = currentUserProfile.photoUrl
             )
+            // Log error if request fails
+            if (result is com.picflick.app.data.Result.Error) {
+                android.util.Log.e("FriendsViewModel", "Failed to send follow request: ${result.exception?.message}")
+            }
             removeProcessingUser(targetUser.uid)
         }
     }
@@ -195,7 +199,11 @@ class FriendsViewModel : ViewModel() {
     fun cancelFollowRequest(currentUserId: String, targetUserId: String) {
         addProcessingUser(targetUserId)
         viewModelScope.launch {
-            repository.cancelFollowRequest(currentUserId, targetUserId)
+            val result = repository.cancelFollowRequest(currentUserId, targetUserId)
+            // Log error if cancel fails
+            if (result is com.picflick.app.data.Result.Error) {
+                android.util.Log.e("FriendsViewModel", "Failed to cancel follow request: ${result.exception?.message}")
+            }
             removeProcessingUser(targetUserId)
         }
     }
