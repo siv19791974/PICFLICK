@@ -36,8 +36,12 @@ class NotificationViewModel : ViewModel() {
      * Load notifications for a user with real-time updates
      */
     fun loadNotifications(userId: String) {
-        if (userId.isEmpty()) return
+        if (userId.isEmpty()) {
+            android.util.Log.e("NotificationViewModel", "Cannot load notifications - userId is empty")
+            return
+        }
         
+        android.util.Log.d("NotificationViewModel", "Loading notifications for user: $userId")
         isLoading = true
         errorMessage = null
         
@@ -47,17 +51,24 @@ class NotificationViewModel : ViewModel() {
                 listenerRegistration = repository.listenToNotifications(
                     userId = userId,
                     onUpdate = { newNotifications ->
+                        android.util.Log.d("NotificationViewModel", "Received ${newNotifications.size} notifications")
+                        newNotifications.forEachIndexed { index, notification ->
+                            android.util.Log.d("NotificationViewModel", "Notification $index: type=${notification.type}, title=${notification.title}, userId=${notification.userId}")
+                        }
                         notifications.clear()
                         notifications.addAll(newNotifications.sortedByDescending { it.timestamp })
                         unreadCount = newNotifications.count { !it.isRead }
                         isLoading = false
+                        android.util.Log.d("NotificationViewModel", "Notifications updated. Unread: $unreadCount")
                     },
                     onError = { error ->
+                        android.util.Log.e("NotificationViewModel", "Error loading notifications: $error")
                         errorMessage = error
                         isLoading = false
                     }
                 )
             } catch (e: Exception) {
+                android.util.Log.e("NotificationViewModel", "Exception loading notifications: ${e.message}", e)
                 errorMessage = e.message
                 isLoading = false
             }
