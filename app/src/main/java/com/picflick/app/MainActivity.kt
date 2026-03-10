@@ -530,8 +530,8 @@ fun MainScreen(
                         when (route) {
                             "home" -> {
                                 if (currentScreen is Screen.Home) {
-                                    // Already on home, close album drawer to show feed
-                                    showAlbumDrawer = false
+                                    // Already on home, toggle album drawer
+                                    showAlbumDrawer = !showAlbumDrawer
                                 } else {
                                     currentScreen = Screen.Home
                                     showAlbumDrawer = false

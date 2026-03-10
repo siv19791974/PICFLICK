@@ -158,10 +158,11 @@ fun HomeScreen(
 
     // Column WITHOUT verticalScroll (because LazyVerticalGrid has its own scroll)
     // NO BANNER HERE - banner is now in MainActivity's Scaffold topBar!
-    Box(
+    Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(isDarkModeBackground(isDarkMode))
+            .background(isDarkModeBackground(isDarkMode)),
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
         // Modern PullRefresh content
         val pullRefreshState = rememberPullRefreshState(
@@ -172,98 +173,93 @@ fun HomeScreen(
             }
         )
 
-        // Main content column
-        Column(
-            modifier = Modifier.fillMaxSize()
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .pullRefresh(pullRefreshState)
         ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .pullRefresh(pullRefreshState)
-            ) {
-                when {
-                    viewModel.isLoading && viewModel.flicks.isEmpty() -> PhotoGridShimmer()
-                    viewModel.errorMessage != null -> ErrorMessage(
-                        message = viewModel.errorMessage ?: "Unknown error",
-                        onRetry = { viewModel.loadFlicks(userProfile.uid) }
-                    )
-                    viewModel.flicks.isEmpty() -> EmptyState()
-                    else -> FlickGrid(
-                        flicks = viewModel.flicks,
-                        userProfile = userProfile,
-                        onLikeClick = { flick -> viewModel.toggleLike(flick, userProfile.uid, userProfile.displayName, userProfile.photoUrl) },
-                        onPhotoClick = { flick -> 
-                            selectedFlick = flick
-                            selectedFlickIndex = viewModel.flicks.indexOf(flick)
-                        },
-                        onLongPress = { flick ->
-                            flickForReaction = flick
-                            showReactionPicker = true
-                        }
-                    )
-                }
-
-                // Modern PullRefreshIndicator
-                PullRefreshIndicator(
-                    refreshing = viewModel.isLoading,
-                    state = pullRefreshState,
-                    modifier = Modifier.align(Alignment.TopCenter),
-                    backgroundColor = MaterialTheme.colorScheme.surface,
-                    contentColor = MaterialTheme.colorScheme.primary
+            when {
+                viewModel.isLoading && viewModel.flicks.isEmpty() -> PhotoGridShimmer()
+                viewModel.errorMessage != null -> ErrorMessage(
+                    message = viewModel.errorMessage ?: "Unknown error",
+                    onRetry = { viewModel.loadFlicks(userProfile.uid) }
                 )
+                viewModel.flicks.isEmpty() -> EmptyState()
+                else -> FlickGrid(
+                    flicks = viewModel.flicks,
+                    userProfile = userProfile,
+                    onLikeClick = { flick -> viewModel.toggleLike(flick, userProfile.uid, userProfile.displayName, userProfile.photoUrl) },
+                    onPhotoClick = { flick -> 
+                        selectedFlick = flick
+                        selectedFlickIndex = viewModel.flicks.indexOf(flick)
+                    },
+                    onLongPress = { flick ->
+                        flickForReaction = flick
+                        showReactionPicker = true
+                    }
+                )
+            }
 
-                // Upload mini FABs overlay
-                if (showUploadDialog) {
-                    UploadOverlay(
-                        onDismiss = { showUploadDialog = false },
-                        onCameraClick = {
-                            val photoFile = File(
-                                context.cacheDir,
-                                "photo_${System.currentTimeMillis()}.jpg"
-                            )
-                            tempCameraUri = FileProvider.getUriForFile(
-                                context,
-                                "${context.packageName}.fileprovider",
-                                photoFile
-                            )
-                            cameraLauncher.launch(tempCameraUri!!)
-                            showUploadDialog = false
-                        },
-                        onGalleryClick = {
-                            galleryLauncher.launch("image/*")
-                            showUploadDialog = false
-                        },
-                        privacySetting = privacySetting,
-                        onPrivacyChange = { privacySetting = it }
-                    )
-                }
+            // Modern PullRefreshIndicator
+            PullRefreshIndicator(
+                refreshing = viewModel.isLoading,
+                state = pullRefreshState,
+                modifier = Modifier.align(Alignment.TopCenter),
+                backgroundColor = MaterialTheme.colorScheme.surface,
+                contentColor = MaterialTheme.colorScheme.primary
+            )
+
+            // Album Drawer overlay (MOVED INSIDE BOX - doesn't block photos when closed!)
+            AlbumDrawer(
+                isOpen = effectiveShowAlbumDrawer,
+                onClose = { 
+                    localShowAlbumDrawer = false
+                    onAlbumDrawerChange(false)
+                },
+                groups = viewModel.friendGroups,
+                selectedFilter = viewModel.selectedFilter,
+                onFilterSelected = {
+                    viewModel.setFilter(it)
+                    localShowAlbumDrawer = false
+                    onAlbumDrawerChange(false)
+                },
+                onCreateAlbum = { showCreateGroupDialog = true },
+                onManageAlbums = { /* TODO: Navigate to album management */ },
+                onEditAlbum = { group ->
+                    // TODO: Show edit dialog
+                },
+                onDeleteAlbum = { group ->
+                    viewModel.deleteFriendGroup(userProfile.uid, group.id)
+                },
+                isDarkMode = isDarkMode
+            )
+
+            // Upload mini FABs overlay
+            if (showUploadDialog) {
+                UploadOverlay(
+                    onDismiss = { showUploadDialog = false },
+                    onCameraClick = {
+                        val photoFile = File(
+                            context.cacheDir,
+                            "photo_${System.currentTimeMillis()}.jpg"
+                        )
+                        tempCameraUri = FileProvider.getUriForFile(
+                            context,
+                            "${context.packageName}.fileprovider",
+                            photoFile
+                        )
+                        cameraLauncher.launch(tempCameraUri!!)
+                        showUploadDialog = false
+                    },
+                    onGalleryClick = {
+                        galleryLauncher.launch("image/*")
+                        showUploadDialog = false
+                    },
+                    privacySetting = privacySetting,
+                    onPrivacyChange = { privacySetting = it }
+                )
             }
         }
-
-        // Album Drawer overlay (on top of content)
-        AlbumDrawer(
-            isOpen = effectiveShowAlbumDrawer,
-            onClose = { 
-                localShowAlbumDrawer = false
-                onAlbumDrawerChange(false)
-            },
-            groups = viewModel.friendGroups,
-            selectedFilter = viewModel.selectedFilter,
-            onFilterSelected = {
-                viewModel.setFilter(it)
-                localShowAlbumDrawer = false
-                onAlbumDrawerChange(false)
-            },
-            onCreateAlbum = { showCreateGroupDialog = true },
-            onManageAlbums = { /* TODO: Navigate to album management */ },
-            onEditAlbum = { group ->
-                // TODO: Show edit dialog
-            },
-            onDeleteAlbum = { group ->
-                viewModel.deleteFriendGroup(userProfile.uid, group.id)
-            },
-            isDarkMode = isDarkMode
-        )
     }
 
     // Full-screen photo viewer with comments
