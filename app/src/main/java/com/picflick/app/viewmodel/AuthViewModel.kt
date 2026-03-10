@@ -71,16 +71,20 @@ class AuthViewModel : ViewModel() {
      */
     private fun loadUserProfile(uid: String) {
         isLoading = true
+        android.util.Log.d("AuthViewModel", "Loading profile for uid: $uid")
         repository.getUserProfile(uid) { result ->
+            android.util.Log.d("AuthViewModel", "Profile load result: $result")
             when (result) {
                 is Result.Success -> {
                     userProfile = result.data
                     isLoading = false
                     errorMessage = null
+                    android.util.Log.d("AuthViewModel", "Profile loaded successfully: ${result.data.displayName}")
                 }
                 is Result.Error -> {
                     errorMessage = result.message
                     isLoading = false
+                    android.util.Log.e("AuthViewModel", "Profile load failed: ${result.message}")
                 }
                 is Result.Loading -> { /* Do nothing */ }
             }

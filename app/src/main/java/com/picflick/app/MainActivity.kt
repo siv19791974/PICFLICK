@@ -41,6 +41,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.launch
@@ -611,22 +612,66 @@ fun MainScreen(
                     contentAlignment = Alignment.Center
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        val currentUser = authViewModel.currentUser
+                        val errorMsg = authViewModel.errorMessage
+                        
                         Text(
-                            text = "Loading profile...",
-                            color = Color.White,
-                            fontSize = 18.sp
+                            text = "DEBUG INFO",
+                            color = Color.Yellow,
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Bold
                         )
-                        Spacer(modifier = Modifier.height(8.dp))
+                        Spacer(modifier = Modifier.height(16.dp))
+                        
                         Text(
-                            text = "userProfile is NULL",
+                            text = "currentUser: ${currentUser?.uid ?: "NULL"}",
+                            color = if (currentUser != null) Color.Green else Color.Red,
+                            fontSize = 14.sp
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        
+                        Text(
+                            text = "userProfile: NULL",
                             color = Color.Red,
                             fontSize = 14.sp
                         )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        
+                        if (errorMsg != null) {
+                            Text(
+                                text = "Error: $errorMsg",
+                                color = Color.Red,
+                                fontSize = 12.sp
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                        }
+                        
                         Spacer(modifier = Modifier.height(16.dp))
-                        Button(
-                            onClick = { authViewModel.reloadUserProfile() }
-                        ) {
-                            Text("Retry Load Profile")
+                        
+                        if (currentUser == null) {
+                            Text(
+                                text = "Firebase Auth not ready yet...",
+                                color = Color.Yellow,
+                                fontSize = 14.sp
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Button(
+                                onClick = { 
+                                    // Force re-auth check
+                                    val user = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser
+                                    if (user != null) {
+                                        authViewModel.reloadUserProfile()
+                                    }
+                                }
+                            ) {
+                                Text("Check Auth & Retry")
+                            }
+                        } else {
+                            Button(
+                                onClick = { authViewModel.reloadUserProfile() }
+                            ) {
+                                Text("Retry Load Profile")
+                            }
                         }
                     }
                 }
