@@ -58,6 +58,9 @@ fun AlbumDrawer(
         animationSpec = tween(300)
     )
 
+    // Only render if open or animating
+    if (!isOpen && drawerOffset <= -1f) return
+    
     val backgroundColor = if (isDarkMode) Color(0xFF1A1A1A) else Color.White
     val textColor = if (isDarkMode) Color.White else Color.Black
     val dividerColor = if (isDarkMode) Color(0xFF333333) else Color(0xFFE0E0E0)
