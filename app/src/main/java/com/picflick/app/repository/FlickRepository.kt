@@ -679,29 +679,37 @@ class FlickRepository private constructor() {
         currentUserName: String,
         currentUserPhotoUrl: String
     ): Result<Unit> {
+        android.util.Log.d("FriendRequest", "Starting sendFollowRequest: $currentUserId -> $targetUserId")
         return try {
             val batch = db.batch()
 
             // Add to current user's sent requests
             val currentUserRef = db.collection("users").document(currentUserId)
             batch.update(currentUserRef, "sentFollowRequests", FieldValue.arrayUnion(targetUserId))
+            android.util.Log.d("FriendRequest", "Added to batch: update sentFollowRequests for $currentUserId")
 
             // Add to target user's pending requests
             val targetUserRef = db.collection("users").document(targetUserId)
             batch.update(targetUserRef, "pendingFollowRequests", FieldValue.arrayUnion(currentUserId))
+            android.util.Log.d("FriendRequest", "Added to batch: update pendingFollowRequests for $targetUserId")
 
+            android.util.Log.d("FriendRequest", "Committing batch...")
             batch.commit().await()
+            android.util.Log.d("FriendRequest", "Batch committed successfully!")
 
             // Create friend request notification
+            android.util.Log.d("FriendRequest", "Creating notification...")
             createFriendRequestNotification(
                 requesterId = currentUserId,
                 requesterName = currentUserName,
                 requesterPhotoUrl = currentUserPhotoUrl,
                 targetUserId = targetUserId
             )
+            android.util.Log.d("FriendRequest", "Notification created!")
 
             Result.Success(Unit)
         } catch (e: Exception) {
+            android.util.Log.e("FriendRequest", "Failed to send follow request: ${e.message}", e)
             Result.Error(e, "Failed to send follow request")
         }
     }
