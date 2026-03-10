@@ -31,26 +31,19 @@ service cloud.firestore {
 
     // ==================== USERS COLLECTION ====================
     match /users/{userId} {
-      // FIXED: Allow read to ALL authenticated users (remove isNotBlockedBy which breaks get())
+      // FIXED: Allow read to ALL authenticated users
       allow read: if isAuthenticated();
       
       // Allow create: only own profile
       allow create: if isOwner(userId) && isValidUserData();
       
-      // Allow update: owner can update their own profile, OR anyone can add to pendingFollowRequests
-      // (needed for friend request system)
+      // SIMPLIFIED: Allow owner full control, and allow ANYONE to update friend request fields
+      // This is needed for the friend request system to work
       allow update: if isAuthenticated() && (
-        // Case 1: Owner updating their own profile fields
-        (isOwner(userId) && (
-          request.resource.data.keys().hasOnly(['sentFollowRequests', 'following', 'followers', 'blockedUsers', 'bio', 'photoUrl', 'displayName', 'phoneNumber', 'lastLogin', 'isOnline', 'streakCount', 'lastUploadDate', 'achievements', 'premiumStatus']) ||
-          (request.resource.data.keys().hasAll(['uid']) && request.resource.data.uid == resource.data.uid)
-        ))
-        // Case 2: Anyone adding themselves to another user's pendingFollowRequests (friend request)
-        || (request.resource.data.keys().hasOnly(['pendingFollowRequests']) && 
-            request.auth.uid in request.resource.data.pendingFollowRequests)
-        // Case 3: Anyone removing themselves from another user's pendingFollowRequests (cancel/decline)
-        || (request.resource.data.keys().hasOnly(['pendingFollowRequests']) && 
-            !(request.auth.uid in request.resource.data.pendingFollowRequests))
+        // Owner can update their own profile
+        isOwner(userId)
+        // Anyone can update pendingFollowRequests (for sending friend requests)
+        || request.resource.data.keys().hasOnly(['pendingFollowRequests'])
       );
       
       // Allow delete: only owner
