@@ -528,6 +528,7 @@ private fun FlickCard(
     rowHeight: androidx.compose.ui.unit.Dp
 ) {
     val userReaction = flick.getUserReaction(userId)
+    val totalReactions = flick.getTotalReactions()
     
     Card(
         modifier = Modifier
@@ -552,22 +553,44 @@ private fun FlickCard(
                 contentScale = ContentScale.Crop
             )
             
+            // Reaction count overlay (top right)
+            if (totalReactions > 0) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(2.dp)
+                        .background(
+                            color = Color.Black.copy(alpha = 0.6f),
+                            shape = RoundedCornerShape(8.dp)
+                        )
+                        .padding(horizontal = 4.dp, vertical = 2.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = if (userReaction != null) "${userReaction.toEmoji()} $totalReactions" else "❤️ $totalReactions",
+                        fontSize = 10.sp,
+                        color = Color.White
+                    )
+                }
+            }
+            
             // Tiny reaction overlay (top right) - shows if user has reacted
             userReaction?.let { reaction ->
                 Box(
                     modifier = Modifier
                         .align(Alignment.TopEnd)
-                        .padding(2.dp)
+                        .padding(top = 20.dp, end = 2.dp)
                         .size(16.dp)
                         .background(
-                            color = Color.Black.copy(alpha = 0.4f),
+                            color = Color(0xFF4CAF50).copy(alpha = 0.9f), // Green bg
                             shape = CircleShape
                         ),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = reaction.toEmoji(),
-                        fontSize = 10.sp
+                        text = "✓",
+                        fontSize = 10.sp,
+                        color = Color.White
                     )
                 }
             }
