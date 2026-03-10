@@ -121,16 +121,21 @@ service cloud.firestore {
     // ==================== NOTIFICATIONS ====================
     match /notifications/{notificationId} {
       // Allow read: recipient only
-      allow read: if isAuthenticated() && 
+      allow read: if isAuthenticated() &&
         request.auth.uid == resource.data.userId;
       
-      // Allow create: system/backend only (Cloud Functions)
-      // Users cannot create notifications directly
-      allow create: if isAuthenticated() && 
-        request.auth.token.system == true; // Only from Cloud Functions
+      // Allow create: authenticated users for friend requests and follows
+      allow create: if isAuthenticated() && (
+        request.resource.data.type == 'FRIEND_REQUEST' ||
+        request.resource.data.type == 'FOLLOW' ||
+        request.resource.data.type == 'LIKE' ||
+        request.resource.data.type == 'REACTION' ||
+        request.resource.data.type == 'COMMENT' ||
+        request.resource.data.type == 'MESSAGE'
+      ) && request.resource.data.keys().hasAll(['userId', 'senderId', 'type', 'title', 'timestamp']);
       
       // Allow update: recipient only (for marking read)
-      allow update: if isAuthenticated() && 
+      allow update: if isAuthenticated() &&
         isOwner(resource.data.userId) &&
         request.resource.data.keys().hasOnly(['isRead', 'readAt']); // Only these fields
       
