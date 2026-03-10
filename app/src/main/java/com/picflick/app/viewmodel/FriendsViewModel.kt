@@ -197,12 +197,15 @@ class FriendsViewModel : ViewModel() {
      * Cancel a follow request (withdraw request sent to another user)
      */
     fun cancelFollowRequest(currentUserId: String, targetUserId: String) {
+        android.util.Log.d("FriendsViewModel", "cancelFollowRequest called: $currentUserId -> $targetUserId")
         addProcessingUser(targetUserId)
         viewModelScope.launch {
             val result = repository.cancelFollowRequest(currentUserId, targetUserId)
             // Log error if cancel fails
             if (result is com.picflick.app.data.Result.Error) {
                 android.util.Log.e("FriendsViewModel", "Failed to cancel follow request: ${result.exception?.message}")
+            } else if (result is com.picflick.app.data.Result.Success) {
+                android.util.Log.d("FriendsViewModel", "Successfully cancelled follow request")
             }
             removeProcessingUser(targetUserId)
         }
