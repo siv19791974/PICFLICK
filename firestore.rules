@@ -58,26 +58,30 @@ service cloud.firestore {
 
     // ==================== FLICKS (PHOTOS) COLLECTION ====================
     match /flicks/{flickId} {
-      // Allow read if:
+      // Allow read if: 
       // - Public flick, or
       // - Owner viewing, or
-      // - Admin, or
-      // - For friends flicks: we check at app level to avoid complex rules
-      // SIMPLIFIED: Allow read to all authenticated users
-      allow read: if isAuthenticated();
+      // - Friend viewing (mutual following), or
+      // - Admin
+      allow read: if isAuthenticated() && (
+        resource.data.privacy == 'public' ||
+        isOwner(resource.data.userId) ||
+        isAdmin() ||
+        (isFriendOf(resource.data.userId) && isNotBlockedBy(resource.data.userId))
+      );
       
       // Allow create: authenticated users with valid data
-      allow create: if isAuthenticated() &&
-        isValidFlickData() &&
+      allow create: if isAuthenticated() && 
+        isValidFlickData() && 
         isOwner(request.resource.data.userId);
       
       // Allow update: only owner can update their flicks
-      allow update: if isAuthenticated() &&
+      allow update: if isAuthenticated() && 
         isOwner(resource.data.userId) &&
         request.resource.data.userId == resource.data.userId;
       
       // Allow delete: owner or admin
-      allow delete: if isAuthenticated() &&
+      allow delete: if isAuthenticated() && 
         (isOwner(resource.data.userId) || isAdmin());
     }
 
@@ -143,22 +147,21 @@ service cloud.firestore {
     // ==================== NOTIFICATIONS ====================
     match /notifications/{notificationId} {
       // Allow read: recipient only
-      allow read: if isAuthenticated() &&
+      allow read: if isAuthenticated() && 
         request.auth.uid == resource.data.userId;
       
-      // Allow create: authenticated users can create notifications
-      // This allows friend requests, likes, comments to trigger notifications
-      allow create: if isAuthenticated() &&
-        request.auth.uid == request.resource.data.senderId &&
-        request.resource.data.keys().hasAll(['userId', 'senderId', 'type', 'title', 'timestamp']);
+      // Allow create: system/backend only (Cloud Functions)
+      // Users cannot create notifications directly
+      allow create: if isAuthenticated() && 
+        request.auth.token.system == true; // Only from Cloud Functions
       
       // Allow update: recipient only (for marking read)
-      allow update: if isAuthenticated() &&
+      allow update: if isAuthenticated() && 
         isOwner(resource.data.userId) &&
         request.resource.data.keys().hasOnly(['isRead', 'readAt']); // Only these fields
       
       // Allow delete: recipient or admin
-      allow delete: if isAuthenticated() &&
+      allow delete: if isAuthenticated() && 
         (isOwner(resource.data.userId) || isAdmin());
     }
 

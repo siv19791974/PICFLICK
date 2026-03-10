@@ -1,17 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
-    <!-- Light blue background matching app theme -->
+    <!-- Blue background matching your logo -->
     <item>
-        <color android:color="#4FC3F7" />
+        <color android:color="#2196F3" />
     </item>
     <!-- Your logo.png - vertically shrunk to fit better -->
     <item
         android:width="72dp"
-        android:height="24dp"
+        android:height="52dp"
         android:left="18dp"
-        android:top="42dp"
+        android:top="28dp"
         android:right="18dp"
-        android:bottom="42dp"
+        android:bottom="28dp"
         android:gravity="center">
         <bitmap
             android:src="@drawable/logo"
