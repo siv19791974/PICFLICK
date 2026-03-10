@@ -22,6 +22,18 @@ exports.sendPushNotification = functions.firestore
       return null;
     }
     
+    // ONLY send push for IMPORTANT notification types
+    const IMPORTANT_TYPES = ['FRIEND_REQUEST', 'MESSAGE', 'FOLLOW_ACCEPTED'];
+    
+    if (!IMPORTANT_TYPES.includes(notification.type)) {
+      console.log('Skipping push - type not important enough:', notification.type, 
+                  '| Important types:', IMPORTANT_TYPES.join(', '));
+      // Still create in-app notification, just no push
+      return null;
+    }
+    
+    console.log('Sending push for important type:', notification.type);
+    
     // Get recipient's FCM token
     try {
       const userDoc = await admin.firestore()
@@ -45,6 +57,18 @@ exports.sendPushNotification = functions.firestore
       console.log('Found FCM token for user:', notification.userId);
       
       // Build notification message
+      // Determine which screen to open when user taps the notification
+      let targetScreen = 'notifications'; // Default
+      if (notification.type === 'FRIEND_REQUEST') {
+        targetScreen = 'notifications'; // Opens notifications to Accept/Decline
+      } else if (notification.type === 'MESSAGE') {
+        targetScreen = 'chat'; // Opens chat with sender
+      } else if (notification.type === 'FOLLOW_ACCEPTED') {
+        targetScreen = 'profile'; // Opens sender's profile
+      }
+      
+      console.log('Push will open screen:', targetScreen, 'for type:', notification.type);
+      
       const message = {
         token: fcmToken,
         notification: {
@@ -57,13 +81,15 @@ exports.sendPushNotification = functions.firestore
           senderId: notification.senderId || '',
           senderName: notification.senderName || '',
           flickId: notification.flickId || '',
+          targetScreen: targetScreen,
           click_action: 'FLUTTER_NOTIFICATION_CLICK',
         },
         android: {
           notification: {
-            channelId: 'picflick_notifications',
+            channelId: 'picflick_important',
             priority: 'high',
             sound: 'default',
+            clickAction: 'FLUTTER_NOTIFICATION_CLICK',
           },
         },
         apns: {
@@ -71,6 +97,7 @@ exports.sendPushNotification = functions.firestore
             aps: {
               sound: 'default',
               badge: 1,
+              category: 'IMPORTANT',
             },
           },
         },
