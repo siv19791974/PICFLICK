@@ -600,6 +600,32 @@ fun MainScreen(
                     showAlbumDrawer = showAlbumDrawer,
                     onAlbumDrawerChange = { showAlbumDrawer = it }
                 )
+            } else {
+                // DEBUG: userProfile is null - show loading or error
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            text = "Loading profile...",
+                            color = Color.White,
+                            fontSize = 18.sp
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = "userProfile is NULL",
+                            color = Color.Red,
+                            fontSize = 14.sp
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Button(
+                            onClick = { authViewModel.reloadUserProfile() }
+                        ) {
+                            Text("Retry Load Profile")
+                        }
+                    }
+                }
             }
         }
     }
