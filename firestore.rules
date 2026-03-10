@@ -37,13 +37,20 @@ service cloud.firestore {
       // Allow create: only own profile
       allow create: if isOwner(userId) && isValidUserData();
       
-      // Allow update: owner can update their own profile fields
-      // Fixed: Allow partial updates without requiring uid field
-      allow update: if isOwner(userId) && (
-        // Allow updating specific friend-related arrays and profile fields
-        request.resource.data.keys().hasOnly(['sentFollowRequests', 'pendingFollowRequests', 'following', 'followers', 'blockedUsers', 'bio', 'photoUrl', 'displayName', 'phoneNumber', 'lastLogin', 'isOnline', 'streakCount', 'lastUploadDate', 'achievements', 'premiumStatus']) ||
-        // Or allow full updates with uid check (for profile creation/complete updates)
-        (request.resource.data.keys().hasAll(['uid']) && request.resource.data.uid == resource.data.uid)
+      // Allow update: owner can update their own profile, OR anyone can add to pendingFollowRequests
+      // (needed for friend request system)
+      allow update: if isAuthenticated() && (
+        // Case 1: Owner updating their own profile fields
+        (isOwner(userId) && (
+          request.resource.data.keys().hasOnly(['sentFollowRequests', 'following', 'followers', 'blockedUsers', 'bio', 'photoUrl', 'displayName', 'phoneNumber', 'lastLogin', 'isOnline', 'streakCount', 'lastUploadDate', 'achievements', 'premiumStatus']) ||
+          (request.resource.data.keys().hasAll(['uid']) && request.resource.data.uid == resource.data.uid)
+        ))
+        // Case 2: Anyone adding themselves to another user's pendingFollowRequests (friend request)
+        || (request.resource.data.keys().hasOnly(['pendingFollowRequests']) && 
+            request.auth.uid in request.resource.data.pendingFollowRequests)
+        // Case 3: Anyone removing themselves from another user's pendingFollowRequests (cancel/decline)
+        || (request.resource.data.keys().hasOnly(['pendingFollowRequests']) && 
+            !(request.auth.uid in request.resource.data.pendingFollowRequests))
       );
       
       // Allow delete: only owner
