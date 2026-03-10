@@ -84,7 +84,9 @@ fun FriendsScreen(
                 }
                 viewModel.followingUsers.isEmpty() -> EmptyFriendsState()
                 else -> {
-                    LazyColumn {
+                    LazyColumn(
+                        contentPadding = PaddingValues(vertical = 8.dp)
+                    ) {
                         items(viewModel.followingUsers) { friend ->
                             FriendListItem(
                                 friend = friend,
