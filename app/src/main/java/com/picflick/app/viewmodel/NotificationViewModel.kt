@@ -123,6 +123,39 @@ class NotificationViewModel : ViewModel() {
     }
     
     /**
+     * Accept a friend request
+     */
+    fun acceptFollowRequest(currentUserId: String, requesterId: String) {
+        viewModelScope.launch {
+            // Get requester's profile for the notification
+            repository.getUserProfile(requesterId) { result ->
+                if (result is Result.Success) {
+                    val requester = result.data
+                    viewModelScope.launch {
+                        repository.acceptFollowRequest(
+                            currentUserId = currentUserId,
+                            requesterId = requesterId,
+                            requesterName = requester.displayName
+                        )
+                    }
+                }
+            }
+        }
+    }
+    
+    /**
+     * Decline a friend request
+     */
+    fun declineFollowRequest(currentUserId: String, requesterId: String) {
+        viewModelScope.launch {
+            repository.declineFollowRequest(
+                currentUserId = currentUserId,
+                requesterId = requesterId
+            )
+        }
+    }
+    
+    /**
      * Clear error message
      */
     fun clearError() {
