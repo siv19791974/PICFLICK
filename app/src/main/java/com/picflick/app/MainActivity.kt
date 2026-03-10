@@ -124,6 +124,48 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
+    
+    // Store push notification data for handling when app opens
+    private var pendingPushData: android.os.Bundle? = null
+    
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        // Handle push notification clicks
+        handlePushNotification(intent)
+    }
+    
+    private fun handlePushNotification(intent: Intent) {
+        val extras = intent.extras
+        if (extras != null) {
+            val targetScreen = extras.getString("targetScreen")
+            val notificationType = extras.getString("type")
+            val senderId = extras.getString("senderId")
+            val senderName = extras.getString("senderName")
+            
+            android.util.Log.d("MainActivity", "Push notification clicked: type=$notificationType, screen=$targetScreen, sender=$senderId")
+            
+            if (targetScreen != null) {
+                // Store the data to be processed when MainScreen loads
+                pendingPushData = extras
+            }
+        }
+    }
+    
+    /**
+     * Call this from MainScreen to get any pending push notification data
+     */
+    fun consumePushData(): android.os.Bundle? {
+        val data = pendingPushData
+        pendingPushData = null
+        return data
+    }
+    
+    /**
+     * Get current user ID from Firebase Auth
+     */
+    fun getCurrentUserId(): String? {
+        return com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid
+    }
 }
 
 /**
@@ -187,6 +229,46 @@ fun MainScreen(
     uploadViewModel: UploadViewModel = viewModel()
 ) {
     var currentScreen by remember { mutableStateOf<Screen>(Screen.Home) }
+    
+    // Handle push notification clicks
+    val context = LocalContext.current
+    val activity = context as? MainActivity
+    
+    LaunchedEffect(Unit) {
+        // Check if there's pending push notification data
+        val pushData = activity?.consumePushData()
+        if (pushData != null) {
+            val targetScreen = pushData.getString("targetScreen")
+            val senderId = pushData.getString("senderId")
+            val senderName = pushData.getString("senderName")
+            
+            android.util.Log.d("MainScreen", "Processing push data: screen=$targetScreen, sender=$senderId")
+            
+            when (targetScreen) {
+                "notifications" -> {
+                    currentScreen = Screen.Notifications
+                }
+                "chat" -> {
+                    if (senderId != null && senderName != null) {
+                        // Store chat session info and open chat
+                        chatViewModel.createOrGetChatSession(
+                            currentUserId = (activity as MainActivity).getCurrentUserId() ?: return@LaunchedEffect,
+                            otherUserId = senderId,
+                            otherUserName = senderName,
+                            otherUserPhotoUrl = pushData.getString("senderPhotoUrl") ?: ""
+                        ) { sessionId ->
+                            currentScreen = Screen.ChatDetail
+                        }
+                    }
+                }
+                "profile" -> {
+                    if (senderId != null) {
+                        currentScreen = Screen.UserProfile(senderId)
+                    }
+                }
+            }
+        }
+    }
     
     // Handle back button - navigate within app instead of exiting
     BackHandler(enabled = currentScreen != Screen.Home) {
