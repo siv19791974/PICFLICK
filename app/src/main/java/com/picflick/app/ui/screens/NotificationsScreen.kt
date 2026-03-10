@@ -250,9 +250,9 @@ private fun NotificationItem(
     onDeclineFriendRequest: (String) -> Unit = {}
 ) {
     val backgroundColor = if (isDarkMode) {
-        if (notification.isRead) Color(0xFF1A1A1A) else Color(0xFF2D2D2D)
+        if (notification.isRead) Color(0xFF152A45) else Color(0xFF1E3A5F) // Blue darker than background
     } else {
-        if (notification.isRead) Color(0xFFF5F5F5) else Color.White
+        if (notification.isRead) Color(0xFFD6EBFA) else Color(0xFFE8F4FD) // Light blue
     }
 
     Card(

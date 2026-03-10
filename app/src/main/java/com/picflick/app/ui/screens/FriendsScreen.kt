@@ -141,7 +141,7 @@ private fun FriendListItem(
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 4.dp),
         colors = CardDefaults.cardColors(
-            containerColor = if (isDarkMode) Color(0xFF1C1C1E) else Color.White
+            containerColor = if (isDarkMode) Color(0xFF1E3A5F) else Color(0xFFE8F4FD) // Nice blue darker than background
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
