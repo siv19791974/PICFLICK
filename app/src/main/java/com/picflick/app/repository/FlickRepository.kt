@@ -109,48 +109,33 @@ class FlickRepository private constructor() {
             val userProfile = userDoc.toObject(UserProfile::class.java)
             val friends = userProfile?.following ?: emptyList()
 
-            // Build base query for user - ordered by timestamp DESC
-            var ownFlicksQuery = db.collection("flicks")
+            // Query user's own photos (NO orderBy to avoid composite index requirement)
+            val ownFlicksSnapshot = db.collection("flicks")
                 .whereEqualTo("userId", userId)
-                .orderBy("timestamp", Query.Direction.DESCENDING)
                 .limit(pageSize.toLong())
+                .get()
+                .await()
             
-            // Add pagination if lastTimestamp provided
-            if (lastTimestamp != null) {
-                ownFlicksQuery = ownFlicksQuery.startAfter(lastTimestamp)
-            }
-
-            val ownFlicksSnapshot = ownFlicksQuery.get().await()
             val ownFlicks = ownFlicksSnapshot.toObjects(Flick::class.java)
 
-            // Query friends' photos
+            // Query friends' photos (NO orderBy to avoid composite index requirement)
             val friendsFlicks = if (friends.isNotEmpty()) {
                 friends.chunked(Constants.Pagination.MAX_FRIENDS_BATCH).flatMap { friendBatch ->
                     // Query "friends" privacy photos
-                    var friendsPrivacyQuery = db.collection("flicks")
+                    val friendsPrivacySnapshot = db.collection("flicks")
                         .whereIn("userId", friendBatch)
                         .whereEqualTo("privacy", "friends")
-                        .orderBy("timestamp", Query.Direction.DESCENDING)
                         .limit(pageSize.toLong())
-                    
-                    if (lastTimestamp != null) {
-                        friendsPrivacyQuery = friendsPrivacyQuery.startAfter(lastTimestamp)
-                    }
-                    
-                    val friendsPrivacySnapshot = friendsPrivacyQuery.get().await()
+                        .get()
+                        .await()
                     
                     // Query "public" privacy photos
-                    var publicPrivacyQuery = db.collection("flicks")
+                    val publicPrivacySnapshot = db.collection("flicks")
                         .whereIn("userId", friendBatch)
                         .whereEqualTo("privacy", "public")
-                        .orderBy("timestamp", Query.Direction.DESCENDING)
                         .limit(pageSize.toLong())
-                    
-                    if (lastTimestamp != null) {
-                        publicPrivacyQuery = publicPrivacyQuery.startAfter(lastTimestamp)
-                    }
-                    
-                    val publicPrivacySnapshot = publicPrivacyQuery.get().await()
+                        .get()
+                        .await()
                     
                     friendsPrivacySnapshot.toObjects(Flick::class.java) + 
                     publicPrivacySnapshot.toObjects(Flick::class.java)
@@ -159,11 +144,18 @@ class FlickRepository private constructor() {
                 emptyList()
             }
 
-            // Merge, remove duplicates, and sort by timestamp DESC (newest first)
-            val allFlicks = (ownFlicks + friendsFlicks)
+            // Merge, remove duplicates, and sort by timestamp DESC (client-side sorting)
+            var allFlicks = (ownFlicks + friendsFlicks)
                 .distinctBy { it.id }
                 .sortedByDescending { it.timestamp }
-                .take(pageSize) // Take only requested page size
+            
+            // Manual pagination - filter out photos older than lastTimestamp
+            if (lastTimestamp != null) {
+                allFlicks = allFlicks.filter { it.timestamp < lastTimestamp }
+            }
+            
+            // Take only the requested page size
+            allFlicks = allFlicks.take(pageSize)
 
             android.util.Log.d("FlickRepository", "Loaded ${allFlicks.size} photos for page")
             Result.Success(allFlicks)
