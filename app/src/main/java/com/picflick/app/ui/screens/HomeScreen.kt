@@ -13,8 +13,10 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.ExperimentalMaterialApi
@@ -163,14 +165,17 @@ fun HomeScreen(
                     flicks = viewModel.flicks,
                     userProfile = userProfile,
                     onLikeClick = { flick -> viewModel.toggleLike(flick, userProfile.uid, userProfile.displayName, userProfile.photoUrl) },
-                    onPhotoClick = { flick -> 
+                    onPhotoClick = { flick ->
                         selectedFlick = flick
                         selectedFlickIndex = viewModel.flicks.indexOf(flick)
                     },
                     onLongPress = { flick ->
                         flickForReaction = flick
                         showReactionPicker = true
-                    }
+                    },
+                    isLoadingMore = viewModel.isLoadingMore,
+                    canLoadMore = viewModel.canLoadMore,
+                    onLoadMore = { viewModel.loadMoreFlicks() }
                 )
             }
 
@@ -440,22 +445,43 @@ private fun FlickGrid(
     userProfile: UserProfile,
     onLikeClick: (Flick) -> Unit,
     onPhotoClick: (Flick) -> Unit,
-    onLongPress: (Flick) -> Unit
+    onLongPress: (Flick) -> Unit,
+    isLoadingMore: Boolean = false,
+    canLoadMore: Boolean = true,
+    onLoadMore: () -> Unit = {}
 ) {
     BoxWithConstraints(
         modifier = Modifier.fillMaxSize()
     ) {
         // Calculate height for 4 rows with tiny gap at bottom for light blue BG
         val rowHeight = this.maxHeight / 4.1f
+
+        // Track scroll position for infinite scroll
+        val listState = rememberLazyGridState()
         
+        // Detect when user scrolls to bottom
+        LaunchedEffect(listState) {
+            snapshotFlow { 
+                listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index 
+            }.collect { lastVisibleIndex ->
+                if (lastVisibleIndex != null && 
+                    lastVisibleIndex >= flicks.size - 5 && // 5 items from bottom
+                    !isLoadingMore && 
+                    canLoadMore) {
+                    onLoadMore()
+                }
+            }
+        }
+
         LazyVerticalGrid(
+            state = listState,
             columns = GridCells.Fixed(3),
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(
                 start = 1.dp,
                 end = 1.dp,
                 top = 4.dp,  // Slight top gap to match bottom
-                bottom = 0.dp
+                bottom = 80.dp // Bottom padding for loading indicator
             ),
             userScrollEnabled = true // Enable scrolling for pull-to-refresh
         ) {
@@ -469,6 +495,23 @@ private fun FlickGrid(
                     onLongPress = { onLongPress(flick) },
                     rowHeight = rowHeight
                 )
+            }
+            
+            // Loading more indicator at bottom
+            if (isLoadingMore) {
+                item(span = { GridItemSpan(3) }) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(24.dp),
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
             }
         }
     }
