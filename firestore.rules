@@ -29,14 +29,6 @@ service cloud.firestore {
              request.resource.data.imageUrl is string;
     }
 
-    function isFriendOf(ownerId) {
-      return isAuthenticated();
-    }
-
-    function isNotBlockedBy(ownerId) {
-      return isAuthenticated();
-    }
-
     // ==================== USERS COLLECTION ====================
     match /users/{userId} {
       // FIXED: Allow read to ALL authenticated users (remove isNotBlockedBy which breaks get())
