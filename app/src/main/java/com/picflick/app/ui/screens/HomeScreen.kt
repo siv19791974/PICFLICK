@@ -158,11 +158,10 @@ fun HomeScreen(
 
     // Column WITHOUT verticalScroll (because LazyVerticalGrid has its own scroll)
     // NO BANNER HERE - banner is now in MainActivity's Scaffold topBar!
-    Column(
+    Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(isDarkModeBackground(isDarkMode)),
-        horizontalAlignment = Alignment.CenterHorizontally
+            .background(isDarkModeBackground(isDarkMode))
     ) {
         // Modern PullRefresh content
         val pullRefreshState = rememberPullRefreshState(
@@ -173,7 +172,75 @@ fun HomeScreen(
             }
         )
 
-        // Album Drawer (replaces filter bar - slides from left)
+        // Main content column
+        Column(
+            modifier = Modifier.fillMaxSize()
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .pullRefresh(pullRefreshState)
+            ) {
+                when {
+                    viewModel.isLoading && viewModel.flicks.isEmpty() -> PhotoGridShimmer()
+                    viewModel.errorMessage != null -> ErrorMessage(
+                        message = viewModel.errorMessage ?: "Unknown error",
+                        onRetry = { viewModel.loadFlicks(userProfile.uid) }
+                    )
+                    viewModel.flicks.isEmpty() -> EmptyState()
+                    else -> FlickGrid(
+                        flicks = viewModel.flicks,
+                        userProfile = userProfile,
+                        onLikeClick = { flick -> viewModel.toggleLike(flick, userProfile.uid, userProfile.displayName, userProfile.photoUrl) },
+                        onPhotoClick = { flick -> 
+                            selectedFlick = flick
+                            selectedFlickIndex = viewModel.flicks.indexOf(flick)
+                        },
+                        onLongPress = { flick ->
+                            flickForReaction = flick
+                            showReactionPicker = true
+                        }
+                    )
+                }
+
+                // Modern PullRefreshIndicator
+                PullRefreshIndicator(
+                    refreshing = viewModel.isLoading,
+                    state = pullRefreshState,
+                    modifier = Modifier.align(Alignment.TopCenter),
+                    backgroundColor = MaterialTheme.colorScheme.surface,
+                    contentColor = MaterialTheme.colorScheme.primary
+                )
+
+                // Upload mini FABs overlay
+                if (showUploadDialog) {
+                    UploadOverlay(
+                        onDismiss = { showUploadDialog = false },
+                        onCameraClick = {
+                            val photoFile = File(
+                                context.cacheDir,
+                                "photo_${System.currentTimeMillis()}.jpg"
+                            )
+                            tempCameraUri = FileProvider.getUriForFile(
+                                context,
+                                "${context.packageName}.fileprovider",
+                                photoFile
+                            )
+                            cameraLauncher.launch(tempCameraUri!!)
+                            showUploadDialog = false
+                        },
+                        onGalleryClick = {
+                            galleryLauncher.launch("image/*")
+                            showUploadDialog = false
+                        },
+                        privacySetting = privacySetting,
+                        onPrivacyChange = { privacySetting = it }
+                    )
+                }
+            }
+        }
+
+        // Album Drawer overlay (on top of content)
         AlbumDrawer(
             isOpen = effectiveShowAlbumDrawer,
             onClose = { 
@@ -197,69 +264,6 @@ fun HomeScreen(
             },
             isDarkMode = isDarkMode
         )
-
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .pullRefresh(pullRefreshState)
-        ) {
-            when {
-                viewModel.isLoading && viewModel.flicks.isEmpty() -> PhotoGridShimmer()
-                viewModel.errorMessage != null -> ErrorMessage(
-                    message = viewModel.errorMessage ?: "Unknown error",
-                    onRetry = { viewModel.loadFlicks(userProfile.uid) }
-                )
-                viewModel.flicks.isEmpty() -> EmptyState()
-                else -> FlickGrid(
-                    flicks = viewModel.flicks,
-                    userProfile = userProfile,
-                    onLikeClick = { flick -> viewModel.toggleLike(flick, userProfile.uid, userProfile.displayName, userProfile.photoUrl) },
-                    onPhotoClick = { flick -> 
-                        selectedFlick = flick
-                        selectedFlickIndex = viewModel.flicks.indexOf(flick)
-                    },
-                    onLongPress = { flick ->
-                        flickForReaction = flick
-                        showReactionPicker = true
-                    }
-                )
-            }
-
-            // Modern PullRefreshIndicator
-            PullRefreshIndicator(
-                refreshing = viewModel.isLoading,
-                state = pullRefreshState,
-                modifier = Modifier.align(Alignment.TopCenter),
-                backgroundColor = MaterialTheme.colorScheme.surface,
-                contentColor = MaterialTheme.colorScheme.primary
-            )
-
-            // Upload mini FABs overlay
-            if (showUploadDialog) {
-                UploadOverlay(
-                    onDismiss = { showUploadDialog = false },
-                    onCameraClick = {
-                        val photoFile = File(
-                            context.cacheDir,
-                            "photo_${System.currentTimeMillis()}.jpg"
-                        )
-                        tempCameraUri = FileProvider.getUriForFile(
-                            context,
-                            "${context.packageName}.fileprovider",
-                            photoFile
-                        )
-                        cameraLauncher.launch(tempCameraUri!!)
-                        showUploadDialog = false
-                    },
-                    onGalleryClick = {
-                        galleryLauncher.launch("image/*")
-                        showUploadDialog = false
-                    },
-                    privacySetting = privacySetting,
-                    onPrivacyChange = { privacySetting = it }
-                )
-            }
-        }
     }
 
     // Full-screen photo viewer with comments
