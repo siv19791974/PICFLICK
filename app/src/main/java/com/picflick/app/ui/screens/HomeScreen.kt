@@ -156,6 +156,14 @@ fun HomeScreen(
 
     val isDarkMode = ThemeManager.isDarkMode.value
 
+    // DEBUG - Show if HomeScreen is rendering
+    Text(
+        text = "HOMESCREEN RENDERING",
+        color = Color.Red,
+        fontSize = 20.sp,
+        modifier = Modifier.padding(16.dp)
+    )
+
     // Column WITHOUT verticalScroll (because LazyVerticalGrid has its own scroll)
     // NO BANNER HERE - banner is now in MainActivity's Scaffold topBar!
     Column(
