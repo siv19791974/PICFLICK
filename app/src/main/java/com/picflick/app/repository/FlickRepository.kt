@@ -1154,6 +1154,8 @@ class FlickRepository private constructor() {
 
     /**
      * Listen to notifications in real-time with safe type parsing
+     * REMOVED: orderBy and limit to avoid Firestore composite index requirement
+     * Now using client-side sorting instead
      */
     fun listenToNotifications(
         userId: String,
@@ -1163,8 +1165,8 @@ class FlickRepository private constructor() {
         android.util.Log.d("FlickRepository", "Setting up notification listener for user: $userId")
         return db.collection(Constants.FirebaseCollections.NOTIFICATIONS)
             .whereEqualTo("userId", userId)
-            .orderBy("timestamp", Query.Direction.DESCENDING)
-            .limit(Constants.Pagination.NOTIFICATIONS_PER_PAGE.toLong())
+            // REMOVED: .orderBy("timestamp") - requires composite index!
+            // REMOVED: .limit() - let client handle pagination
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
                     android.util.Log.e("FlickRepository", "Notification listener error: ${error.message}")
@@ -1196,7 +1198,7 @@ class FlickRepository private constructor() {
                             android.util.Log.e("FlickRepository", "Error parsing notification: ${e.message}")
                             null
                         }
-                    }
+                    }.sortedByDescending { it.timestamp }  // Client-side sorting
                     android.util.Log.d("FlickRepository", "Parsed ${notifications.size} valid notifications")
                     onUpdate(notifications)
                 } else {

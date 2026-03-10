@@ -134,20 +134,39 @@ class NotificationViewModel : ViewModel() {
     }
     
     /**
-     * Accept a friend request
+     * Accept a friend request and delete the notification
      */
-    fun acceptFollowRequest(currentUserId: String, requesterId: String) {
+    fun acceptFollowRequest(currentUserId: String, requesterId: String, notificationId: String) {
         viewModelScope.launch {
-            // Get requester's profile for the notification
+            android.util.Log.d("NotificationViewModel", "Accepting friend request: $currentUserId <- $requesterId, deleting notif: $notificationId")
+            
+            // Immediately remove from local list for instant UI update
+            val index = notifications.indexOfFirst { it.id == notificationId }
+            if (index != -1) {
+                notifications.removeAt(index)
+                unreadCount = notifications.count { !it.isRead }
+                android.util.Log.d("NotificationViewModel", "Removed notification $notificationId from local list")
+            }
+            
+            // Delete the notification from Firestore
+            repository.deleteNotification(notificationId)
+            android.util.Log.d("NotificationViewModel", "Deleted notification $notificationId from Firestore")
+            
+            // Accept the follow request
             repository.getUserProfile(requesterId) { result ->
                 if (result is Result.Success) {
                     val requester = result.data
                     viewModelScope.launch {
-                        repository.acceptFollowRequest(
+                        val acceptResult = repository.acceptFollowRequest(
                             currentUserId = currentUserId,
                             requesterId = requesterId,
                             requesterName = requester.displayName
                         )
+                        if (acceptResult is Result.Success) {
+                            android.util.Log.d("NotificationViewModel", "Successfully accepted friend request")
+                        } else {
+                            android.util.Log.e("NotificationViewModel", "Failed to accept friend request")
+                        }
                     }
                 }
             }
@@ -155,14 +174,34 @@ class NotificationViewModel : ViewModel() {
     }
     
     /**
-     * Decline a friend request
+     * Decline a friend request and delete the notification
      */
-    fun declineFollowRequest(currentUserId: String, requesterId: String) {
+    fun declineFollowRequest(currentUserId: String, requesterId: String, notificationId: String) {
         viewModelScope.launch {
-            repository.declineFollowRequest(
+            android.util.Log.d("NotificationViewModel", "Declining friend request: $currentUserId <- $requesterId, deleting notif: $notificationId")
+            
+            // Immediately remove from local list for instant UI update
+            val index = notifications.indexOfFirst { it.id == notificationId }
+            if (index != -1) {
+                notifications.removeAt(index)
+                unreadCount = notifications.count { !it.isRead }
+                android.util.Log.d("NotificationViewModel", "Removed notification $notificationId from local list")
+            }
+            
+            // Delete the notification from Firestore
+            repository.deleteNotification(notificationId)
+            android.util.Log.d("NotificationViewModel", "Deleted notification $notificationId from Firestore")
+            
+            // Decline the follow request
+            val declineResult = repository.declineFollowRequest(
                 currentUserId = currentUserId,
                 requesterId = requesterId
             )
+            if (declineResult is Result.Success) {
+                android.util.Log.d("NotificationViewModel", "Successfully declined friend request")
+            } else {
+                android.util.Log.e("NotificationViewModel", "Failed to decline friend request")
+            }
         }
     }
     

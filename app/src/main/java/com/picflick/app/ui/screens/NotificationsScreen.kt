@@ -214,14 +214,12 @@ fun NotificationsScreen(
                                 onUserProfileClick(senderId)
                             },
                             onAcceptFriendRequest = { senderId ->
-                                // Accept the friend request
-                                viewModel.acceptFollowRequest(userProfile.uid, senderId)
-                                viewModel.markAsRead(notification.id)
+                                // Accept the friend request and delete notification
+                                viewModel.acceptFollowRequest(userProfile.uid, senderId, notification.id)
                             },
                             onDeclineFriendRequest = { senderId ->
-                                // Decline the friend request (just remove from pending)
-                                viewModel.declineFollowRequest(userProfile.uid, senderId)
-                                viewModel.markAsRead(notification.id)
+                                // Decline the friend request and delete notification
+                                viewModel.declineFollowRequest(userProfile.uid, senderId, notification.id)
                             }
                         )
                     }
