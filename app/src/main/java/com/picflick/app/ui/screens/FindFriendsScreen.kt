@@ -640,132 +640,122 @@ private fun UserResultItem(
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
-        Column(
-            modifier = Modifier.padding(12.dp)
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            // Top row: Profile photo + user info - clickable to view profile
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable { onUserClick() },
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                // Profile photo
-                if (user.photoUrl.isNotEmpty()) {
-                    AsyncImage(
-                        model = user.photoUrl,
+            // Profile photo - clickable
+            if (user.photoUrl.isNotEmpty()) {
+                AsyncImage(
+                    model = user.photoUrl,
+                    contentDescription = null,
+                    modifier = Modifier
+                        .size(56.dp)
+                        .clip(CircleShape)
+                        .clickable { onUserClick() },
+                    contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                    error = painterResource(id = android.R.drawable.ic_menu_myplaces)
+                )
+            } else {
+                Box(
+                    modifier = Modifier
+                        .size(56.dp)
+                        .clip(CircleShape)
+                        .background(if (isDarkMode) Color(0xFF3A3A3C) else Color(0xFFE0E0E0))
+                        .clickable { onUserClick() },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Person,
                         contentDescription = null,
-                        modifier = Modifier
-                            .size(56.dp)
-                            .clip(CircleShape),
-                        contentScale = androidx.compose.ui.layout.ContentScale.Crop,
-                        error = painterResource(id = android.R.drawable.ic_menu_myplaces)
+                        modifier = Modifier.size(32.dp),
+                        tint = if (isDarkMode) Color.Gray else Color.DarkGray
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.width(12.dp))
+
+            // User info - takes available space
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = user.displayName,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = if (isDarkMode) Color.White else Color.Black
+                )
+
+                if (showMutualFriends && mutualCount > 0) {
+                    Text(
+                        text = "$mutualCount mutual followers",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = if (isDarkMode) Color.Gray else Color.DarkGray
+                    )
+                } else if (subtitle != null) {
+                    Text(
+                        text = subtitle,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = if (isDarkMode) Color.Gray else Color.DarkGray
                     )
                 } else {
-                    Box(
-                        modifier = Modifier
-                            .size(56.dp)
-                            .clip(CircleShape)
-                            .background(if (isDarkMode) Color(0xFF3A3A3C) else Color(0xFFE0E0E0)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Person,
-                            contentDescription = null,
-                            modifier = Modifier.size(32.dp),
-                            tint = if (isDarkMode) Color.Gray else Color.DarkGray
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.width(12.dp))
-
-                // User info
-                Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = user.displayName,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        color = if (isDarkMode) Color.White else Color.Black
+                        text = "${user.followers.size} followers",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = if (isDarkMode) Color.Gray else Color.DarkGray
                     )
-
-                    if (showMutualFriends && mutualCount > 0) {
-                        Text(
-                            text = "$mutualCount mutual followers",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = if (isDarkMode) Color.Gray else Color.DarkGray
-                        )
-                    } else if (subtitle != null) {
-                        Text(
-                            text = subtitle,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = if (isDarkMode) Color.Gray else Color.DarkGray
-                        )
-                    } else {
-                        Text(
-                            text = "${user.followers.size} followers",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = if (isDarkMode) Color.Gray else Color.DarkGray
-                        )
-                    }
                 }
             }
             
-            Spacer(modifier = Modifier.height(12.dp))
-            
-            // Follow button - NOW AT BOTTOM (full width)
+            // Action button - small, on the right
             when {
                 isProcessing -> {
-                    Box(
-                        modifier = Modifier.fillMaxWidth(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(40.dp),
-                            strokeWidth = 2.dp
-                        )
-                    }
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(24.dp),
+                        strokeWidth = 2.dp
+                    )
                 }
                 hasSentRequest -> {
                     OutlinedButton(
                         onClick = onCancelRequest,
                         shape = RoundedCornerShape(20.dp),
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier.wrapContentWidth(),
                         colors = ButtonDefaults.outlinedButtonColors(
                             contentColor = Color.Gray
                         )
                     ) {
-                        Text("Waiting approval - tap to cancel")
+                        Text("Waiting", fontSize = 12.sp)
                     }
                 }
                 hasReceivedRequest -> {
                     Button(
                         onClick = onFollowClick,
                         shape = RoundedCornerShape(20.dp),
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier.wrapContentWidth(),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = Color(0xFF4CAF50)
                         )
                     ) {
-                        Text("Accept")
+                        Text("Accept", fontSize = 12.sp)
                     }
                 }
                 isFollowing -> {
                     OutlinedButton(
                         onClick = onFollowClick,
                         shape = RoundedCornerShape(20.dp),
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.wrapContentWidth()
                     ) {
-                        Text("Following")
+                        Text("Friends", fontSize = 12.sp)
                     }
                 }
                 else -> {
                     Button(
                         onClick = onFollowClick,
                         shape = RoundedCornerShape(20.dp),
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.wrapContentWidth()
                     ) {
-                        Text("Add Friend")
+                        Text("Add", fontSize = 12.sp)
                     }
                 }
             }
