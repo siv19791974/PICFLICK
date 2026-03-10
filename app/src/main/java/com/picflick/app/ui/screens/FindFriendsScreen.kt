@@ -324,6 +324,7 @@ private fun DiscoverTab(
     }
 }
 
+@OptIn(ExperimentalMaterialApi::class)
 @Composable
 private fun ContactsTab(
     viewModel: FriendsViewModel,
@@ -724,7 +725,7 @@ private fun UserResultItem(
                             contentColor = Color.Gray
                         )
                     ) {
-                        Text("Friend Requested")
+                        Text("Waiting approval - tap to cancel")
                     }
                 }
                 hasReceivedRequest -> {
