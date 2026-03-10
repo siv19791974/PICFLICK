@@ -276,9 +276,11 @@ class HomeViewModel : ViewModel() {
      * Toggle like on a flick (deprecated - use toggleReaction)
      */
     fun toggleLike(flick: Flick, userId: String, userName: String, userPhotoUrl: String) {
+        android.util.Log.d("HomeViewModel", "toggleLike called: user=$userId, flick=${flick.id}, owner=${flick.userId}")
         // Map to LIKE reaction
         val userReaction = flick.getUserReaction(userId)
         val newReaction = if (userReaction == ReactionType.LIKE) null else ReactionType.LIKE
+        android.util.Log.d("HomeViewModel", "Toggling like: current=$userReaction, new=$newReaction")
         toggleReaction(flick, userId, userName, userPhotoUrl, newReaction)
     }
     
@@ -293,9 +295,11 @@ class HomeViewModel : ViewModel() {
         userPhotoUrl: String,
         reactionType: ReactionType?
     ) {
+        android.util.Log.d("HomeViewModel", "Calling repository.toggleReaction for flick=${flick.id}")
         repository.toggleReaction(flick.id, userId, userName, userPhotoUrl, reactionType) { result ->
             when (result) {
                 is Result.Success -> {
+                    android.util.Log.d("HomeViewModel", "toggleReaction SUCCESS")
                     // Update local state optimistically
                     val index = flicks.indexOfFirst { it.id == flick.id }
                     if (index != -1) {
@@ -310,6 +314,7 @@ class HomeViewModel : ViewModel() {
                     }
                 }
                 is Result.Error -> {
+                    android.util.Log.e("HomeViewModel", "toggleReaction FAILED: ${result.message}")
                     errorMessage = result.message
                 }
                 is Result.Loading -> { /* Do nothing */ }
