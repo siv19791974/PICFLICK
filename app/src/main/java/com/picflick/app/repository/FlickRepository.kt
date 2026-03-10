@@ -181,14 +181,37 @@ class FlickRepository private constructor() {
                         android.util.Log.e("FlickRepository", "Error loading private-privacy: ${e.message}")
                     }
                     
+                    // Query photos WITHOUT privacy field (treat as "friends" - default behavior)
+                    // This handles legacy photos uploaded before privacy feature was added
+                    try {
+                        val noPrivacySnapshot = db.collection("flicks")
+                            .whereIn("userId", friendBatch)
+                            // Firestore doesn't have "field doesn't exist" query
+                            // So we get all and filter client-side for missing privacy
+                            .limit(pageSize.toLong() * 3)
+                            .get()
+                            .await()
+                        
+                        val noPrivacyFlicks = noPrivacySnapshot.documents
+                            .filter { doc -> 
+                                // Only include docs where privacy is missing, null, or empty
+                                val privacy = doc.getString("privacy")
+                                privacy == null || privacy.isEmpty()
+                            }
+                            .mapNotNull { it.toObject(Flick::class.java) }
+                        
+                        batchFlicks.addAll(noPrivacyFlicks)
+                        android.util.Log.d("FlickRepository", "Loaded ${noPrivacyFlicks.size} photos without privacy field (treated as friends)")
+                    } catch (e: Exception) {
+                        android.util.Log.e("FlickRepository", "Error loading no-privacy photos: ${e.message}")
+                    }
+                    
                     batchFlicks
                 }
             } else {
                 android.util.Log.d("FlickRepository", "No friends to query")
                 emptyList()
             }
-
-            android.util.Log.d("FlickRepository", "Total friends photos loaded: ${friendsFlicks.size}")
 
             // Merge, remove duplicates, and sort by timestamp DESC (client-side sorting)
             var allFlicks = (ownFlicks + friendsFlicks)
