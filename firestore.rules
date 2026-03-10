@@ -37,9 +37,14 @@ service cloud.firestore {
       // Allow create: only own profile
       allow create: if isOwner(userId) && isValidUserData();
       
-      // Allow update: only own profile, can't change uid, can only update own fields
-      allow update: if isOwner(userId) && 
-        request.resource.data.uid == resource.data.uid;
+      // Allow update: owner can update their own profile fields
+      // Fixed: Allow partial updates without requiring uid field
+      allow update: if isOwner(userId) && (
+        // Allow updating specific friend-related arrays and profile fields
+        request.resource.data.keys().hasOnly(['sentFollowRequests', 'pendingFollowRequests', 'following', 'followers', 'blockedUsers', 'bio', 'photoUrl', 'displayName', 'phoneNumber', 'lastLogin', 'isOnline', 'streakCount', 'lastUploadDate', 'achievements', 'premiumStatus']) ||
+        // Or allow full updates with uid check (for profile creation/complete updates)
+        (request.resource.data.keys().hasAll(['uid']) && request.resource.data.uid == resource.data.uid)
+      );
       
       // Allow delete: only owner
       allow delete: if isOwner(userId);
