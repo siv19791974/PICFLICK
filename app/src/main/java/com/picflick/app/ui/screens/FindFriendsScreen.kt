@@ -41,21 +41,20 @@ import com.picflick.app.viewmodel.FriendsViewModel
 
 /**
  * Comprehensive screen for finding friends, inviting contacts, and following users
- * Similar to Instagram/Facebook friend discovery with WhatsApp integration
+ * Now with 3 tabs: Discover, Contacts, Invite
  */
 @OptIn(ExperimentalMaterialApi::class)
 @Composable
 fun FindFriendsScreen(
     viewModel: FriendsViewModel,
     userProfile: UserProfile,
-    onBack: () -> Unit,
+    onBack: () -> Unit, // Kept for API compatibility
     onNavigateToProfile: (String) -> Unit = {},
     onProfileRefresh: () -> Unit = {} // Callback to refresh user profile after follow/unfollow
 ) {
     val context = LocalContext.current
     val isDarkMode = ThemeManager.isDarkMode.value
-    val scope = rememberCoroutineScope()
-    var selectedTab by remember { mutableStateOf(0) }
+    var selectedTab by remember { mutableIntStateOf(0) }
     var hasContactPermission by remember {
         mutableStateOf(
             ContextCompat.checkSelfPermission(
@@ -87,7 +86,7 @@ fun FindFriendsScreen(
             .fillMaxSize()
             .background(isDarkModeBackground(isDarkMode))
     ) {
-        // Top bar with tabs
+        // Top bar with tabs - 3 TABS ONLY: Discover, Contacts, Invite
         TabRow(
             selectedTabIndex = selectedTab,
             containerColor = Color.Black,
@@ -96,46 +95,23 @@ fun FindFriendsScreen(
             Tab(
                 selected = selectedTab == 0,
                 onClick = { selectedTab = 0 },
-                text = { Text("Friends") }
+                text = { Text("Discover") }
             )
             Tab(
                 selected = selectedTab == 1,
                 onClick = { selectedTab = 1 },
-                text = { Text("Discover") }
+                text = { Text("Contacts") }
             )
             Tab(
                 selected = selectedTab == 2,
                 onClick = { selectedTab = 2 },
-                text = { Text("Contacts") }
-            )
-            Tab(
-                selected = selectedTab == 3,
-                onClick = { selectedTab = 3 },
                 text = { Text("Invite") }
             )
         }
 
-    // Load friends when tab changes to Friends
-    LaunchedEffect(selectedTab) {
-        if (selectedTab == 0) {
-            viewModel.loadFollowingUsers(userProfile.following)
-        }
-    }
-
     // Content based on tab
         when (selectedTab) {
-            0 -> FriendsTab(
-                viewModel = viewModel,
-                userProfile = userProfile,
-                onUnfollow = { user ->
-                    viewModel.unfollowUser(userProfile.uid, user.uid)
-                    android.widget.Toast.makeText(context, "Unfollowed ${user.displayName}", android.widget.Toast.LENGTH_SHORT).show()
-                    onProfileRefresh() // Refresh profile to update UI
-                },
-                onUserClick = onNavigateToProfile,
-                onFindFriendsClick = { selectedTab = 1 } // Switch to Discover tab
-            )
-            1 -> DiscoverTab(
+            0 -> DiscoverTab(
                 viewModel = viewModel,
                 userProfile = userProfile,
                 onFollowClick = { user, action ->
@@ -157,7 +133,7 @@ fun FindFriendsScreen(
                 },
                 onUserClick = onNavigateToProfile
             )
-            2 -> ContactsTab(
+            1 -> ContactsTab(
                 viewModel = viewModel,
                 userProfile = userProfile,
                 hasPermission = hasContactPermission,
@@ -183,7 +159,7 @@ fun FindFriendsScreen(
                 },
                 onUserClick = onNavigateToProfile
             )
-            3 -> InviteTab(
+            2 -> InviteTab(
                 userProfile = userProfile,
                 hasContactPermission = hasContactPermission,
                 onRequestPermission = {
@@ -293,43 +269,18 @@ private fun DiscoverTab(
                             tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
                         )
                         Spacer(modifier = Modifier.height(16.dp))
-                        
-                        // Show error message if there is one
-                        if (viewModel.errorMessage != null) {
-                            Text(
-                                text = "Error loading users",
-                                style = MaterialTheme.typography.titleLarge,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.error
-                            )
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Text(
-                                text = viewModel.errorMessage ?: "",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.error,
-                                textAlign = androidx.compose.ui.text.style.TextAlign.Center
-                            )
-                            Spacer(modifier = Modifier.height(16.dp))
-                            Button(
-                                onClick = { viewModel.loadAllUsers(userProfile.uid) },
-                                shape = RoundedCornerShape(20.dp)
-                            ) {
-                                Text("Retry")
-                            }
-                        } else {
-                            Text(
-                                text = "No users found",
-                                style = MaterialTheme.typography.titleLarge,
-                                fontWeight = FontWeight.Bold
-                            )
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Text(
-                                text = "Be the first to invite friends to PicFlick!",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
-                                textAlign = androidx.compose.ui.text.style.TextAlign.Center
-                            )
-                        }
+                        Text(
+                            text = "No users found",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = "Be the first to invite friends to PicFlick!",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                        )
                     }
                 }
             } else if (viewModel.searchQuery.isNotBlank()) {
@@ -626,175 +577,6 @@ My username: ${userProfile.displayName}"""
             )
             Spacer(modifier = Modifier.width(4.dp))
             Text("Copy invite text")
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterialApi::class)
-@Composable
-private fun FriendsTab(
-    viewModel: FriendsViewModel,
-    userProfile: UserProfile,
-    onUnfollow: (UserProfile) -> Unit,
-    onUserClick: (String) -> Unit,
-    onFindFriendsClick: () -> Unit = {} // NEW: Callback to switch to Discover tab
-) {
-    val isDarkMode = ThemeManager.isDarkMode.value
-    val followingUsers = viewModel.followingUsers
-    val isLoading = viewModel.isLoading
-    
-    // Pull-to-refresh state
-    val pullRefreshState = rememberPullRefreshState(
-        refreshing = isLoading,
-        onRefresh = { viewModel.loadFollowingUsers(userProfile.following) }
-    )
-    
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .pullRefresh(pullRefreshState)
-    ) {
-        if (followingUsers.isEmpty() && !isLoading) {
-            // Empty state
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(32.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Person,
-                    contentDescription = null,
-                    modifier = Modifier.size(80.dp),
-                    tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
-                )
-                Spacer(modifier = Modifier.height(16.dp))
-                Text(
-                    text = "No friends yet",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = "Follow people in the Discover tab to see them here",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
-                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
-                )
-                Spacer(modifier = Modifier.height(24.dp))
-                Button(
-                    onClick = onFindFriendsClick,
-                    shape = RoundedCornerShape(20.dp)
-                ) {
-                    Text("Find Friends")
-                }
-            }
-        } else {
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                // Find Friends button at top - always visible
-                item {
-                    Button(
-                        onClick = onFindFriendsClick,
-                        shape = RoundedCornerShape(20.dp),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Person,
-                            contentDescription = null,
-                            modifier = Modifier.size(20.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Find Friends")
-                    }
-                }
-                
-                items(followingUsers) { user ->
-                    FriendItem(
-                        user = user,
-                        onUnfollow = { onUnfollow(user) },
-                        onUserClick = { onUserClick(user.uid) }
-                    )
-                }
-            }
-        }
-        
-        PullRefreshIndicator(
-            refreshing = isLoading,
-            state = pullRefreshState,
-            modifier = Modifier.align(Alignment.TopCenter)
-        )
-    }
-}
-
-@Composable
-private fun FriendItem(
-    user: UserProfile,
-    onUnfollow: () -> Unit,
-    onUserClick: () -> Unit
-) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { onUserClick() },
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = if (ThemeManager.isDarkMode.value) Color(0xFF1C1C1E) else Color.White
-        )
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // Profile photo
-            Box(
-                modifier = Modifier
-                    .size(56.dp)
-                    .clip(CircleShape)
-                    .background(Color(0xFF2C2C2E))
-            ) {
-                AsyncImage(
-                    model = user.photoUrl,
-                    contentDescription = null,
-                    modifier = Modifier.fillMaxSize(),
-                    error = painterResource(id = android.R.drawable.ic_menu_myplaces)
-                )
-            }
-            
-            Spacer(modifier = Modifier.width(12.dp))
-            
-            // User info
-            Column(
-                modifier = Modifier.weight(1f)
-            ) {
-                Text(
-                    text = user.displayName,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 16.sp
-                )
-                if (user.bio.isNotEmpty()) {
-                    Text(
-                        text = user.bio,
-                        fontSize = 14.sp,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
-                        maxLines = 1
-                    )
-                }
-            }
-            
-            // Unfollow button
-            OutlinedButton(
-                onClick = onUnfollow,
-                shape = RoundedCornerShape(20.dp)
-            ) {
-                Text("Following")
-            }
         }
     }
 }

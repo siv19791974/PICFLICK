@@ -191,7 +191,6 @@ fun MainScreen(
             is Screen.MyPhotos,
             is Screen.Friends,
             is Screen.Chats,
-            is Screen.FindFriends,
             is Screen.Contact,
             is Screen.Notifications,
             is Screen.Explore,
@@ -205,6 +204,10 @@ fun MainScreen(
             is Screen.Philosophy,
             is Screen.Legal -> {
                 currentScreen = Screen.Home
+            }
+            // FindFriends goes back to Friends (where the button was clicked)
+            is Screen.FindFriends -> {
+                currentScreen = Screen.Friends
             }
             // About goes back to Settings
             is Screen.About -> {
