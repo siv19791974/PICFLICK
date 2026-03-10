@@ -114,17 +114,27 @@ class FlickRepository private constructor() {
 
                 val ownFlicks = ownFlicksSnapshot.toObjects(Flick::class.java)
 
-                // Query friends' photos (simplified to avoid composite index)
+                // Query friends' photos with BOTH "friends" and "public" privacy
                 val friendsFlicks = if (friends.isNotEmpty()) {
                     friends.chunked(Constants.Pagination.MAX_FRIENDS_BATCH).flatMap { friendBatch ->
-                        // Query without orderBy to avoid composite index requirement
-                        val batchSnapshot = db.collection("flicks")
+                        // Query "friends" privacy photos
+                        val friendsPrivacySnapshot = db.collection("flicks")
                             .whereIn("userId", friendBatch)
                             .whereEqualTo("privacy", "friends")
                             .limit(Constants.Pagination.FLICKS_PER_PAGE.toLong())
                             .get()
                             .await()
-                        batchSnapshot.toObjects(Flick::class.java)
+                        
+                        // Query "public" privacy photos
+                        val publicPrivacySnapshot = db.collection("flicks")
+                            .whereIn("userId", friendBatch)
+                            .whereEqualTo("privacy", "public")
+                            .limit(Constants.Pagination.FLICKS_PER_PAGE.toLong())
+                            .get()
+                            .await()
+                        
+                        friendsPrivacySnapshot.toObjects(Flick::class.java) + 
+                        publicPrivacySnapshot.toObjects(Flick::class.java)
                     }
                 } else {
                     emptyList()
