@@ -1,8 +1,7 @@
 {
   "name": "picflick-functions",
+  "description": "Cloud Functions for PicFlick push notifications",
   "version": "1.0.0",
-  "description": "Firebase Cloud Functions for PicFlick push notifications",
-  "main": "index.js",
   "scripts": {
     "serve": "firebase emulators:start --only functions",
     "shell": "firebase functions:shell",
@@ -11,12 +10,12 @@
     "logs": "firebase functions:log"
   },
   "engines": {
-    "node": "20"
+    "node": "18"
   },
+  "main": "index.js",
   "dependencies": {
     "firebase-admin": "^12.0.0",
-    "firebase-functions": "^5.1.0",
-    "googleapis": "^144.0.0"
+    "firebase-functions": "^4.5.0"
   },
   "devDependencies": {
     "firebase-tools": "^13.0.0"
