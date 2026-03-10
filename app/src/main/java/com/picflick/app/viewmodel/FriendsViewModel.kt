@@ -178,7 +178,13 @@ class FriendsViewModel : ViewModel() {
         addProcessingUser(targetUserId)
         repository.unfollowUser(currentUserId, targetUserId) { result ->
             removeProcessingUser(targetUserId)
-            // Handle result silently
+            if (result is com.picflick.app.data.Result.Success) {
+                // Remove from local list immediately for instant UI update
+                followingUsers.removeAll { it.uid == targetUserId }
+                android.util.Log.d("FriendsViewModel", "Removed user $targetUserId from following list")
+            } else {
+                android.util.Log.e("FriendsViewModel", "Failed to unfollow user $targetUserId")
+            }
         }
     }
 
