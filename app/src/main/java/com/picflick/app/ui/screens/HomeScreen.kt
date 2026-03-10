@@ -40,10 +40,10 @@ import com.picflick.app.data.Flick
 import com.picflick.app.data.ReactionType
 import com.picflick.app.data.UserProfile
 import com.picflick.app.data.toEmoji
+import com.picflick.app.ui.components.AlbumDrawer
 import com.picflick.app.ui.components.AnimatedReactionPicker
 import com.picflick.app.ui.components.CreateFriendGroupDialog
 import com.picflick.app.ui.components.ErrorMessage
-import com.picflick.app.ui.components.FriendGroupFilterBar
 import com.picflick.app.ui.components.PhotoGridShimmer
 import com.picflick.app.ui.theme.isDarkModeBackground
 import com.picflick.app.ui.theme.ThemeManager
@@ -61,7 +61,9 @@ fun HomeScreen(
     viewModel: HomeViewModel,
     onNavigate: (String) -> Unit,
     onSignOut: () -> Unit,
-    onUserProfileClick: (String) -> Unit = {}
+    onUserProfileClick: (String) -> Unit = {},
+    showAlbumDrawer: Boolean = false,
+    onAlbumDrawerChange: (Boolean) -> Unit = {}
 ) {
     val context = LocalContext.current
     var showUploadDialog by remember { mutableStateOf(false) }
@@ -72,6 +74,24 @@ fun HomeScreen(
     
     // Friend group dialog state
     var showCreateGroupDialog by remember { mutableStateOf(false) }
+    
+    // Album drawer state - synced with external control from MainActivity
+    var localShowAlbumDrawer by remember { mutableStateOf(false) }
+    val effectiveShowAlbumDrawer = showAlbumDrawer || localShowAlbumDrawer
+    
+    // Sync back to parent when local changes
+    LaunchedEffect(localShowAlbumDrawer) {
+        if (localShowAlbumDrawer != showAlbumDrawer) {
+            onAlbumDrawerChange(localShowAlbumDrawer)
+        }
+    }
+    
+    // Update local when external changes
+    LaunchedEffect(showAlbumDrawer) {
+        if (showAlbumDrawer != localShowAlbumDrawer) {
+            localShowAlbumDrawer = showAlbumDrawer
+        }
+    }
     
     // Reaction picker state
     var showReactionPicker by remember { mutableStateOf(false) }
@@ -153,12 +173,28 @@ fun HomeScreen(
             }
         )
 
-        // Friend Group Filter Bar
-        FriendGroupFilterBar(
+        // Album Drawer (replaces filter bar - slides from left)
+        AlbumDrawer(
+            isOpen = effectiveShowAlbumDrawer,
+            onClose = { 
+                localShowAlbumDrawer = false
+                onAlbumDrawerChange(false)
+            },
             groups = viewModel.friendGroups,
             selectedFilter = viewModel.selectedFilter,
-            onFilterSelected = { viewModel.setFilter(it) },
-            onAddGroupClick = { showCreateGroupDialog = true },
+            onFilterSelected = {
+                viewModel.setFilter(it)
+                localShowAlbumDrawer = false
+                onAlbumDrawerChange(false)
+            },
+            onCreateAlbum = { showCreateGroupDialog = true },
+            onManageAlbums = { /* TODO: Navigate to album management */ },
+            onEditAlbum = { group ->
+                // TODO: Show edit dialog
+            },
+            onDeleteAlbum = { group ->
+                viewModel.deleteFriendGroup(userProfile.uid, group.id)
+            },
             isDarkMode = isDarkMode
         )
 
