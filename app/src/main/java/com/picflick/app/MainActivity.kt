@@ -1247,6 +1247,8 @@ private fun AuthenticatedContent(
                         onAcceptRequest = {
                             // Accept friend request from this user
                             friendsViewModel.acceptFollowRequest(userProfile.uid, target)
+                            // Refresh profile so new friend appears in Friends list
+                            authViewModel.reloadUserProfile()
                         },
                         onMessageClick = {
                             // Navigate to chat with this user
