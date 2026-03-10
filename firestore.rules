@@ -42,8 +42,8 @@ service cloud.firestore {
 
     // ==================== USERS COLLECTION ====================
     match /users/{userId} {
-      // Allow read if: authenticated and not blocked
-      allow read: if isAuthenticated() && isNotBlockedBy(userId);
+      // FIXED: Allow read to ALL authenticated users (remove isNotBlockedBy which breaks get())
+      allow read: if isAuthenticated();
       
       // Allow create: only own profile
       allow create: if isOwner(userId) && isValidUserData();
