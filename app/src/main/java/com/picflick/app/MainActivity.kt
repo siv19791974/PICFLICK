@@ -188,16 +188,9 @@ fun MainScreen(
 ) {
     var currentScreen by remember { mutableStateOf<Screen>(Screen.Home) }
     
-    // Album drawer state - shared between MainActivity and HomeScreen
-    var showAlbumDrawer by remember { mutableStateOf(false) }
-    
     // Handle back button - navigate within app instead of exiting
-    BackHandler(enabled = currentScreen != Screen.Home || showAlbumDrawer) {
+    BackHandler(enabled = currentScreen != Screen.Home) {
         when {
-            // Close album drawer first if open
-            showAlbumDrawer -> {
-                showAlbumDrawer = false
-            }
             // Most screens go back to Home
             currentScreen is Screen.Profile ||
             currentScreen is Screen.MyPhotos ||
@@ -522,7 +515,6 @@ fun MainScreen(
         bottomBar = {
             // Only show bottom nav when authenticated
             if (currentUser != null && userProfile != null) {
-                val isOnHomeScreen = currentScreen is Screen.Home
                 BottomNavBar(
                     currentRoute = when (currentScreen) {
                         is Screen.Home -> "home"
@@ -533,31 +525,13 @@ fun MainScreen(
                     },
                     onNavigate = { route ->
                         when (route) {
-                            "home" -> {
-                                if (currentScreen is Screen.Home) {
-                                    // Already on home, toggle album drawer
-                                    showAlbumDrawer = !showAlbumDrawer
-                                } else {
-                                    currentScreen = Screen.Home
-                                    showAlbumDrawer = false
-                                }
-                            }
-                            "chats" -> {
-                                currentScreen = Screen.Chats
-                                showAlbumDrawer = false
-                            }
+                            "home" -> currentScreen = Screen.Home
+                            "chats" -> currentScreen = Screen.Chats
                             "upload" -> showUploadSourceDialog = true
-                            "friends" -> {
-                                currentScreen = Screen.Friends
-                                showAlbumDrawer = false
-                            }
-                            "profile" -> {
-                                currentScreen = Screen.Profile
-                                showAlbumDrawer = false
-                            }
+                            "friends" -> currentScreen = Screen.Friends
+                            "profile" -> currentScreen = Screen.Profile
                         }
-                    },
-                    isOnHomeScreen = isOnHomeScreen
+                    }
                 )
             }
         }
@@ -601,9 +575,7 @@ fun MainScreen(
                     onPhotoSelected = { uri ->
                         // Trigger profile photo upload via LaunchedEffect
                         profilePhotoToUpload = uri
-                    },
-                    showAlbumDrawer = showAlbumDrawer,
-                    onAlbumDrawerChange = { showAlbumDrawer = it }
+                    }
                 )
             } else {
                 // DEBUG: userProfile is null - show loading or error
@@ -701,9 +673,7 @@ private fun AuthenticatedContent(
     onSetSelectedChat: (com.picflick.app.data.ChatSession, String) -> Unit,
     onSignOut: () -> Unit,
     selectedPhotoUri: Uri?,
-    onPhotoSelected: (Uri) -> Unit,
-    showAlbumDrawer: Boolean = false,
-    onAlbumDrawerChange: (Boolean) -> Unit = {}
+    onPhotoSelected: (Uri) -> Unit
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -739,9 +709,7 @@ private fun AuthenticatedContent(
                     } else {
                         onScreenChange(Screen.UserProfile(userId))
                     }
-                },
-                showAlbumDrawer = showAlbumDrawer,
-                onAlbumDrawerChange = onAlbumDrawerChange
+                }
             )
 
             is Screen.Profile -> {

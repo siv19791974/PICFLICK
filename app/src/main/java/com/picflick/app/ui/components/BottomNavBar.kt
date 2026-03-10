@@ -12,15 +12,12 @@ import androidx.compose.ui.unit.dp
 
 /**
  * Bottom navigation bar for main app navigation - BLACK with contrasting icons
- * Home icon changes to Albums icon when user is on Home screen (context-aware)
  */
 @Composable
 fun BottomNavBar(
     currentRoute: String,
     onNavigate: (String) -> Unit,
-    unreadNotifications: Int = 0,
-    isOnHomeScreen: Boolean = false,
-    onHomeLongPress: (() -> Unit)? = null
+    unreadNotifications: Int = 0
 ) {
     NavigationBar(
         modifier = Modifier.fillMaxWidth(),
@@ -28,28 +25,18 @@ fun BottomNavBar(
         contentColor = Color.LightGray,  // Light grey for unselected
         tonalElevation = 0.dp
     ) {
-        // Home / Albums (context-aware icon)
+        // Home
         NavigationBarItem(
             icon = {
-                if (isOnHomeScreen) {
-                    // Show Albums icon when on Home screen
-                    Icon(
-                        imageVector = if (currentRoute == "home") Icons.Filled.PhotoAlbum else Icons.Outlined.PhotoAlbum,
-                        contentDescription = "Albums",
-                        tint = if (currentRoute == "home") Color.White else Color.LightGray
-                    )
-                } else {
-                    // Show Home icon when on other screens
-                    Icon(
-                        imageVector = if (currentRoute == "home") Icons.Filled.Home else Icons.Outlined.Home,
-                        contentDescription = "Home",
-                        tint = if (currentRoute == "home") Color.White else Color.LightGray
-                    )
-                }
+                Icon(
+                    imageVector = if (currentRoute == "home") Icons.Filled.Home else Icons.Outlined.Home,
+                    contentDescription = "Home",
+                    tint = if (currentRoute == "home") Color.White else Color.LightGray
+                )
             },
             label = { 
                 Text(
-                    if (isOnHomeScreen) "Albums" else "Home", 
+                    "Home", 
                     color = if (currentRoute == "home") Color.White else Color.LightGray
                 ) 
             },

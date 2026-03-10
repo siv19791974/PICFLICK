@@ -40,9 +40,7 @@ import com.picflick.app.data.Flick
 import com.picflick.app.data.ReactionType
 import com.picflick.app.data.UserProfile
 import com.picflick.app.data.toEmoji
-import com.picflick.app.ui.components.AlbumDrawer
 import com.picflick.app.ui.components.AnimatedReactionPicker
-import com.picflick.app.ui.components.CreateFriendGroupDialog
 import com.picflick.app.ui.components.ErrorMessage
 import com.picflick.app.ui.components.PhotoGridShimmer
 import com.picflick.app.ui.theme.isDarkModeBackground
@@ -61,9 +59,7 @@ fun HomeScreen(
     viewModel: HomeViewModel,
     onNavigate: (String) -> Unit,
     onSignOut: () -> Unit,
-    onUserProfileClick: (String) -> Unit = {},
-    showAlbumDrawer: Boolean = false,
-    onAlbumDrawerChange: (Boolean) -> Unit = {}
+    onUserProfileClick: (String) -> Unit = {}
 ) {
     val context = LocalContext.current
     var showUploadDialog by remember { mutableStateOf(false) }
@@ -71,27 +67,6 @@ fun HomeScreen(
     var selectedFlick by remember { mutableStateOf<Flick?>(null) }
     var selectedFlickIndex by remember { mutableIntStateOf(0) }
     var privacySetting by remember { mutableStateOf("friends") } // "friends" or "public"
-    
-    // Friend group dialog state
-    var showCreateGroupDialog by remember { mutableStateOf(false) }
-    
-    // Album drawer state - synced with external control from MainActivity
-    var localShowAlbumDrawer by remember { mutableStateOf(false) }
-    val effectiveShowAlbumDrawer = showAlbumDrawer || localShowAlbumDrawer
-    
-    // Sync back to parent when local changes
-    LaunchedEffect(localShowAlbumDrawer) {
-        if (localShowAlbumDrawer != showAlbumDrawer) {
-            onAlbumDrawerChange(localShowAlbumDrawer)
-        }
-    }
-    
-    // Update local when external changes
-    LaunchedEffect(showAlbumDrawer) {
-        if (showAlbumDrawer != localShowAlbumDrawer) {
-            localShowAlbumDrawer = showAlbumDrawer
-        }
-    }
     
     // Reaction picker state
     var showReactionPicker by remember { mutableStateOf(false) }
@@ -156,14 +131,6 @@ fun HomeScreen(
 
     val isDarkMode = ThemeManager.isDarkMode.value
 
-    // DEBUG - Show if HomeScreen is rendering
-    Text(
-        text = "HOMESCREEN RENDERING",
-        color = Color.Red,
-        fontSize = 20.sp,
-        modifier = Modifier.padding(16.dp)
-    )
-
     // Column WITHOUT verticalScroll (because LazyVerticalGrid has its own scroll)
     // NO BANNER HERE - banner is now in MainActivity's Scaffold topBar!
     Column(
@@ -177,7 +144,6 @@ fun HomeScreen(
             refreshing = viewModel.isLoading,
             onRefresh = { 
                 viewModel.loadFlicks(userProfile.uid)
-                viewModel.loadFriendGroups(userProfile.uid)
             }
         )
 
@@ -215,31 +181,6 @@ fun HomeScreen(
                 modifier = Modifier.align(Alignment.TopCenter),
                 backgroundColor = MaterialTheme.colorScheme.surface,
                 contentColor = MaterialTheme.colorScheme.primary
-            )
-
-            // Album Drawer overlay (MOVED INSIDE BOX - doesn't block photos when closed!)
-            AlbumDrawer(
-                isOpen = effectiveShowAlbumDrawer,
-                onClose = { 
-                    localShowAlbumDrawer = false
-                    onAlbumDrawerChange(false)
-                },
-                groups = viewModel.friendGroups,
-                selectedFilter = viewModel.selectedFilter,
-                onFilterSelected = {
-                    viewModel.setFilter(it)
-                    localShowAlbumDrawer = false
-                    onAlbumDrawerChange(false)
-                },
-                onCreateAlbum = { showCreateGroupDialog = true },
-                onManageAlbums = { /* TODO: Navigate to album management */ },
-                onEditAlbum = { group ->
-                    // TODO: Show edit dialog
-                },
-                onDeleteAlbum = { group ->
-                    viewModel.deleteFriendGroup(userProfile.uid, group.id)
-                },
-                isDarkMode = isDarkMode
             )
 
             // Upload mini FABs overlay
@@ -351,28 +292,6 @@ fun HomeScreen(
             reaction = reaction,
             targetIndex = targetIndex,
             onAnimationEnd = { flyingReaction = null }
-        )
-    }
-
-    // Create Friend Group Dialog
-    if (showCreateGroupDialog) {
-        CreateFriendGroupDialog(
-            onDismiss = { showCreateGroupDialog = false },
-            onCreate = { name, icon, selectedFriends ->
-                viewModel.createFriendGroup(
-                    userId = userProfile.uid,
-                    name = name,
-                    icon = icon,
-                    friendIds = selectedFriends,
-                    onComplete = { success ->
-                        if (success) {
-                            showCreateGroupDialog = false
-                        }
-                    }
-                )
-            },
-            friends = emptyList(), // TODO: Pass actual friends list
-            isDarkMode = isDarkMode
         )
     }
 }
