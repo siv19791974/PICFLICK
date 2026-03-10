@@ -1456,10 +1456,12 @@ class FlickRepository private constructor() {
         photoOwnerPhotoUrl: String,
         taggedUserId: String
     ) {
+        android.util.Log.d("NotificationDebug", "Creating TAG notification: $photoOwnerId tagged $taggedUserId in photo $flickId")
+        
         db.collection("flicks").document(flickId).get()
             .addOnSuccessListener { flickDoc ->
                 val flickImageUrl = flickDoc.getString("imageUrl")
-                
+
                 val notification = hashMapOf(
                     "id" to UUID.randomUUID().toString(),
                     "userId" to taggedUserId,
@@ -1476,6 +1478,15 @@ class FlickRepository private constructor() {
                 )
 
                 db.collection("notifications").add(notification)
+                    .addOnSuccessListener { docRef ->
+                        android.util.Log.d("NotificationDebug", "TAG notification created: ${docRef.id}")
+                    }
+                    .addOnFailureListener { e ->
+                        android.util.Log.e("NotificationDebug", "FAILED to create TAG notification: ${e.message}")
+                    }
+            }
+            .addOnFailureListener { e ->
+                android.util.Log.e("NotificationDebug", "Failed to get flick for TAG notification: ${e.message}")
             }
     }
 
