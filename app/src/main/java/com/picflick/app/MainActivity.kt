@@ -1311,6 +1311,17 @@ private fun AuthenticatedContent(
                                     else -> {}
                                 }
                             }
+                        },
+                        onUnfriend = {
+                            // Unfriend/delete the user
+                            friendsViewModel.unfollowUser(userProfile.uid, target.uid)
+                            Toast.makeText(
+                                context,
+                                "${target.displayName} has been removed from friends",
+                                Toast.LENGTH_LONG
+                            ).show()
+                            // Navigate back
+                            onScreenChange(Screen.Home)
                         }
                     )
                     

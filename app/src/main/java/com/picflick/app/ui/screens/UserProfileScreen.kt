@@ -57,6 +57,7 @@ fun UserProfileScreen(
     onAcceptRequest: () -> Unit = {}, // Accept friend request from this user
     onMessageClick: () -> Unit = {},
     onBlockUser: () -> Unit = {},
+    onUnfriend: () -> Unit = {}, // NEW: Delete friend/unfriend
     onRefresh: () -> Unit = {}
 ) {
     // Pull-to-refresh state
@@ -241,7 +242,30 @@ fun UserProfileScreen(
                         Text("Send Message")
                     }
 
-                    Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // Unfriend button for friends
+                    OutlinedButton(
+                        onClick = onUnfriend,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 32.dp)
+                            .height(48.dp),
+                        shape = RoundedCornerShape(24.dp),
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            contentColor = Color.Gray
+                        )
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Clear,
+                            contentDescription = "Delete friend",
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Delete Friend")
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
 
                     // Block User button for friends
                     OutlinedButton(
