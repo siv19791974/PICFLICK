@@ -50,11 +50,24 @@ fun BottomNavBar(
         // Messages
         NavigationBarItem(
             icon = {
-                Icon(
-                    if (currentRoute == "chats") Icons.Filled.MailOutline else Icons.Outlined.MailOutline,
-                    contentDescription = "Messages",
-                    tint = if (currentRoute == "chats") Color.White else Color.LightGray
-                )
+                BadgedBox(
+                    badge = {
+                        if (unreadNotifications > 0) {
+                            Badge(
+                                containerColor = Color.Red,
+                                contentColor = Color.White
+                            ) {
+                                Text("$unreadNotifications")
+                            }
+                        }
+                    }
+                ) {
+                    Icon(
+                        if (currentRoute == "chats") Icons.Filled.MailOutline else Icons.Outlined.MailOutline,
+                        contentDescription = "Messages",
+                        tint = if (currentRoute == "chats") Color.White else Color.LightGray
+                    )
+                }
             },
             label = { Text("Messages", color = if (currentRoute == "chats") Color.White else Color.LightGray) },
             selected = currentRoute == "chats",
