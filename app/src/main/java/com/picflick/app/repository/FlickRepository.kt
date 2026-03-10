@@ -1931,4 +1931,208 @@ class FlickRepository private constructor() {
             Result.Error(e, "Failed to delete user data: ${e.message}")
         }
     }
+
+    // ==================== FRIEND GROUPS (ALBUMS) ====================
+
+    /**
+     * Create a new friend group/album
+     */
+    suspend fun createFriendGroup(
+        userId: String,
+        name: String,
+        friendIds: List<String>,
+        icon: String = "👥",
+        color: String = "#4FC3F7"
+    ): Result<FriendGroup> {
+        return try {
+            val groupId = UUID.randomUUID().toString()
+            val group = hashMapOf(
+                "id" to groupId,
+                "userId" to userId,
+                "name" to name,
+                "friendIds" to friendIds,
+                "icon" to icon,
+                "color" to color,
+                "createdAt" to System.currentTimeMillis(),
+                "updatedAt" to System.currentTimeMillis()
+            )
+
+            db.collection("users").document(userId)
+                .collection("friendGroups")
+                .document(groupId)
+                .set(group)
+                .await()
+
+            Result.Success(FriendGroup(
+                id = groupId,
+                userId = userId,
+                name = name,
+                friendIds = friendIds,
+                icon = icon,
+                color = color
+            ))
+        } catch (e: Exception) {
+            Result.Error(e, "Failed to create friend group")
+        }
+    }
+
+    /**
+     * Get all friend groups for a user
+     */
+    suspend fun getFriendGroups(userId: String): Result<List<FriendGroup>> {
+        return try {
+            val snapshot = db.collection("users").document(userId)
+                .collection("friendGroups")
+                .orderBy("updatedAt", com.google.firebase.firestore.Query.Direction.DESCENDING)
+                .get()
+                .await()
+
+            val groups = snapshot.toObjects(FriendGroup::class.java)
+            Result.Success(groups)
+        } catch (e: Exception) {
+            Result.Error(e, "Failed to get friend groups")
+        }
+    }
+
+    /**
+     * Update a friend group
+     */
+    suspend fun updateFriendGroup(
+        userId: String,
+        groupId: String,
+        name: String? = null,
+        friendIds: List<String>? = null,
+        icon: String? = null,
+        color: String? = null
+    ): Result<Unit> {
+        return try {
+            val updates = hashMapOf<String, Any>(
+                "updatedAt" to System.currentTimeMillis()
+            )
+
+            name?.let { updates["name"] = it }
+            friendIds?.let { updates["friendIds"] = it }
+            icon?.let { updates["icon"] = it }
+            color?.let { updates["color"] = it }
+
+            db.collection("users").document(userId)
+                .collection("friendGroups")
+                .document(groupId)
+                .update(updates)
+                .await()
+
+            Result.Success(Unit)
+        } catch (e: Exception) {
+            Result.Error(e, "Failed to update friend group")
+        }
+    }
+
+    /**
+     * Delete a friend group
+     */
+    suspend fun deleteFriendGroup(userId: String, groupId: String): Result<Unit> {
+        return try {
+            db.collection("users").document(userId)
+                .collection("friendGroups")
+                .document(groupId)
+                .delete()
+                .await()
+
+            Result.Success(Unit)
+        } catch (e: Exception) {
+            Result.Error(e, "Failed to delete friend group")
+        }
+    }
+
+    /**
+     * Add a friend to a group
+     */
+    suspend fun addFriendToGroup(
+        userId: String,
+        groupId: String,
+        friendId: String
+    ): Result<Unit> {
+        return try {
+            db.collection("users").document(userId)
+                .collection("friendGroups")
+                .document(groupId)
+                .update(
+                    "friendIds", FieldValue.arrayUnion(friendId),
+                    "updatedAt", System.currentTimeMillis()
+                )
+                .await()
+
+            Result.Success(Unit)
+        } catch (e: Exception) {
+            Result.Error(e, "Failed to add friend to group")
+        }
+    }
+
+    /**
+     * Remove a friend from a group
+     */
+    suspend fun removeFriendFromGroup(
+        userId: String,
+        groupId: String,
+        friendId: String
+    ): Result<Unit> {
+        return try {
+            db.collection("users").document(userId)
+                .collection("friendGroups")
+                .document(groupId)
+                .update(
+                    "friendIds", FieldValue.arrayRemove(friendId),
+                    "updatedAt", System.currentTimeMillis()
+                )
+                .await()
+
+            Result.Success(Unit)
+        } catch (e: Exception) {
+            Result.Error(e, "Failed to remove friend from group")
+        }
+    }
+
+    /**
+     * Get flicks from friends in a specific group
+     */
+    suspend fun getFlicksForFriendGroup(
+        userId: String,
+        groupId: String,
+        onResult: (Result<List<Flick>>) -> Unit
+    ) {
+        try {
+            // Get the group
+            val groupDoc = db.collection("users").document(userId)
+                .collection("friendGroups")
+                .document(groupId)
+                .get()
+                .await()
+
+            val friendIds = groupDoc.get("friendIds") as? List<String> ?: emptyList()
+
+            if (friendIds.isEmpty()) {
+                onResult(Result.Success(emptyList()))
+                return
+            }
+
+            // Get flicks from friends in the group (photos visible to user)
+            db.collection(Constants.FirebaseCollections.FLICKS)
+                .whereIn("userId", friendIds)
+                .whereIn("privacy", listOf("public", "friends"))
+                .orderBy("timestamp", Query.Direction.DESCENDING)
+                .limit(Constants.Pagination.FLICKS_PER_PAGE.toLong())
+                .get()
+                .addOnSuccessListener { snapshot ->
+                    val flicks = snapshot.toObjects(Flick::class.java)
+                    onResult(Result.Success(flicks))
+                }
+                .addOnFailureListener { e ->
+                    onResult(Result.Error(e, "Failed to get group flicks"))
+                }
+        } catch (e: Exception) {
+            onResult(Result.Error(e, "Failed to get group flicks"))
+        }
+    }
+
+    // ==================== END FRIEND GROUPS ====================
 }

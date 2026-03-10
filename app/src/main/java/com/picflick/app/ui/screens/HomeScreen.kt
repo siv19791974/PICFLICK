@@ -41,7 +41,9 @@ import com.picflick.app.data.ReactionType
 import com.picflick.app.data.UserProfile
 import com.picflick.app.data.toEmoji
 import com.picflick.app.ui.components.AnimatedReactionPicker
+import com.picflick.app.ui.components.CreateFriendGroupDialog
 import com.picflick.app.ui.components.ErrorMessage
+import com.picflick.app.ui.components.FriendGroupFilterBar
 import com.picflick.app.ui.components.PhotoGridShimmer
 import com.picflick.app.ui.theme.isDarkModeBackground
 import com.picflick.app.ui.theme.ThemeManager
@@ -68,6 +70,9 @@ fun HomeScreen(
     var selectedFlickIndex by remember { mutableIntStateOf(0) }
     var privacySetting by remember { mutableStateOf("friends") } // "friends" or "public"
     
+    // Friend group dialog state
+    var showCreateGroupDialog by remember { mutableStateOf(false) }
+    
     // Reaction picker state
     var showReactionPicker by remember { mutableStateOf(false) }
     var flickForReaction by remember { mutableStateOf<Flick?>(null) }
@@ -78,6 +83,7 @@ fun HomeScreen(
     // Load data
     LaunchedEffect(userProfile.uid) {
         viewModel.loadFlicks(userProfile.uid)
+        viewModel.loadFriendGroups(userProfile.uid)
     }
 
     LaunchedEffect(userProfile.uid) {
@@ -141,7 +147,19 @@ fun HomeScreen(
         // Modern PullRefresh content
         val pullRefreshState = rememberPullRefreshState(
             refreshing = viewModel.isLoading,
-            onRefresh = { viewModel.loadFlicks(userProfile.uid) }
+            onRefresh = { 
+                viewModel.loadFlicks(userProfile.uid)
+                viewModel.loadFriendGroups(userProfile.uid)
+            }
+        )
+
+        // Friend Group Filter Bar
+        FriendGroupFilterBar(
+            groups = viewModel.friendGroups,
+            selectedFilter = viewModel.selectedFilter,
+            onFilterSelected = { viewModel.setFilter(it) },
+            onAddGroupClick = { showCreateGroupDialog = true },
+            isDarkMode = isDarkMode
         )
 
         Box(
@@ -289,6 +307,28 @@ fun HomeScreen(
             reaction = reaction,
             targetIndex = targetIndex,
             onAnimationEnd = { flyingReaction = null }
+        )
+    }
+
+    // Create Friend Group Dialog
+    if (showCreateGroupDialog) {
+        CreateFriendGroupDialog(
+            onDismiss = { showCreateGroupDialog = false },
+            onCreate = { name, icon, selectedFriends ->
+                viewModel.createFriendGroup(
+                    userId = userProfile.uid,
+                    name = name,
+                    icon = icon,
+                    friendIds = selectedFriends,
+                    onComplete = { success ->
+                        if (success) {
+                            showCreateGroupDialog = false
+                        }
+                    }
+                )
+            },
+            friends = emptyList(), // TODO: Pass actual friends list
+            isDarkMode = isDarkMode
         )
     }
 }

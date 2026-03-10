@@ -7,7 +7,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.picflick.app.data.FeedFilter
 import com.picflick.app.data.Flick
+import com.picflick.app.data.FriendGroup
 import com.picflick.app.data.ReactionType
 import com.picflick.app.data.Result
 import com.picflick.app.repository.FlickRepository
@@ -38,9 +40,15 @@ class HomeViewModel : ViewModel() {
     var currentUserId by mutableStateOf<String?>(null)
         private set
 
+    // Friend Groups / Albums
+    var friendGroups = mutableStateListOf<FriendGroup>()
+        private set
+
+    var selectedFilter by mutableStateOf<FeedFilter>(FeedFilter.AllFriends)
+        private set
+
     /**
-     * Load flicks for the feed (only friends' photos for privacy)
-     * Uses stored currentUserId
+     * Load flicks for the feed based on selected filter
      */
     fun loadFlicks() {
         val userId = currentUserId
@@ -48,22 +56,46 @@ class HomeViewModel : ViewModel() {
             errorMessage = "User not logged in"
             return
         }
-        
+
         isLoading = true
         errorMessage = null
-        
-        repository.getFlicksForUser(userId) { result ->
-            when (result) {
-                is Result.Success -> {
-                    flicks.clear()
-                    flicks.addAll(result.data)
-                    isLoading = false
+
+        when (val filter = selectedFilter) {
+            is FeedFilter.AllFriends -> {
+                // Load all friends' flicks
+                repository.getFlicksForUser(userId) { result ->
+                    when (result) {
+                        is Result.Success -> {
+                            flicks.clear()
+                            flicks.addAll(result.data)
+                            isLoading = false
+                        }
+                        is Result.Error -> {
+                            errorMessage = result.message
+                            isLoading = false
+                        }
+                        is Result.Loading -> { }
+                    }
                 }
-                is Result.Error -> {
-                    errorMessage = result.message
-                    isLoading = false
+            }
+            is FeedFilter.ByGroup -> {
+                // Load flicks from friends in specific group
+                viewModelScope.launch {
+                    repository.getFlicksForFriendGroup(userId, filter.group.id) { result ->
+                        when (result) {
+                            is Result.Success -> {
+                                flicks.clear()
+                                flicks.addAll(result.data)
+                                isLoading = false
+                            }
+                            is Result.Error -> {
+                                errorMessage = result.message
+                                isLoading = false
+                            }
+                            is Result.Loading -> { }
+                        }
+                    }
                 }
-                is Result.Loading -> { /* Do nothing */ }
             }
         }
     }
@@ -74,6 +106,84 @@ class HomeViewModel : ViewModel() {
     fun loadFlicks(userId: String) {
         currentUserId = userId
         loadFlicks()
+    }
+
+    /**
+     * Set selected filter and reload flicks
+     */
+    fun setFilter(filter: FeedFilter) {
+        selectedFilter = filter
+        loadFlicks()
+    }
+
+    /**
+     * Load friend groups for the current user
+     */
+    fun loadFriendGroups(userId: String) {
+        viewModelScope.launch {
+            when (val result = repository.getFriendGroups(userId)) {
+                is Result.Success -> {
+                    friendGroups.clear()
+                    friendGroups.addAll(result.data)
+                }
+                is Result.Error -> {
+                    // Silently fail - not critical
+                }
+                is Result.Loading -> { }
+            }
+        }
+    }
+
+    /**
+     * Create a new friend group
+     */
+    fun createFriendGroup(
+        userId: String,
+        name: String,
+        icon: String,
+        friendIds: List<String>,
+        color: String = "#4FC3F7",
+        onComplete: (Boolean) -> Unit = {}
+    ) {
+        viewModelScope.launch {
+            isLoading = true
+            when (val result = repository.createFriendGroup(userId, name, friendIds, icon, color)) {
+                is Result.Success -> {
+                    friendGroups.add(result.data)
+                    isLoading = false
+                    onComplete(true)
+                }
+                is Result.Error -> {
+                    errorMessage = result.message
+                    isLoading = false
+                    onComplete(false)
+                }
+                is Result.Loading -> { }
+            }
+        }
+    }
+
+    /**
+     * Delete a friend group
+     */
+    fun deleteFriendGroup(userId: String, groupId: String) {
+        viewModelScope.launch {
+            when (val result = repository.deleteFriendGroup(userId, groupId)) {
+                is Result.Success -> {
+                    friendGroups.removeAll { it.id == groupId }
+                    // Reset to All Friends if the deleted group was selected
+                    if (selectedFilter is FeedFilter.ByGroup &&
+                        (selectedFilter as FeedFilter.ByGroup).group.id == groupId) {
+                        selectedFilter = FeedFilter.AllFriends
+                        loadFlicks()
+                    }
+                }
+                is Result.Error -> {
+                    errorMessage = result.message
+                }
+                is Result.Loading -> { }
+            }
+        }
     }
 
     /**
