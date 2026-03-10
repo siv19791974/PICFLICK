@@ -118,29 +118,66 @@ class AuthViewModel : ViewModel() {
 
     /**
      * Save user to Firestore after successful sign in
+     * BUT only if profile doesn't already exist (preserves existing bio, photo, etc.)
      */
     fun saveUserToFirestore(user: FirebaseUser, context: Context) {
         viewModelScope.launch {
-            // Auto-detect phone number from device
-            val phoneNumber = getDevicePhoneNumber(context)
-
-            val profile = UserProfile(
-                uid = user.uid,
-                email = user.email ?: "",
-                displayName = user.displayName ?: "",
-                photoUrl = user.photoUrl?.toString() ?: "",
-                phoneNumber = phoneNumber // Auto-detected!
-            )
-            repository.saveUserProfile(user.uid, profile) { result ->
-                when (result) {
+            // First check if profile already exists
+            repository.getUserProfile(user.uid) { existingResult ->
+                when (existingResult) {
                     is Result.Success -> {
-                        userProfile = profile
+                        // Profile exists - use existing data, only update if needed
+                        val existingProfile = existingResult.data
+                        
+                        // Only update if Firebase has newer display name or photo
+                        val needsUpdate = (user.displayName != null && user.displayName != existingProfile.displayName) ||
+                                         (user.photoUrl != null && user.photoUrl.toString() != existingProfile.photoUrl)
+                        
+                        if (needsUpdate) {
+                            // Update only changed fields, preserve bio and other data
+                            val updatedProfile = existingProfile.copy(
+                                displayName = user.displayName ?: existingProfile.displayName,
+                                photoUrl = if (user.photoUrl != null) user.photoUrl.toString() else existingProfile.photoUrl
+                            )
+                            repository.saveUserProfile(user.uid, updatedProfile) { result ->
+                                if (result is Result.Success) {
+                                    userProfile = updatedProfile
+                                }
+                            }
+                        } else {
+                            // Use existing profile as-is
+                            userProfile = existingProfile
+                        }
                     }
                     is Result.Error -> {
-                        errorMessage = result.message
+                        // Profile doesn't exist - create new one
+                        createNewProfile(user, context)
                     }
                     is Result.Loading -> { }
                 }
+            }
+        }
+    }
+    
+    private fun createNewProfile(user: FirebaseUser, context: Context) {
+        val phoneNumber = getDevicePhoneNumber(context)
+        
+        val profile = UserProfile(
+            uid = user.uid,
+            email = user.email ?: "",
+            displayName = user.displayName ?: "",
+            photoUrl = user.photoUrl?.toString() ?: "",
+            phoneNumber = phoneNumber
+        )
+        repository.saveUserProfile(user.uid, profile) { result ->
+            when (result) {
+                is Result.Success -> {
+                    userProfile = profile
+                }
+                is Result.Error -> {
+                    errorMessage = result.message
+                }
+                is Result.Loading -> { }
             }
         }
     }
