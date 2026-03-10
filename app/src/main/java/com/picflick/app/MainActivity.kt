@@ -231,8 +231,7 @@ fun MainScreen(
     var currentScreen by remember { mutableStateOf<Screen>(Screen.Home) }
     
     // Handle push notification clicks
-    val context = LocalContext.current
-    val activity = context as? MainActivity
+    val activity = LocalContext.current as? MainActivity
     
     LaunchedEffect(Unit) {
         // Check if there's pending push notification data
@@ -250,14 +249,18 @@ fun MainScreen(
                 }
                 "chat" -> {
                     if (senderId != null && senderName != null) {
-                        // Store chat session info and open chat
-                        chatViewModel.createOrGetChatSession(
-                            currentUserId = (activity as MainActivity).getCurrentUserId() ?: return@LaunchedEffect,
-                            otherUserId = senderId,
-                            otherUserName = senderName,
-                            otherUserPhotoUrl = pushData.getString("senderPhotoUrl") ?: ""
-                        ) { sessionId ->
-                            currentScreen = Screen.ChatDetail
+                        // Open chat with sender - use startChat method
+                        val currentUserId = activity?.getCurrentUserId()
+                        if (currentUserId != null) {
+                            chatViewModel.startChat(
+                                userId = currentUserId,
+                                otherUserId = senderId,
+                                userName = senderName, // Use sender name as placeholder for current user
+                                otherUserName = senderName,
+                                onChatReady = { sessionId ->
+                                    currentScreen = Screen.ChatDetail
+                                }
+                            )
                         }
                     }
                 }
