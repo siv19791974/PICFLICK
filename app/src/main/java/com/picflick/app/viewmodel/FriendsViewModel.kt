@@ -190,6 +190,17 @@ class FriendsViewModel : ViewModel() {
     }
 
     /**
+     * Cancel a follow request (withdraw request sent to another user)
+     */
+    fun cancelFollowRequest(currentUserId: String, targetUserId: String) {
+        addProcessingUser(targetUserId)
+        viewModelScope.launch {
+            repository.cancelFollowRequest(currentUserId, targetUserId)
+            removeProcessingUser(targetUserId)
+        }
+    }
+
+    /**
      * Sync contacts - wrapper function for compatibility
      */
     fun syncContacts(context: Context, currentUserId: String? = null) {

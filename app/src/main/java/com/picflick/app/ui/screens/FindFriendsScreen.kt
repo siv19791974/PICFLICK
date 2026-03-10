@@ -245,6 +245,9 @@ private fun DiscoverTab(
                                 }
                                 onFollowClick(user, action)
                             },
+                            onCancelRequest = {
+                                viewModel.cancelFollowRequest(userProfile.uid, user.uid)
+                            },
                             onUserClick = { onUserClick(user.uid) },
                             showMutualFriends = true,
                             mutualCount = (user.followers intersect userProfile.following.toSet()).size
@@ -300,13 +303,16 @@ private fun DiscoverTab(
                                 hasReceivedRequest = userProfile.pendingFollowRequests.contains(user.uid),
                                 isProcessing = viewModel.processingUserIds.contains(user.uid),
                                 onFollowClick = {
-                                val action = when {
-                                    userProfile.following.contains(user.uid) -> "unfollow"
-                                    userProfile.pendingFollowRequests.contains(user.uid) -> "accept"
-                                    else -> "send_request"
-                                }
-                                onFollowClick(user, action)
-                            },
+                                    val action = when {
+                                        userProfile.following.contains(user.uid) -> "unfollow"
+                                        userProfile.pendingFollowRequests.contains(user.uid) -> "accept"
+                                        else -> "send_request"
+                                    }
+                                    onFollowClick(user, action)
+                                },
+                                onCancelRequest = {
+                                    viewModel.cancelFollowRequest(userProfile.uid, user.uid)
+                                },
                                 onUserClick = { onUserClick(user.uid) }
                             )
                         }
@@ -416,6 +422,9 @@ private fun ContactsTab(
                                             else -> "send_request"
                                         }
                                         onFollowClick(user, action)
+                                    },
+                                    onCancelRequest = {
+                                        viewModel.cancelFollowRequest(userProfile.uid, user.uid)
                                     },
                                     onUserClick = { onUserClick(user.uid) },
                                     subtitle = "From your contacts"
@@ -615,6 +624,7 @@ private fun UserResultItem(
     hasReceivedRequest: Boolean = false,
     isProcessing: Boolean = false,
     onFollowClick: () -> Unit,
+    onCancelRequest: () -> Unit = {},
     onUserClick: () -> Unit,
     showMutualFriends: Boolean = false,
     mutualCount: Int = 0,
@@ -718,7 +728,7 @@ private fun UserResultItem(
                 }
                 hasSentRequest -> {
                     OutlinedButton(
-                        onClick = { /* Cancel functionality can be added */ },
+                        onClick = onCancelRequest,
                         shape = RoundedCornerShape(20.dp),
                         modifier = Modifier.fillMaxWidth(),
                         colors = ButtonDefaults.outlinedButtonColors(
