@@ -576,28 +576,7 @@ private fun FlickCard(
                 }
             }
             
-            // Tiny reaction overlay (top right) - shows if user has reacted
-            userReaction?.let { reaction ->
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .padding(top = 20.dp, end = 2.dp)
-                        .size(16.dp)
-                        .background(
-                            color = Color(0xFF4CAF50).copy(alpha = 0.9f), // Green bg
-                            shape = CircleShape
-                        ),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "✓",
-                        fontSize = 10.sp,
-                        color = Color.White
-                    )
-                }
-            }
-            
-            // Username overlay at bottom
+            // Info overlay at bottom (username + reactions)
             Box(
                 modifier = Modifier
                     .align(Alignment.BottomStart)
@@ -608,15 +587,32 @@ private fun FlickCard(
                     .padding(horizontal = 4.dp, vertical = 2.dp),
                 contentAlignment = Alignment.CenterStart
             ) {
-                Text(
-                    text = flick.userName,
-                    color = Color.White,
-                    fontSize = 10.sp,
-                    style = MaterialTheme.typography.labelSmall.copy(
-                        fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold
-                    ),
-                    maxLines = 1
-                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // Left: Username
+                    Text(
+                        text = flick.userName,
+                        color = Color.White,
+                        fontSize = 10.sp,
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            fontWeight = FontWeight.SemiBold
+                        ),
+                        maxLines = 1,
+                        modifier = Modifier.weight(1f)
+                    )
+                    
+                    // Right: Reaction info (if any)
+                    if (totalReactions > 0) {
+                        Text(
+                            text = "${userReaction?.toEmoji() ?: "❤️"} $totalReactions",
+                            fontSize = 10.sp,
+                            color = Color.White
+                        )
+                    }
+                }
             }
         }
     }
