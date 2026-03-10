@@ -220,6 +220,14 @@ fun NotificationsScreen(
                             onDeclineFriendRequest = { senderId ->
                                 // Decline the friend request and delete notification
                                 viewModel.declineFollowRequest(userProfile.uid, senderId, notification.id)
+                            },
+                            onAcceptTag = { flickId, notificationId ->
+                                // Accept being tagged in photo
+                                viewModel.acceptTag(flickId, notificationId)
+                            },
+                            onDeclineTag = { flickId, notificationId ->
+                                // Decline being tagged in photo
+                                viewModel.declineTag(flickId, notificationId)
                             }
                         )
                     }
@@ -247,7 +255,9 @@ private fun NotificationItem(
     onDelete: () -> Unit,
     onUserProfileClick: (String) -> Unit = {},
     onAcceptFriendRequest: (String) -> Unit = {},
-    onDeclineFriendRequest: (String) -> Unit = {}
+    onDeclineFriendRequest: (String) -> Unit = {},
+    onAcceptTag: (String, String) -> Unit = { _, _ -> }, // flickId, notificationId
+    onDeclineTag: (String, String) -> Unit = { _, _ -> } // flickId, notificationId
 ) {
     val backgroundColor = if (isDarkMode) {
         if (notification.isRead) Color(0xFF203A5F) else Color(0xFF2A4A73) // Mid blue - darker than background
@@ -336,34 +346,48 @@ private fun NotificationItem(
                 )
             }
 
-            // Action area - Accept/Decline for FRIEND_REQUEST, or delete/unread
-            if (notification.type == NotificationType.FRIEND_REQUEST && !notification.isRead) {
+            // Action area - Accept/Decline for FRIEND_REQUEST or MENTION (tag), or delete/unread
+            if ((notification.type == NotificationType.FRIEND_REQUEST || notification.type == NotificationType.MENTION) && !notification.isRead) {
                 // Accept/Decline buttons stacked vertically
                 Column(
                     horizontalAlignment = Alignment.End
                 ) {
                     Button(
-                        onClick = { onAcceptFriendRequest(notification.senderId) },
+                        onClick = { 
+                            if (notification.type == NotificationType.FRIEND_REQUEST) {
+                                onAcceptFriendRequest(notification.senderId)
+                            } else {
+                                // Accept tag
+                                onAcceptTag?.invoke(notification.flickId ?: "", notification.id)
+                            }
+                        },
                         shape = RoundedCornerShape(20.dp),
                         modifier = Modifier.wrapContentWidth(),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = Color(0xFF4CAF50) // Green
                         )
                     ) {
-                        Text("Accept", fontSize = 12.sp)
+                        Text(if (notification.type == NotificationType.FRIEND_REQUEST) "Accept" else "Accept Tag", fontSize = 12.sp)
                     }
                     
                     Spacer(modifier = Modifier.height(4.dp))
                     
                     OutlinedButton(
-                        onClick = { onDeclineFriendRequest(notification.senderId) },
+                        onClick = { 
+                            if (notification.type == NotificationType.FRIEND_REQUEST) {
+                                onDeclineFriendRequest(notification.senderId)
+                            } else {
+                                // Decline tag
+                                onDeclineTag?.invoke(notification.flickId ?: "", notification.id)
+                            }
+                        },
                         shape = RoundedCornerShape(20.dp),
                         modifier = Modifier.wrapContentWidth(),
                         colors = ButtonDefaults.outlinedButtonColors(
                             contentColor = Color(0xFFFF4444) // Red
                         )
                     ) {
-                        Text("Decline", fontSize = 12.sp)
+                        Text(if (notification.type == NotificationType.FRIEND_REQUEST) "Decline" else "Decline Tag", fontSize = 12.sp)
                     }
                 }
             } else {

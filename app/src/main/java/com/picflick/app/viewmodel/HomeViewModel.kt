@@ -400,7 +400,8 @@ class HomeViewModel : ViewModel() {
         imageUri: android.net.Uri,
         context: android.content.Context,
         caption: String = "",
-        privacy: String = "friends", // Default to friends-only privacy
+        privacy: String = "friends",
+        taggedFriends: List<String> = emptyList(), // ADDED: Tagged friends
         onComplete: (Boolean) -> Unit = {}
     ) {
         viewModelScope.launch {
@@ -427,7 +428,7 @@ class HomeViewModel : ViewModel() {
                     is Result.Success -> {
                         val imageUrl = uploadResult.data
                         
-                        // Create flick document with privacy setting
+                        // Create flick document with privacy setting and tagged friends
                         val flick = Flick(
                             id = "",
                             userId = userId,
@@ -437,7 +438,9 @@ class HomeViewModel : ViewModel() {
                             description = caption,
                             timestamp = System.currentTimeMillis(),
                             reactions = emptyMap(),
-                            privacy = privacy // Respect privacy setting
+                            commentCount = 0,
+                            privacy = privacy,
+                            taggedFriends = taggedFriends // ADDED: Include tagged friends
                         )
                         
                         // Save to Firestore and notify friends

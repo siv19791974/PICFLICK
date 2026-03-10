@@ -32,6 +32,55 @@ class NotificationViewModel : ViewModel() {
     
     private var listenerRegistration: com.google.firebase.firestore.ListenerRegistration? = null
     
+    private var currentUserId: String? = null // Store current user ID
+    
+    /**
+     * Accept a tag (user accepts being tagged in a photo)
+     */
+    fun acceptTag(flickId: String, notificationId: String) {
+        viewModelScope.launch {
+            val userId = currentUserId ?: return@launch
+            
+            when (val result = repository.acceptTag(flickId, userId)) {
+                is Result.Success -> {
+                    markAsRead(notificationId)
+                    removeNotificationFromList(notificationId)
+                }
+                is Result.Error -> {
+                    errorMessage = result.message
+                }
+                else -> {}
+            }
+        }
+    }
+
+    /**
+     * Decline a tag (user removes themselves from being tagged)
+     */
+    fun declineTag(flickId: String, notificationId: String) {
+        viewModelScope.launch {
+            val userId = currentUserId ?: return@launch
+            
+            when (val result = repository.declineTag(flickId, userId)) {
+                is Result.Success -> {
+                    deleteNotification(notificationId)
+                    removeNotificationFromList(notificationId)
+                }
+                is Result.Error -> {
+                    errorMessage = result.message
+                }
+                else -> {}
+            }
+        }
+    }
+
+    private fun removeNotificationFromList(notificationId: String) {
+        val index = notifications.indexOfFirst { it.id == notificationId }
+        if (index != -1) {
+            notifications.removeAt(index)
+        }
+    }
+
     /**
      * Load notifications for a user with real-time updates
      */
@@ -41,6 +90,7 @@ class NotificationViewModel : ViewModel() {
             return
         }
         
+        currentUserId = userId // Store for later use
         android.util.Log.d("NotificationViewModel", "Loading notifications for user: $userId")
         isLoading = true
         errorMessage = null

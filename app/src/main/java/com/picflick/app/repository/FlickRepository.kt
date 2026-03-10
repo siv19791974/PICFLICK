@@ -1781,6 +1781,56 @@ class FlickRepository private constructor() {
     }
 
     /**
+     * Accept a tag (user accepts being tagged in a photo)
+     */
+    suspend fun acceptTag(flickId: String, userId: String): Result<Unit> {
+        return try {
+            android.util.Log.d("FlickRepository", "User $userId accepting tag in flick $flickId")
+            
+            // Get current flick
+            val flickDoc = db.collection("flicks").document(flickId).get().await()
+            val currentTagged = flickDoc.get("taggedFriends") as? List<String> ?: emptyList()
+            
+            // Add user to taggedFriends if not already there
+            if (userId !in currentTagged) {
+                val updatedTagged = currentTagged + userId
+                db.collection("flicks").document(flickId)
+                    .update("taggedFriends", updatedTagged)
+                    .await()
+            }
+            
+            Result.Success(Unit)
+        } catch (e: Exception) {
+            android.util.Log.e("FlickRepository", "Failed to accept tag: ${e.message}")
+            Result.Error(e, "Failed to accept tag")
+        }
+    }
+
+    /**
+     * Decline a tag (user removes themselves from being tagged)
+     */
+    suspend fun declineTag(flickId: String, userId: String): Result<Unit> {
+        return try {
+            android.util.Log.d("FlickRepository", "User $userId declining tag in flick $flickId")
+            
+            // Get current flick
+            val flickDoc = db.collection("flicks").document(flickId).get().await()
+            val currentTagged = flickDoc.get("taggedFriends") as? List<String> ?: emptyList()
+            
+            // Remove user from taggedFriends
+            val updatedTagged = currentTagged.filter { it != userId }
+            db.collection("flicks").document(flickId)
+                .update("taggedFriends", updatedTagged)
+                .await()
+            
+            Result.Success(Unit)
+        } catch (e: Exception) {
+            android.util.Log.e("FlickRepository", "Failed to decline tag: ${e.message}")
+            Result.Error(e, "Failed to decline tag")
+        }
+    }
+
+    /**
      * Update tagged friends for a flick
      */
     suspend fun updateTaggedFriends(

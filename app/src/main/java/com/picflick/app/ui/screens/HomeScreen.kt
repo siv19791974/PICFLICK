@@ -69,6 +69,7 @@ fun HomeScreen(
     var selectedFlick by remember { mutableStateOf<Flick?>(null) }
     var selectedFlickIndex by remember { mutableIntStateOf(0) }
     var privacySetting by remember { mutableStateOf("friends") } // "friends" or "public"
+    var taggedFriends by remember { mutableStateOf<List<String>>(emptyList()) } // ADDED: Tagged friends
     
     // Reaction picker state
     var showReactionPicker by remember { mutableStateOf(false) }
@@ -100,6 +101,7 @@ fun HomeScreen(
                 imageUri = tempCameraUri!!,
                 context = context,
                 privacy = privacySetting,
+                taggedFriends = taggedFriends, // ADDED: Pass tagged friends
                 onComplete = { success ->
                     if (success) {
                         viewModel.checkDailyUploads(userProfile.uid)
