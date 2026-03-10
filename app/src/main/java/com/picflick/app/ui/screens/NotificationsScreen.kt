@@ -262,148 +262,133 @@ private fun NotificationItem(
         colors = CardDefaults.cardColors(containerColor = backgroundColor),
         shape = RoundedCornerShape(12.dp)
     ) {
-        Column(
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(12.dp)
+                .padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
+            // Sender avatar with notification icon overlay - clickable to view profile
+            Box(
+                modifier = Modifier.clickable { onUserProfileClick(notification.senderId) }
             ) {
-                // Sender avatar with notification icon overlay - clickable to view profile
+                AsyncImage(
+                    model = notification.senderPhotoUrl,
+                    contentDescription = null,
+                    modifier = Modifier
+                        .size(50.dp)
+                        .clip(CircleShape)
+                        .background(if (isDarkMode) Color.Gray else Color.LightGray),
+                    contentScale = ContentScale.Crop
+                )
+
+                // Notification type icon (small overlay)
                 Box(
-                    modifier = Modifier.clickable { onUserProfileClick(notification.senderId) }
-                ) {
-                    AsyncImage(
-                        model = notification.senderPhotoUrl,
-                        contentDescription = null,
-                        modifier = Modifier
-                            .size(50.dp)
-                            .clip(CircleShape)
-                            .background(if (isDarkMode) Color.Gray else Color.LightGray),
-                        contentScale = ContentScale.Crop
-                    )
-
-                    // Notification type icon (small overlay)
-                    Box(
-                        modifier = Modifier
-                            .size(20.dp)
-                            .align(Alignment.BottomEnd)
-                            .background(
-                                color = getNotificationColor(notification.type),
-                                shape = CircleShape
-                            ),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = getNotificationIcon(notification.type),
-                            contentDescription = null,
-                            modifier = Modifier.size(12.dp),
-                            tint = if (isDarkMode) Color.White else Color.Black
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.width(12.dp))
-
-                // Notification content
-                Column(
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Text(
-                        text = notification.title,
-                        fontSize = 14.sp,
-                        fontWeight = if (notification.isRead) FontWeight.Normal else FontWeight.Bold,
-                        color = if (isDarkMode) Color.White else Color.Black,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-
-                    Spacer(modifier = Modifier.height(2.dp))
-
-                    Text(
-                        text = notification.message,
-                        fontSize = 13.sp,
-                        color = if (isDarkMode) Color.LightGray else Color.DarkGray,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis
-                    )
-
-                    Spacer(modifier = Modifier.height(4.dp))
-
-                    Text(
-                        text = formatTimestamp(notification.timestamp),
-                        fontSize = 11.sp,
-                        color = if (isDarkMode) Color.Gray else Color.DarkGray
-                    )
-                }
-
-                // Photo thumbnail (if applicable)
-                if (notification.flickImageUrl != null) {
-                    Spacer(modifier = Modifier.width(8.dp))
-                    AsyncImage(
-                        model = notification.flickImageUrl,
-                        contentDescription = null,
-                        modifier = Modifier
-                            .size(50.dp)
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(Color.DarkGray),
-                        contentScale = ContentScale.Crop
-                    )
-                }
-
-                // Delete button
-                IconButton(
-                    onClick = onDelete,
-                    modifier = Modifier.size(32.dp)
+                    modifier = Modifier
+                        .size(20.dp)
+                        .align(Alignment.BottomEnd)
+                        .background(
+                            color = getNotificationColor(notification.type),
+                            shape = CircleShape
+                        ),
+                    contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        imageVector = Icons.Outlined.Delete,
-                        contentDescription = "Delete",
-                        tint = Color.Gray,
-                        modifier = Modifier.size(18.dp)
-                    )
-                }
-
-                // Unread indicator dot
-                if (!notification.isRead) {
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Box(
-                        modifier = Modifier
-                            .size(8.dp)
-                            .background(Color.Red, CircleShape)
+                        imageVector = getNotificationIcon(notification.type),
+                        contentDescription = null,
+                        modifier = Modifier.size(12.dp),
+                        tint = if (isDarkMode) Color.White else Color.Black
                     )
                 }
             }
 
-            // Accept/Decline buttons for FRIEND_REQUEST
+            Spacer(modifier = Modifier.width(12.dp))
+
+            // Notification content
+            Column(
+                modifier = Modifier.weight(1f)
+            ) {
+                Text(
+                    text = notification.title,
+                    fontSize = 14.sp,
+                    fontWeight = if (notification.isRead) FontWeight.Normal else FontWeight.Bold,
+                    color = if (isDarkMode) Color.White else Color.Black,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+
+                Spacer(modifier = Modifier.height(2.dp))
+
+                Text(
+                    text = notification.message,
+                    fontSize = 13.sp,
+                    color = if (isDarkMode) Color.LightGray else Color.DarkGray,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+
+                Spacer(modifier = Modifier.height(4.dp))
+
+                Text(
+                    text = formatTimestamp(notification.timestamp),
+                    fontSize = 11.sp,
+                    color = if (isDarkMode) Color.Gray else Color.DarkGray
+                )
+            }
+
+            // Action area - Accept/Decline for FRIEND_REQUEST, or delete/unread
             if (notification.type == NotificationType.FRIEND_REQUEST && !notification.isRead) {
-                Spacer(modifier = Modifier.height(12.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                // Accept/Decline buttons stacked vertically
+                Column(
+                    horizontalAlignment = Alignment.End
                 ) {
                     Button(
                         onClick = { onAcceptFriendRequest(notification.senderId) },
-                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(20.dp),
+                        modifier = Modifier.wrapContentWidth(),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = Color(0xFF4CAF50) // Green
-                        ),
-                        shape = RoundedCornerShape(8.dp)
+                        )
                     ) {
-                        Text("Accept")
+                        Text("Accept", fontSize = 12.sp)
                     }
+                    
+                    Spacer(modifier = Modifier.height(4.dp))
                     
                     OutlinedButton(
                         onClick = { onDeclineFriendRequest(notification.senderId) },
-                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(20.dp),
+                        modifier = Modifier.wrapContentWidth(),
                         colors = ButtonDefaults.outlinedButtonColors(
                             contentColor = Color(0xFFFF4444) // Red
-                        ),
-                        shape = RoundedCornerShape(8.dp)
+                        )
                     ) {
-                        Text("Decline")
+                        Text("Decline", fontSize = 12.sp)
+                    }
+                }
+            } else {
+                // Delete button and unread indicator for other types
+                Row {
+                    IconButton(
+                        onClick = onDelete,
+                        modifier = Modifier.size(32.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.Delete,
+                            contentDescription = "Delete",
+                            tint = Color.Gray,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+
+                    // Unread indicator dot
+                    if (!notification.isRead) {
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Box(
+                            modifier = Modifier
+                                .size(8.dp)
+                                .background(Color.Red, CircleShape)
+                        )
                     }
                 }
             }

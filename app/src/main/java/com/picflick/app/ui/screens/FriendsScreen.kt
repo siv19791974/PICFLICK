@@ -138,73 +138,68 @@ private fun FriendListItem(
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 4.dp)
     ) {
-        Column(
-            modifier = Modifier.padding(12.dp)
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            // Top row: Profile photo + user info - clickable to view profile
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable { onProfilePhotoClick() },
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                // Profile photo
-                if (friend.photoUrl.isNotEmpty()) {
-                    AsyncImage(
-                        model = friend.photoUrl,
+            // Profile photo - clickable
+            if (friend.photoUrl.isNotEmpty()) {
+                AsyncImage(
+                    model = friend.photoUrl,
+                    contentDescription = null,
+                    modifier = Modifier
+                        .size(56.dp)
+                        .clip(CircleShape)
+                        .clickable { onProfilePhotoClick() },
+                    contentScale = ContentScale.Crop,
+                    error = painterResource(id = android.R.drawable.ic_menu_myplaces)
+                )
+            } else {
+                Box(
+                    modifier = Modifier
+                        .size(56.dp)
+                        .clip(CircleShape)
+                        .background(if (isDarkMode) Color(0xFF3A3A3C) else Color(0xFFE0E0E0))
+                        .clickable { onProfilePhotoClick() },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Person,
                         contentDescription = null,
-                        modifier = Modifier
-                            .size(56.dp)
-                            .clip(CircleShape),
-                        contentScale = ContentScale.Crop,
-                        error = painterResource(id = android.R.drawable.ic_menu_myplaces)
-                    )
-                } else {
-                    Box(
-                        modifier = Modifier
-                            .size(56.dp)
-                            .clip(CircleShape)
-                            .background(if (isDarkMode) Color(0xFF3A3A3C) else Color(0xFFE0E0E0)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Person,
-                            contentDescription = null,
-                            modifier = Modifier.size(32.dp),
-                            tint = if (isDarkMode) Color.Gray else Color.DarkGray
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.width(12.dp))
-
-                // User info
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = friend.displayName,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                    Text(
-                        text = "${friend.followers.size} followers",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                        modifier = Modifier.size(32.dp),
+                        tint = if (isDarkMode) Color.Gray else Color.DarkGray
                     )
                 }
             }
+
+            Spacer(modifier = Modifier.width(12.dp))
+
+            // User info - takes available space
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = friend.displayName,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold
+                )
+                Text(
+                    text = "${friend.followers.size} followers",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                )
+            }
             
-            Spacer(modifier = Modifier.height(12.dp))
-            
-            // Delete Friend button - full width at bottom
+            // Delete Friend button - small, on the right
             OutlinedButton(
                 onClick = onDeleteFriend,
                 shape = RoundedCornerShape(20.dp),
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.wrapContentWidth(),
                 colors = ButtonDefaults.outlinedButtonColors(
                     contentColor = Color(0xFFFF4444) // Red
                 )
             ) {
-                Text("Delete Friend")
+                Text("Delete", fontSize = 12.sp)
             }
         }
     }
