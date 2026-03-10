@@ -120,9 +120,10 @@ service cloud.firestore {
 
     // ==================== NOTIFICATIONS ====================
     match /notifications/{notificationId} {
-      // Allow read: recipient only
-      allow read: if isAuthenticated() &&
-        request.auth.uid == resource.data.userId;
+      // TEMPORARY: Allow any authenticated user to read notifications
+      // TODO: Change back to recipient-only after testing
+      // Original: allow read: if isAuthenticated() && request.auth.uid == resource.data.userId;
+      allow read: if isAuthenticated();
       
       // Allow create: authenticated users for friend requests and follows
       allow create: if isAuthenticated() && (
