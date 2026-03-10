@@ -47,11 +47,14 @@ fun UserProfileScreen(
     currentUser: UserProfile, // The logged-in user
     photos: List<Flick>,
     isFriend: Boolean,
+    hasSentRequest: Boolean = false, // Current user sent friend request to this user
+    hasReceivedRequest: Boolean = false, // This user sent friend request to current user
     isLoading: Boolean,
     onBack: () -> Unit,
     onPhotoClick: (Flick, Int) -> Unit = { _, _ -> },
     onProfilePhotoClick: () -> Unit = {},
     onAddFriend: () -> Unit = {},
+    onAcceptRequest: () -> Unit = {}, // Accept friend request from this user
     onMessageClick: () -> Unit = {},
     onBlockUser: () -> Unit = {},
     onRefresh: () -> Unit = {}
@@ -142,79 +145,115 @@ fun UserProfileScreen(
 
             // Bio (shown regardless of friendship status)
             if (userProfile.bio.isNotEmpty()) {
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(8.dp))
                 Text(
                     text = userProfile.bio,
                     fontSize = 14.sp,
-                    color = Color(0xFF87CEEB), // Light blue
+                    color = Color.White.copy(alpha = 0.8f),
                     modifier = Modifier.padding(horizontal = 32.dp)
                 )
             }
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Action buttons based on friendship status
-            if (!isFriend) {
-                // NOT FRIENDS - Show Add Friend button
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier.padding(horizontal = 32.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Person,
-                        contentDescription = stringResource(R.string.content_desc_person),
-                        modifier = Modifier.size(48.dp),
-                        tint = Color.Gray
-                    )
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    Text(
-                        text = "Not Friends Yet",
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = Color.Gray
-                    )
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    Text(
-                        text = "Add ${userProfile.displayName} as a friend to see their photos",
-                        fontSize = 14.sp,
-                        color = Color.Gray.copy(alpha = 0.8f),
-                        modifier = Modifier.padding(horizontal = 16.dp)
-                    )
-
-                    Spacer(modifier = Modifier.height(24.dp))
-
-                    Button(
-                        onClick = onAddFriend,
+            // Action buttons based on friendship status - 4 STATES
+            when {
+                // STATE 1: Friends - Show stats, photos, and message button
+                isFriend -> {
+                    // Stats Row
+                    Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(48.dp),
-                        shape = RoundedCornerShape(24.dp)
+                            .padding(horizontal = 16.dp),
+                        horizontalArrangement = Arrangement.SpaceEvenly
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.Person,
-                            contentDescription = stringResource(R.string.content_desc_add_friend),
-                            modifier = Modifier.size(20.dp)
+                        StatItem(
+                            value = photos.size.toString(),
+                            label = "Photos"
                         )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Add Friend")
+                        StatItem(
+                            value = userProfile.followers.size.toString(),
+                            label = "Followers"
+                        )
+                        StatItem(
+                            value = userProfile.following.size.toString(),
+                            label = "Following"
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(32.dp))
+
+                    // Photos Grid (only for friends)
+                    if (isLoading) {
+                        CircularProgressIndicator(color = Color.White)
+                    } else if (photos.isEmpty()) {
+                        Text(
+                            text = "No photos yet",
+                            color = Color.Gray,
+                            fontSize = 16.sp
+                        )
+                    } else {
+                        Text(
+                            text = "Photos",
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 8.dp)
+                        )
+
+                        LazyVerticalGrid(
+                            columns = GridCells.Fixed(3),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(max = 600.dp)
+                                .padding(horizontal = 8.dp),
+                            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            items(photos) { photo ->
+                                AsyncImage(
+                                    model = photo.imageUrl,
+                                    contentDescription = stringResource(R.string.content_desc_photo),
+                                    modifier = Modifier
+                                        .aspectRatio(1f)
+                                        .clickable {
+                                            onPhotoClick(photo, photos.indexOf(photo))
+                                        },
+                                    contentScale = ContentScale.Crop
+                                )
+                            }
+                        }
                     }
 
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    // Block User button for non-friends
+                    // Message button for friends
+                    Button(
+                        onClick = onMessageClick,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 32.dp)
+                            .height(48.dp),
+                        shape = RoundedCornerShape(24.dp)
+                    ) {
+                        Text("Send Message")
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // Block User button for friends
                     OutlinedButton(
                         onClick = onBlockUser,
                         modifier = Modifier
                             .fillMaxWidth()
+                            .padding(horizontal = 32.dp)
                             .height(48.dp),
                         shape = RoundedCornerShape(24.dp),
                         colors = ButtonDefaults.outlinedButtonColors(
-                        contentColor = Color(0xFFFF4444) // Red color for block
-                    )
+                            contentColor = Color(0xFFFF4444)
+                        )
                     ) {
                         Icon(
                             imageVector = Icons.Default.Block,
@@ -224,117 +263,238 @@ fun UserProfileScreen(
                         Spacer(modifier = Modifier.width(8.dp))
                         Text("Block User")
                     }
+
+                    Spacer(modifier = Modifier.height(32.dp))
                 }
-            } else {
-                // FRIENDS - Show stats and photos
-                // Stats Row
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp),
-                    horizontalArrangement = Arrangement.SpaceEvenly
-                ) {
-                    StatItem(
-                        value = photos.size.toString(),
-                        label = "Photos"
-                    )
-                    StatItem(
-                        value = userProfile.followers.size.toString(),
-                        label = "Followers"
-                    )
-                    StatItem(
-                        value = userProfile.following.size.toString(),
-                        label = "Following"
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(32.dp))
-
-                // Photos Grid (only for friends)
-                if (isLoading) {
-                    CircularProgressIndicator(color = Color.White)
-                } else if (photos.isEmpty()) {
-                    Text(
-                        text = "No photos yet",
-                        color = Color.Gray,
-                        fontSize = 16.sp
-                    )
-                } else {
-                    Text(
-                        text = "Photos",
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 8.dp)
-                    )
-
-                    // Photo grid
-                    LazyVerticalGrid(
-                        columns = GridCells.Fixed(3),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .heightIn(max = 600.dp)
-                            .padding(horizontal = 8.dp),
-                        horizontalArrangement = Arrangement.spacedBy(4.dp),
-                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                
+                // STATE 2: Received friend request - Show Accept button
+                hasReceivedRequest -> {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier.padding(horizontal = 32.dp)
                     ) {
-                        items(photos) { photo ->
-                            AsyncImage(
-                                model = photo.imageUrl,
-                                contentDescription = stringResource(R.string.content_desc_photo),
-                                modifier = Modifier
-                                    .aspectRatio(1f)
-                                    .clickable {
-                                        onPhotoClick(photo, photos.indexOf(photo))
-                                    },
-                                contentScale = ContentScale.Crop
+                        Icon(
+                            imageVector = Icons.Default.Person,
+                            contentDescription = stringResource(R.string.content_desc_person),
+                            modifier = Modifier.size(48.dp),
+                            tint = Color(0xFF4CAF50)
+                        )
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        Text(
+                            text = "Friend Request Received",
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = Color(0xFF4CAF50)
+                        )
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        Text(
+                            text = "${userProfile.displayName} wants to be your friend",
+                            fontSize = 14.sp,
+                            color = Color.Gray.copy(alpha = 0.8f),
+                            modifier = Modifier.padding(horizontal = 16.dp)
+                        )
+
+                        Spacer(modifier = Modifier.height(24.dp))
+
+                        // Accept Request button (Green)
+                        Button(
+                            onClick = onAcceptRequest,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(48.dp),
+                            shape = RoundedCornerShape(24.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color(0xFF4CAF50)
                             )
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Person,
+                                contentDescription = null,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Accept Friend Request")
+                        }
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        // Block User button
+                        OutlinedButton(
+                            onClick = onBlockUser,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(48.dp),
+                            shape = RoundedCornerShape(24.dp),
+                            colors = ButtonDefaults.outlinedButtonColors(
+                                contentColor = Color(0xFFFF4444)
+                            )
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Block,
+                                contentDescription = "Block user",
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Block User")
                         }
                     }
+                    
+                    Spacer(modifier = Modifier.height(32.dp))
                 }
+                
+                // STATE 3: Sent friend request - Show disabled Friend Requested button
+                hasSentRequest -> {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier.padding(horizontal = 32.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Person,
+                            contentDescription = stringResource(R.string.content_desc_person),
+                            modifier = Modifier.size(48.dp),
+                            tint = Color.Gray
+                        )
 
-                Spacer(modifier = Modifier.height(16.dp))
+                        Spacer(modifier = Modifier.height(16.dp))
 
-                // Message button for friends
-                Button(
-                    onClick = onMessageClick,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 32.dp)
-                        .height(48.dp),
-                    shape = RoundedCornerShape(24.dp)
-                ) {
-                    Text("Send Message")
+                        Text(
+                            text = "Friend Requested",
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = Color.Gray
+                        )
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        Text(
+                            text = "Waiting for ${userProfile.displayName} to accept",
+                            fontSize = 14.sp,
+                            color = Color.Gray.copy(alpha = 0.8f),
+                            modifier = Modifier.padding(horizontal = 16.dp)
+                        )
+
+                        Spacer(modifier = Modifier.height(24.dp))
+
+                        // Disabled button showing "Friend Requested" state
+                        OutlinedButton(
+                            onClick = { /* Can't cancel yet */ },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(48.dp),
+                            shape = RoundedCornerShape(24.dp),
+                            colors = ButtonDefaults.outlinedButtonColors(
+                                contentColor = Color.Gray
+                            )
+                        ) {
+                            Text("Friend Requested")
+                        }
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        // Block User button
+                        OutlinedButton(
+                            onClick = onBlockUser,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(48.dp),
+                            shape = RoundedCornerShape(24.dp),
+                            colors = ButtonDefaults.outlinedButtonColors(
+                                contentColor = Color(0xFFFF4444)
+                            )
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Block,
+                                contentDescription = "Block user",
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Block User")
+                        }
+                    }
+                    
+                    Spacer(modifier = Modifier.height(32.dp))
                 }
+                
+                // STATE 4: Not friends, no request - Show Add Friend button
+                else -> {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier.padding(horizontal = 32.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Person,
+                            contentDescription = stringResource(R.string.content_desc_person),
+                            modifier = Modifier.size(48.dp),
+                            tint = Color.Gray
+                        )
 
-                Spacer(modifier = Modifier.height(16.dp))
+                        Spacer(modifier = Modifier.height(16.dp))
 
-                // Block User button for friends
-                OutlinedButton(
-                    onClick = onBlockUser,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 32.dp)
-                        .height(48.dp),
-                    shape = RoundedCornerShape(24.dp),
-                    colors = ButtonDefaults.outlinedButtonColors(
-                        contentColor = Color(0xFFFF4444) // Red color for block
-                    )
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Block,
-                        contentDescription = "Block user",
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Block User")
+                        Text(
+                            text = "Not Friends Yet",
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = Color.Gray
+                        )
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        Text(
+                            text = "Add ${userProfile.displayName} as a friend to see their photos",
+                            fontSize = 14.sp,
+                            color = Color.Gray.copy(alpha = 0.8f),
+                            modifier = Modifier.padding(horizontal = 16.dp)
+                        )
+
+                        Spacer(modifier = Modifier.height(24.dp))
+
+                        Button(
+                            onClick = onAddFriend,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(48.dp),
+                            shape = RoundedCornerShape(24.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Person,
+                                contentDescription = stringResource(R.string.content_desc_add_friend),
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Add Friend")
+                        }
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        // Block User button for non-friends
+                        OutlinedButton(
+                            onClick = onBlockUser,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(48.dp),
+                            shape = RoundedCornerShape(24.dp),
+                            colors = ButtonDefaults.outlinedButtonColors(
+                                contentColor = Color(0xFFFF4444)
+                            )
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Block,
+                                contentDescription = "Block user",
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Block User")
+                        }
+                    }
+                    
+                    Spacer(modifier = Modifier.height(32.dp))
                 }
-
-                Spacer(modifier = Modifier.height(32.dp))
             }
-            // End of if/else friendship block
+            // End of friendship states when block
         }
         // End of Column (pull-refresh content)
 

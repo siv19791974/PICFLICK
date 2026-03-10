@@ -1114,9 +1114,13 @@ private fun AuthenticatedContent(
                 // Check if this is the current user
                 val isCurrentUser = targetUserId == userProfile.uid
                 
-                // Check if they are friends
+                // Check if they are friends (mutual following)
                 val isFriend = userProfile.following.contains(targetUserId) && 
                               targetUser?.followers?.contains(userProfile.uid) == true
+                
+                // Check friend request states
+                val hasSentRequest = userProfile.sentFollowRequests.contains(targetUserId)
+                val hasReceivedRequest = userProfile.pendingFollowRequests.contains(targetUserId)
                 
                 LaunchedEffect(targetUserId) {
                     isLoading = true
@@ -1156,6 +1160,8 @@ private fun AuthenticatedContent(
                         currentUser = userProfile,
                         photos = targetUserPhotos,
                         isFriend = isFriend,
+                        hasSentRequest = hasSentRequest,
+                        hasReceivedRequest = hasReceivedRequest,
                         isLoading = isLoading,
                         onBack = { onScreenChange(Screen.Home) },
                         onRefresh = {
@@ -1199,12 +1205,16 @@ private fun AuthenticatedContent(
                             }
                         },
                         onAddFriend = {
-                            // Navigate to FindFriends and trigger follow
+                            // Send friend request
                             friendsViewModel.sendFollowRequest(
                                 userProfile.uid,
                                 target,
                                 userProfile
                             )
+                        },
+                        onAcceptRequest = {
+                            // Accept friend request from this user
+                            friendsViewModel.acceptFollowRequest(userProfile.uid, target)
                         },
                         onMessageClick = {
                             // Navigate to chat with this user

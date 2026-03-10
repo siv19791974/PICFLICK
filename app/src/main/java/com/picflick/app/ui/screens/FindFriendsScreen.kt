@@ -157,7 +157,8 @@ fun FindFriendsScreen(
                         }
                     }
                 },
-                onUserClick = onNavigateToProfile
+                onUserClick = onNavigateToProfile,
+                onRefresh = { viewModel.syncContacts(context, userProfile.uid) }
             )
             2 -> InviteTab(
                 userProfile = userProfile,
@@ -330,8 +331,17 @@ private fun ContactsTab(
     hasPermission: Boolean,
     onRequestPermission: () -> Unit,
     onFollowClick: (UserProfile, String) -> Unit,
-    onUserClick: (String) -> Unit
+    onUserClick: (String) -> Unit,
+    onRefresh: () -> Unit = {}
 ) {
+    val isDarkMode = ThemeManager.isDarkMode.value
+    
+    // Pull-to-refresh state
+    val pullRefreshState = rememberPullRefreshState(
+        refreshing = viewModel.isLoading,
+        onRefresh = onRefresh
+    )
+    
     if (!hasPermission) {
         // Permission request UI
         Box(
@@ -370,67 +380,82 @@ private fun ContactsTab(
                 }
             }
         }
-    } else if (viewModel.isLoading) {
-        FullScreenLoading()
     } else {
-        // Show contacts on the app
-        Column(modifier = Modifier.fillMaxSize()) {
-            // On the app section
-            if (viewModel.contactsOnApp.isNotEmpty()) {
-                Text(
-                    text = "Contacts on PicFlick (${viewModel.contactsOnApp.size})",
-                    style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier.padding(16.dp)
-                )
-
-                LazyColumn {
-                    items(viewModel.contactsOnApp) { user ->
-                        UserResultItem(
-                            user = user,
-                            isFollowing = userProfile.following.contains(user.uid),
-                            hasSentRequest = userProfile.sentFollowRequests.contains(user.uid),
-                            hasReceivedRequest = userProfile.pendingFollowRequests.contains(user.uid),
-                            isProcessing = viewModel.processingUserIds.contains(user.uid),
-                            onFollowClick = {
-                                val action = when {
-                                    userProfile.following.contains(user.uid) -> "unfollow"
-                                    userProfile.pendingFollowRequests.contains(user.uid) -> "accept"
-                                    else -> "send_request"
-                                }
-                                onFollowClick(user, action)
-                            },
-                            onUserClick = { onUserClick(user.uid) },
-                            subtitle = "From your contacts"
-                        )
-                    }
-                }
+        // Show contacts with pull-to-refresh
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .pullRefresh(pullRefreshState)
+        ) {
+            if (viewModel.isLoading && viewModel.contactsOnApp.isEmpty()) {
+                FullScreenLoading()
             } else {
-                // No contacts on app
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Icon(
-                    imageVector = Icons.Default.Person,
-                    contentDescription = null,
-                    modifier = Modifier.size(64.dp),
-                    tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
-                )
-                        Spacer(modifier = Modifier.height(16.dp))
+                // Show contacts on the app
+                Column(modifier = Modifier.fillMaxSize()) {
+                    // On the app section
+                    if (viewModel.contactsOnApp.isNotEmpty()) {
                         Text(
-                            text = "No contacts on PicFlick yet",
-                            style = MaterialTheme.typography.bodyLarge
+                            text = "Contacts on PicFlick (${viewModel.contactsOnApp.size})",
+                            style = MaterialTheme.typography.titleMedium,
+                            modifier = Modifier.padding(16.dp)
                         )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            text = "Invite them to join!",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.primary
-                        )
+
+                        LazyColumn {
+                            items(viewModel.contactsOnApp) { user ->
+                                UserResultItem(
+                                    user = user,
+                                    isFollowing = userProfile.following.contains(user.uid),
+                                    hasSentRequest = userProfile.sentFollowRequests.contains(user.uid),
+                                    hasReceivedRequest = userProfile.pendingFollowRequests.contains(user.uid),
+                                    isProcessing = viewModel.processingUserIds.contains(user.uid),
+                                    onFollowClick = {
+                                        val action = when {
+                                            userProfile.following.contains(user.uid) -> "unfollow"
+                                            userProfile.pendingFollowRequests.contains(user.uid) -> "accept"
+                                            else -> "send_request"
+                                        }
+                                        onFollowClick(user, action)
+                                    },
+                                    onUserClick = { onUserClick(user.uid) },
+                                    subtitle = "From your contacts"
+                                )
+                            }
+                        }
+                    } else {
+                        // No contacts on app
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Icon(
+                                    imageVector = Icons.Default.Person,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(64.dp),
+                                    tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                                )
+                                Spacer(modifier = Modifier.height(16.dp))
+                                Text(
+                                    text = "No contacts on PicFlick yet",
+                                    style = MaterialTheme.typography.bodyLarge
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(
+                                    text = "Invite them to join!",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                        }
                     }
                 }
             }
+            
+            PullRefreshIndicator(
+                refreshing = viewModel.isLoading,
+                state = pullRefreshState,
+                modifier = Modifier.align(Alignment.TopCenter)
+            )
         }
     }
 }
@@ -699,7 +724,7 @@ private fun UserResultItem(
                             contentColor = Color.Gray
                         )
                     ) {
-                        Text("Requested")
+                        Text("Friend Requested")
                     }
                 }
                 hasReceivedRequest -> {
@@ -729,7 +754,7 @@ private fun UserResultItem(
                         shape = RoundedCornerShape(20.dp),
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Text("Follow")
+                        Text("Add Friend")
                     }
                 }
             }
