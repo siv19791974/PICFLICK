@@ -94,63 +94,92 @@ class FlickRepository private constructor() {
     }
 
     /**
-     * Get all flicks from friends + user's own photos (private photos)
-     * Queries separately and merges to avoid Firestore whereIn limitations
+     * Get all flicks from friends + user's own photos with PAGINATION support for infinite scroll
+     * @param lastTimestamp - timestamp of last loaded photo for pagination (null for first load)
+     * @param pageSize - number of photos to load per page
+     */
+    suspend fun getFlicksForUserPaginated(
+        userId: String,
+        lastTimestamp: Long? = null,
+        pageSize: Int = 20
+    ): Result<List<Flick>> {
+        return try {
+            // Get friends list
+            val userDoc = db.collection("users").document(userId).get().await()
+            val userProfile = userDoc.toObject(UserProfile::class.java)
+            val friends = userProfile?.following ?: emptyList()
+
+            // Build base query for user - ordered by timestamp DESC
+            var ownFlicksQuery = db.collection("flicks")
+                .whereEqualTo("userId", userId)
+                .orderBy("timestamp", Query.Direction.DESCENDING)
+                .limit(pageSize.toLong())
+            
+            // Add pagination if lastTimestamp provided
+            if (lastTimestamp != null) {
+                ownFlicksQuery = ownFlicksQuery.startAfter(lastTimestamp)
+            }
+
+            val ownFlicksSnapshot = ownFlicksQuery.get().await()
+            val ownFlicks = ownFlicksSnapshot.toObjects(Flick::class.java)
+
+            // Query friends' photos
+            val friendsFlicks = if (friends.isNotEmpty()) {
+                friends.chunked(Constants.Pagination.MAX_FRIENDS_BATCH).flatMap { friendBatch ->
+                    // Query "friends" privacy photos
+                    var friendsPrivacyQuery = db.collection("flicks")
+                        .whereIn("userId", friendBatch)
+                        .whereEqualTo("privacy", "friends")
+                        .orderBy("timestamp", Query.Direction.DESCENDING)
+                        .limit(pageSize.toLong())
+                    
+                    if (lastTimestamp != null) {
+                        friendsPrivacyQuery = friendsPrivacyQuery.startAfter(lastTimestamp)
+                    }
+                    
+                    val friendsPrivacySnapshot = friendsPrivacyQuery.get().await()
+                    
+                    // Query "public" privacy photos
+                    var publicPrivacyQuery = db.collection("flicks")
+                        .whereIn("userId", friendBatch)
+                        .whereEqualTo("privacy", "public")
+                        .orderBy("timestamp", Query.Direction.DESCENDING)
+                        .limit(pageSize.toLong())
+                    
+                    if (lastTimestamp != null) {
+                        publicPrivacyQuery = publicPrivacyQuery.startAfter(lastTimestamp)
+                    }
+                    
+                    val publicPrivacySnapshot = publicPrivacyQuery.get().await()
+                    
+                    friendsPrivacySnapshot.toObjects(Flick::class.java) + 
+                    publicPrivacySnapshot.toObjects(Flick::class.java)
+                }
+            } else {
+                emptyList()
+            }
+
+            // Merge, remove duplicates, and sort by timestamp DESC (newest first)
+            val allFlicks = (ownFlicks + friendsFlicks)
+                .distinctBy { it.id }
+                .sortedByDescending { it.timestamp }
+                .take(pageSize) // Take only requested page size
+
+            android.util.Log.d("FlickRepository", "Loaded ${allFlicks.size} photos for page")
+            Result.Success(allFlicks)
+        } catch (e: Exception) {
+            android.util.Log.e("FlickRepository", "Failed to load paginated photos", e)
+            Result.Error(e, "Failed to load photos: ${e.message}")
+        }
+    }
+
+    /**
+     * Get all flicks from friends + user's own photos (legacy - loads first page only)
      */
     fun getFlicksForUser(userId: String, onResult: (Result<List<Flick>>) -> Unit) {
         repositoryScope.launch {
-            try {
-                // Get friends list
-                val userDoc = db.collection("users").document(userId).get().await()
-                val userProfile = userDoc.toObject(UserProfile::class.java)
-                val friends = userProfile?.following ?: emptyList()
-
-                // Query user's own photos (simple query - no composite index needed)
-                val ownFlicksSnapshot = db.collection("flicks")
-                    .whereEqualTo("userId", userId)
-                    .limit(Constants.Pagination.FLICKS_PER_PAGE.toLong())
-                    .get()
-                    .await()
-
-                val ownFlicks = ownFlicksSnapshot.toObjects(Flick::class.java)
-
-                // Query friends' photos with BOTH "friends" and "public" privacy
-                val friendsFlicks = if (friends.isNotEmpty()) {
-                    friends.chunked(Constants.Pagination.MAX_FRIENDS_BATCH).flatMap { friendBatch ->
-                        // Query "friends" privacy photos
-                        val friendsPrivacySnapshot = db.collection("flicks")
-                            .whereIn("userId", friendBatch)
-                            .whereEqualTo("privacy", "friends")
-                            .limit(Constants.Pagination.FLICKS_PER_PAGE.toLong())
-                            .get()
-                            .await()
-                        
-                        // Query "public" privacy photos
-                        val publicPrivacySnapshot = db.collection("flicks")
-                            .whereIn("userId", friendBatch)
-                            .whereEqualTo("privacy", "public")
-                            .limit(Constants.Pagination.FLICKS_PER_PAGE.toLong())
-                            .get()
-                            .await()
-                        
-                        friendsPrivacySnapshot.toObjects(Flick::class.java) + 
-                        publicPrivacySnapshot.toObjects(Flick::class.java)
-                    }
-                } else {
-                    emptyList()
-                }
-
-                // Merge and sort in memory (client-side sorting)
-                val allFlicks = (ownFlicks + friendsFlicks)
-                    .distinctBy { it.id }
-                    .sortedByDescending { it.timestamp }
-                    .take(Constants.Pagination.FLICKS_PER_PAGE)
-
-                onResult(Result.Success(allFlicks))
-            } catch (e: Exception) {
-                android.util.Log.e("FlickRepository", "Failed to load photos for feed", e)
-                onResult(Result.Error(e, "Failed to load photos. Check your connection and try again."))
-            }
+            val result = getFlicksForUserPaginated(userId, null, Constants.Pagination.FLICKS_PER_PAGE)
+            onResult(result)
         }
     }
 

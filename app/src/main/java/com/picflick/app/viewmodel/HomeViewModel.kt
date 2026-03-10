@@ -31,6 +31,12 @@ class HomeViewModel : ViewModel() {
     var isLoading by mutableStateOf(false)
         private set
 
+    var isLoadingMore by mutableStateOf(false)
+        private set
+
+    var canLoadMore by mutableStateOf(true)
+        private set
+
     var errorMessage by mutableStateOf<String?>(null)
         private set
 
@@ -59,16 +65,19 @@ class HomeViewModel : ViewModel() {
 
         isLoading = true
         errorMessage = null
+        isLoadingMore = false
+        canLoadMore = true
 
         when (val filter = selectedFilter) {
             is FeedFilter.AllFriends -> {
-                // Load all friends' flicks
-                repository.getFlicksForUser(userId) { result ->
-                    when (result) {
+                // Load all friends' flicks (first page)
+                viewModelScope.launch {
+                    when (val result = repository.getFlicksForUserPaginated(userId, null, 20)) {
                         is Result.Success -> {
                             flicks.clear()
                             flicks.addAll(result.data)
                             isLoading = false
+                            canLoadMore = result.data.size >= 20
                         }
                         is Result.Error -> {
                             errorMessage = result.message
@@ -96,6 +105,42 @@ class HomeViewModel : ViewModel() {
                         }
                     }
                 }
+            }
+        }
+    }
+
+    /**
+     * Load MORE flicks for infinite scroll (pagination)
+     */
+    fun loadMoreFlicks() {
+        val userId = currentUserId
+        if (userId == null || isLoadingMore || !canLoadMore) return
+
+        // Get last flick timestamp for pagination
+        val lastFlick = flicks.lastOrNull() ?: return
+        val lastTimestamp = lastFlick.timestamp
+
+        isLoadingMore = true
+
+        viewModelScope.launch {
+            when (val result = repository.getFlicksForUserPaginated(userId, lastTimestamp, 20)) {
+                is Result.Success -> {
+                    val newFlicks = result.data
+                    if (newFlicks.isNotEmpty()) {
+                        // Filter out duplicates
+                        val existingIds = flicks.map { it.id }.toSet()
+                        val uniqueNewFlicks = newFlicks.filter { it.id !in existingIds }
+                        flicks.addAll(uniqueNewFlicks)
+                    }
+                    canLoadMore = newFlicks.size >= 20
+                    isLoadingMore = false
+                }
+                is Result.Error -> {
+                    // Don't show error for pagination - just stop loading
+                    isLoadingMore = false
+                    canLoadMore = false
+                }
+                is Result.Loading -> { }
             }
         }
     }
