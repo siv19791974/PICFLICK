@@ -1081,7 +1081,7 @@ class FlickRepository private constructor() {
     }
 
     /**
-     * Listen to notifications in real-time
+     * Listen to notifications in real-time with safe type parsing
      */
     fun listenToNotifications(
         userId: String,
@@ -1099,7 +1099,27 @@ class FlickRepository private constructor() {
                 }
 
                 if (snapshot != null) {
-                    val notifications = snapshot.toObjects(Notification::class.java)
+                    val notifications = snapshot.documents.mapNotNull { doc ->
+                        try {
+                            val data = doc.data ?: return@mapNotNull null
+                            Notification(
+                                id = doc.id,
+                                userId = data["userId"] as? String ?: "",
+                                senderId = data["senderId"] as? String ?: "",
+                                senderName = data["senderName"] as? String ?: "",
+                                senderPhotoUrl = data["senderPhotoUrl"] as? String ?: "",
+                                type = parseNotificationType(data["type"] as? String),
+                                title = data["title"] as? String ?: "",
+                                message = data["message"] as? String ?: "",
+                                flickId = data["flickId"] as? String,
+                                flickImageUrl = data["flickImageUrl"] as? String,
+                                isRead = data["isRead"] as? Boolean ?: false,
+                                timestamp = (data["timestamp"] as? Long) ?: System.currentTimeMillis()
+                            )
+                        } catch (e: Exception) {
+                            null
+                        }
+                    }
                     onUpdate(notifications)
                 }
             }
