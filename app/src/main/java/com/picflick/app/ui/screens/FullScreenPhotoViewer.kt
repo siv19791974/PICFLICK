@@ -552,30 +552,30 @@ fun FullScreenPhotoViewer(
                                     }
                                     
                                     // LOCK TO ONE AXIS - no diagonal wobble!
-                                    // Also check boundaries - can't drag past first or last photo
+                                    // Simplified boundary check - only block at first/last photo
                                     if (isDraggingVertically) {
-                                        val canDragUp = currentPageIndex < validPhotos.size - 1
-                                        val canDragDown = currentPageIndex > 0
+                                        val atTop = currentPageIndex == 0
+                                        val atBottom = currentPageIndex == validPhotos.size - 1
                                         
-                                        if ((amount.y < 0 && canDragUp) || (amount.y > 0 && canDragDown) || 
-                                            (amount.y < 0 && !canDragUp && rawDragY > 0) || 
-                                            (amount.y > 0 && !canDragDown && rawDragY < 0)) {
+                                        // Block going past boundaries, but allow snap-back
+                                        val blockingUp = atBottom && amount.y < 0 && rawDragY <= 0
+                                        val blockingDown = atTop && amount.y > 0 && rawDragY >= 0
+                                        
+                                        if (!blockingUp && !blockingDown) {
                                             rawDragY += amount.y
                                             coroutineScope.launch {
                                                 dragYAnim.snapTo(rawDragY)
                                             }
                                         }
                                     } else {
-                                        val canDragLeft = currentPageIndex < validPhotos.size - 1  // At last photo, can't drag left
-                                        val canDragRight = currentPageIndex > 0  // At first photo, can't drag right
+                                        val atLeft = currentPageIndex == 0  // First photo
+                                        val atRight = currentPageIndex == validPhotos.size - 1  // Last photo
                                         
-                                        // Only apply drag if:
-                                        // - Dragging left and can go next, OR
-                                        // - Dragging right and can go prev, OR  
-                                        // - Already dragged past boundary (allow snap back)
-                                        if ((amount.x < 0 && canDragLeft) || (amount.x > 0 && canDragRight) || 
-                                            (amount.x < 0 && !canDragLeft && rawDragX > 0) || 
-                                            (amount.x > 0 && !canDragRight && rawDragX < 0)) {
+                                        // Block going past boundaries, but allow snap-back
+                                        val blockingLeft = atRight && amount.x < 0 && rawDragX <= 0
+                                        val blockingRight = atLeft && amount.x > 0 && rawDragX >= 0
+                                        
+                                        if (!blockingLeft && !blockingRight) {
                                             rawDragX += amount.x
                                             coroutineScope.launch {
                                                 dragXAnim.snapTo(rawDragX)
