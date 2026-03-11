@@ -23,6 +23,9 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -462,11 +465,42 @@ fun MainScreen(
         )
     }
 
+    // Snackbar state for error feedback
+    val snackbarHostState = remember { SnackbarHostState() }
+    
+    // Collect errors from all ViewModels and show in Snackbar
+    LaunchedEffect(
+        homeViewModel.errorMessage,
+        chatViewModel.errorMessage,
+        notificationViewModel.errorMessage,
+        friendsViewModel.errorMessage
+    ) {
+        val errors = listOfNotNull(
+            homeViewModel.errorMessage,
+            chatViewModel.errorMessage,
+            notificationViewModel.errorMessage,
+            friendsViewModel.errorMessage
+        )
+        
+        errors.firstOrNull()?.let { error ->
+            snackbarHostState.showSnackbar(
+                message = error,
+                duration = SnackbarDuration.Short
+            )
+            // Clear errors after showing
+            homeViewModel.clearError()
+            chatViewModel.clearError()
+            notificationViewModel.clearError()
+            friendsViewModel.clearError()
+        }
+    }
+
     // Outer Scaffold with bottom navigation for all screens
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         containerColor = MaterialTheme.colorScheme.background,
         contentColor = MaterialTheme.colorScheme.onBackground,
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             // SHARED logo banner - never moves when switching screens
             if (currentUser != null && userProfile != null) {

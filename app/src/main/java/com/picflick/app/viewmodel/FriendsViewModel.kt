@@ -38,12 +38,23 @@ class FriendsViewModel : ViewModel() {
     var contactUsers = mutableStateListOf<UserProfile>()
         private set
 
+    /** Error message for failed operations */
+    var errorMessage by mutableStateOf<String?>(null)
+        private set
+
     // Alias for contactUsers - contacts found on PicFlick
     val contactsOnApp: List<UserProfile> get() = contactUsers
 
     // Track which users are currently being processed (follow/unfollow)
     var processingUserIds = mutableStateListOf<String>()
         private set
+
+    /**
+     * Clear any error message
+     */
+    fun clearError() {
+        errorMessage = null
+    }
 
     init {
         // Load suggested users on init
@@ -70,7 +81,7 @@ class FriendsViewModel : ViewModel() {
                         followingUsers.add(result.data)
                     }
                     is Result.Error -> {
-                        // Silently skip users that can't be loaded
+                        errorMessage = result.message
                     }
                     is Result.Loading -> { }
                 }
