@@ -75,13 +75,6 @@ fun SplashScreen(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             LogoImage() // Uses 40dp height - same as home screen banner
-            
-            // Android icon below logo
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = "🤖",
-                fontSize = 24.sp
-            )
         }
 
         // Loading dots at bottom

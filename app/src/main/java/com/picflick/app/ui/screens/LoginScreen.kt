@@ -172,13 +172,6 @@ fun LoginScreen(
             contentDescription = stringResource(R.string.login_logo_content_desc),
             modifier = Modifier.size(150.dp)
         )
-        
-        // Android icon below logo
-        Spacer(modifier = Modifier.height(8.dp))
-        Text(
-            text = "🤖",
-            fontSize = 32.sp
-        )
 
         Spacer(modifier = Modifier.height(48.dp))
 
