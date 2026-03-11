@@ -105,6 +105,7 @@ class NotificationViewModel : ViewModel() {
 
     /**
      * Load notifications for a user with real-time updates
+     * Also cleans up old read notifications automatically
      */
     fun loadNotifications(userId: String) {
         if (userId.isEmpty()) {
@@ -119,6 +120,9 @@ class NotificationViewModel : ViewModel() {
         
         viewModelScope.launch {
             try {
+                // Clean up old read notifications (auto-delete after 7 days)
+                cleanupOldNotifications(userId)
+                
                 // Set up real-time listener
                 listenerRegistration = flickRepository.listenToNotifications(
                     userId = userId,
@@ -282,6 +286,23 @@ class NotificationViewModel : ViewModel() {
      */
     fun clearError() {
         errorMessage = null
+    }
+    
+    /**
+     * Clean up old read notifications (auto-delete after 7 days)
+     * Runs silently in background - doesn't affect user experience
+     */
+    private suspend fun cleanupOldNotifications(userId: String) {
+        try {
+            notificationRepository.cleanupOldReadNotifications(userId) { deletedCount ->
+                if (deletedCount > 0) {
+                    android.util.Log.d("NotificationViewModel", "Auto-deleted $deletedCount old read notifications")
+                }
+            }
+        } catch (e: Exception) {
+            // Silently fail - cleanup is not critical
+            android.util.Log.e("NotificationViewModel", "Cleanup failed: ${e.message}")
+        }
     }
     
     override fun onCleared() {
