@@ -12,6 +12,7 @@ import com.picflick.app.data.Result
 import com.picflick.app.data.UserProfile
 import com.picflick.app.repository.FlickRepository
 import com.picflick.app.repository.SocialRepository
+import com.picflick.app.utils.Analytics
 import kotlinx.coroutines.launch
 
 /**
@@ -103,6 +104,9 @@ class FriendsViewModel : ViewModel() {
             return
         }
 
+        // Track search analytics
+        Analytics.trackSearch(query)
+
         isLoading = true
         flickRepository.searchUsers(query, currentUserId) { result ->
             when (result) {
@@ -179,6 +183,8 @@ class FriendsViewModel : ViewModel() {
             // Log error if request fails
             if (result is com.picflick.app.data.Result.Error) {
                 android.util.Log.e("FriendsViewModel", "Failed to send follow request: ${result.exception?.message}")
+            } else if (result is com.picflick.app.data.Result.Success) {
+                Analytics.trackFriendRequestSent()
             }
             removeProcessingUser(targetUser.uid)
         }
@@ -195,6 +201,7 @@ class FriendsViewModel : ViewModel() {
                 // Remove from local list immediately for instant UI update
                 followingUsers.removeAll { it.uid == targetUserId }
                 android.util.Log.d("FriendsViewModel", "Removed user $targetUserId from following list")
+                Analytics.trackUnfollow()
             } else {
                 android.util.Log.e("FriendsViewModel", "Failed to unfollow user $targetUserId")
             }
@@ -209,6 +216,7 @@ class FriendsViewModel : ViewModel() {
         viewModelScope.launch {
             socialRepository.acceptFollowRequest(currentUserId, requester.uid, requester.displayName)
             removeProcessingUser(requester.uid)
+            Analytics.trackFriendRequestAccepted()
         }
     }
 

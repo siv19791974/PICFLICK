@@ -13,6 +13,7 @@ import com.picflick.app.data.FriendGroup
 import com.picflick.app.data.ReactionType
 import com.picflick.app.data.Result
 import com.picflick.app.repository.FlickRepository
+import com.picflick.app.utils.Analytics
 import kotlinx.coroutines.launch
 
 /**
@@ -319,6 +320,8 @@ class HomeViewModel : ViewModel() {
             when (result) {
                 is Result.Success -> {
                     android.util.Log.d("HomeViewModel", "toggleReaction SUCCESS")
+                    // Track reaction analytics
+                    reactionType?.let { Analytics.trackReactionSent(it.name) }
                     // Update local state optimistically
                     val index = flicks.indexOfFirst { it.id == flick.id }
                     if (index != -1) {
@@ -349,6 +352,9 @@ class HomeViewModel : ViewModel() {
             loadFlicks()
             return
         }
+
+        // Track search analytics
+        Analytics.trackSearch(query)
 
         isLoading = true
         val searchQuery = query.lowercase()
@@ -467,11 +473,12 @@ class HomeViewModel : ViewModel() {
                         
                         when (createResult) {
                             is Result.Success -> {
-                                todayUploadCount++
-                                loadFlicks() // Refresh feed
-                                isLoading = false
-                                onComplete(true)
-                            }
+                            todayUploadCount++
+                            Analytics.trackPhotoUploaded("gallery", privacy)
+                            loadFlicks() // Refresh feed
+                            isLoading = false
+                            onComplete(true)
+                        }
                             is Result.Error -> {
                                 errorMessage = createResult.message
                                 isLoading = false
