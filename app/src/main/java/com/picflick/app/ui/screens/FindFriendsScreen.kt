@@ -428,6 +428,26 @@ private fun ContactsTab(
         refreshing = viewModel.isLoading,
         onRefresh = onRefresh
     )
+
+    // Infinite scroll state
+    val listState = rememberLazyListState()
+
+    // Detect when scrolled to bottom for infinite scroll
+    val shouldLoadMore = remember {
+        derivedStateOf {
+            val layoutInfo = listState.layoutInfo
+            val totalItems = layoutInfo.totalItemsCount
+            val lastVisibleItem = layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
+            lastVisibleItem >= totalItems - 5 && totalItems > 0 && !viewModel.isLoading
+        }
+    }
+
+    // Trigger load more
+    LaunchedEffect(shouldLoadMore.value) {
+        if (shouldLoadMore.value && viewModel.canLoadMore) {
+            viewModel.loadMoreUsers()
+        }
+    }
     
     if (!hasPermission) {
         // Permission request UI
@@ -491,7 +511,9 @@ private fun ContactsTab(
                             modifier = Modifier.padding(16.dp)
                         )
 
-                        LazyColumn {
+                        LazyColumn(
+                            state = listState
+                        ) {
                             items(filteredContacts) { user ->
                                 UserResultItem(
                                     user = user,
@@ -512,6 +534,23 @@ private fun ContactsTab(
                                     onUserClick = { onUserClick(user.uid) },
                                     subtitle = "From your contacts"
                                 )
+                            }
+                            
+                            // Loading footer for infinite scroll
+                            if (viewModel.isLoadingMore) {
+                                item {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(16.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        CircularProgressIndicator(
+                                            modifier = Modifier.size(24.dp),
+                                            color = MaterialTheme.colorScheme.primary
+                                        )
+                                    }
+                                }
                             }
                         }
                     } else if (viewModel.contactsOnApp.isNotEmpty() && filteredContacts.isEmpty()) {
