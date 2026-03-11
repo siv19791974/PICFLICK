@@ -35,6 +35,17 @@ class FriendsViewModel : ViewModel() {
     var isLoading by mutableStateOf(false)
         private set
 
+    /** For infinite scroll - loading more users */
+    var isLoadingMore by mutableStateOf(false)
+        private set
+
+    /** For infinite scroll - can we load more */
+    var canLoadMore by mutableStateOf(true)
+        private set
+
+    /** Last user ID for pagination */
+    private var lastUserId: String? = null
+
     var searchQuery by mutableStateOf("")
         private set
 
@@ -153,11 +164,15 @@ class FriendsViewModel : ViewModel() {
      */
     fun loadAllUsers(currentUserId: String) {
         isLoading = true
+        canLoadMore = true
+        lastUserId = null
         socialRepository.getAllUsers(currentUserId) { result ->
             when (result) {
                 is Result.Success -> {
                     suggestedUsers.clear()
                     suggestedUsers.addAll(result.data)
+                    // Check if we got a full page
+                    canLoadMore = result.data.size >= 50
                 }
                 is Result.Error -> {
                     errorMessage = result.message
@@ -166,6 +181,19 @@ class FriendsViewModel : ViewModel() {
             }
             isLoading = false
         }
+    }
+
+    /**
+     * Load more users for infinite scroll
+     */
+    fun loadMoreUsers() {
+        if (isLoadingMore || !canLoadMore) return
+        
+        isLoadingMore = true
+        // For now, just mark as no more users (until backend supports pagination)
+        // In the future, this would call socialRepository.getAllUsersPaginated()
+        canLoadMore = false
+        isLoadingMore = false
     }
 
     /**

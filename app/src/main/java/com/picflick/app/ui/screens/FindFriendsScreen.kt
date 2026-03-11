@@ -13,6 +13,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -21,8 +22,8 @@ import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Share
-import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.material3.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -194,6 +195,27 @@ private fun DiscoverTab(
         }
     )
 
+    // Infinite scroll state
+    val listState = rememberLazyListState()
+
+    // Detect when scrolled to bottom for infinite scroll
+    val shouldLoadMore = remember {
+        derivedStateOf {
+            val layoutInfo = listState.layoutInfo
+            val totalItems = layoutInfo.totalItemsCount
+            val lastVisibleItem = layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
+            // Load more when 5 items from end
+            lastVisibleItem >= totalItems - 5 && totalItems > 0 && !viewModel.isLoading
+        }
+    }
+
+    // Trigger load more
+    LaunchedEffect(shouldLoadMore.value) {
+        if (shouldLoadMore.value && viewModel.canLoadMore) {
+            viewModel.loadMoreUsers()
+        }
+    }
+
     // Reload all users when Discover tab is opened
     LaunchedEffect(Unit) {
         viewModel.loadAllUsers(userProfile.uid)
@@ -234,7 +256,9 @@ private fun DiscoverTab(
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                 )
 
-                LazyColumn {
+                LazyColumn(
+                    state = listState
+                ) {
                     items(filteredSuggestedUsers) { user ->
                         UserResultItem(
                             user = user,
@@ -256,6 +280,23 @@ private fun DiscoverTab(
                             showMutualFriends = true,
                             mutualCount = (user.followers intersect userProfile.following.toSet()).size
                         )
+                    }
+                    
+                    // Loading footer for infinite scroll
+                    if (viewModel.isLoadingMore) {
+                        item {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(24.dp),
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                        }
                     }
                 }
             } else if (viewModel.searchQuery.isBlank() && filteredSuggestedUsers.isEmpty() && viewModel.suggestedUsers.isNotEmpty()) {
