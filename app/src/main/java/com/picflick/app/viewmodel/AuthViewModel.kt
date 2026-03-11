@@ -13,6 +13,7 @@ import androidx.lifecycle.viewModelScope
 import com.picflick.app.data.Result
 import com.picflick.app.data.UserProfile
 import com.picflick.app.repository.FlickRepository
+import com.picflick.app.utils.Analytics
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
 import kotlinx.coroutines.launch
@@ -177,6 +178,8 @@ class AuthViewModel : ViewModel() {
             when (result) {
                 is Result.Success -> {
                     userProfile = profile
+                    // Track signup for analytics
+                    Analytics.trackSignUp()
                 }
                 is Result.Error -> {
                     errorMessage = result.message

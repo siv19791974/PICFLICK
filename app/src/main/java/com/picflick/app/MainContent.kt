@@ -241,6 +241,12 @@ fun AuthenticatedContent(
         is Screen.Legal -> LegalScreen(
             onBack = { onScreenChange(Screen.Settings) }
         )
+
+        is Screen.Preview -> {
+            // Preview screen - for now navigate to Home
+            // TODO: Implement proper preview screen
+            onScreenChange(Screen.Home)
+        }
     }
 }
 
