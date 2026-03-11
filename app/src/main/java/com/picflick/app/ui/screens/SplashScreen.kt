@@ -14,6 +14,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.picflick.app.ui.components.LogoImage
+import androidx.compose.material3.Text
 import com.picflick.app.ui.theme.isDarkModeBackground
 import kotlinx.coroutines.delay
 
@@ -67,12 +68,20 @@ fun SplashScreen(
         contentAlignment = Alignment.Center
     ) {
         // Logo - SAME as home screen (40dp height)
-        Box(
+        Column(
             modifier = Modifier
                 .scale(scale)
-                .alpha(alpha)
+                .alpha(alpha),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
             LogoImage() // Uses 40dp height - same as home screen banner
+            
+            // Android icon below logo
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = "🤖",
+                fontSize = 24.sp
+            )
         }
 
         // Loading dots at bottom
