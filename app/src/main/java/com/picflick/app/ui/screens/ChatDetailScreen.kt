@@ -103,7 +103,9 @@ fun ChatDetailScreen(
     // Load messages
     LaunchedEffect(chatId) {
         viewModel.loadMessages(chatId)
-        // Mark messages as read
+        // Mark messages as delivered (recipient received them)
+        viewModel.markAsDelivered(chatId, currentUser.uid)
+        // Mark messages as read (recipient opened chat)
         viewModel.markAsRead(chatId, currentUser.uid)
     }
 

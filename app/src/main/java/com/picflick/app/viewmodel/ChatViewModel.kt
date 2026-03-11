@@ -229,6 +229,15 @@ class ChatViewModel : ViewModel() {
     }
 
     /**
+     * Mark messages as delivered (recipient received them)
+     */
+    fun markAsDelivered(chatId: String, userId: String) {
+        viewModelScope.launch {
+            repository.markMessagesAsDelivered(chatId, userId)
+        }
+    }
+
+    /**
      * Observe unread message count
      */
     fun observeUnreadCount(userId: String) {
