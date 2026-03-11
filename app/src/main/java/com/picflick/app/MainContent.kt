@@ -517,30 +517,36 @@ private fun NotificationsScreenContent(
     )
 
     // FullScreenPhotoViewer for notification photos
-    selectedNotificationPhoto?.let { flick ->
-        BackHandler { selectedNotificationPhoto = null }
-
-        FullScreenPhotoViewer(
-            flick = flick,
-            currentUser = userProfile,
-            onDismiss = { selectedNotificationPhoto = null },
-            onReaction = { reactionType ->
-                reactionType?.let {
-                    homeViewModel.toggleReaction(
-                        flick, userProfile.uid, userProfile.displayName, userProfile.photoUrl, it
-                    )
-                }
-            },
-            onDeleteClick = { selectedNotificationPhoto = null },
-            onUserProfileClick = { clickedUserId ->
-                selectedNotificationPhoto = null
-                onScreenChange(
-                    if (clickedUserId == userProfile.uid) Screen.Profile
-                    else Screen.UserProfile(clickedUserId)
+    PhotoViewerWrapper(
+        selectedPhoto = selectedNotificationPhoto,
+        currentUser = userProfile,
+        allPhotos = emptyList(),
+        currentIndex = 0,
+        onDismiss = { selectedNotificationPhoto = null },
+        onNavigateToPhoto = { },
+        onNavigateToFindFriends = {
+            selectedNotificationPhoto = null
+            onScreenChange(Screen.FindFriends)
+        },
+        onUserProfileClick = { userId ->
+            selectedNotificationPhoto = null
+            onScreenChange(
+                if (userId == userProfile.uid) Screen.Profile
+                else Screen.UserProfile(userId)
+            )
+        },
+        onReaction = { flick, reactionType ->
+            reactionType?.let {
+                homeViewModel.toggleReaction(
+                    flick, userProfile.uid, userProfile.displayName, userProfile.photoUrl, it
                 )
             }
-        )
-    }
+        },
+        onShareClick = { },
+        onDeleteClick = { selectedNotificationPhoto = null },
+        canDelete = false,
+        onCaptionUpdated = { _, _ -> }
+    )
 }
 
 @Composable
@@ -716,45 +722,41 @@ private fun ExploreScreenContent(
     )
 
     // FullScreenPhotoViewer when photo selected
-    selectedPhoto?.let { flick ->
-        BackHandler { selectedPhoto = null }
-
-        FullScreenPhotoViewer(
-            flick = flick,
-            currentUser = userProfile,
-            onDismiss = { selectedPhoto = null },
-            onReaction = { reactionType ->
-                homeViewModel.toggleReaction(
-                    flick, userProfile.uid, userProfile.displayName, userProfile.photoUrl, reactionType
-                )
-            },
-            onShareClick = {
-                val shareIntent = Intent().apply {
-                    action = Intent.ACTION_SEND
-                    type = "text/plain"
-                    putExtra(Intent.EXTRA_TEXT, "Check out this photo on PicFlick: ${flick.imageUrl}")
-                }
-                context.startActivity(Intent.createChooser(shareIntent, "Share Photo"))
-            },
-            onDeleteClick = { /* Can't delete from Explore */ },
-            canDelete = false,
-            onCaptionUpdated = { /* Can't edit from Explore */ },
-            allPhotos = homeViewModel.exploreFlicks,
-            currentIndex = selectedPhotoIndex,
-            onNavigateToPhoto = { index ->
-                selectedPhotoIndex = index
-                selectedPhoto = homeViewModel.exploreFlicks.getOrNull(index)
-            },
-            onUserProfileClick = { userId ->
-                selectedPhoto = null
-                onScreenChange(Screen.UserProfile(userId))
-            },
-            onNavigateToFindFriends = {
-                selectedPhoto = null
-                onScreenChange(Screen.FindFriends)
+    PhotoViewerWrapper(
+        selectedPhoto = selectedPhoto,
+        currentUser = userProfile,
+        allPhotos = homeViewModel.exploreFlicks,
+        currentIndex = selectedPhotoIndex,
+        onDismiss = { selectedPhoto = null },
+        onNavigateToPhoto = { index ->
+            selectedPhotoIndex = index
+            selectedPhoto = homeViewModel.exploreFlicks.getOrNull(index)
+        },
+        onNavigateToFindFriends = {
+            selectedPhoto = null
+            onScreenChange(Screen.FindFriends)
+        },
+        onUserProfileClick = { userId ->
+            selectedPhoto = null
+            onScreenChange(Screen.UserProfile(userId))
+        },
+        onReaction = { flick, reactionType ->
+            homeViewModel.toggleReaction(
+                flick, userProfile.uid, userProfile.displayName, userProfile.photoUrl, reactionType
+            )
+        },
+        onShareClick = { flick ->
+            val shareIntent = Intent().apply {
+                action = Intent.ACTION_SEND
+                type = "text/plain"
+                putExtra(Intent.EXTRA_TEXT, "Check out this photo on PicFlick: ${flick.imageUrl}")
             }
-        )
-    }
+            context.startActivity(Intent.createChooser(shareIntent, "Share Photo"))
+        },
+        onDeleteClick = { },
+        canDelete = false,
+        onCaptionUpdated = { _, _ -> }
+    )
 }
 
 @Composable
