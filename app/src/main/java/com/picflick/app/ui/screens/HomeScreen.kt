@@ -583,27 +583,6 @@ private fun FlickCard(
                 )
             }
             
-            // Reaction count overlay (top right)
-            if (totalReactions > 0) {
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .padding(2.dp)
-                        .background(
-                            color = Color.Black.copy(alpha = 0.6f),
-                            shape = RoundedCornerShape(8.dp)
-                        )
-                        .padding(horizontal = 4.dp, vertical = 2.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = if (userReaction != null) "${userReaction.toEmoji()} $totalReactions" else "❤️ $totalReactions",
-                        fontSize = 10.sp,
-                        color = Color.White
-                    )
-                }
-            }
-            
             // Info overlay at bottom (username + reactions)
             Box(
                 modifier = Modifier
