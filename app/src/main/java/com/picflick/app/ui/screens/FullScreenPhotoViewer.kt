@@ -518,22 +518,22 @@ fun FullScreenPhotoViewer(
                                             }
                                         }
                                         else -> {
-                                            // Spring animation back to center
+                                            // Smooth tween animation back to center (Instagram-style)
                                             coroutineScope.launch {
                                                 dragXAnim.animateTo(
                                                     targetValue = 0f,
-                                                    animationSpec = spring(
-                                                        dampingRatio = Spring.DampingRatioMediumBouncy,
-                                                        stiffness = Spring.StiffnessMedium
+                                                    animationSpec = tween(
+                                                        durationMillis = 300,
+                                                        easing = FastOutSlowInEasing
                                                     )
                                                 )
                                             }
                                             coroutineScope.launch {
                                                 dragYAnim.animateTo(
                                                     targetValue = 0f,
-                                                    animationSpec = spring(
-                                                        dampingRatio = Spring.DampingRatioMediumBouncy,
-                                                        stiffness = Spring.StiffnessMedium
+                                                    animationSpec = tween(
+                                                        durationMillis = 300,
+                                                        easing = FastOutSlowInEasing
                                                     )
                                                 )
                                             }
