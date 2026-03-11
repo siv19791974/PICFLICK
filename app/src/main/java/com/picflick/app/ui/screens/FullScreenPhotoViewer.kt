@@ -518,12 +518,12 @@ fun FullScreenPhotoViewer(
                                             }
                                         }
                                         else -> {
-                                            // Smooth tween animation back to center (Instagram-style)
+                                            // Smooth tween animation back to center (500ms - super smooth)
                                             coroutineScope.launch {
                                                 dragXAnim.animateTo(
                                                     targetValue = 0f,
                                                     animationSpec = tween(
-                                                        durationMillis = 300,
+                                                        durationMillis = 500,
                                                         easing = FastOutSlowInEasing
                                                     )
                                                 )
@@ -532,7 +532,7 @@ fun FullScreenPhotoViewer(
                                                 dragYAnim.animateTo(
                                                     targetValue = 0f,
                                                     animationSpec = tween(
-                                                        durationMillis = 300,
+                                                        durationMillis = 500,
                                                         easing = FastOutSlowInEasing
                                                     )
                                                 )
