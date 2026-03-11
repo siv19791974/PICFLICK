@@ -80,33 +80,39 @@ fun ChatsScreen(
         ) {
             // NO BANNER - banner is in MainActivity
 
-            // Error message display - compact at top
-            viewModel.errorMessage?.let { error ->
+            // Error message display - compact snackbar style, only when NOT loading
+            if (viewModel.errorMessage != null && !viewModel.isLoading) {
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
                     color = MaterialTheme.colorScheme.errorContainer,
-                    tonalElevation = 2.dp
+                    tonalElevation = 4.dp
                 ) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                            .padding(horizontal = 12.dp, vertical = 6.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = error,
+                            text = viewModel.errorMessage!!,
                             color = MaterialTheme.colorScheme.onErrorContainer,
                             style = MaterialTheme.typography.bodySmall,
+                            maxLines = 1,
+                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                             modifier = Modifier.weight(1f)
                         )
                         TextButton(
                             onClick = { 
                                 viewModel.clearError()
                                 viewModel.loadChatSessions(userProfile.uid) 
-                            }
+                            },
+                            modifier = Modifier.padding(start = 8.dp)
                         ) {
-                            Text("Retry", color = MaterialTheme.colorScheme.onErrorContainer)
+                            Text("Retry", 
+                                color = MaterialTheme.colorScheme.onErrorContainer,
+                                style = MaterialTheme.typography.labelMedium
+                            )
                         }
                     }
                 }
