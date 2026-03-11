@@ -16,7 +16,7 @@ class PhotoRepository private constructor() {
 
     private val db = FirebaseFirestore.getInstance()
     private val storage = FirebaseStorage.getInstance()
-    private val flickRepository = FlickRepository.getInstance()
+    private val notificationRepository = NotificationRepository.getInstance()
 
     companion object {
         @Volatile
@@ -50,7 +50,7 @@ class PhotoRepository private constructor() {
     }
 
     /**
-     * Create a new flick and notify friends
+     * Create a new flick
      * @param flick The flick data to create
      * @param userPhotoUrl The uploader's profile photo URL
      * @return Result success or error
@@ -64,14 +64,12 @@ class PhotoRepository private constructor() {
             // Update with ID
             docRef.update("id", flickId).await()
 
-            // Create notifications for friends via FlickRepository
             val updatedFlick = flick.copy(id = flickId)
-            flickRepository.createPhotoNotifications(updatedFlick, userPhotoUrl)
 
             // Create notifications for tagged friends
             if (flick.taggedFriends.isNotEmpty()) {
                 flick.taggedFriends.forEach { taggedUserId ->
-                    flickRepository.createTagNotification(
+                    notificationRepository.createTagNotification(
                         flickId = flickId,
                         photoOwnerId = flick.userId,
                         photoOwnerName = flick.userName,
@@ -138,13 +136,17 @@ class PhotoRepository private constructor() {
      * Toggle reaction on a flick
      * @param flickId The flick to react to
      * @param userId The user reacting
+     * @param userName The name of the reacting user (for notification)
      * @param reactionType The reaction type (or null to remove)
+     * @param ownerId The photo owner ID (for notification)
      * @param onResult Callback with result
      */
     fun toggleReaction(
         flickId: String,
         userId: String,
+        userName: String,
         reactionType: ReactionType?,
+        ownerId: String,
         onResult: (Result<Unit>) -> Unit
     ) {
         val flickRef = db.collection("flicks").document(flickId)
@@ -183,10 +185,12 @@ class PhotoRepository private constructor() {
                             .addOnSuccessListener {
                                 // Create notification for new reactions (not for removing)
                                 if (reactionType != null && existingReaction == null) {
-                                    flickRepository.createReactionNotification(
+                                    notificationRepository.createReactionNotification(
                                         flickId = flickId,
                                         reactorId = userId,
-                                        reactionType = reactionType
+                                        reactorName = userName,
+                                        reactionType = reactionType,
+                                        ownerId = ownerId
                                     )
                                 }
                                 onResult(Result.Success(Unit))
