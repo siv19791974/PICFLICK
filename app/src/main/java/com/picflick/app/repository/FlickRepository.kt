@@ -1585,8 +1585,8 @@ class FlickRepository private constructor() {
                 userId = userId,
                 userName = userName,
                 userPhotoUrl = userPhotoUrl,
-                text = text,
-                timestamp = System.currentTimeMillis()
+                text = text
+                // timestamp is set automatically by @ServerTimestamp
             )
 
             // Add comment
@@ -1645,8 +1645,8 @@ class FlickRepository private constructor() {
                 userName = userName,
                 userPhotoUrl = userPhotoUrl,
                 text = text,
-                timestamp = System.currentTimeMillis(),
                 parentCommentId = parentCommentId
+                // timestamp is set automatically by @ServerTimestamp
             )
 
             // Add reply
