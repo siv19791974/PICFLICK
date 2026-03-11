@@ -299,6 +299,38 @@ fun ChatDetailScreen(
                     .fillMaxSize()
                     .background(isDarkModeBackground(isDarkMode))
             ) {
+                // Error message display
+                viewModel.errorMessage?.let { error ->
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        color = MaterialTheme.colorScheme.errorContainer,
+                        tonalElevation = 2.dp
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 12.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = error,
+                                color = MaterialTheme.colorScheme.onErrorContainer,
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.weight(1f)
+                            )
+                            TextButton(
+                                onClick = { 
+                                    viewModel.clearError()
+                                    viewModel.loadMessages(chatId) 
+                                }
+                            ) {
+                                Text("Retry", color = MaterialTheme.colorScheme.onErrorContainer)
+                            }
+                        }
+                    }
+                }
+
                 // Messages list
                 when {
                     viewModel.isLoading && viewModel.messages.isEmpty() -> {
