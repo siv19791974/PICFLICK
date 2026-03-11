@@ -180,50 +180,11 @@ class UploadViewModel : ViewModel() {
 
                 uploadSuccess = true
                 
-                // Check for photo upload achievements
-                checkPhotoAchievements(userProfile)
-
             } catch (e: Exception) {
                 uploadError = e.message ?: "Upload failed"
             } finally {
                 isUploading = false
             }
-        }
-    }
-    
-    /**
-     * Check and trigger photo upload achievements
-     */
-    private suspend fun checkPhotoAchievements(userProfile: UserProfile) {
-        try {
-            // Get total photo count for user
-            val photoCountSnapshot = firestore.collection("flicks")
-                .whereEqualTo("userId", userProfile.uid)
-                .get()
-                .await()
-            
-            val totalPhotos = photoCountSnapshot.size()
-            
-            // First photo achievement
-            if (totalPhotos == 1) {
-                flickRepository.createFirstPhotoAchievement(
-                    userProfile.uid,
-                    userProfile.displayName
-                )
-            }
-            
-            // Active user achievement (5+ photos)
-            if (totalPhotos == 5) {
-                flickRepository.createActiveUserAchievement(
-                    userProfile.uid,
-                    userProfile.displayName,
-                    totalPhotos
-                )
-            }
-            
-        } catch (e: Exception) {
-            // Silently fail - don't block upload success, but log for debugging
-            android.util.Log.w("UploadViewModel", "Failed to check achievements", e)
         }
     }
 

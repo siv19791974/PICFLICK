@@ -17,7 +17,8 @@ import androidx.compose.ui.unit.dp
 fun BottomNavBar(
     currentRoute: String,
     onNavigate: (String) -> Unit,
-    unreadNotifications: Int = 0
+    unreadNotifications: Int = 0,
+    unreadMessages: Int = 0
 ) {
     NavigationBar(
         modifier = Modifier.fillMaxWidth(),
@@ -52,12 +53,12 @@ fun BottomNavBar(
             icon = {
                 BadgedBox(
                     badge = {
-                        if (unreadNotifications > 0) {
+                        if (unreadMessages > 0) {
                             Badge(
                                 containerColor = Color.Red,
                                 contentColor = Color.White
                             ) {
-                                Text("$unreadNotifications")
+                                Text("$unreadMessages")
                             }
                         }
                     }

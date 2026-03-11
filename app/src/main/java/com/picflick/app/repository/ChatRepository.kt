@@ -78,18 +78,25 @@ class ChatRepository {
             db.collection("chatSessions").document(chatId)
                 .update(
                     mapOf(
-                        "lastMessage" to message.text,
+                        "lastMessage" to if (message.text.isBlank() && message.imageUrl.isNotEmpty()) "📷 Photo" else message.text,
                         "lastTimestamp" to message.timestamp
                     )
                 )
                 .await()
 
             // Create notification for recipient
+            val notificationMessage = when {
+                message.imageUrl.isNotEmpty() && message.text.isBlank() -> "📷 Photo"
+                message.imageUrl.isNotEmpty() -> "📷 ${message.text.take(50)}"
+                message.text.length > 50 -> message.text.take(50) + "..."
+                else -> message.text
+            }
+            
             val notification = hashMapOf(
                 "userId" to recipientId,
                 "type" to "MESSAGE",
                 "title" to "New Message from ${message.senderName}",
-                "message" to if (message.text.length > 50) message.text.take(50) + "..." else message.text,
+                "message" to notificationMessage,
                 "senderId" to message.senderId,
                 "senderName" to message.senderName,
                 "senderPhotoUrl" to message.senderPhotoUrl,

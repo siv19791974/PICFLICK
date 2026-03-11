@@ -9,6 +9,7 @@ data class ChatMessage(
     val chatId: String = "", // Reference to parent chat session
     val senderId: String = "",
     val text: String = "",
+    val imageUrl: String = "", // Photo message support
     val timestamp: Long = 0,
     val read: Boolean = false,
     val delivered: Boolean = false,
@@ -23,6 +24,11 @@ data class ChatMessage(
      * Check if this message is a reply to another message
      */
     fun isReply(): Boolean = replyToMessageId != null
+    
+    /**
+     * Check if this is a photo message
+     */
+    fun isPhotoMessage(): Boolean = imageUrl.isNotEmpty()
     
     /**
      * Get formatted timestamp for display

@@ -1017,8 +1017,8 @@ class FlickRepository private constructor() {
             "senderName" to requesterName,
             "senderPhotoUrl" to requesterPhotoUrl,
             "type" to "FRIEND_REQUEST",
-            "title" to "$requesterName has requested you to be their friend",
-            "message" to "Tap to accept or decline",
+            "title" to "Friend request from $requesterName",
+            "message" to "Accept or decline",
             "isRead" to false,
             "timestamp" to System.currentTimeMillis()
         )
@@ -1048,8 +1048,8 @@ class FlickRepository private constructor() {
             "senderId" to accepterId,
             "senderName" to accepterName,
             "type" to "FOLLOW_ACCEPTED",
-            "title" to "$accepterName accepted your follow request",
-            "message" to "You can now see their photos in your feed",
+            "title" to "$accepterName accepted your request",
+            "message" to "You're now connected",
             "isRead" to false,
             "timestamp" to System.currentTimeMillis()
         )
@@ -1492,8 +1492,8 @@ class FlickRepository private constructor() {
                     "senderName" to photoOwnerName,
                     "senderPhotoUrl" to photoOwnerPhotoUrl,
                     "type" to "MENTION",
-                    "title" to "$photoOwnerName tagged you in a photo",
-                    "message" to "Check out the photo you're in!",
+                    "title" to "$photoOwnerName tagged you",
+                    "message" to "Accept or decline tag",
                     "flickId" to flickId,
                     "flickImageUrl" to flickImageUrl,
                     "isRead" to false,
@@ -1535,61 +1535,6 @@ class FlickRepository private constructor() {
         )
 
         db.collection("notifications").add(notification)
-    }
-
-    /**
-     * Create achievement unlocked notification for photographer (1st photo)
-     */
-    suspend fun createFirstPhotoAchievement(userId: String, userName: String): Result<Unit> {
-        return try {
-            val notification = hashMapOf(
-                "id" to UUID.randomUUID().toString(),
-                "userId" to userId,
-                "senderId" to "system",
-                "senderName" to "PicFlick",
-                "senderPhotoUrl" to "",
-                "type" to "ACHIEVEMENT",
-                "title" to "���� Achievement Unlocked!",
-                "message" to "Congratulations $userName! You earned the ���� Photographer achievement for uploading your first photo!",
-                "isRead" to false,
-                "timestamp" to System.currentTimeMillis(),
-                "achievementType" to "PHOTOGRAPHER",
-                "emoji" to "����"
-            )
-
-            db.collection("notifications").add(notification).await()
-            Result.Success(Unit)
-        } catch (e: Exception) {
-            Result.Error(e, "Failed to create achievement notification")
-        }
-    }
-
-    /**
-     * Create achievement unlocked notification for active user (5+ photos)
-     */
-    suspend fun createActiveUserAchievement(userId: String, userName: String, photoCount: Int): Result<Unit> {
-        return try {
-            val notification = hashMapOf(
-                "id" to UUID.randomUUID().toString(),
-                "userId" to userId,
-                "senderId" to "system",
-                "senderName" to "PicFlick",
-                "senderPhotoUrl" to "",
-                "type" to "ACHIEVEMENT",
-                "title" to "���� Achievement Unlocked!",
-                "message" to "Keep it up $userName! You earned the ���� Active achievement for uploading $photoCount photos!",
-                "isRead" to false,
-                "timestamp" to System.currentTimeMillis(),
-                "achievementType" to "ACTIVE",
-                "emoji" to "����",
-                "photoCount" to photoCount
-            )
-
-            db.collection("notifications").add(notification).await()
-            Result.Success(Unit)
-        } catch (e: Exception) {
-            Result.Error(e, "Failed to create achievement notification")
-        }
     }
 
     /**
