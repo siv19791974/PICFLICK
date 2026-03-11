@@ -301,7 +301,7 @@ fun ChatDetailScreen(
                     .fillMaxSize()
                     .background(isDarkModeBackground(isDarkMode))
             ) {
-                // Error message display
+                // Error message display - fixed height at top
                 viewModel.errorMessage?.let { error ->
                     Surface(
                         modifier = Modifier.fillMaxWidth(),
@@ -311,14 +311,14 @@ fun ChatDetailScreen(
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 12.dp),
+                                .padding(horizontal = 16.dp, vertical = 8.dp),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
                                 text = error,
                                 color = MaterialTheme.colorScheme.onErrorContainer,
-                                style = MaterialTheme.typography.bodyMedium,
+                                style = MaterialTheme.typography.bodySmall,
                                 modifier = Modifier.weight(1f)
                             )
                             TextButton(
@@ -333,11 +333,13 @@ fun ChatDetailScreen(
                     }
                 }
 
-                // Messages list
+                // Messages list - takes remaining space with weight
                 when {
                     viewModel.isLoading && viewModel.messages.isEmpty() -> {
                         Box(
-                            modifier = Modifier.fillMaxSize(),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .weight(1f),
                             contentAlignment = Alignment.Center
                         ) {
                             CircularProgressIndicator()
@@ -345,7 +347,9 @@ fun ChatDetailScreen(
                     }
                     viewModel.messages.isEmpty() -> {
                         Box(
-                            modifier = Modifier.fillMaxSize(),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .weight(1f),
                             contentAlignment = Alignment.Center
                         ) {
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -365,7 +369,8 @@ fun ChatDetailScreen(
                     else -> {
                         LazyColumn(
                             modifier = Modifier
-                                .fillMaxSize()
+                                .fillMaxWidth()
+                                .weight(1f)
                                 .padding(horizontal = 8.dp),
                             state = listState,
                             contentPadding = PaddingValues(vertical = 8.dp)

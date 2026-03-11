@@ -80,7 +80,7 @@ fun ChatsScreen(
         ) {
             // NO BANNER - banner is in MainActivity
 
-            // Error message display
+            // Error message display - compact at top
             viewModel.errorMessage?.let { error ->
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
@@ -90,14 +90,14 @@ fun ChatsScreen(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
                             text = error,
                             color = MaterialTheme.colorScheme.onErrorContainer,
-                            style = MaterialTheme.typography.bodyMedium,
+                            style = MaterialTheme.typography.bodySmall,
                             modifier = Modifier.weight(1f)
                         )
                         TextButton(
@@ -112,10 +112,11 @@ fun ChatsScreen(
                 }
             }
 
-            // Modern PullRefresh content
+            // Modern PullRefresh content - uses weight to fill remaining space
             Box(
                 modifier = Modifier
-                    .fillMaxSize()
+                    .fillMaxWidth()
+                    .weight(1f)
                     .pullRefresh(pullRefreshState)
             ) {
                 when {
