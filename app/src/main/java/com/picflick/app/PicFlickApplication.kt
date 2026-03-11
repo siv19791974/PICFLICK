@@ -30,10 +30,6 @@ class PicFlickApplication : Application() {
             // Enable Crashlytics in production builds
             // In debug builds, data is not sent unless explicitly enabled
             setCrashlyticsCollectionEnabled(true)
-            
-            // Set custom keys for better crash debugging
-            setCustomKey("app_version", BuildConfig.VERSION_NAME)
-            setCustomKey("app_code", BuildConfig.VERSION_CODE)
         }
         
         // Log app start for analytics
