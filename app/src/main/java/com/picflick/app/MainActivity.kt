@@ -50,6 +50,7 @@ import com.picflick.app.ui.screens.LoginScreen
 import com.picflick.app.ui.screens.SplashScreen
 import com.picflick.app.ui.theme.PicFlickTheme
 import com.picflick.app.ui.theme.ThemeManager
+import com.picflick.app.utils.Analytics
 import com.picflick.app.utils.LocaleHelper
 import com.picflick.app.viewmodel.AuthViewModel
 import com.picflick.app.viewmodel.BillingViewModel
@@ -165,8 +166,9 @@ fun MainScreen(
     uploadViewModel: UploadViewModel = viewModel()
 ) {
     var currentScreen by remember { mutableStateOf<Screen>(Screen.Home) }
+    var wasPreviouslyLoggedOut by remember { mutableStateOf(true) }
 
-    // Handle push notification clicks
+    // Track login state for analytics
     val activity = LocalContext.current as? MainActivity
 
     LaunchedEffect(Unit) {
@@ -264,6 +266,33 @@ fun MainScreen(
     // Restore cached profile when app resumes (prevents data loss)
     LaunchedEffect(Unit) {
         authViewModel.restoreCachedProfile()
+    }
+
+    // Track screen views for analytics
+    LaunchedEffect(currentScreen) {
+        val screenName = when (currentScreen) {
+            is Screen.Home -> "home"
+            is Screen.Profile -> "profile"
+            is Screen.Chats -> "chats"
+            is Screen.Friends -> "friends"
+            is Screen.Notifications -> "notifications"
+            is Screen.Settings -> "settings"
+            is Screen.UserProfile -> "user_profile"
+            is Screen.Filter -> "filter"
+            is Screen.Preview -> "preview"
+            else -> "unknown"
+        }
+        Analytics.trackScreenView(screenName)
+    }
+
+    // Track login state changes
+    LaunchedEffect(currentUser) {
+        if (currentUser != null && wasPreviouslyLoggedOut) {
+            Analytics.trackLogin()
+            wasPreviouslyLoggedOut = false
+        } else if (currentUser == null) {
+            wasPreviouslyLoggedOut = true
+        }
     }
 
     // State for profile photo upload
@@ -468,7 +497,31 @@ fun MainScreen(
     // Snackbar state for error feedback
     val snackbarHostState = remember { SnackbarHostState() }
     
-    // Collect errors from all ViewModels and show in Snackbar
+    // Track screen views for analytics
+    LaunchedEffect(currentScreen) {
+        val screenName = when (currentScreen) {
+            is Screen.Home -> "home"
+            is Screen.Profile -> "profile"
+            is Screen.Chats -> "chats"
+            is Screen.Friends -> "friends"
+            is Screen.Notifications -> "notifications"
+            is Screen.Settings -> "settings"
+            is Screen.UserProfile -> "user_profile"
+            is Screen.Filter -> "filter"
+            is Screen.Preview -> "preview"
+            else -> "unknown"
+        }
+        Analytics.trackScreenView(screenName)
+    }
+
+    // Track login state changes
+    LaunchedEffect(currentUser) {
+        if (currentUser != null && wasPreviouslyLoggedOut) {
+            Analytics.trackLogin()
+        }
+    }
+
+    // Collect errors from all ViewModels and show in Snackbar + track analytics
     LaunchedEffect(
         homeViewModel.errorMessage,
         chatViewModel.errorMessage,
@@ -487,6 +540,8 @@ fun MainScreen(
                 message = error,
                 duration = SnackbarDuration.Short
             )
+            // Track error analytics
+            Analytics.trackError(error)
             // Clear errors after showing
             homeViewModel.clearError()
             chatViewModel.clearError()

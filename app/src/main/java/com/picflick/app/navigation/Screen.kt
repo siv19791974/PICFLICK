@@ -27,4 +27,5 @@ sealed class Screen {
     data object PrivacyPolicy : Screen()              // Privacy Policy screen
     data object Philosophy : Screen()               // Our Philosophy screen
     data object Legal : Screen()                    // Legal/Terms screen
+    data object Preview : Screen()                    // Photo preview screen
 }
