@@ -28,7 +28,7 @@ import coil3.compose.AsyncImage
 import com.picflick.app.data.Album
 import com.picflick.app.data.UserProfile
 import com.picflick.app.repository.PhotoRepository
-import com.picflick.app.ui.components.ListItemShimmer
+import com.picflick.app.ui.components.AlbumCardShimmer
 import com.picflick.app.ui.theme.ThemeManager
 
 /**
@@ -114,7 +114,7 @@ fun AlbumsScreen(
                         verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
                         items(6) {
-                            ListItemShimmer()
+                            AlbumCardShimmer()
                         }
                     }
                 }
