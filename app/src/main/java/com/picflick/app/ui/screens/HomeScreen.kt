@@ -721,9 +721,11 @@ private fun FlyingReactionAnimation(
 
 /**
  * Heart like animation that shows when double-tapping a photo
+ * Shows ❤️ for like, 🤍 for unlike
  */
 @Composable
 private fun LikeAnimation(
+    isUnlike: Boolean = false,
     onAnimationComplete: () -> Unit
 ) {
     var animationStarted by remember { mutableStateOf(false) }
@@ -750,7 +752,7 @@ private fun LikeAnimation(
         contentAlignment = Alignment.Center
     ) {
         Text(
-            text = "❤️",
+            text = if (isUnlike) "🤍" else "❤️", // White heart for unlike, red for like
             fontSize = 80.sp,
             modifier = Modifier.graphicsLayer {
                 scaleX = scale
