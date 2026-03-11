@@ -171,8 +171,8 @@ class FriendsViewModel : ViewModel() {
                 is Result.Success -> {
                     suggestedUsers.clear()
                     suggestedUsers.addAll(result.data)
-                    // Check if we got a full page
-                    canLoadMore = result.data.size >= 50
+                    // Check if we got a full page (100 users)
+                    canLoadMore = result.data.size >= 100
                 }
                 is Result.Error -> {
                     errorMessage = result.message

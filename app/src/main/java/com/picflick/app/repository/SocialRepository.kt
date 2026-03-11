@@ -457,7 +457,7 @@ class SocialRepository private constructor() {
      */
     fun getAllUsers(currentUserId: String, onResult: (Result<List<UserProfile>>) -> Unit) {
         db.collection("users")
-            .limit(50)
+            .limit(100)
             .get()
             .addOnSuccessListener { snapshot ->
                 val allUsers = snapshot.toObjects(UserProfile::class.java)
