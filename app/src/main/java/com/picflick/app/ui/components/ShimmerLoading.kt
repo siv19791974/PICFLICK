@@ -21,10 +21,11 @@ fun PhotoGridShimmer(
     itemCount: Int = 9,
     modifier: Modifier = Modifier
 ) {
+    // More noticeable shimmer with higher contrast
     val shimmerColors = listOf(
-        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
-        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f),
-        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
+        Color.LightGray.copy(alpha = 0.9f),
+        Color.LightGray.copy(alpha = 0.4f),
+        Color.LightGray.copy(alpha = 0.9f)
     )
 
     val transition = rememberInfiniteTransition(label = "shimmer")
@@ -78,10 +79,11 @@ fun PhotoGridShimmer(
 fun ListItemShimmer(
     modifier: Modifier = Modifier
 ) {
+    // More noticeable shimmer with higher contrast
     val shimmerColors = listOf(
-        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
-        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f),
-        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
+        Color.LightGray.copy(alpha = 0.9f),
+        Color.LightGray.copy(alpha = 0.4f),
+        Color.LightGray.copy(alpha = 0.9f)
     )
 
     val transition = rememberInfiniteTransition(label = "shimmer")
@@ -150,10 +152,11 @@ fun ListItemShimmer(
 fun ProfileShimmer(
     modifier: Modifier = Modifier
 ) {
+    // More noticeable shimmer with higher contrast
     val shimmerColors = listOf(
-        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
-        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f),
-        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
+        Color.LightGray.copy(alpha = 0.9f),
+        Color.LightGray.copy(alpha = 0.4f),
+        Color.LightGray.copy(alpha = 0.9f)
     )
 
     val transition = rememberInfiniteTransition(label = "shimmer")
@@ -246,10 +249,11 @@ fun ProfileShimmer(
 fun AlbumCardShimmer(
     modifier: Modifier = Modifier
 ) {
+    // More noticeable shimmer with higher contrast
     val shimmerColors = listOf(
-        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
-        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f),
-        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
+        Color.LightGray.copy(alpha = 0.9f),
+        Color.LightGray.copy(alpha = 0.4f),
+        Color.LightGray.copy(alpha = 0.9f)
     )
 
     val transition = rememberInfiniteTransition(label = "shimmer")
