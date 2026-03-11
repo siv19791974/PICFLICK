@@ -16,45 +16,64 @@ import com.picflick.app.repository.FlickRepository
 import kotlinx.coroutines.launch
 
 /**
- * ViewModel for the home screen with flicks feed
+ * ViewModel for the home screen feed displaying photo flicks
+ *
+ * Manages:
+ * - Photo feed from friends (with pagination)
+ * - Explore feed (public photos)
+ * - Friend groups/albums filtering
+ * - Like and reaction actions
+ * - Today's upload count for daily limits
  */
 class HomeViewModel : ViewModel() {
 
     private val repository = FlickRepository.getInstance()
 
+    /** List of flicks for the main feed */
     var flicks = mutableStateListOf<Flick>()
         private set
 
+    /** List of public flicks for explore tab */
     var exploreFlicks = mutableStateListOf<Flick>()
         private set
 
+    /** Loading state for initial load */
     var isLoading by mutableStateOf(false)
         private set
 
+    /** Loading state for pagination */
     var isLoadingMore by mutableStateOf(false)
         private set
 
+    /** Whether more pages can be loaded */
     var canLoadMore by mutableStateOf(true)
         private set
 
+    /** Current error message to display */
     var errorMessage by mutableStateOf<String?>(null)
         private set
 
+    /** Number of photos uploaded today (for daily limits) */
     var todayUploadCount by mutableIntStateOf(0)
         private set
 
+    /** Current user ID for filtering */
     var currentUserId by mutableStateOf<String?>(null)
         private set
 
-    // Friend Groups / Albums
+    /** Available friend groups for filtering */
     var friendGroups = mutableStateListOf<FriendGroup>()
         private set
 
+    /** Currently selected feed filter */
     var selectedFilter by mutableStateOf<FeedFilter>(FeedFilter.AllFriends)
         private set
 
     /**
      * Load flicks for the feed based on selected filter
+     * Clears existing flicks and loads first page
+     *
+     * @see selectedFilter Determines which flicks to load
      */
     fun loadFlicks() {
         val userId = currentUserId

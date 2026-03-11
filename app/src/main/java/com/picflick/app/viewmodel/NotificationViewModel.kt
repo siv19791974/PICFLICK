@@ -12,30 +12,47 @@ import com.picflick.app.repository.FlickRepository
 import kotlinx.coroutines.launch
 
 /**
- * ViewModel for managing notifications
+ * ViewModel for managing user notifications
+ *
+ * Handles:
+ * - Real-time notification listening via Firestore
+ * - Marking notifications as read
+ * - Accepting/declining friend requests and photo tags
+ * - Deleting notifications
+ * - Tracking unread count
  */
 class NotificationViewModel : ViewModel() {
     
     private val repository = FlickRepository.getInstance()
     
+    /** List of all notifications for current user */
     var notifications = mutableStateListOf<Notification>()
         private set
     
+    /** Number of unread notifications */
     var unreadCount by mutableStateOf(0)
         private set
     
+    /** Loading state for operations */
     var isLoading by mutableStateOf(false)
         private set
     
+    /** Error message for failed operations */
     var errorMessage by mutableStateOf<String?>(null)
         private set
     
+    /** Firestore listener for real-time updates */
     private var listenerRegistration: com.google.firebase.firestore.ListenerRegistration? = null
     
-    private var currentUserId: String? = null // Store current user ID
+    /** Currently logged in user ID */
+    private var currentUserId: String? = null
     
     /**
      * Accept a tag (user accepts being tagged in a photo)
+     * Adds user to the flick's tagged friends list
+     * 
+     * @param flickId The photo being tagged in
+     * @param notificationId The notification to mark as handled
      */
     fun acceptTag(flickId: String, notificationId: String) {
         viewModelScope.launch {
@@ -55,7 +72,10 @@ class NotificationViewModel : ViewModel() {
     }
 
     /**
-     * Decline a tag (user removes themselves from being tagged)
+     * Decline a tag (user removes themselves from being tagged in a photo)
+     * 
+     * @param flickId The photo they were tagged in
+     * @param notificationId The notification to remove
      */
     fun declineTag(flickId: String, notificationId: String) {
         viewModelScope.launch {
