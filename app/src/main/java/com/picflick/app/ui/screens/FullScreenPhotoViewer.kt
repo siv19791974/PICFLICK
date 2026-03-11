@@ -1003,20 +1003,23 @@ fun FullScreenPhotoViewer(
                         )
                         
                         // Panel content - positioned above keyboard and nav bars
+                        // Use wrapContentHeight with max constraint so it can shrink when keyboard opens
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .fillMaxHeight(0.75f)
+                                .heightIn(min = 300.dp, max = 600.dp)
                                 .background(
                                     Color.Black.copy(alpha = 0.98f),
                                     RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)
                                 )
                                 .padding(horizontal = 16.dp)
-                                .padding(top = 16.dp, bottom = 32.dp) // Extra bottom padding to stay above nav bar
-                                // Handle both nav bars AND keyboard
+                                .padding(top = 16.dp)
+                                // Handle both nav bars AND keyboard - this pushes content up
                                 .windowInsetsPadding(
                                     WindowInsets.ime.union(WindowInsets.navigationBars)
                                 )
+                                // Additional padding to stay clear of nav bar
+                                .padding(bottom = 16.dp)
                         ) {
                             // Handle bar
                             Box(
