@@ -556,6 +556,10 @@ private fun FlickCard(
                 .fillMaxSize()
                 .pointerInput(Unit) {
                     detectTapGestures(
+                        onTap = { 
+                            // Single tap to open full screen
+                            onPhotoClick()
+                        },
                         onDoubleTap = { 
                             // Double-tap to like
                             onLikeClick()
