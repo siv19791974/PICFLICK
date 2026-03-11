@@ -162,6 +162,11 @@ fun FullScreenPhotoViewer(
     // Show comment panel state
     var showCommentPanel by remember { mutableStateOf(false) }
     
+    // Like animation state for double-tap
+    var showLikeAnimation by remember { mutableStateOf(false) }
+    var isUnlikeAnimation by remember { mutableStateOf(false) }
+    val isLiked = userReaction != null
+    
     // Show share dialog state
     var showShareDialog by remember { mutableStateOf(false) }
     
@@ -592,8 +597,15 @@ fun FullScreenPhotoViewer(
                                 )
                                 .pointerInput(Unit) {
                                     detectTapGestures(
-                                        onTap = { uiVisible = !uiVisible }
-                                        // Double-tap removed - no heart animation, no zoom
+                                        onTap = { uiVisible = !uiVisible },
+                                        onDoubleTap = {
+                                            // Double-tap to toggle like/unlike
+                                            if (!canDelete) { // Only allow if not own photo
+                                                isUnlikeAnimation = isLiked
+                                                onReaction(if (isLiked) null else ReactionType.LIKE)
+                                                showLikeAnimation = true
+                                            }
+                                        }
                                     )
                                 }
                                 .then(
@@ -618,6 +630,14 @@ fun FullScreenPhotoViewer(
                                 modifier = Modifier.fillMaxSize(),
                                 contentScale = ContentScale.Fit
                             )
+                            
+                            // Like animation overlay for current photo
+                            if (isCurrent && showLikeAnimation) {
+                                LikeAnimation(
+                                    isUnlike = isUnlikeAnimation,
+                                    onAnimationComplete = { showLikeAnimation = false }
+                                )
+                            }
                         }
                 }
                     
@@ -1680,15 +1700,14 @@ private fun ReactionCountersRow(
     val totalReactions = flick.getTotalReactions()
     
     if (totalReactions == 0) {
-        // Show placeholder only if user CAN react (not their own photo)
-        if (canReact) {
-            Text(
-                text = "Be first to react!",
-                color = Color.White.copy(alpha = 0.5f),
-                fontSize = 11.sp,
-                modifier = Modifier.clickable { onReactionClick() }
-            )
-        }
+        // Show placeholder - different message for own vs others' photos
+        val message = if (canReact) "Be first to react!" else "ZERO REACTIONS AVAILABLE"
+        Text(
+            text = message,
+            color = Color.White.copy(alpha = if (canReact) 0.5f else 0.3f),
+            fontSize = 11.sp,
+            modifier = if (canReact) Modifier.clickable { onReactionClick() } else Modifier
+        )
         return
     }
     
@@ -1731,6 +1750,50 @@ private fun ReactionCounterItem(
             color = Color.White.copy(alpha = 0.9f),
             fontSize = 11.sp,
             fontWeight = FontWeight.Medium
+        )
+    }
+}
+
+/**
+ * Heart like animation that shows when double-tapping a photo
+ * Shows ❤️ for like, 🤍 for unlike
+ */
+@Composable
+private fun LikeAnimation(
+    isUnlike: Boolean = false,
+    onAnimationComplete: () -> Unit
+) {
+    var animationStarted by remember { mutableStateOf(false) }
+    
+    val scale by animateFloatAsState(
+        targetValue = if (animationStarted) 1.5f else 0f,
+        animationSpec = tween(durationMillis = 400, easing = FastOutSlowInEasing),
+        label = "like_scale"
+    )
+    
+    val alpha by animateFloatAsState(
+        targetValue = if (animationStarted) 0f else 1f,
+        animationSpec = tween(durationMillis = 400, delayMillis = 200),
+        finishedListener = { onAnimationComplete() },
+        label = "like_alpha"
+    )
+    
+    LaunchedEffect(Unit) {
+        animationStarted = true
+    }
+    
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = if (isUnlike) "🤍" else "❤️",
+            fontSize = 80.sp,
+            modifier = Modifier.graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+                this.alpha = alpha
+            }
         )
     }
 }
