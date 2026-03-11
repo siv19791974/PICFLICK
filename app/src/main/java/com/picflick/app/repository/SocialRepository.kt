@@ -13,7 +13,6 @@ import kotlinx.coroutines.tasks.await
 class SocialRepository private constructor() {
 
     private val db = FirebaseFirestore.getInstance()
-    private val flickRepository = FlickRepository.getInstance()
 
     companion object {
         @Volatile
@@ -37,7 +36,9 @@ class SocialRepository private constructor() {
             val user1Doc = db.collection("users").document(userId1).get().await()
             val user2Doc = db.collection("users").document(userId2).get().await()
 
+            @Suppress("UNCHECKED_CAST")
             val user1Following = user1Doc.get("following") as? List<String> ?: emptyList()
+            @Suppress("UNCHECKED_CAST")
             val user2Following = user2Doc.get("following") as? List<String> ?: emptyList()
 
             userId2 in user1Following && userId1 in user2Following
@@ -50,50 +51,50 @@ class SocialRepository private constructor() {
      * Check follow request status between two users
      * @param currentUserId The current user
      * @param targetUserId The target user
-     * @param onResult Callback with FollowRequestStatus
+     * @param onResult Callback with status map containing:
+     *                 - hasSentRequest: Boolean
+     *                 - hasReceivedRequest: Boolean
+     *                 - isFollowing: Boolean
+     *                 - isFollowedBy: Boolean
      */
     fun checkFollowRequestStatus(
         currentUserId: String,
         targetUserId: String,
-        onResult: (FollowRequestStatus) -> Unit
+        onResult: (Result<Map<String, Boolean>>) -> Unit
     ) {
         db.collection("users").document(currentUserId).get()
-            .addOnSuccessListener { currentUserDoc ->
-                val currentUser = currentUserDoc.toObject(UserProfile::class.java)
-                val following = currentUser?.following ?: emptyList()
-                val sentRequests = currentUser?.sentFollowRequests ?: emptyList()
+            .addOnSuccessListener { currentDoc ->
+                db.collection("users").document(targetUserId).get()
+                    .addOnSuccessListener { targetDoc ->
+                        val currentProfile = currentDoc.toObject(UserProfile::class.java)
+                        val targetProfile = targetDoc.toObject(UserProfile::class.java)
 
-                when {
-                    targetUserId in following -> onResult(FollowRequestStatus.FOLLOWING)
-                    targetUserId in sentRequests -> onResult(FollowRequestStatus.REQUEST_SENT)
-                    else -> {
-                        // Check if target user sent request to current user
-                        db.collection("users").document(targetUserId).get()
-                            .addOnSuccessListener { targetUserDoc ->
-                                val targetUser = targetUserDoc.toObject(UserProfile::class.java)
-                                val targetSentRequests = targetUser?.sentFollowRequests ?: emptyList()
+                        val status = mapOf(
+                            "hasSentRequest" to (currentProfile?.sentFollowRequests?.contains(targetUserId) ?: false),
+                            "hasReceivedRequest" to (currentProfile?.pendingFollowRequests?.contains(targetUserId) ?: false),
+                            "isFollowing" to (currentProfile?.following?.contains(targetUserId) ?: false),
+                            "isFollowedBy" to (currentProfile?.followers?.contains(targetUserId) ?: false),
+                            "targetHasSentRequest" to (targetProfile?.sentFollowRequests?.contains(currentUserId) ?: false)
+                        )
 
-                                if (currentUserId in targetSentRequests) {
-                                    onResult(FollowRequestStatus.REQUEST_RECEIVED)
-                                } else {
-                                    onResult(FollowRequestStatus.NOT_FOLLOWING)
-                                }
-                            }
-                            .addOnFailureListener { onResult(FollowRequestStatus.NOT_FOLLOWING) }
+                        onResult(Result.Success(status))
                     }
-                }
+                    .addOnFailureListener { e ->
+                        onResult(Result.Error(Exception(e.message), "Failed to check follow status"))
+                    }
             }
-            .addOnFailureListener { onResult(FollowRequestStatus.NOT_FOLLOWING) }
+            .addOnFailureListener { e ->
+                onResult(Result.Error(Exception(e.message), "Failed to check follow status"))
+            }
     }
 
     /**
      * Follow a user (suspend version)
      * @param currentUserId The current user
      * @param targetUserId The user to follow
-     * @param userName Current user's name for notification
      * @return Result success or error
      */
-    suspend fun followUser(currentUserId: String, targetUserId: String, userName: String? = null): Result<Unit> {
+    suspend fun followUser(currentUserId: String, targetUserId: String): Result<Unit> {
         return try {
             val batch = db.batch()
 
@@ -104,15 +105,6 @@ class SocialRepository private constructor() {
             batch.update(targetUserRef, "followers", FieldValue.arrayUnion(currentUserId))
 
             batch.commit().await()
-
-            if (userName != null) {
-                flickRepository.createFollowNotification(
-                    followerId = currentUserId,
-                    followerName = userName,
-                    targetUserId = targetUserId
-                )
-            }
-
             Result.Success(Unit)
         } catch (e: Exception) {
             Result.Error(e, "Failed to follow user")
@@ -156,7 +148,7 @@ class SocialRepository private constructor() {
 
         batch.commit()
             .addOnSuccessListener { onResult(Result.Success(Unit)) }
-            .addOnFailureListener { e -> onResult(Result.Error(e, "Failed to follow user")) }
+            .addOnFailureListener { e -> onResult(Result.Error(Exception(e.message), "Failed to follow user")) }
     }
 
     /**
@@ -173,7 +165,7 @@ class SocialRepository private constructor() {
 
         batch.commit()
             .addOnSuccessListener { onResult(Result.Success(Unit)) }
-            .addOnFailureListener { e -> onResult(Result.Error(e, "Failed to unfollow user")) }
+            .addOnFailureListener { e -> onResult(Result.Error(Exception(e.message), "Failed to unfollow user")) }
     }
 
     /**
@@ -196,7 +188,7 @@ class SocialRepository private constructor() {
 
         batch.commit()
             .addOnSuccessListener { onResult(Result.Success(Unit)) }
-            .addOnFailureListener { e -> onResult(Result.Error(e, "Failed to block user")) }
+            .addOnFailureListener { e -> onResult(Result.Error(Exception(e.message), "Failed to block user")) }
     }
 
     /**
@@ -209,7 +201,7 @@ class SocialRepository private constructor() {
         db.collection("users").document(currentUserId)
             .update("blockedUsers", FieldValue.arrayRemove(targetUserId))
             .addOnSuccessListener { onResult(Result.Success(Unit)) }
-            .addOnFailureListener { e -> onResult(Result.Error(e, "Failed to unblock user")) }
+            .addOnFailureListener { e -> onResult(Result.Error(Exception(e.message), "Failed to unblock user")) }
     }
 
     // ==================== FRIEND REQUEST SYSTEM ====================
@@ -218,16 +210,9 @@ class SocialRepository private constructor() {
      * Send a follow request to a user (requires approval)
      * @param currentUserId The current user
      * @param targetUserId The user to send request to
-     * @param currentUserName Current user's name
-     * @param currentUserPhotoUrl Current user's photo URL
      * @return Result success or error
      */
-    suspend fun sendFollowRequest(
-        currentUserId: String,
-        targetUserId: String,
-        currentUserName: String,
-        currentUserPhotoUrl: String
-    ): Result<Unit> {
+    suspend fun sendFollowRequest(currentUserId: String, targetUserId: String): Result<Unit> {
         return try {
             val batch = db.batch()
 
@@ -238,14 +223,6 @@ class SocialRepository private constructor() {
             batch.update(targetUserRef, "pendingFollowRequests", FieldValue.arrayUnion(currentUserId))
 
             batch.commit().await()
-
-            flickRepository.createFriendRequestNotification(
-                requesterId = currentUserId,
-                requesterName = currentUserName,
-                requesterPhotoUrl = currentUserPhotoUrl,
-                targetUserId = targetUserId
-            )
-
             Result.Success(Unit)
         } catch (e: Exception) {
             Result.Error(e, "Failed to send follow request")
@@ -256,14 +233,9 @@ class SocialRepository private constructor() {
      * Accept a follow request
      * @param currentUserId The current user (accepting)
      * @param requesterId The user who sent the request
-     * @param requesterName The requester's name for notification
      * @return Result success or error
      */
-    suspend fun acceptFollowRequest(
-        currentUserId: String,
-        requesterId: String,
-        requesterName: String
-    ): Result<Unit> {
+    suspend fun acceptFollowRequest(currentUserId: String, requesterId: String): Result<Unit> {
         return try {
             val batch = db.batch()
 
@@ -276,13 +248,6 @@ class SocialRepository private constructor() {
             batch.update(requesterRef, "following", FieldValue.arrayUnion(currentUserId))
 
             batch.commit().await()
-
-            flickRepository.createFollowAcceptedNotification(
-                accepterId = currentUserId,
-                accepterName = requesterName,
-                requesterId = requesterId
-            )
-
             Result.Success(Unit)
         } catch (e: Exception) {
             Result.Error(e, "Failed to accept follow request")
@@ -349,6 +314,7 @@ class SocialRepository private constructor() {
     fun getPendingFollowRequests(userId: String, onResult: (Result<List<UserProfile>>) -> Unit) {
         db.collection("users").document(userId).get()
             .addOnSuccessListener { doc ->
+                @Suppress("UNCHECKED_CAST")
                 val pendingIds = doc.get("pendingFollowRequests") as? List<String> ?: emptyList()
 
                 if (pendingIds.isEmpty()) {
@@ -363,9 +329,9 @@ class SocialRepository private constructor() {
                         val users = snapshot.toObjects(UserProfile::class.java)
                         onResult(Result.Success(users))
                     }
-                    .addOnFailureListener { e -> onResult(Result.Error(e, "Failed to get pending requests")) }
+                    .addOnFailureListener { e -> onResult(Result.Error(Exception(e.message), "Failed to get pending requests")) }
             }
-            .addOnFailureListener { e -> onResult(Result.Error(e, "Failed to get user data")) }
+            .addOnFailureListener { e -> onResult(Result.Error(Exception(e.message), "Failed to get user data")) }
     }
 
     // ==================== USER LISTS ====================
@@ -378,6 +344,7 @@ class SocialRepository private constructor() {
     fun getFollowingUsers(userId: String, onResult: (Result<List<UserProfile>>) -> Unit) {
         db.collection("users").document(userId).get()
             .addOnSuccessListener { doc ->
+                @Suppress("UNCHECKED_CAST")
                 val followingIds = doc.get("following") as? List<String> ?: emptyList()
 
                 if (followingIds.isEmpty()) {
@@ -392,9 +359,9 @@ class SocialRepository private constructor() {
                         val users = snapshot.toObjects(UserProfile::class.java)
                         onResult(Result.Success(users))
                     }
-                    .addOnFailureListener { e -> onResult(Result.Error(e, "Failed to get following")) }
+                    .addOnFailureListener { e -> onResult(Result.Error(Exception(e.message), "Failed to get following")) }
             }
-            .addOnFailureListener { e -> onResult(Result.Error(e, "Failed to get user data")) }
+            .addOnFailureListener { e -> onResult(Result.Error(Exception(e.message), "Failed to get user data")) }
     }
 
     /**
@@ -405,6 +372,7 @@ class SocialRepository private constructor() {
     fun getFollowers(userId: String, onResult: (Result<List<UserProfile>>) -> Unit) {
         db.collection("users").document(userId).get()
             .addOnSuccessListener { doc ->
+                @Suppress("UNCHECKED_CAST")
                 val followerIds = doc.get("followers") as? List<String> ?: emptyList()
 
                 if (followerIds.isEmpty()) {
@@ -419,9 +387,9 @@ class SocialRepository private constructor() {
                         val users = snapshot.toObjects(UserProfile::class.java)
                         onResult(Result.Success(users))
                     }
-                    .addOnFailureListener { e -> onResult(Result.Error(e, "Failed to get followers")) }
+                    .addOnFailureListener { e -> onResult(Result.Error(Exception(e.message), "Failed to get followers")) }
             }
-            .addOnFailureListener { e -> onResult(Result.Error(e, "Failed to get user data")) }
+            .addOnFailureListener { e -> onResult(Result.Error(Exception(e.message), "Failed to get user data")) }
     }
 
     /**
@@ -435,19 +403,19 @@ class SocialRepository private constructor() {
                 val userProfile = userDoc.toObject(UserProfile::class.java)
                 val following = userProfile?.following ?: emptyList()
 
-                db.collection(Constants.FirebaseCollections.USERS)
-                    .limit(Constants.Pagination.SUGGESTED_USERS_LIMIT.toLong())
+                db.collection("users")
+                    .limit(20)
                     .get()
                     .addOnSuccessListener { snapshot ->
                         val allUsers = snapshot.toObjects(UserProfile::class.java)
                         val suggestions = allUsers
                             .filter { it.uid != userId && it.uid !in following }
-                            .take(Constants.Pagination.SUGGESTED_USERS_LIMIT / 2)
+                            .take(10)
                         onResult(Result.Success(suggestions))
                     }
-                    .addOnFailureListener { e -> onResult(Result.Error(e, "Failed to get suggestions")) }
+                    .addOnFailureListener { e -> onResult(Result.Error(Exception(e.message), "Failed to get suggestions")) }
             }
-            .addOnFailureListener { e -> onResult(Result.Error(e, "Failed to get user profile")) }
+            .addOnFailureListener { e -> onResult(Result.Error(Exception(e.message), "Failed to get user profile")) }
     }
 
     /**
@@ -456,7 +424,7 @@ class SocialRepository private constructor() {
      * @param onResult Callback with list of profiles
      */
     fun getAllUsers(currentUserId: String, onResult: (Result<List<UserProfile>>) -> Unit) {
-        db.collection(Constants.FirebaseCollections.USERS)
+        db.collection("users")
             .limit(50)
             .get()
             .addOnSuccessListener { snapshot ->
@@ -464,6 +432,6 @@ class SocialRepository private constructor() {
                 val users = allUsers.filter { it.uid != currentUserId }
                 onResult(Result.Success(users))
             }
-            .addOnFailureListener { e -> onResult(Result.Error(e, "Failed to get users")) }
+            .addOnFailureListener { e -> onResult(Result.Error(Exception(e.message), "Failed to get users")) }
     }
 }
