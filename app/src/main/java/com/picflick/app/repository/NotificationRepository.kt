@@ -336,4 +336,47 @@ class NotificationRepository private constructor() {
 
         db.collection("notifications").add(notification)
     }
+
+    // ==================== AUTO CLEANUP ====================
+
+    /**
+     * Auto-delete read notifications older than 7 days
+     * Call this when app starts or periodically to keep inbox clean
+     * @param userId The user whose notifications to clean up
+     * @param onComplete Callback with count of deleted notifications
+     */
+    suspend fun cleanupOldReadNotifications(
+        userId: String,
+        onComplete: (Int) -> Unit = {}
+    ) {
+        try {
+            // Calculate 7 days ago
+            val sevenDaysAgo = System.currentTimeMillis() - (7 * 24 * 60 * 60 * 1000)
+
+            // Find read notifications older than 7 days
+            val oldNotifications = db.collection("notifications")
+                .whereEqualTo("userId", userId)
+                .whereEqualTo("isRead", true)
+                .whereLessThan("timestamp", sevenDaysAgo)
+                .get()
+                .await()
+
+            var deletedCount = 0
+            val batch = db.batch()
+
+            for (doc in oldNotifications.documents) {
+                batch.delete(doc.reference)
+                deletedCount++
+            }
+
+            if (deletedCount > 0) {
+                batch.commit().await()
+            }
+
+            onComplete(deletedCount)
+        } catch (e: Exception) {
+            // Silently fail - cleanup is not critical
+            onComplete(0)
+        }
+    }
 }
