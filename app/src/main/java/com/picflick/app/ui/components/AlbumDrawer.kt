@@ -129,7 +129,7 @@ fun AlbumDrawer(
                         isDarkMode = isDarkMode
                     )
 
-                    Divider(
+                    HorizontalDivider(
                         color = dividerColor,
                         modifier = Modifier.padding(vertical = 16.dp)
                     )
@@ -211,7 +211,7 @@ fun AlbumDrawer(
 
                     Spacer(modifier = Modifier.weight(1f))
 
-                    Divider(color = dividerColor)
+                    HorizontalDivider(color = dividerColor)
 
                     // Create New Album Button
                     Button(
