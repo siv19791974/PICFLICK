@@ -1002,17 +1002,21 @@ fun FullScreenPhotoViewer(
                                 }
                         )
                         
-                        // Panel content - fixed max height so it doesn't overflow
+                        // Panel content - positioned above keyboard and nav bars
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .fillMaxHeight(0.7f) // Take 70% of screen height max
+                                .fillMaxHeight(0.75f) // Slightly taller
                                 .background(
                                     Color.Black.copy(alpha = 0.98f),
                                     RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)
                                 )
-                                .padding(horizontal = 16.dp, vertical = 16.dp)
-                                .windowInsetsPadding(WindowInsets.navigationBars)
+                                .padding(horizontal = 16.dp)
+                                .padding(top = 16.dp)
+                                // Handle both nav bars AND keyboard - crucial!
+                                .windowInsetsPadding(
+                                    WindowInsets.ime.union(WindowInsets.navigationBars)
+                                )
                         ) {
                             // Handle bar
                             Box(
@@ -1105,12 +1109,11 @@ fun FullScreenPhotoViewer(
                                 }
                             }
                             
-                            // Comment input bar - fixed at bottom with IME padding
+                            // Comment input bar - positioned by Column insets
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(top = 12.dp)
-                                    .imePadding() // Add padding for keyboard
+                                    .padding(top = 12.dp, bottom = 8.dp)
                                     .background(
                                         Color.DarkGray.copy(alpha = 0.5f),
                                         RoundedCornerShape(24.dp)
