@@ -553,13 +553,14 @@ fun FullScreenPhotoViewer(
                                     
                                     // LOCK TO ONE AXIS - no diagonal wobble!
                                     // Simplified boundary check - only block at first/last photo
+                                    // Allow 100px drag before blocking so animation can be felt
                                     if (isDraggingVertically) {
                                         val atTop = currentPageIndex == 0
                                         val atBottom = currentPageIndex == validPhotos.size - 1
                                         
-                                        // Block going past boundaries, but allow snap-back
-                                        val blockingUp = atBottom && amount.y < 0 && rawDragY <= 0
-                                        val blockingDown = atTop && amount.y > 0 && rawDragY >= 0
+                                        // Block going past boundaries, but allow 100px drag for animation feel
+                                        val blockingUp = atBottom && amount.y < 0 && rawDragY < -100f
+                                        val blockingDown = atTop && amount.y > 0 && rawDragY > 100f
                                         
                                         if (!blockingUp && !blockingDown) {
                                             rawDragY += amount.y
@@ -571,9 +572,9 @@ fun FullScreenPhotoViewer(
                                         val atLeft = currentPageIndex == 0  // First photo
                                         val atRight = currentPageIndex == validPhotos.size - 1  // Last photo
                                         
-                                        // Block going past boundaries, but allow snap-back
-                                        val blockingLeft = atRight && amount.x < 0 && rawDragX <= 0
-                                        val blockingRight = atLeft && amount.x > 0 && rawDragX >= 0
+                                        // Block going past boundaries, but allow 100px drag for animation feel
+                                        val blockingLeft = atRight && amount.x < 0 && rawDragX < -100f
+                                        val blockingRight = atLeft && amount.x > 0 && rawDragX > 100f
                                         
                                         if (!blockingLeft && !blockingRight) {
                                             rawDragX += amount.x
