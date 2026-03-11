@@ -362,7 +362,9 @@ private fun DiscoverTab(
         PullRefreshIndicator(
             refreshing = viewModel.isLoading,
             state = pullRefreshState,
-            modifier = Modifier.align(Alignment.TopCenter)
+            modifier = Modifier.align(Alignment.TopCenter),
+            backgroundColor = Color(0xFF2A2A2A), // Dark gray background
+            contentColor = Color.White // White spinner
         )
     }
 }
@@ -530,7 +532,9 @@ private fun ContactsTab(
             PullRefreshIndicator(
                 refreshing = viewModel.isLoading,
                 state = pullRefreshState,
-                modifier = Modifier.align(Alignment.TopCenter)
+                modifier = Modifier.align(Alignment.TopCenter),
+                backgroundColor = Color(0xFF2A2A2A), // Dark gray background
+                contentColor = Color.White // White spinner
             )
         }
     }
