@@ -341,4 +341,264 @@ class PhotoRepository private constructor() {
             }
             .addOnFailureListener { e -> onResult(Result.Error(e, "Failed to fetch flicks")) }
     }
+
+    // ==================== COMMENTS ====================
+
+    /**
+     * Add a comment to a flick
+     * @param flickId The photo being commented on
+     * @param userId Comment author ID
+     * @param userName Comment author name
+     * @param userPhotoUrl Comment author photo
+     * @param text Comment text
+     * @param parentCommentId For replies (null for top-level)
+     * @param onResult Callback with result
+     */
+    fun addComment(
+        flickId: String,
+        userId: String,
+        userName: String,
+        userPhotoUrl: String,
+        text: String,
+        parentCommentId: String? = null,
+        onResult: (Result<Comment>) -> Unit
+    ) {
+        val commentId = UUID.randomUUID().toString()
+        val comment = Comment(
+            id = commentId,
+            flickId = flickId,
+            userId = userId,
+            userName = userName,
+            userPhotoUrl = userPhotoUrl,
+            text = text,
+            parentCommentId = parentCommentId
+        )
+
+        db.collection("comments").document(commentId).set(comment)
+            .addOnSuccessListener {
+                // Update flick comment count
+                db.collection("flicks").document(flickId)
+                    .update("commentCount", FieldValue.increment(1))
+                    .addOnSuccessListener { onResult(Result.Success(comment)) }
+                    .addOnFailureListener { e -> onResult(Result.Error(e, "Failed to update comment count")) }
+            }
+            .addOnFailureListener { e -> onResult(Result.Error(e, "Failed to add comment")) }
+    }
+
+    /**
+     * Get comments for a flick
+     * @param flickId The photo to get comments for
+     * @param onResult Callback with list of comments
+     */
+    fun getComments(flickId: String, onResult: (Result<List<Comment>>) -> Unit) {
+        db.collection("comments")
+            .whereEqualTo("flickId", flickId)
+            .whereEqualTo("parentCommentId", null) // Only top-level comments
+            .orderBy("timestamp", Query.Direction.DESCENDING)
+            .get()
+            .addOnSuccessListener { snapshot ->
+                val comments = snapshot.documents.mapNotNull { it.toObject(Comment::class.java) }
+                onResult(Result.Success(comments))
+            }
+            .addOnFailureListener { e -> onResult(Result.Error(e, "Failed to fetch comments")) }
+    }
+
+    /**
+     * Get replies to a specific comment
+     * @param parentCommentId The comment to get replies for
+     * @param onResult Callback with list of reply comments
+     */
+    fun getCommentReplies(parentCommentId: String, onResult: (Result<List<Comment>>) -> Unit) {
+        db.collection("comments")
+            .whereEqualTo("parentCommentId", parentCommentId)
+            .orderBy("timestamp", Query.Direction.ASCENDING)
+            .get()
+            .addOnSuccessListener { snapshot ->
+                val replies = snapshot.documents.mapNotNull { it.toObject(Comment::class.java) }
+                onResult(Result.Success(replies))
+            }
+            .addOnFailureListener { e -> onResult(Result.Error(e, "Failed to fetch replies")) }
+    }
+
+    /**
+     * Delete a comment
+     * @param commentId The comment to delete
+     * @param flickId The flick the comment belongs to
+     * @param onResult Callback with result
+     */
+    fun deleteComment(commentId: String, flickId: String, onResult: (Result<Unit>) -> Unit) {
+        db.collection("comments").document(commentId).delete()
+            .addOnSuccessListener {
+                // Decrement flick comment count
+                db.collection("flicks").document(flickId)
+                    .update("commentCount", FieldValue.increment(-1))
+                    .addOnSuccessListener { onResult(Result.Success(Unit)) }
+                    .addOnFailureListener { e -> onResult(Result.Error(e, "Failed to update comment count")) }
+            }
+            .addOnFailureListener { e -> onResult(Result.Error(e, "Failed to delete comment")) }
+    }
+
+    /**
+     * Like/unlike a comment
+     * @param commentId The comment to like
+     * @param userId The user liking the comment
+     * @param onResult Callback with result
+     */
+    fun toggleCommentLike(commentId: String, userId: String, onResult: (Result<Boolean>) -> Unit) {
+        val commentRef = db.collection("comments").document(commentId)
+
+        commentRef.get()
+            .addOnSuccessListener { doc ->
+                val comment = doc.toObject(Comment::class.java)
+                if (comment == null) {
+                    onResult(Result.Error(Exception("Comment not found"), "Comment not found"))
+                    return@addOnSuccessListener
+                }
+
+                val isLiked = comment.likedBy.contains(userId)
+                val newLikedBy = if (isLiked) {
+                    comment.likedBy - userId
+                } else {
+                    comment.likedBy + userId
+                }
+
+                commentRef.update(
+                    "likedBy", newLikedBy,
+                    "likeCount", newLikedBy.size
+                )
+                    .addOnSuccessListener { onResult(Result.Success(!isLiked)) }
+                    .addOnFailureListener { e -> onResult(Result.Error(e, "Failed to toggle like")) }
+            }
+            .addOnFailureListener { e -> onResult(Result.Error(e, "Failed to fetch comment")) }
+    }
+
+    // ==================== ALBUMS ====================
+
+    /**
+     * Create a new album
+     * @param userId Album owner
+     * @param name Album name
+     * @param description Optional description
+     * @param privacy Privacy setting
+     * @param onResult Callback with result
+     */
+    fun createAlbum(
+        userId: String,
+        name: String,
+        description: String = "",
+        privacy: String = "friends",
+        onResult: (Result<Album>) -> Unit
+    ) {
+        val albumId = UUID.randomUUID().toString()
+        val album = Album(
+            id = albumId,
+            userId = userId,
+            name = name,
+            description = description,
+            privacy = privacy
+        )
+
+        db.collection("albums").document(albumId).set(album)
+            .addOnSuccessListener { onResult(Result.Success(album)) }
+            .addOnFailureListener { e -> onResult(Result.Error(e, "Failed to create album")) }
+    }
+
+    /**
+     * Get all albums for a user
+     * @param userId The user whose albums to get
+     * @param onResult Callback with list of albums
+     */
+    fun getUserAlbums(userId: String, onResult: (Result<List<Album>>) -> Unit) {
+        db.collection("albums")
+            .whereEqualTo("userId", userId)
+            .orderBy("sortOrder", Query.Direction.ASCENDING)
+            .orderBy("createdAt", Query.Direction.DESCENDING)
+            .get()
+            .addOnSuccessListener { snapshot ->
+                val albums = snapshot.documents.mapNotNull { it.toObject(Album::class.java) }
+                onResult(Result.Success(albums))
+            }
+            .addOnFailureListener { e -> onResult(Result.Error(e, "Failed to fetch albums")) }
+    }
+
+    /**
+     * Add a photo to an album
+     * @param albumId The album to add to
+     * @param photoId The photo to add
+     * @param photoUrl The photo URL for cover image
+     * @param onResult Callback with result
+     */
+    fun addPhotoToAlbum(
+        albumId: String,
+        photoId: String,
+        photoUrl: String,
+        onResult: (Result<Unit>) -> Unit
+    ) {
+        val albumRef = db.collection("albums").document(albumId)
+
+        albumRef.get()
+            .addOnSuccessListener { doc ->
+                val album = doc.toObject(Album::class.java)
+                if (album == null) {
+                    onResult(Result.Error(Exception("Album not found"), "Album not found"))
+                    return@addOnSuccessListener
+                }
+
+                // Add photo ID to list
+                val updatedPhotoIds = album.photoIds + photoId
+                // Update cover if this is the first photo
+                val updatedCover = if (album.coverPhotoUrl.isEmpty()) photoUrl else album.coverPhotoUrl
+
+                albumRef.update(
+                    "photoIds", updatedPhotoIds,
+                    "photoCount", updatedPhotoIds.size,
+                    "coverPhotoUrl", updatedCover,
+                    "updatedAt", FieldValue.serverTimestamp()
+                )
+                    .addOnSuccessListener { onResult(Result.Success(Unit)) }
+                    .addOnFailureListener { e -> onResult(Result.Error(e, "Failed to add photo to album")) }
+            }
+            .addOnFailureListener { e -> onResult(Result.Error(e, "Failed to fetch album")) }
+    }
+
+    /**
+     * Remove a photo from an album
+     * @param albumId The album to remove from
+     * @param photoId The photo to remove
+     * @param onResult Callback with result
+     */
+    fun removePhotoFromAlbum(albumId: String, photoId: String, onResult: (Result<Unit>) -> Unit) {
+        val albumRef = db.collection("albums").document(albumId)
+
+        albumRef.get()
+            .addOnSuccessListener { doc ->
+                val album = doc.toObject(Album::class.java)
+                if (album == null) {
+                    onResult(Result.Error(Exception("Album not found"), "Album not found"))
+                    return@addOnSuccessListener
+                }
+
+                val updatedPhotoIds = album.photoIds - photoId
+
+                albumRef.update(
+                    "photoIds", updatedPhotoIds,
+                    "photoCount", updatedPhotoIds.size,
+                    "updatedAt", FieldValue.serverTimestamp()
+                )
+                    .addOnSuccessListener { onResult(Result.Success(Unit)) }
+                    .addOnFailureListener { e -> onResult(Result.Error(e, "Failed to remove photo from album")) }
+            }
+            .addOnFailureListener { e -> onResult(Result.Error(e, "Failed to fetch album")) }
+    }
+
+    /**
+     * Delete an album
+     * @param albumId The album to delete
+     * @param onResult Callback with result
+     */
+    fun deleteAlbum(albumId: String, onResult: (Result<Unit>) -> Unit) {
+        db.collection("albums").document(albumId).delete()
+            .addOnSuccessListener { onResult(Result.Success(Unit)) }
+            .addOnFailureListener { e -> onResult(Result.Error(e, "Failed to delete album")) }
+    }
 }
