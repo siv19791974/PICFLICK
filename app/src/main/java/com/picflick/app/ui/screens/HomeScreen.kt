@@ -11,6 +11,7 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
@@ -24,8 +25,10 @@ import androidx.compose.material.pullrefresh.PullRefreshIndicator
 import androidx.compose.material.pullrefresh.pullRefresh
 import androidx.compose.material.pullrefresh.rememberPullRefreshState
 import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -532,6 +535,7 @@ private fun FlickCard(
 ) {
     val userReaction = flick.getUserReaction(userId)
     val totalReactions = flick.getTotalReactions()
+    var showLikeAnimation by remember { mutableStateOf(false) }
     
     Card(
         modifier = Modifier
@@ -547,7 +551,19 @@ private fun FlickCard(
             containerColor = Color.Transparent // Transparent background
         )
     ) {
-        Box(modifier = Modifier.fillMaxSize()) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .pointerInput(Unit) {
+                    detectTapGestures(
+                        onDoubleTap = { 
+                            // Double-tap to like
+                            onLikeClick()
+                            showLikeAnimation = true
+                        }
+                    )
+                }
+        ) {
             // Photo
             AsyncImage(
                 model = flick.imageUrl,
@@ -555,6 +571,13 @@ private fun FlickCard(
                 modifier = Modifier.fillMaxSize(), // Fill the exact height
                 contentScale = ContentScale.Crop
             )
+            
+            // Like animation overlay (when double-tapped)
+            if (showLikeAnimation) {
+                LikeAnimation(
+                    onAnimationComplete = { showLikeAnimation = false }
+                )
+            }
             
             // Reaction count overlay (top right)
             if (totalReactions > 0) {
@@ -709,6 +732,48 @@ private fun FlyingReactionAnimation(
                     scaleY = scale
                     this.alpha = alpha
                 }
+        )
+    }
+}
+
+/**
+ * Heart like animation that shows when double-tapping a photo
+ */
+@Composable
+private fun LikeAnimation(
+    onAnimationComplete: () -> Unit
+) {
+    var animationStarted by remember { mutableStateOf(false) }
+    
+    val scale by animateFloatAsState(
+        targetValue = if (animationStarted) 1.5f else 0f,
+        animationSpec = tween(durationMillis = 400, easing = FastOutSlowInEasing),
+        label = "like_scale"
+    )
+    
+    val alpha by animateFloatAsState(
+        targetValue = if (animationStarted) 0f else 1f,
+        animationSpec = tween(durationMillis = 400, delayMillis = 200),
+        finishedListener = { onAnimationComplete() },
+        label = "like_alpha"
+    )
+    
+    LaunchedEffect(Unit) {
+        animationStarted = true
+    }
+    
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = "❤️",
+            fontSize = 80.sp,
+            modifier = Modifier.graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+                this.alpha = alpha
+            }
         )
     }
 }
