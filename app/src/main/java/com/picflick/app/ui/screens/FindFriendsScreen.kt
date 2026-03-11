@@ -16,6 +16,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
@@ -220,8 +221,12 @@ private fun DiscoverTab(
                 singleLine = true
             )
 
-            // All Users Section
-            if (viewModel.searchQuery.isBlank() && viewModel.suggestedUsers.isNotEmpty()) {
+            // All Users Section - Filter out already followed friends
+            val filteredSuggestedUsers = viewModel.suggestedUsers.filter { user ->
+                !userProfile.following.contains(user.uid) && user.uid != userProfile.uid
+            }
+            
+            if (viewModel.searchQuery.isBlank() && filteredSuggestedUsers.isNotEmpty()) {
                 Text(
                     text = "People on PicFlick",
                     style = MaterialTheme.typography.titleMedium,
@@ -230,16 +235,15 @@ private fun DiscoverTab(
                 )
 
                 LazyColumn {
-                    items(viewModel.suggestedUsers) { user ->
+                    items(filteredSuggestedUsers) { user ->
                         UserResultItem(
                             user = user,
-                            isFollowing = userProfile.following.contains(user.uid),
+                            isFollowing = false, // Already filtered out followed users
                             hasSentRequest = userProfile.sentFollowRequests.contains(user.uid),
                             hasReceivedRequest = userProfile.pendingFollowRequests.contains(user.uid),
                             isProcessing = viewModel.processingUserIds.contains(user.uid),
                             onFollowClick = {
                                 val action = when {
-                                    userProfile.following.contains(user.uid) -> "unfollow"
                                     userProfile.pendingFollowRequests.contains(user.uid) -> "accept"
                                     else -> "send_request"
                                 }
@@ -251,6 +255,39 @@ private fun DiscoverTab(
                             onUserClick = { onUserClick(user.uid) },
                             showMutualFriends = true,
                             mutualCount = (user.followers intersect userProfile.following.toSet()).size
+                        )
+                    }
+                }
+            } else if (viewModel.searchQuery.isBlank() && filteredSuggestedUsers.isEmpty() && viewModel.suggestedUsers.isNotEmpty()) {
+                // All suggested users are already friends
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier.padding(32.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.CheckCircle,
+                            contentDescription = null,
+                            modifier = Modifier.size(64.dp),
+                            tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text(
+                            text = "You're following everyone!",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = "Invite more friends to join PicFlick",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
                         )
                     }
                 }
@@ -397,27 +434,30 @@ private fun ContactsTab(
             if (viewModel.isLoading && viewModel.contactsOnApp.isEmpty()) {
                 FullScreenLoading()
             } else {
-                // Show contacts on the app
+                // Show contacts on the app - filter out already followed
+                val filteredContacts = viewModel.contactsOnApp.filter { user ->
+                    !userProfile.following.contains(user.uid) && user.uid != userProfile.uid
+                }
+                
                 Column(modifier = Modifier.fillMaxSize()) {
                     // On the app section
-                    if (viewModel.contactsOnApp.isNotEmpty()) {
+                    if (filteredContacts.isNotEmpty()) {
                         Text(
-                            text = "Contacts on PicFlick (${viewModel.contactsOnApp.size})",
+                            text = "Contacts on PicFlick (${filteredContacts.size})",
                             style = MaterialTheme.typography.titleMedium,
                             modifier = Modifier.padding(16.dp)
                         )
 
                         LazyColumn {
-                            items(viewModel.contactsOnApp) { user ->
+                            items(filteredContacts) { user ->
                                 UserResultItem(
                                     user = user,
-                                    isFollowing = userProfile.following.contains(user.uid),
+                                    isFollowing = false, // Already filtered
                                     hasSentRequest = userProfile.sentFollowRequests.contains(user.uid),
                                     hasReceivedRequest = userProfile.pendingFollowRequests.contains(user.uid),
                                     isProcessing = viewModel.processingUserIds.contains(user.uid),
                                     onFollowClick = {
                                         val action = when {
-                                            userProfile.following.contains(user.uid) -> "unfollow"
                                             userProfile.pendingFollowRequests.contains(user.uid) -> "accept"
                                             else -> "send_request"
                                         }
@@ -428,6 +468,32 @@ private fun ContactsTab(
                                     },
                                     onUserClick = { onUserClick(user.uid) },
                                     subtitle = "From your contacts"
+                                )
+                            }
+                        }
+                    } else if (viewModel.contactsOnApp.isNotEmpty() && filteredContacts.isEmpty()) {
+                        // All contacts are already friends
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Icon(
+                                    imageVector = Icons.Default.CheckCircle,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(64.dp),
+                                    tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
+                                )
+                                Spacer(modifier = Modifier.height(16.dp))
+                                Text(
+                                    text = "You're following all your contacts!",
+                                    style = MaterialTheme.typography.bodyLarge
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(
+                                    text = "Invite more friends to join!",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.primary
                                 )
                             }
                         }
