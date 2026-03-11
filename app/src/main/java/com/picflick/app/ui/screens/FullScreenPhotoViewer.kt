@@ -1568,16 +1568,16 @@ private fun CompactCommentItem(
                         contentPadding = PaddingValues(horizontal = 0.dp)
                     ) {
                         Text(
-                            text = if (comment.hasUserLiked(currentUserId)) "❤️ Liked" else "🤍 Like",
+                            text = if (comment.likedBy.contains(currentUserId)) "❤️ Liked" else "🤍 Like",
                             fontSize = 10.sp,
-                            color = if (comment.hasUserLiked(currentUserId)) Color(0xFFFF4081) else Color.Gray
+                            color = if (comment.likedBy.contains(currentUserId)) Color(0xFFFF4081) else Color.Gray
                         )
                     }
                     
                     // Like count
-                    if (comment.getLikeCount() > 0) {
+                    if (comment.likeCount > 0) {
                         Text(
-                            text = "${comment.getLikeCount()}",
+                            text = "${comment.likeCount}",
                             fontSize = 10.sp,
                             color = Color.Gray,
                             modifier = Modifier.padding(start = 4.dp)
