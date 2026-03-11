@@ -80,6 +80,38 @@ fun ChatsScreen(
         ) {
             // NO BANNER - banner is in MainActivity
 
+            // Error message display
+            viewModel.errorMessage?.let { error ->
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    color = MaterialTheme.colorScheme.errorContainer,
+                    tonalElevation = 2.dp
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = error,
+                            color = MaterialTheme.colorScheme.onErrorContainer,
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.weight(1f)
+                        )
+                        TextButton(
+                            onClick = { 
+                                viewModel.clearError()
+                                viewModel.loadChatSessions(userProfile.uid) 
+                            }
+                        ) {
+                            Text("Retry", color = MaterialTheme.colorScheme.onErrorContainer)
+                        }
+                    }
+                }
+            }
+
             // Modern PullRefresh content
             Box(
                 modifier = Modifier
