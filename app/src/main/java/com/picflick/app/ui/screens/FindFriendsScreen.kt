@@ -544,7 +544,7 @@ private fun InviteTab(
 ) {
     val context = LocalContext.current
 
-    val inviteMessage = """Hey! 👋
+    val inviteMessage = """Hey! 👋🤖
 
 Check out PicFlick - a cool photo sharing app I've been using!
 
