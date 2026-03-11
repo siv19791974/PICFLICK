@@ -28,6 +28,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -404,25 +406,36 @@ private fun ChatBubble(
     otherUserPhoto: String,
     onReplyClick: () -> Unit = {}
 ) {
-    val bubbleColor = if (isMe) {
-        Color(0xFFDCF8C6) // WhatsApp light green for sent
-    } else {
-        MaterialTheme.colorScheme.surface // White/gray for received
-    }
+    // Sexy gradient backgrounds for message bubbles
+    val sentBrush = Brush.linearGradient(
+        colors = listOf(
+            Color(0xFF667eea), // Soft purple
+            Color(0xFF764ba2)  // Deep purple
+        )
+    )
+    
+    val receivedBrush = Brush.linearGradient(
+        colors = listOf(
+            Color(0xFFf093fb), // Pink
+            Color(0xFFf5576c)  // Coral
+        )
+    )
+    
+    val bubbleBrush = if (isMe) sentBrush else receivedBrush
 
     val bubbleShape = if (isMe) {
         RoundedCornerShape(
-            topStart = 16.dp,
+            topStart = 20.dp,
             topEnd = 4.dp,
-            bottomStart = 16.dp,
-            bottomEnd = 16.dp
+            bottomStart = 20.dp,
+            bottomEnd = 20.dp
         )
     } else {
         RoundedCornerShape(
             topStart = 4.dp,
-            topEnd = 16.dp,
-            bottomStart = 16.dp,
-            bottomEnd = 16.dp
+            topEnd = 20.dp,
+            bottomStart = 20.dp,
+            bottomEnd = 20.dp
         )
     }
 
@@ -457,15 +470,21 @@ private fun ChatBubble(
             Spacer(modifier = Modifier.width(8.dp))
         }
 
-        // Message bubble
+        // Message bubble with sexy gradient and shadow
         Column(
             modifier = Modifier
                 .padding(horizontal = if (isMe) 8.dp else 0.dp)
         ) {
             Box(
                 modifier = Modifier
-                    .background(bubbleColor, bubbleShape)
-                    .padding(horizontal = 12.dp, vertical = 8.dp)
+                    .shadow(
+                        elevation = 4.dp,
+                        shape = bubbleShape,
+                        ambientColor = if (isMe) Color(0xFF667eea) else Color(0xFFf5576c),
+                        spotColor = if (isMe) Color(0xFF667eea) else Color(0xFFf5576c)
+                    )
+                    .background(bubbleBrush, bubbleShape)
+                    .padding(horizontal = 14.dp, vertical = 10.dp)
             ) {
                 Column {
                     // Show quoted message if this is a reply
@@ -481,10 +500,11 @@ private fun ChatBubble(
                     Text(
                         text = message.text,
                         fontSize = 15.sp,
-                        color = MaterialTheme.colorScheme.onSurface
+                        color = Color.White, // White text on gradient
+                        fontWeight = FontWeight.Medium
                     )
 
-                    Spacer(modifier = Modifier.height(2.dp))
+                    Spacer(modifier = Modifier.height(4.dp))
 
                     // Time and status
                     Row(
@@ -495,32 +515,32 @@ private fun ChatBubble(
                         Text(
                             text = formatMessageTime(message.timestamp),
                             fontSize = 11.sp,
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                            color = Color.White.copy(alpha = 0.85f)
                         )
 
                         if (isMe) {
                             Spacer(modifier = Modifier.width(4.dp))
-                            // Message status icon
+                            // Message status icon with sexy colors
                             when {
                                 message.read -> {
                                     Text(
                                         text = "✓✓",
                                         fontSize = 12.sp,
-                                        color = Color(0xFF53BDEB) // Blue for read
+                                        color = Color(0xFF00E5FF) // Cyan glow for read
                                     )
                                 }
                                 message.delivered -> {
                                     Text(
                                         text = "✓✓",
                                         fontSize = 12.sp,
-                                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
+                                        color = Color.White.copy(alpha = 0.7f)
                                     )
                                 }
                                 else -> {
                                     Text(
                                         text = "✓",
                                         fontSize = 12.sp,
-                                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
+                                        color = Color.White.copy(alpha = 0.5f)
                                     )
                                 }
                             }
@@ -602,7 +622,7 @@ private fun ReplyPreview(
 }
 
 /**
- * Quoted message preview component for replies
+ * Quoted message preview component for replies with sexy styling
  */
 @Composable
 private fun QuotedMessage(
@@ -610,31 +630,34 @@ private fun QuotedMessage(
     quotedText: String,
     isMe: Boolean
 ) {
-    val quoteColor = if (isMe) Color(0xFF8BC34A) else MaterialTheme.colorScheme.primary
+    val quoteColor = if (isMe) Color(0xFF00E5FF) else Color(0xFFffd1ff) // Cyan or soft pink
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .background(color = Color.Black.copy(alpha = 0.05f), shape = RoundedCornerShape(4.dp))
-            .padding(6.dp)
+            .background(
+                color = Color.White.copy(alpha = 0.15f), 
+                shape = RoundedCornerShape(8.dp)
+            )
+            .padding(8.dp)
     ) {
         Box(
             modifier = Modifier
                 .width(3.dp)
-                .height(30.dp)
-                .background(quoteColor)
+                .height(32.dp)
+                .background(quoteColor, RoundedCornerShape(2.dp))
         )
-        Spacer(modifier = Modifier.width(6.dp))
+        Spacer(modifier = Modifier.width(8.dp))
         Column {
             Text(
                 text = quotedSenderName,
                 fontSize = 12.sp,
-                fontWeight = FontWeight.Medium,
+                fontWeight = FontWeight.Bold,
                 color = quoteColor
             )
             Text(
                 text = quotedText,
                 fontSize = 12.sp,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                color = Color.White.copy(alpha = 0.8f),
                 maxLines = 1
             )
         }
