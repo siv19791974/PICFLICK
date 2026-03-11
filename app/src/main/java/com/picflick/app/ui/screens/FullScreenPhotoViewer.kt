@@ -1712,15 +1712,7 @@ private fun ReactionCountersRow(
     val totalReactions = flick.getTotalReactions()
     
     if (totalReactions == 0) {
-        // Show placeholder - different message for own vs others' photos
-        val message = if (canReact) "Be first to react!" else "ZERO REACTIONS AVAILABLE"
-        Text(
-            text = message,
-            color = Color.White.copy(alpha = if (canReact) 0.7f else 0.6f),
-            fontSize = 12.sp,
-            fontWeight = if (canReact) FontWeight.Normal else FontWeight.Medium,
-            modifier = if (canReact) Modifier.clickable { onReactionClick() } else Modifier
-        )
+        // Show nothing when no reactions - removed placeholder text
         return
     }
     
