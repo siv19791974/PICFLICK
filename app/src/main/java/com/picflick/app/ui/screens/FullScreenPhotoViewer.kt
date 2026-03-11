@@ -1704,8 +1704,9 @@ private fun ReactionCountersRow(
         val message = if (canReact) "Be first to react!" else "ZERO REACTIONS AVAILABLE"
         Text(
             text = message,
-            color = Color.White.copy(alpha = if (canReact) 0.5f else 0.3f),
-            fontSize = 11.sp,
+            color = Color.White.copy(alpha = if (canReact) 0.7f else 0.6f),
+            fontSize = 12.sp,
+            fontWeight = if (canReact) FontWeight.Normal else FontWeight.Medium,
             modifier = if (canReact) Modifier.clickable { onReactionClick() } else Modifier
         )
         return
