@@ -979,7 +979,7 @@ fun FullScreenPhotoViewer(
                     }
                 }
                 
-                // SLIDE-UP COMMENT PANEL
+                // COMPACT COMMENT OVERLAY - Photo stays visible!
                 AnimatedVisibility(
                     visible = showCommentPanel,
                     enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
@@ -1002,24 +1002,19 @@ fun FullScreenPhotoViewer(
                                 }
                         )
                         
-                        // Panel content - positioned above keyboard and nav bars
-                        // Use wrapContentHeight with max constraint so it can shrink when keyboard opens
+                        // Compact comment panel - photo stays visible!
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .heightIn(min = 300.dp, max = 600.dp)
+                                .wrapContentHeight()
+                                .heightIn(max = 280.dp) // Compact - leaves photo visible
                                 .background(
-                                    Color.Black.copy(alpha = 0.98f),
-                                    RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)
+                                    Color.Black.copy(alpha = 0.95f),
+                                    RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)
                                 )
-                                .padding(horizontal = 16.dp)
-                                .padding(top = 16.dp)
-                                // Handle both nav bars AND keyboard - this pushes content up
-                                .windowInsetsPadding(
-                                    WindowInsets.ime.union(WindowInsets.navigationBars)
-                                )
-                                // Additional padding to stay clear of nav bar
-                                .padding(bottom = 16.dp)
+                                .padding(horizontal = 12.dp, vertical = 8.dp)
+                                // Only handle nav bars, not IME (let it overlay)
+                                .windowInsetsPadding(WindowInsets.navigationBars)
                         ) {
                             // Handle bar
                             Box(
@@ -1068,11 +1063,11 @@ fun FullScreenPhotoViewer(
                                 modifier = Modifier.padding(vertical = 12.dp)
                             )
                             
-                            // Comments list - takes available space but doesn't push input off screen
+                            // Comments list - compact fixed height
                             Box(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .weight(1f) // Takes remaining space
+                                    .heightIn(max = 120.dp) // Compact, leaves photo visible
                             ) {
                                 Column(
                                     modifier = Modifier
