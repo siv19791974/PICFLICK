@@ -15,36 +15,46 @@ import kotlinx.coroutines.tasks.await
 
 /**
  * ViewModel for chat/messaging functionality
+ *
+ * Manages:
+ * - Chat sessions (conversations list)
+ * - Real-time messages within a chat
+ * - Sending text and photo messages
+ * - Starting new chats with friends
+ * - Unread message counts
  */
 class ChatViewModel : ViewModel() {
     private val repository = ChatRepository()
 
-    // Chat sessions list
+    /** List of all chat sessions for current user */
     var chatSessions by mutableStateOf<List<ChatSession>>(emptyList())
         private set
 
-    // Current chat messages
+    /** Messages in the currently open chat */
     var messages by mutableStateOf<List<ChatMessage>>(emptyList())
         private set
 
-    // Loading state
+    /** Loading state for operations */
     var isLoading by mutableStateOf(false)
         private set
 
-    // Error message
+    /** Error message for failed operations */
     var errorMessage by mutableStateOf<String?>(null)
         private set
 
-    // Current chat ID
+    /** ID of currently open chat session */
     var currentChatId by mutableStateOf<String?>(null)
         private set
 
-    // Unread message count
+    /** Total unread messages across all chats */
     var unreadCount by mutableStateOf(0)
         private set
 
     /**
      * Load chat sessions for a user
+     * Updates chatSessions with real-time data from Firestore
+     * 
+     * @param userId The user whose sessions to load
      */
     fun loadChatSessions(userId: String) {
         viewModelScope.launch {
@@ -52,6 +62,8 @@ class ChatViewModel : ViewModel() {
             try {
                 repository.getChatSessions(userId).collectLatest { sessions ->
                     chatSessions = sessions
+                    // Calculate total unread
+                    unreadCount = sessions.sumOf { it.unreadCount }
                     isLoading = false
                 }
             } catch (e: Exception) {
@@ -63,6 +75,9 @@ class ChatViewModel : ViewModel() {
 
     /**
      * Load messages for a specific chat
+     * Sets up real-time listener for new messages
+     * 
+     * @param chatId The chat session ID to load messages for
      */
     fun loadMessages(chatId: String) {
         currentChatId = chatId
