@@ -23,14 +23,17 @@ class ChatRepository {
     fun getChatSessions(userId: String): Flow<List<ChatSession>> = callbackFlow {
         val subscription = db.collection("chatSessions")
             .whereArrayContains("participants", userId)
-            .orderBy("lastTimestamp", Query.Direction.DESCENDING)
+            // Removed orderBy - requires composite index. Sort client-side instead.
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
+                    android.util.Log.e("ChatRepository", "Error loading chat sessions: ${error.message}")
                     close(error)
                     return@addSnapshotListener
                 }
                 val sessions = snapshot?.toObjects(ChatSession::class.java) ?: emptyList()
-                trySend(sessions)
+                // Sort client-side by lastTimestamp descending
+                val sortedSessions = sessions.sortedByDescending { it.lastTimestamp }
+                trySend(sortedSessions)
             }
         awaitClose { subscription.remove() }
     }
