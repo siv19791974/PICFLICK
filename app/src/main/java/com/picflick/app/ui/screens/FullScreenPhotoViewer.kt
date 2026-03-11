@@ -518,24 +518,12 @@ fun FullScreenPhotoViewer(
                                             }
                                         }
                                         else -> {
-                                            // Smooth tween animation back to center (500ms - super smooth)
+                                            // Simple snap back to center - no animation
                                             coroutineScope.launch {
-                                                dragXAnim.animateTo(
-                                                    targetValue = 0f,
-                                                    animationSpec = tween(
-                                                        durationMillis = 500,
-                                                        easing = FastOutSlowInEasing
-                                                    )
-                                                )
+                                                dragXAnim.snapTo(0f)
                                             }
                                             coroutineScope.launch {
-                                                dragYAnim.animateTo(
-                                                    targetValue = 0f,
-                                                    animationSpec = tween(
-                                                        durationMillis = 500,
-                                                        easing = FastOutSlowInEasing
-                                                    )
-                                                )
+                                                dragYAnim.snapTo(0f)
                                             }
                                         }
                                     }
@@ -552,35 +540,15 @@ fun FullScreenPhotoViewer(
                                     }
                                     
                                     // LOCK TO ONE AXIS - no diagonal wobble!
-                                    // Simplified boundary check - only block at first/last photo
-                                    // Allow 100px drag before blocking so animation can be felt
                                     if (isDraggingVertically) {
-                                        val atTop = currentPageIndex == 0
-                                        val atBottom = currentPageIndex == validPhotos.size - 1
-                                        
-                                        // Block going past boundaries, but allow 100px drag for animation feel
-                                        val blockingUp = atBottom && amount.y < 0 && rawDragY < -100f
-                                        val blockingDown = atTop && amount.y > 0 && rawDragY > 100f
-                                        
-                                        if (!blockingUp && !blockingDown) {
-                                            rawDragY += amount.y
-                                            coroutineScope.launch {
-                                                dragYAnim.snapTo(rawDragY)
-                                            }
+                                        rawDragY += amount.y
+                                        coroutineScope.launch {
+                                            dragYAnim.snapTo(rawDragY)
                                         }
                                     } else {
-                                        val atLeft = currentPageIndex == 0  // First photo
-                                        val atRight = currentPageIndex == validPhotos.size - 1  // Last photo
-                                        
-                                        // Block going past boundaries, but allow 100px drag for animation feel
-                                        val blockingLeft = atRight && amount.x < 0 && rawDragX < -100f
-                                        val blockingRight = atLeft && amount.x > 0 && rawDragX > 100f
-                                        
-                                        if (!blockingLeft && !blockingRight) {
-                                            rawDragX += amount.x
-                                            coroutineScope.launch {
-                                                dragXAnim.snapTo(rawDragX)
-                                            }
+                                        rawDragX += amount.x
+                                        coroutineScope.launch {
+                                            dragXAnim.snapTo(rawDragX)
                                         }
                                     }
                                     change.consume()
