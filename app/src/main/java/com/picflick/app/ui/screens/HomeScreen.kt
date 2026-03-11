@@ -563,10 +563,12 @@ private fun FlickCard(
                             onPhotoClick()
                         },
                         onDoubleTap = { 
-                            // Double-tap to toggle like/unlike
-                            isUnlikeAnimation = isLiked // If already liked, this is an unlike
-                            onLikeClick()
-                            showLikeAnimation = true
+                            // Double-tap to toggle like/unlike - only for others' photos
+                            if (flick.userId != userId) {
+                                isUnlikeAnimation = isLiked // If already liked, this is an unlike
+                                onLikeClick()
+                                showLikeAnimation = true
+                            }
                         }
                     )
                 }
