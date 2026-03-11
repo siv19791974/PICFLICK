@@ -170,6 +170,35 @@ class ChatRepository {
     }
 
     /**
+     * Mark messages as delivered (recipient received but hasn't opened)
+     * Called automatically when recipient loads messages
+     */
+    suspend fun markMessagesAsDelivered(chatId: String, userId: String): Result<Unit> {
+        return try {
+            // Find messages sent TO this user that aren't delivered yet
+            val undeliveredMessages = db.collection("chatSessions")
+                .document(chatId)
+                .collection("messages")
+                .whereNotEqualTo("senderId", userId) // Messages from others
+                .whereEqualTo("delivered", false)   // Not yet delivered
+                .get()
+                .await()
+
+            if (undeliveredMessages.documents.isNotEmpty()) {
+                val batch = db.batch()
+                undeliveredMessages.documents.forEach { doc ->
+                    batch.update(doc.reference, "delivered", true)
+                }
+                batch.commit().await()
+            }
+
+            Result.Success(Unit)
+        } catch (e: Exception) {
+            Result.Error(e, e.message ?: "Failed to mark messages as delivered")
+        }
+    }
+
+    /**
      * Mark messages as read in a chat
      */
     suspend fun markMessagesAsRead(chatId: String, userId: String): Result<Unit> {
