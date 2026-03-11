@@ -440,7 +440,7 @@ private fun SwipeableNotificationItem(
     val scope = rememberCoroutineScope()
     val dismissState = rememberSwipeToDismissBoxState(
         confirmValueChange = { value ->
-            if (value == SwipeToDismissBoxValue.EndToStart) {
+            if (value == SwipeToDismissBoxValue.StartToEnd) {  // Swipe RIGHT to delete
                 onDelete()
                 true
             } else {
@@ -452,11 +452,11 @@ private fun SwipeableNotificationItem(
 
     SwipeToDismissBox(
         state = dismissState,
-        enableDismissFromStartToEnd = false,
-        enableDismissFromEndToStart = true,
+        enableDismissFromStartToEnd = true,   // Enable RIGHT swipe
+        enableDismissFromEndToStart = false,  // Disable LEFT swipe
         backgroundContent = {
-            val color = if (dismissState.targetValue == SwipeToDismissBoxValue.EndToStart) {
-                Color(0xFFFF4444) // Red when swiping
+            val color = if (dismissState.targetValue == SwipeToDismissBoxValue.StartToEnd) {
+                Color(0xFFFF4444) // Red when swiping right
             } else {
                 Color(0x80FF4444) // Semi-transparent red
             }
@@ -465,7 +465,7 @@ private fun SwipeableNotificationItem(
                     .fillMaxSize()
                     .background(color, RoundedCornerShape(12.dp))
                     .padding(horizontal = 20.dp),
-                contentAlignment = Alignment.CenterEnd
+                contentAlignment = Alignment.CenterStart  // Icon on LEFT for right swipe
             ) {
                 Icon(
                     imageVector = Icons.Outlined.Delete,
