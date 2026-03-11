@@ -9,6 +9,7 @@ import com.picflick.app.data.ChatMessage
 import com.picflick.app.data.ChatSession
 import com.picflick.app.data.Result
 import com.picflick.app.repository.ChatRepository
+import com.picflick.app.utils.Analytics
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
