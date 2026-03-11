@@ -112,7 +112,7 @@ class FriendsViewModel : ViewModel() {
                     searchResults.addAll(result.data.filter { it.uid != currentUserId })
                 }
                 is Result.Error -> {
-                    // Handle error silently
+                    errorMessage = result.message
                 }
                 is Result.Loading -> { }
             }
@@ -136,7 +136,7 @@ class FriendsViewModel : ViewModel() {
                     suggestedUsers.addAll(result.data)
                 }
                 is Result.Error -> {
-                    // Handle error silently
+                    errorMessage = result.message
                 }
                 is Result.Loading -> { }
             }
@@ -156,7 +156,7 @@ class FriendsViewModel : ViewModel() {
                     suggestedUsers.addAll(result.data)
                 }
                 is Result.Error -> {
-                    // Handle error silently
+                    errorMessage = result.message
                 }
                 is Result.Loading -> { }
             }
@@ -298,14 +298,15 @@ class FriendsViewModel : ViewModel() {
                                 contactUsers.addAll(result.data)
                             }
                             is Result.Error -> {
-                                // Handle error silently
-                            }
+                    errorMessage = result.message
+                }
                             is Result.Loading -> { }
                         }
                     }
                 }
             } catch (e: Exception) {
                 // Handle permission denied or other errors
+                errorMessage = "Failed to load contacts: ${e.message}"
             }
             isLoading = false
         }
