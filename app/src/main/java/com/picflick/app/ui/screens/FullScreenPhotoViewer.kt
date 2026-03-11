@@ -1006,13 +1006,13 @@ fun FullScreenPhotoViewer(
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .heightIn(max = 500.dp) // Max height constraint
+                                .fillMaxHeight(0.7f) // Take 70% of screen height max
                                 .background(
                                     Color.Black.copy(alpha = 0.98f),
                                     RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)
                                 )
                                 .padding(horizontal = 16.dp, vertical = 16.dp)
-                                .windowInsetsPadding(WindowInsets.ime.union(WindowInsets.navigationBars))
+                                .windowInsetsPadding(WindowInsets.navigationBars)
                         ) {
                             // Handle bar
                             Box(
@@ -1105,34 +1105,38 @@ fun FullScreenPhotoViewer(
                                 }
                             }
                             
-                            // Comment input bar - fixed at bottom, not scrollable
+                            // Comment input bar - fixed at bottom with IME padding
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(top = 12.dp, bottom = 8.dp) // Bottom padding
+                                    .padding(top = 12.dp)
+                                    .imePadding() // Add padding for keyboard
                                     .background(
                                         Color.DarkGray.copy(alpha = 0.5f),
-                                        RoundedCornerShape(20.dp)
+                                        RoundedCornerShape(24.dp)
                                     )
-                                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                                    .padding(horizontal = 12.dp, vertical = 10.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 AsyncImage(
                                     model = currentUser.photoUrl,
                                     contentDescription = null,
                                     modifier = Modifier
-                                        .size(28.dp)
+                                        .size(32.dp)
                                         .clip(CircleShape),
                                     contentScale = ContentScale.Crop
                                 )
                                 
-                                Spacer(modifier = Modifier.width(8.dp))
+                                Spacer(modifier = Modifier.width(10.dp))
                                 
                                 TextField(
                                     value = newCommentText,
                                     onValueChange = { newCommentText = it },
-                                    placeholder = { Text("Add a comment...", color = Color.Gray, fontSize = 12.sp) },
-                                    modifier = Modifier.weight(1f),
+                                    placeholder = { Text("Add a comment...", color = Color.Gray, fontSize = 14.sp) },
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .heightIn(min = 40.dp, max = 100.dp),
+                                    maxLines = 3,
                                     colors = TextFieldDefaults.colors(
                                         focusedContainerColor = Color.Transparent,
                                         unfocusedContainerColor = Color.Transparent,
@@ -1141,7 +1145,7 @@ fun FullScreenPhotoViewer(
                                         focusedIndicatorColor = Color.Transparent,
                                         unfocusedIndicatorColor = Color.Transparent
                                     ),
-                                    textStyle = MaterialTheme.typography.bodySmall
+                                    textStyle = MaterialTheme.typography.bodyMedium
                                 )
                                 
                                 IconButton(
@@ -1164,22 +1168,21 @@ fun FullScreenPhotoViewer(
                                                 )
                                                 comments = comments + comment
                                                 newCommentText = ""
-                                                keyboardController?.hide() // Hide keyboard after sending
+                                                keyboardController?.hide()
                                             }
                                         }
                                     },
                                     enabled = newCommentText.isNotBlank(),
-                                    modifier = Modifier.size(32.dp)
+                                    modifier = Modifier.size(36.dp)
                                 ) {
                                     Icon(
                                         Icons.AutoMirrored.Filled.Send,
                                         contentDescription = "Send",
-                                        tint = if (newCommentText.isNotBlank()) 
-                                            MaterialTheme.colorScheme.primary else Color.Gray,
-                                        modifier = Modifier.size(20.dp)
+                                        tint = if (newCommentText.isNotBlank()) Color(0xFF00E5FF) else Color.Gray,
+                                        modifier = Modifier.size(24.dp)
                                     )
                                 }
-                            }
+                            } 
                         }
                     }
                 }
