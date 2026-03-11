@@ -535,7 +535,9 @@ private fun FlickCard(
 ) {
     val userReaction = flick.getUserReaction(userId)
     val totalReactions = flick.getTotalReactions()
+    val isLiked = userReaction != null
     var showLikeAnimation by remember { mutableStateOf(false) }
+    var isUnlikeAnimation by remember { mutableStateOf(false) }
     
     Card(
         modifier = Modifier
@@ -561,7 +563,8 @@ private fun FlickCard(
                             onPhotoClick()
                         },
                         onDoubleTap = { 
-                            // Double-tap to like
+                            // Double-tap to toggle like/unlike
+                            isUnlikeAnimation = isLiked // If already liked, this is an unlike
                             onLikeClick()
                             showLikeAnimation = true
                         }
@@ -579,6 +582,7 @@ private fun FlickCard(
             // Like animation overlay (when double-tapped)
             if (showLikeAnimation) {
                 LikeAnimation(
+                    isUnlike = isUnlikeAnimation,
                     onAnimationComplete = { showLikeAnimation = false }
                 )
             }
