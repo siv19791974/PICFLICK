@@ -5,6 +5,7 @@ import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 import kotlinx.coroutines.tasks.await
+import java.util.UUID
 
 /**
  * Repository for social operations
@@ -208,11 +209,19 @@ class SocialRepository private constructor() {
 
     /**
      * Send a follow request to a user (requires approval)
+     * Creates a friend request notification for the target user
      * @param currentUserId The current user
      * @param targetUserId The user to send request to
+     * @param currentUserName The current user's name for notification
+     * @param currentUserPhotoUrl The current user's photo URL for notification
      * @return Result success or error
      */
-    suspend fun sendFollowRequest(currentUserId: String, targetUserId: String): Result<Unit> {
+    suspend fun sendFollowRequest(
+        currentUserId: String,
+        targetUserId: String,
+        currentUserName: String,
+        currentUserPhotoUrl: String
+    ): Result<Unit> {
         return try {
             val batch = db.batch()
 
@@ -223,6 +232,15 @@ class SocialRepository private constructor() {
             batch.update(targetUserRef, "pendingFollowRequests", FieldValue.arrayUnion(currentUserId))
 
             batch.commit().await()
+
+            // Create friend request notification
+            createFriendRequestNotification(
+                requesterId = currentUserId,
+                requesterName = currentUserName,
+                requesterPhotoUrl = currentUserPhotoUrl,
+                targetUserId = targetUserId
+            )
+
             Result.Success(Unit)
         } catch (e: Exception) {
             Result.Error(e, "Failed to send follow request")
@@ -231,11 +249,17 @@ class SocialRepository private constructor() {
 
     /**
      * Accept a follow request
+     * Creates a follow accepted notification for the requester
      * @param currentUserId The current user (accepting)
      * @param requesterId The user who sent the request
+     * @param requesterName The requester's name for notification
      * @return Result success or error
      */
-    suspend fun acceptFollowRequest(currentUserId: String, requesterId: String): Result<Unit> {
+    suspend fun acceptFollowRequest(
+        currentUserId: String,
+        requesterId: String,
+        requesterName: String
+    ): Result<Unit> {
         return try {
             val batch = db.batch()
 
@@ -248,6 +272,14 @@ class SocialRepository private constructor() {
             batch.update(requesterRef, "following", FieldValue.arrayUnion(currentUserId))
 
             batch.commit().await()
+
+            // Create acceptance notification
+            createFollowAcceptedNotification(
+                accepterId = currentUserId,
+                accepterName = requesterName,
+                requesterId = requesterId
+            )
+
             Result.Success(Unit)
         } catch (e: Exception) {
             Result.Error(e, "Failed to accept follow request")
@@ -433,5 +465,49 @@ class SocialRepository private constructor() {
                 onResult(Result.Success(users))
             }
             .addOnFailureListener { e -> onResult(Result.Error(Exception(e.message), "Failed to get users")) }
+    }
+
+    // ==================== NOTIFICATION CREATION ====================
+
+    private fun createFriendRequestNotification(
+        requesterId: String,
+        requesterName: String,
+        requesterPhotoUrl: String,
+        targetUserId: String
+    ) {
+        val notification = hashMapOf(
+            "id" to UUID.randomUUID().toString(),
+            "userId" to targetUserId,
+            "senderId" to requesterId,
+            "senderName" to requesterName,
+            "senderPhotoUrl" to requesterPhotoUrl,
+            "type" to "FRIEND_REQUEST",
+            "title" to "Friend request from $requesterName",
+            "message" to "Accept or decline",
+            "isRead" to false,
+            "timestamp" to System.currentTimeMillis()
+        )
+
+        db.collection("notifications").add(notification)
+    }
+
+    private fun createFollowAcceptedNotification(
+        accepterId: String,
+        accepterName: String,
+        requesterId: String
+    ) {
+        val notification = hashMapOf(
+            "id" to UUID.randomUUID().toString(),
+            "userId" to requesterId,
+            "senderId" to accepterId,
+            "senderName" to accepterName,
+            "type" to "FOLLOW_ACCEPTED",
+            "title" to "$accepterName accepted your request",
+            "message" to "You are now connected",
+            "isRead" to false,
+            "timestamp" to System.currentTimeMillis()
+        )
+
+        db.collection("notifications").add(notification)
     }
 }

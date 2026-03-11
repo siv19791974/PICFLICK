@@ -9,6 +9,7 @@ import androidx.lifecycle.viewModelScope
 import com.picflick.app.data.Notification
 import com.picflick.app.data.Result
 import com.picflick.app.repository.FlickRepository
+import com.picflick.app.repository.NotificationRepository
 import kotlinx.coroutines.launch
 
 /**
@@ -23,7 +24,8 @@ import kotlinx.coroutines.launch
  */
 class NotificationViewModel : ViewModel() {
     
-    private val repository = FlickRepository.getInstance()
+    private val flickRepository = FlickRepository.getInstance()
+    private val notificationRepository = NotificationRepository.getInstance()
     
     /** List of all notifications for current user */
     var notifications = mutableStateListOf<Notification>()
@@ -58,7 +60,7 @@ class NotificationViewModel : ViewModel() {
         viewModelScope.launch {
             val userId = currentUserId ?: return@launch
             
-            when (val result = repository.acceptTag(flickId, userId)) {
+            when (val result = flickRepository.acceptTag(flickId, userId)) {
                 is Result.Success -> {
                     markAsRead(notificationId)
                     removeNotificationFromList(notificationId)
@@ -81,7 +83,7 @@ class NotificationViewModel : ViewModel() {
         viewModelScope.launch {
             val userId = currentUserId ?: return@launch
             
-            when (val result = repository.declineTag(flickId, userId)) {
+            when (val result = flickRepository.declineTag(flickId, userId)) {
                 is Result.Success -> {
                     deleteNotification(notificationId)
                     removeNotificationFromList(notificationId)
@@ -118,7 +120,7 @@ class NotificationViewModel : ViewModel() {
         viewModelScope.launch {
             try {
                 // Set up real-time listener
-                listenerRegistration = repository.listenToNotifications(
+                listenerRegistration = flickRepository.listenToNotifications(
                     userId = userId,
                     onUpdate = { newNotifications ->
                         android.util.Log.d("NotificationViewModel", "Received ${newNotifications.size} notifications")
@@ -150,7 +152,7 @@ class NotificationViewModel : ViewModel() {
      */
     fun markAsRead(notificationId: String) {
         viewModelScope.launch {
-            when (val result = repository.markNotificationAsRead(notificationId)) {
+            when (val result = flickRepository.markNotificationAsRead(notificationId)) {
                 is Result.Success -> {
                     // Update local state
                     val index = notifications.indexOfFirst { it.id == notificationId }
@@ -172,7 +174,7 @@ class NotificationViewModel : ViewModel() {
      */
     fun markAllAsRead(userId: String) {
         viewModelScope.launch {
-            when (val result = repository.markAllNotificationsAsRead(userId)) {
+            when (val result = flickRepository.markAllNotificationsAsRead(userId)) {
                 is Result.Success -> {
                     notifications.replaceAll { it.copy(isRead = true) }
                     unreadCount = 0
@@ -190,7 +192,7 @@ class NotificationViewModel : ViewModel() {
      */
     fun deleteNotification(notificationId: String) {
         viewModelScope.launch {
-            when (val result = repository.deleteNotification(notificationId)) {
+            when (val result = flickRepository.deleteNotification(notificationId)) {
                 is Result.Success -> {
                     notifications.removeAll { it.id == notificationId }
                     unreadCount = notifications.count { !it.isRead }
@@ -219,15 +221,15 @@ class NotificationViewModel : ViewModel() {
             }
             
             // Delete the notification from Firestore
-            repository.deleteNotification(notificationId)
+            flickRepository.deleteNotification(notificationId)
             android.util.Log.d("NotificationViewModel", "Deleted notification $notificationId from Firestore")
             
             // Accept the follow request
-            repository.getUserProfile(requesterId) { result ->
+            flickRepository.getUserProfile(requesterId) { result ->
                 if (result is Result.Success) {
                     val requester = result.data
                     viewModelScope.launch {
-                        val acceptResult = repository.acceptFollowRequest(
+                        val acceptResult = flickRepository.acceptFollowRequest(
                             currentUserId = currentUserId,
                             requesterId = requesterId,
                             requesterName = requester.displayName
@@ -259,11 +261,11 @@ class NotificationViewModel : ViewModel() {
             }
             
             // Delete the notification from Firestore
-            repository.deleteNotification(notificationId)
+            flickRepository.deleteNotification(notificationId)
             android.util.Log.d("NotificationViewModel", "Deleted notification $notificationId from Firestore")
             
             // Decline the follow request
-            val declineResult = repository.declineFollowRequest(
+            val declineResult = flickRepository.declineFollowRequest(
                 currentUserId = currentUserId,
                 requesterId = requesterId
             )

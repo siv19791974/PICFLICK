@@ -11,6 +11,7 @@ import androidx.lifecycle.viewModelScope
 import com.picflick.app.data.Result
 import com.picflick.app.data.UserProfile
 import com.picflick.app.repository.FlickRepository
+import com.picflick.app.repository.SocialRepository
 import kotlinx.coroutines.launch
 
 /**
@@ -18,7 +19,8 @@ import kotlinx.coroutines.launch
  */
 class FriendsViewModel : ViewModel() {
 
-    private val repository = FlickRepository.getInstance()
+    private val flickRepository = FlickRepository.getInstance()
+    private val socialRepository = SocialRepository.getInstance()
 
     var searchResults = mutableStateListOf<UserProfile>()
         private set
@@ -75,7 +77,7 @@ class FriendsViewModel : ViewModel() {
 
         // Load each user's profile
         followingIds.forEach { userId ->
-            repository.getUserProfile(userId) { result ->
+            flickRepository.getUserProfile(userId) { result ->
                 when (result) {
                     is Result.Success -> {
                         followingUsers.add(result.data)
@@ -102,7 +104,7 @@ class FriendsViewModel : ViewModel() {
         }
 
         isLoading = true
-        repository.searchUsers(query, currentUserId) { result ->
+        flickRepository.searchUsers(query, currentUserId) { result ->
             when (result) {
                 is Result.Success -> {
                     searchResults.clear()
@@ -127,7 +129,7 @@ class FriendsViewModel : ViewModel() {
             return
         }
         isLoading = true
-        repository.getSuggestedUsers(currentUserId) { result ->
+        socialRepository.getSuggestedUsers(currentUserId) { result ->
             when (result) {
                 is Result.Success -> {
                     suggestedUsers.clear()
@@ -147,7 +149,7 @@ class FriendsViewModel : ViewModel() {
      */
     fun loadAllUsers(currentUserId: String) {
         isLoading = true
-        repository.getAllUsers(currentUserId) { result ->
+        socialRepository.getAllUsers(currentUserId) { result ->
             when (result) {
                 is Result.Success -> {
                     suggestedUsers.clear()
@@ -168,7 +170,7 @@ class FriendsViewModel : ViewModel() {
     fun sendFollowRequest(currentUserId: String, targetUser: UserProfile, currentUserProfile: UserProfile) {
         addProcessingUser(targetUser.uid)
         viewModelScope.launch {
-            val result = repository.sendFollowRequest(
+            val result = socialRepository.sendFollowRequest(
                 currentUserId = currentUserId,
                 targetUserId = targetUser.uid,
                 currentUserName = currentUserProfile.displayName,
@@ -187,7 +189,7 @@ class FriendsViewModel : ViewModel() {
      */
     fun unfollowUser(currentUserId: String, targetUserId: String) {
         addProcessingUser(targetUserId)
-        repository.unfollowUser(currentUserId, targetUserId) { result ->
+        socialRepository.unfollowUser(currentUserId, targetUserId) { result ->
             removeProcessingUser(targetUserId)
             if (result is com.picflick.app.data.Result.Success) {
                 // Remove from local list immediately for instant UI update
@@ -205,7 +207,7 @@ class FriendsViewModel : ViewModel() {
     fun acceptFollowRequest(currentUserId: String, requester: UserProfile) {
         addProcessingUser(requester.uid)
         viewModelScope.launch {
-            repository.acceptFollowRequest(currentUserId, requester.uid, requester.displayName)
+            socialRepository.acceptFollowRequest(currentUserId, requester.uid, requester.displayName)
             removeProcessingUser(requester.uid)
         }
     }
@@ -217,7 +219,7 @@ class FriendsViewModel : ViewModel() {
         android.util.Log.d("FriendsViewModel", "cancelFollowRequest called: $currentUserId -> $targetUserId")
         addProcessingUser(targetUserId)
         viewModelScope.launch {
-            val result = repository.cancelFollowRequest(currentUserId, targetUserId)
+            val result = socialRepository.cancelFollowRequest(currentUserId, targetUserId)
             // Log error if cancel fails
             if (result is com.picflick.app.data.Result.Error) {
                 android.util.Log.e("FriendsViewModel", "Failed to cancel follow request: ${result.exception?.message}")
@@ -289,7 +291,7 @@ class FriendsViewModel : ViewModel() {
 
                 // Find matching PicFlick users
                 if (phoneNumbers.isNotEmpty()) {
-                    repository.findUsersByPhoneNumbers(phoneNumbers.toList()) { result ->
+                    flickRepository.findUsersByPhoneNumbers(phoneNumbers.toList()) { result ->
                         when (result) {
                             is Result.Success -> {
                                 contactUsers.clear()
