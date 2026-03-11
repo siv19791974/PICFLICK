@@ -552,15 +552,34 @@ fun FullScreenPhotoViewer(
                                     }
                                     
                                     // LOCK TO ONE AXIS - no diagonal wobble!
+                                    // Also check boundaries - can't drag past first or last photo
                                     if (isDraggingVertically) {
-                                        rawDragY += amount.y
-                                        coroutineScope.launch {
-                                            dragYAnim.snapTo(rawDragY)
+                                        val canDragUp = currentPageIndex < validPhotos.size - 1
+                                        val canDragDown = currentPageIndex > 0
+                                        
+                                        if ((amount.y < 0 && canDragUp) || (amount.y > 0 && canDragDown) || 
+                                            (amount.y < 0 && !canDragUp && rawDragY > 0) || 
+                                            (amount.y > 0 && !canDragDown && rawDragY < 0)) {
+                                            rawDragY += amount.y
+                                            coroutineScope.launch {
+                                                dragYAnim.snapTo(rawDragY)
+                                            }
                                         }
                                     } else {
-                                        rawDragX += amount.x
-                                        coroutineScope.launch {
-                                            dragXAnim.snapTo(rawDragX)
+                                        val canDragLeft = currentPageIndex < validPhotos.size - 1  // At last photo, can't drag left
+                                        val canDragRight = currentPageIndex > 0  // At first photo, can't drag right
+                                        
+                                        // Only apply drag if:
+                                        // - Dragging left and can go next, OR
+                                        // - Dragging right and can go prev, OR  
+                                        // - Already dragged past boundary (allow snap back)
+                                        if ((amount.x < 0 && canDragLeft) || (amount.x > 0 && canDragRight) || 
+                                            (amount.x < 0 && !canDragLeft && rawDragX > 0) || 
+                                            (amount.x > 0 && !canDragRight && rawDragX < 0)) {
+                                            rawDragX += amount.x
+                                            coroutineScope.launch {
+                                                dragXAnim.snapTo(rawDragX)
+                                            }
                                         }
                                     }
                                     change.consume()
