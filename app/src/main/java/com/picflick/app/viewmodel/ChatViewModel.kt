@@ -58,6 +58,11 @@ class ChatViewModel : ViewModel() {
      * @param userId The user whose sessions to load
      */
     fun loadChatSessions(userId: String) {
+        if (userId.isBlank()) {
+            errorMessage = "Cannot load conversations: User not logged in"
+            isLoading = false
+            return
+        }
         viewModelScope.launch {
             isLoading = true
             errorMessage = null // Clear previous error
@@ -69,6 +74,7 @@ class ChatViewModel : ViewModel() {
                     isLoading = false
                 }
             } catch (e: Exception) {
+                android.util.Log.e("ChatViewModel", "Failed to load conversations", e)
                 errorMessage = "Failed to load conversations: ${e.message}"
                 isLoading = false
             }
