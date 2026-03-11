@@ -1006,14 +1006,14 @@ fun FullScreenPhotoViewer(
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .fillMaxHeight(0.75f) // Slightly taller
+                                .fillMaxHeight(0.75f)
                                 .background(
                                     Color.Black.copy(alpha = 0.98f),
                                     RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)
                                 )
                                 .padding(horizontal = 16.dp)
-                                .padding(top = 16.dp)
-                                // Handle both nav bars AND keyboard - crucial!
+                                .padding(top = 16.dp, bottom = 32.dp) // Extra bottom padding to stay above nav bar
+                                // Handle both nav bars AND keyboard
                                 .windowInsetsPadding(
                                     WindowInsets.ime.union(WindowInsets.navigationBars)
                                 )
