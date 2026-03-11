@@ -45,6 +45,31 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            
+            <!-- Deep link support -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                
+                <!-- Custom URL scheme -->
+                <data android:scheme="picflick" android:host="photo" />
+                <data android:scheme="picflick" android:host="profile" />
+                <data android:scheme="picflick" android:host="chat" />
+            </intent-filter>
+            
+            <!-- HTTPS deep links (for web-based sharing) -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" 
+                      android:host="picflick.app" 
+                      android:pathPrefix="/photo" />
+                <data android:scheme="https" 
+                      android:host="picflick.app" 
+                      android:pathPrefix="/profile" />
+            </intent-filter>
         </activity>
 
         <!-- FileProvider for camera and file sharing -->
