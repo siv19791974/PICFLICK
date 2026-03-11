@@ -417,22 +417,11 @@ private fun ChatBubble(
     otherUserPhoto: String,
     onReplyClick: () -> Unit = {}
 ) {
-    // Sexy gradient backgrounds for message bubbles
-    val sentBrush = Brush.linearGradient(
-        colors = listOf(
-            Color(0xFF667eea), // Soft purple
-            Color(0xFF764ba2)  // Deep purple
-        )
-    )
-    
-    val receivedBrush = Brush.linearGradient(
-        colors = listOf(
-            Color(0xFFf093fb), // Pink
-            Color(0xFFf5576c)  // Coral
-        )
-    )
-    
-    val bubbleBrush = if (isMe) sentBrush else receivedBrush
+    // Black background like Notifications/FindFriends
+    val backgroundColor = Color.Black
+    val cardColor = Color(0xFF1A1A1A) // Dark gray card like notifications
+    val sentColor = Color(0xFF2D4A3E) // Dark green for sent (subtle)
+    val receivedColor = Color(0xFF2A2A2A) // Dark gray for received
 
     val bubbleShape = if (isMe) {
         RoundedCornerShape(
@@ -481,20 +470,16 @@ private fun ChatBubble(
             Spacer(modifier = Modifier.width(8.dp))
         }
 
-        // Message bubble with sexy gradient and shadow
+        // Message bubble - clean card style like Notifications
+        val bubbleColor = if (isMe) sentColor else receivedColor
+        
         Column(
             modifier = Modifier
                 .padding(horizontal = if (isMe) 8.dp else 0.dp)
         ) {
             Box(
                 modifier = Modifier
-                    .shadow(
-                        elevation = 4.dp,
-                        shape = bubbleShape,
-                        ambientColor = if (isMe) Color(0xFF667eea) else Color(0xFFf5576c),
-                        spotColor = if (isMe) Color(0xFF667eea) else Color(0xFFf5576c)
-                    )
-                    .background(bubbleBrush, bubbleShape)
+                    .background(bubbleColor, bubbleShape)
                     .padding(horizontal = 14.dp, vertical = 10.dp)
             ) {
                 Column {
@@ -511,7 +496,7 @@ private fun ChatBubble(
                     Text(
                         text = message.text,
                         fontSize = 15.sp,
-                        color = Color.White, // White text on gradient
+                        color = Color.White,
                         fontWeight = FontWeight.Medium
                     )
 
@@ -531,27 +516,27 @@ private fun ChatBubble(
 
                         if (isMe) {
                             Spacer(modifier = Modifier.width(4.dp))
-                            // Message status icon with sexy colors
+                            // Message status - subtle colors
                             when {
                                 message.read -> {
                                     Text(
                                         text = "✓✓",
                                         fontSize = 12.sp,
-                                        color = Color(0xFF00E5FF) // Cyan glow for read
+                                        color = Color(0xFF25D366) // WhatsApp green for read
                                     )
                                 }
                                 message.delivered -> {
                                     Text(
                                         text = "✓✓",
                                         fontSize = 12.sp,
-                                        color = Color.White.copy(alpha = 0.7f)
+                                        color = Color.Gray
                                     )
                                 }
                                 else -> {
                                     Text(
                                         text = "✓",
                                         fontSize = 12.sp,
-                                        color = Color.White.copy(alpha = 0.5f)
+                                        color = Color.Gray
                                     )
                                 }
                             }
@@ -641,7 +626,7 @@ private fun QuotedMessage(
     quotedText: String,
     isMe: Boolean
 ) {
-    val quoteColor = if (isMe) Color(0xFF00E5FF) else Color(0xFFffd1ff) // Cyan or soft pink
+    val quoteColor = if (isMe) Color(0xFF4CAF50) else Color.Gray // Subtle green or gray
     Row(
         modifier = Modifier
             .fillMaxWidth()
