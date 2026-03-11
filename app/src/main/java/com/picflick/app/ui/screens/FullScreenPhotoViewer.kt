@@ -540,15 +540,34 @@ fun FullScreenPhotoViewer(
                                     }
                                     
                                     // LOCK TO ONE AXIS - no diagonal wobble!
+                                    // Simple boundary block - no change to screen, just prevent past edges
                                     if (isDraggingVertically) {
-                                        rawDragY += amount.y
-                                        coroutineScope.launch {
-                                            dragYAnim.snapTo(rawDragY)
+                                        val atTop = currentPageIndex == 0
+                                        val atBottom = currentPageIndex == validPhotos.size - 1
+                                        
+                                        // Block: at top can't drag down (to prev), at bottom can't drag up (to next)
+                                        val goingDown = amount.y > 0
+                                        val goingUp = amount.y < 0
+                                        
+                                        if (!(atTop && goingDown) && !(atBottom && goingUp)) {
+                                            rawDragY += amount.y
+                                            coroutineScope.launch {
+                                                dragYAnim.snapTo(rawDragY)
+                                            }
                                         }
                                     } else {
-                                        rawDragX += amount.x
-                                        coroutineScope.launch {
-                                            dragXAnim.snapTo(rawDragX)
+                                        val atLeft = currentPageIndex == 0
+                                        val atRight = currentPageIndex == validPhotos.size - 1
+                                        
+                                        // Block: at left can't drag right (to prev), at right can't drag left (to next)
+                                        val goingRight = amount.x > 0
+                                        val goingLeft = amount.x < 0
+                                        
+                                        if (!(atLeft && goingRight) && !(atRight && goingLeft)) {
+                                            rawDragX += amount.x
+                                            coroutineScope.launch {
+                                                dragXAnim.snapTo(rawDragX)
+                                            }
                                         }
                                     }
                                     change.consume()
