@@ -60,6 +60,7 @@ class ChatViewModel : ViewModel() {
     fun loadChatSessions(userId: String) {
         viewModelScope.launch {
             isLoading = true
+            errorMessage = null // Clear previous error
             try {
                 repository.getChatSessions(userId).collectLatest { sessions ->
                     chatSessions = sessions
@@ -83,6 +84,7 @@ class ChatViewModel : ViewModel() {
     fun loadMessages(chatId: String) {
         currentChatId = chatId
         viewModelScope.launch {
+            errorMessage = null // Clear previous error
             try {
                 repository.getMessages(chatId).collectLatest { msgs ->
                     messages = msgs
