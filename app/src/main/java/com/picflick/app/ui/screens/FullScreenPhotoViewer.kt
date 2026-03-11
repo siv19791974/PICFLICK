@@ -141,6 +141,16 @@ fun FullScreenPhotoViewer(
     // 2D Pager state
     var currentPageIndex by remember { mutableIntStateOf(currentIndex) }
     
+    // Animate page transitions with spring
+    val animatedPageIndex by animateFloatAsState(
+        targetValue = currentPageIndex.toFloat(),
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessLow
+        ),
+        label = "page_transition"
+    )
+    
     // Filter out photos with empty image URLs to prevent Coil crash
     val validPhotos = remember(allPhotos) {
         allPhotos.filter { it.imageUrl.isNotBlank() }
@@ -518,12 +528,24 @@ fun FullScreenPhotoViewer(
                                             }
                                         }
                                         else -> {
-                                            // NO SPRING - just snap back
+                                            // Spring animation back to center
                                             coroutineScope.launch {
-                                                dragXAnim.snapTo(0f)
+                                                dragXAnim.animateTo(
+                                                    targetValue = 0f,
+                                                    animationSpec = spring(
+                                                        dampingRatio = Spring.DampingRatioMediumBouncy,
+                                                        stiffness = Spring.StiffnessMedium
+                                                    )
+                                                )
                                             }
                                             coroutineScope.launch {
-                                                dragYAnim.snapTo(0f)
+                                                dragYAnim.animateTo(
+                                                    targetValue = 0f,
+                                                    animationSpec = spring(
+                                                        dampingRatio = Spring.DampingRatioMediumBouncy,
+                                                        stiffness = Spring.StiffnessMedium
+                                                    )
+                                                )
                                             }
                                         }
                                     }
@@ -641,13 +663,17 @@ fun FullScreenPhotoViewer(
                         }
                 }
                     
+                    // Calculate animated offsets for smooth page transitions
+                    val animatedOffsetX = (currentPageIndex - animatedPageIndex) * screenWidthPx
+                    val animatedOffsetY = (currentPageIndex - animatedPageIndex) * screenHeightPx
+                    
                     // 1. CURRENT at CENTER
                     if (currentPageIndex < validPhotos.size) {
                         PhotoAtPosition(
                             photo = validPhotos[currentPageIndex],
                             isCurrent = true,
-                            baseX = 0f,
-                            baseY = 0f
+                            baseX = animatedOffsetX,
+                            baseY = animatedOffsetY
                         )
                     }
                     
@@ -656,8 +682,8 @@ fun FullScreenPhotoViewer(
                         PhotoAtPosition(
                             photo = validPhotos[currentPageIndex + 1],
                             isCurrent = false,
-                            baseX = screenWidthPx,
-                            baseY = 0f
+                            baseX = screenWidthPx + animatedOffsetX,
+                            baseY = animatedOffsetY
                         )
                     }
                     
@@ -666,8 +692,8 @@ fun FullScreenPhotoViewer(
                         PhotoAtPosition(
                             photo = validPhotos[currentPageIndex - 1],
                             isCurrent = false,
-                            baseX = -screenWidthPx,
-                            baseY = 0f
+                            baseX = -screenWidthPx + animatedOffsetX,
+                            baseY = animatedOffsetY
                         )
                     }
                     
@@ -676,8 +702,8 @@ fun FullScreenPhotoViewer(
                         PhotoAtPosition(
                             photo = validPhotos[currentPageIndex + 1],
                             isCurrent = false,
-                            baseX = 0f,
-                            baseY = screenHeightPx
+                            baseX = animatedOffsetX,
+                            baseY = screenHeightPx + animatedOffsetY
                         )
                     }
 
@@ -686,8 +712,8 @@ fun FullScreenPhotoViewer(
                         PhotoAtPosition(
                             photo = validPhotos[currentPageIndex - 1],
                             isCurrent = false,
-                            baseX = 0f,
-                            baseY = -screenHeightPx
+                            baseX = animatedOffsetX,
+                            baseY = -screenHeightPx + animatedOffsetY
                         )
                     }
                 }
