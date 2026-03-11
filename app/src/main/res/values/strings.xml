@@ -1,11 +1,11 @@
 <resources>
-    <string name="app_name">PICFLICK</string>
+    <string name="app_name">PICFLICK 🤖</string>
     
     <!-- Web Client ID for Google Sign-In - Should be moved to local.properties in production -->
     <string name="default_web_client_id" translatable="false">830332240569-pko9aotmkb9qn86ao98ml20drrihe4l4.apps.googleusercontent.com</string>
     
     <!-- ==================== LOGIN SCREEN ==================== -->
-    <string name="login_welcome_title">Welcome to PicFlick</string>
+    <string name="login_welcome_title">Welcome to PicFlick 🤖</string>
     <string name="login_welcome_subtitle">Share photos with friends</string>
     <string name="login_sign_in_button">Sign in with Google</string>
     <string name="login_logo_content_desc">PicFlick Logo</string>
@@ -141,7 +141,7 @@
     <string name="delete_account_message">All your data will be permanently removed.</string>
     
     <!-- ==================== ABOUT SCREEN ==================== -->
-    <string name="about_title">About PicFlick</string>
+    <string name="about_title">About PicFlick 🤖</string>
     <string name="about_version">Version %s</string>
     <string name="about_description">Share photos with friends in a private, ad-free space.</string>
     <string name="about_privacy_policy">Privacy Policy</string>
