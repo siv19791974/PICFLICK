@@ -19,6 +19,11 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material3.SwipeToDismissBox
+import androidx.compose.material3.SwipeToDismissBoxValue
+import androidx.compose.material3.rememberSwipeToDismissBoxState
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -171,7 +176,7 @@ fun NotificationsScreen(
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     items(notifications, key = { it.id }) { notification ->
-                        NotificationItem(
+                        SwipeableNotificationItem(
                             notification = notification,
                             isDarkMode = isDarkMode,
                             onClick = {
@@ -418,6 +423,72 @@ private fun NotificationItem(
             }
         }
     }
+}
+
+@Composable
+private fun SwipeableNotificationItem(
+    notification: Notification,
+    isDarkMode: Boolean,
+    onClick: () -> Unit,
+    onDelete: () -> Unit,
+    onUserProfileClick: (String) -> Unit = {},
+    onAcceptFriendRequest: (String) -> Unit = {},
+    onDeclineFriendRequest: (String) -> Unit = {},
+    onAcceptTag: (String, String) -> Unit = { _, _ -> },
+    onDeclineTag: (String, String) -> Unit = { _, _ -> }
+) {
+    val scope = rememberCoroutineScope()
+    val dismissState = rememberSwipeToDismissBoxState(
+        confirmValueChange = { value ->
+            if (value == SwipeToDismissBoxValue.EndToStart) {
+                onDelete()
+                true
+            } else {
+                false
+            }
+        },
+        positionalThreshold = { totalDistance -> totalDistance * 0.5f }
+    )
+
+    SwipeToDismissBox(
+        state = dismissState,
+        enableDismissFromStartToEnd = false,
+        enableDismissFromEndToStart = true,
+        backgroundContent = {
+            val color = if (dismissState.targetValue == SwipeToDismissBoxValue.EndToStart) {
+                Color(0xFFFF4444) // Red when swiping
+            } else {
+                Color(0x80FF4444) // Semi-transparent red
+            }
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(color, RoundedCornerShape(12.dp))
+                    .padding(horizontal = 20.dp),
+                contentAlignment = Alignment.CenterEnd
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.Delete,
+                    contentDescription = "Delete",
+                    tint = Color.White,
+                    modifier = Modifier.size(28.dp)
+                )
+            }
+        },
+        content = {
+            NotificationItem(
+                notification = notification,
+                isDarkMode = isDarkMode,
+                onClick = onClick,
+                onDelete = onDelete,
+                onUserProfileClick = onUserProfileClick,
+                onAcceptFriendRequest = onAcceptFriendRequest,
+                onDeclineFriendRequest = onDeclineFriendRequest,
+                onAcceptTag = onAcceptTag,
+                onDeclineTag = onDeclineTag
+            )
+        }
+    )
 }
 
 @Composable

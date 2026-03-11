@@ -11,6 +11,7 @@ import com.picflick.app.data.Result
 import com.picflick.app.repository.ChatRepository
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 
 /**
  * ViewModel for chat/messaging functionality
@@ -77,7 +78,7 @@ class ChatViewModel : ViewModel() {
     }
 
     /**
-     * Send a message
+     * Send a message (text or photo)
      */
     fun sendMessage(
         chatId: String,
@@ -86,6 +87,7 @@ class ChatViewModel : ViewModel() {
         recipientId: String,
         senderName: String,
         senderPhotoUrl: String,
+        imageUrl: String = "",
         replyToMessage: ChatMessage? = null,
         onComplete: () -> Unit = {}
     ) {
@@ -96,6 +98,7 @@ class ChatViewModel : ViewModel() {
                 senderName = senderName,
                 senderPhotoUrl = senderPhotoUrl,
                 text = text,
+                imageUrl = imageUrl,
                 timestamp = System.currentTimeMillis(),
                 read = false,
                 delivered = false,
@@ -113,6 +116,58 @@ class ChatViewModel : ViewModel() {
                     errorMessage = "Failed to send message: ${result.message}"
                 }
                 is Result.Loading -> {}
+            }
+        }
+    }
+
+    /**
+     * Send a photo message
+     */
+    fun sendPhotoMessage(
+        chatId: String,
+        imageUri: android.net.Uri,
+        senderId: String,
+        recipientId: String,
+        senderName: String,
+        senderPhotoUrl: String,
+        context: android.content.Context,
+        onComplete: () -> Unit = {}
+    ) {
+        viewModelScope.launch {
+            try {
+                // Convert URI to bytes
+                val inputStream = context.contentResolver.openInputStream(imageUri)
+                val imageBytes = inputStream?.readBytes()
+                inputStream?.close()
+
+                if (imageBytes == null) {
+                    errorMessage = "Failed to read image"
+                    return@launch
+                }
+
+                // Upload to Firebase Storage
+                val storageRef = com.google.firebase.storage.FirebaseStorage.getInstance()
+                    .reference
+                    .child("chat_images")
+                    .child(chatId)
+                    .child("${System.currentTimeMillis()}.jpg")
+
+                storageRef.putBytes(imageBytes).await()
+                val downloadUrl = storageRef.downloadUrl.await().toString()
+
+                // Send message with image URL
+                sendMessage(
+                    chatId = chatId,
+                    text = "",
+                    senderId = senderId,
+                    recipientId = recipientId,
+                    senderName = senderName,
+                    senderPhotoUrl = senderPhotoUrl,
+                    imageUrl = downloadUrl,
+                    onComplete = onComplete
+                )
+            } catch (e: Exception) {
+                errorMessage = "Failed to send photo: ${e.message}"
             }
         }
     }

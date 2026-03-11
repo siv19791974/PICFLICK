@@ -29,6 +29,13 @@ service cloud.firestore {
              request.resource.data.imageUrl is string;
     }
 
+    function isReactionOnlyUpdate() {
+      // Allow updates that only modify the reactions field
+      return request.resource.data.keys().hasOnly(['reactions']) ||
+             (request.resource.data.keys().hasAll(['reactions']) &&
+              request.resource.data.keys().size() == 1);
+    }
+
     // ==================== USERS COLLECTION ====================
     match /users/{userId} {
       // FIXED: Allow read to ALL authenticated users
@@ -55,10 +62,11 @@ service cloud.firestore {
         isValidFlickData() && 
         isOwner(request.resource.data.userId);
       
-      // Allow update: only owner can update their flicks
-      allow update: if isAuthenticated() && 
-        isOwner(resource.data.userId) &&
-        request.resource.data.userId == resource.data.userId;
+      // Allow update: owner can update anything, anyone can update reactions
+      allow update: if isAuthenticated() && (
+        (isOwner(resource.data.userId) && request.resource.data.userId == resource.data.userId) ||
+        isReactionOnlyUpdate()
+      );
       
       // Allow delete: owner or admin
       allow delete: if isAuthenticated() && 

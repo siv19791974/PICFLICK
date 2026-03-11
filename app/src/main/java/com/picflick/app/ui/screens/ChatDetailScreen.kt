@@ -1,5 +1,8 @@
 package com.picflick.app.ui.screens
 
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.clickable
@@ -16,8 +19,10 @@ import androidx.compose.material.pullrefresh.rememberPullRefreshState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.filled.AttachFile
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Reply
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -25,6 +30,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -68,6 +74,29 @@ fun ChatDetailScreen(
         refreshing = viewModel.isLoading,
         onRefresh = { viewModel.loadMessages(chatId) }
     )
+
+    val context = LocalContext.current
+
+    // Image picker for sending photos
+    val imagePickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri ->
+        uri?.let { imageUri ->
+            // Send photo message
+            viewModel.sendPhotoMessage(
+                chatId = chatId,
+                imageUri = imageUri,
+                senderId = currentUser.uid,
+                recipientId = otherUserId,
+                senderName = currentUser.displayName,
+                senderPhotoUrl = currentUser.photoUrl,
+                context = context,
+                onComplete = {
+                    // Photo sent successfully
+                }
+            )
+        }
+    }
 
     // Load messages
     LaunchedEffect(chatId) {
@@ -193,6 +222,20 @@ fun ChatDetailScreen(
                         modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
+                        // Paperclip/Attachment button
+                        IconButton(
+                            onClick = { imagePickerLauncher.launch("image/*") },
+                            modifier = Modifier.size(40.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.AttachFile,
+                                contentDescription = "Attach photo",
+                                tint = Color.White
+                            )
+                        }
+                        
+                        Spacer(modifier = Modifier.width(4.dp))
+
                         // Text field with emoji placeholder
                         TextField(
                             value = messageText,
@@ -451,6 +494,22 @@ private fun ChatBubble(
                             }
                         }
                     }
+                }
+            }
+            
+            // Reply button for received messages
+            if (!isMe) {
+                Spacer(modifier = Modifier.width(4.dp))
+                IconButton(
+                    onClick = onReplyClick,
+                    modifier = Modifier.size(28.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Reply,
+                        contentDescription = "Reply",
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(20.dp)
+                    )
                 }
             }
         }
