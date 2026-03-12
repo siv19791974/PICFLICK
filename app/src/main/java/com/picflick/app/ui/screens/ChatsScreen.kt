@@ -452,7 +452,7 @@ private fun formatChatTime(timestamp: Long): String {
 
 /**
  * Full-screen dialog to select a friend to start a new chat with
- * WhatsApp-style contact selector - edge to edge
+ * WhatsApp-style contact selector - follows Lists pattern WITH MainActivity header/footer
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -464,7 +464,7 @@ private fun NewChatDialog(
     onFriendSelected: (String, String, String) -> Unit,
     onUserProfileClick: (String) -> Unit
 ) {
-    val backgroundColor = if (isDarkMode) Color.Black else Color(0xFFB8D4F0) // Light blue in light mode
+    val backgroundColor = if (isDarkMode) Color.Black else Color(0xFFB8D4F0)
     
     Dialog(
         onDismissRequest = onDismiss,
@@ -480,35 +480,36 @@ private fun NewChatDialog(
             Column(
                 modifier = Modifier.fillMaxSize()
             ) {
-                // Header - PicFlick black banner with logo
+                // MAIN HEADER - PicFlick Logo Bar (matches MainActivity)
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(56.dp)
-                        .background(PicFlickBannerBackground)
+                        .background(Color.Black)
                         .padding(horizontal = 16.dp),
-                    contentAlignment = Alignment.CenterStart
+                    contentAlignment = Alignment.Center
                 ) {
+                    // Back button on left
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically
+                        IconButton(
+                            onClick = onDismiss,
+                            modifier = Modifier.size(40.dp)
                         ) {
-                            IconButton(
-                                onClick = onDismiss,
-                                modifier = Modifier.size(40.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                                    contentDescription = "Back",
-                                    tint = Color.White
-                                )
-                            }
-                            Spacer(modifier = Modifier.width(8.dp))
-                            // PicFlick Logo
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = "Back",
+                                tint = Color.White
+                            )
+                        }
+                        
+                        // PicFlick Logo centered
+                        Row(
+                            modifier = Modifier.weight(1f),
+                            horizontalArrangement = Arrangement.Center
+                        ) {
                             Image(
                                 painter = painterResource(id = R.drawable.logo),
                                 contentDescription = "PicFlick",
@@ -517,6 +518,7 @@ private fun NewChatDialog(
                             )
                         }
                         
+                        // Search on right
                         IconButton(onClick = { /* Search */ }) {
                             Icon(
                                 imageVector = Icons.Default.Search,
@@ -527,7 +529,7 @@ private fun NewChatDialog(
                     }
                 }
                 
-                // Contacts list - edge to edge
+                // Contacts list
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -596,6 +598,28 @@ private fun NewChatDialog(
                             }
                         }
                     }
+                }
+                
+                // BOTTOM 5-WAY NAVIGATION BAR (matches MainActivity)
+                NavigationBar(
+                    modifier = Modifier.fillMaxWidth(),
+                    containerColor = Color.Black,
+                    contentColor = Color.White
+                ) {
+                    // Messages tab selected since we're in messaging flow
+                    NavigationBarItem(
+                        icon = { Icon(Icons.AutoMirrored.Filled.Chat, contentDescription = "Messages") },
+                        label = { Text("Messages") },
+                        selected = true,
+                        onClick = { /* Already in messages */ },
+                        colors = NavigationBarItemDefaults.colors(
+                            selectedIconColor = Color.White,
+                            selectedTextColor = Color.White,
+                            unselectedIconColor = Color.Gray,
+                            unselectedTextColor = Color.Gray,
+                            indicatorColor = Color.DarkGray
+                        )
+                    )
                 }
             }
         }
