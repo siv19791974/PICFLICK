@@ -178,7 +178,23 @@ fun ChatsScreen(
                             ) { session ->
                                 val otherUserId = session.participants.find { it != userProfile.uid } ?: ""
                                 val otherUserName = session.participantNames[otherUserId] ?: "Unknown"
-                                val otherUserPhoto = session.participantPhotos[otherUserId] ?: ""
+                                var otherUserPhoto by remember { mutableStateOf(session.participantPhotos[otherUserId] ?: "") }
+                                
+                                // Fetch photo from UserProfile if not in chat session
+                                LaunchedEffect(otherUserId) {
+                                    if (otherUserPhoto.isEmpty()) {
+                                        try {
+                                            val userDoc = com.google.firebase.firestore.FirebaseFirestore.getInstance()
+                                                .collection("users")
+                                                .document(otherUserId)
+                                                .get()
+                                                .await()
+                                            otherUserPhoto = userDoc.getString("photoUrl") ?: ""
+                                        } catch (e: Exception) {
+                                            // Keep empty if fetch fails
+                                        }
+                                    }
+                                }
 
                                 ChatListItem(
                                     session = session,
