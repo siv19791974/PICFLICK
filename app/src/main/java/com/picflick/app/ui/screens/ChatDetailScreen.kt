@@ -454,8 +454,8 @@ private fun ChatBubble(
     val sentColor = if (isDarkMode) Color(0xFF2A4A73) else Color(0xFFB8D4F0)      // Mid blue
     val receivedColor = if (isDarkMode) Color(0xFF2A2A2A) else Color(0xFFE0E0E0)  // Grey
     
-    val sentTextColor = if (isDarkMode) Color.White else Color.Black
-    val receivedTextColor = if (isDarkMode) Color.White else Color.Black
+    val sentTextColor = Color.Black
+    val receivedTextColor = Color.Black
 
     val bubbleShape = if (isMe) {
         RoundedCornerShape(
@@ -530,7 +530,7 @@ private fun ChatBubble(
                     Text(
                         text = message.text,
                         fontSize = 15.sp,
-                        color = Color.White,
+                        color = Color.Black,
                         fontWeight = FontWeight.Medium
                     )
 
@@ -545,7 +545,7 @@ private fun ChatBubble(
                         Text(
                             text = formatMessageTime(message.timestamp),
                             fontSize = 11.sp,
-                            color = Color.White.copy(alpha = 0.85f)
+                            color = Color.Black.copy(alpha = 0.7f)
                         )
 
                         if (isMe) {
