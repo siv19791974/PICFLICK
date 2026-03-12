@@ -11,6 +11,7 @@ data class ChatSession(
     val lastMessage: String = "",
     val lastTimestamp: Long = 0,
     val lastSenderId: String = "",
+    val lastMessageRead: Boolean = false,  // Is last message read by recipient?
     val unreadCount: Int = 0
 )
 
