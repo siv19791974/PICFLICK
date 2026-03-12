@@ -7,8 +7,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.layout.imePadding
-import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -104,13 +102,8 @@ fun ChatDetailScreen(
 
     // Load messages
     LaunchedEffect(chatId) {
-        android.util.Log.d("ChatDetailScreen", "Loading chat: $chatId, currentUser: ${currentUser.uid}")
         viewModel.loadMessages(chatId)
-        // Mark messages as delivered (recipient received them)
-        android.util.Log.d("ChatDetailScreen", "Calling markAsDelivered for user: ${currentUser.uid}")
-        viewModel.markAsDelivered(chatId, currentUser.uid)
-        // Mark messages as read (recipient opened chat)
-        android.util.Log.d("ChatDetailScreen", "Calling markAsRead for user: ${currentUser.uid}")
+        // Mark messages as read
         viewModel.markAsRead(chatId, currentUser.uid)
     }
 
@@ -301,8 +294,6 @@ fun ChatDetailScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .systemBarsPadding()
-                .imePadding()  // Prevents keyboard from covering messages
                 .pullRefresh(pullRefreshState)
         ) {
             Column(
@@ -310,51 +301,43 @@ fun ChatDetailScreen(
                     .fillMaxSize()
                     .background(isDarkModeBackground(isDarkMode))
             ) {
-                // Error message display - compact snackbar style, only when NOT loading
-                if (viewModel.errorMessage != null && !viewModel.isLoading) {
+                // Error message display
+                viewModel.errorMessage?.let { error ->
                     Surface(
                         modifier = Modifier.fillMaxWidth(),
                         color = MaterialTheme.colorScheme.errorContainer,
-                        tonalElevation = 4.dp
+                        tonalElevation = 2.dp
                     ) {
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = 12.dp, vertical = 6.dp),
+                                .padding(horizontal = 16.dp, vertical = 12.dp),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
-                                text = viewModel.errorMessage!!,
+                                text = error,
                                 color = MaterialTheme.colorScheme.onErrorContainer,
-                                style = MaterialTheme.typography.bodySmall,
-                                maxLines = 1,
-                                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                                style = MaterialTheme.typography.bodyMedium,
                                 modifier = Modifier.weight(1f)
                             )
                             TextButton(
                                 onClick = { 
                                     viewModel.clearError()
                                     viewModel.loadMessages(chatId) 
-                                },
-                                modifier = Modifier.padding(start = 8.dp)
+                                }
                             ) {
-                                Text("Retry", 
-                                    color = MaterialTheme.colorScheme.onErrorContainer,
-                                    style = MaterialTheme.typography.labelMedium
-                                )
+                                Text("Retry", color = MaterialTheme.colorScheme.onErrorContainer)
                             }
                         }
                     }
                 }
 
-                // Messages list - takes remaining space with weight
+                // Messages list
                 when {
                     viewModel.isLoading && viewModel.messages.isEmpty() -> {
                         Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .weight(1f),
+                            modifier = Modifier.fillMaxSize(),
                             contentAlignment = Alignment.Center
                         ) {
                             CircularProgressIndicator()
@@ -362,9 +345,7 @@ fun ChatDetailScreen(
                     }
                     viewModel.messages.isEmpty() -> {
                         Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .weight(1f),
+                            modifier = Modifier.fillMaxSize(),
                             contentAlignment = Alignment.Center
                         ) {
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -384,8 +365,7 @@ fun ChatDetailScreen(
                     else -> {
                         LazyColumn(
                             modifier = Modifier
-                                .fillMaxWidth()
-                                .weight(1f)
+                                .fillMaxSize()
                                 .padding(horizontal = 8.dp),
                             state = listState,
                             contentPadding = PaddingValues(vertical = 8.dp)
@@ -426,19 +406,22 @@ private fun ChatBubble(
     otherUserPhoto: String,
     onReplyClick: () -> Unit = {}
 ) {
-    // Debug logging
-    if (isMe) {
-        android.util.Log.d("ChatBubble", "Message ${message.id}: read=${message.read}, delivered=${message.delivered}")
-    }
+    // Sexy gradient backgrounds for message bubbles
+    val sentBrush = Brush.linearGradient(
+        colors = listOf(
+            Color(0xFF667eea), // Soft purple
+            Color(0xFF764ba2)  // Deep purple
+        )
+    )
     
-    val isDarkMode = ThemeManager.isDarkMode.value
+    val receivedBrush = Brush.linearGradient(
+        colors = listOf(
+            Color(0xFFf093fb), // Pink
+            Color(0xFFf5576c)  // Coral
+        )
+    )
     
-    // MID BLUE for User A (sender/me), GREY for User B (other)
-    val sentColor = if (isDarkMode) Color(0xFF2A4A73) else Color(0xFFB8D4F0)      // Mid blue
-    val receivedColor = if (isDarkMode) Color(0xFF2A2A2A) else Color(0xFFE0E0E0)  // Grey
-    
-    val sentTextColor = if (isDarkMode) Color.White else Color.Black
-    val receivedTextColor = if (isDarkMode) Color.White else Color.Black
+    val bubbleBrush = if (isMe) sentBrush else receivedBrush
 
     val bubbleShape = if (isMe) {
         RoundedCornerShape(
@@ -487,16 +470,20 @@ private fun ChatBubble(
             Spacer(modifier = Modifier.width(8.dp))
         }
 
-        // Message bubble - clean card style like Notifications
-        val bubbleColor = if (isMe) sentColor else receivedColor
-        
+        // Message bubble with sexy gradient and shadow
         Column(
             modifier = Modifier
                 .padding(horizontal = if (isMe) 8.dp else 0.dp)
         ) {
             Box(
                 modifier = Modifier
-                    .background(bubbleColor, bubbleShape)
+                    .shadow(
+                        elevation = 4.dp,
+                        shape = bubbleShape,
+                        ambientColor = if (isMe) Color(0xFF667eea) else Color(0xFFf5576c),
+                        spotColor = if (isMe) Color(0xFF667eea) else Color(0xFFf5576c)
+                    )
+                    .background(bubbleBrush, bubbleShape)
                     .padding(horizontal = 14.dp, vertical = 10.dp)
             ) {
                 Column {
@@ -513,7 +500,7 @@ private fun ChatBubble(
                     Text(
                         text = message.text,
                         fontSize = 15.sp,
-                        color = Color.White,
+                        color = Color.White, // White text on gradient
                         fontWeight = FontWeight.Medium
                     )
 
@@ -533,27 +520,27 @@ private fun ChatBubble(
 
                         if (isMe) {
                             Spacer(modifier = Modifier.width(4.dp))
-                            // Message status - subtle colors
+                            // Message status icon with sexy colors
                             when {
                                 message.read -> {
                                     Text(
                                         text = "✓✓",
                                         fontSize = 12.sp,
-                                        color = Color(0xFF25D366) // WhatsApp green for read
+                                        color = Color(0xFF00E5FF) // Cyan glow for read
                                     )
                                 }
                                 message.delivered -> {
                                     Text(
                                         text = "✓✓",
                                         fontSize = 12.sp,
-                                        color = Color.Gray
+                                        color = Color.White.copy(alpha = 0.7f)
                                     )
                                 }
                                 else -> {
                                     Text(
                                         text = "✓",
                                         fontSize = 12.sp,
-                                        color = Color.Gray
+                                        color = Color.White.copy(alpha = 0.5f)
                                     )
                                 }
                             }
@@ -635,7 +622,7 @@ private fun ReplyPreview(
 }
 
 /**
- * Quoted message preview component for replies with sexy styling
+ * Quoted message preview component for replies
  */
 @Composable
 private fun QuotedMessage(
@@ -643,34 +630,31 @@ private fun QuotedMessage(
     quotedText: String,
     isMe: Boolean
 ) {
-    val quoteColor = if (isMe) Color(0xFF4CAF50) else Color.Gray // Subtle green or gray
+    val quoteColor = if (isMe) Color(0xFF8BC34A) else MaterialTheme.colorScheme.primary
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .background(
-                color = Color.White.copy(alpha = 0.15f), 
-                shape = RoundedCornerShape(8.dp)
-            )
-            .padding(8.dp)
+            .background(color = Color.Black.copy(alpha = 0.05f), shape = RoundedCornerShape(4.dp))
+            .padding(6.dp)
     ) {
         Box(
             modifier = Modifier
                 .width(3.dp)
-                .height(32.dp)
-                .background(quoteColor, RoundedCornerShape(2.dp))
+                .height(30.dp)
+                .background(quoteColor)
         )
-        Spacer(modifier = Modifier.width(8.dp))
+        Spacer(modifier = Modifier.width(6.dp))
         Column {
             Text(
                 text = quotedSenderName,
                 fontSize = 12.sp,
-                fontWeight = FontWeight.Bold,
+                fontWeight = FontWeight.Medium,
                 color = quoteColor
             )
             Text(
                 text = quotedText,
                 fontSize = 12.sp,
-                color = Color.White.copy(alpha = 0.8f),
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
                 maxLines = 1
             )
         }
