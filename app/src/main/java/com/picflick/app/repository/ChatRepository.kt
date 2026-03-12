@@ -279,6 +279,30 @@ class ChatRepository {
     }
 
     /**
+     * Add reaction to a message
+     */
+    suspend fun addReaction(chatId: String, messageId: String, userId: String, emoji: String): Result<Unit> {
+        return try {
+            android.util.Log.d("ChatRepository", "addReaction: $emoji to message $messageId")
+            
+            // Update message with reaction
+            val messageRef = db.collection("chatSessions")
+                .document(chatId)
+                .collection("messages")
+                .document(messageId)
+            
+            // Use FieldValue to update the reactions map
+            messageRef.update("reactions.$userId", emoji).await()
+            
+            android.util.Log.d("ChatRepository", "addReaction SUCCESS")
+            Result.Success(Unit)
+        } catch (e: Exception) {
+            android.util.Log.e("ChatRepository", "addReaction FAILED: ${e.message}", e)
+            Result.Error(e, e.message ?: "Failed to add reaction")
+        }
+    }
+
+    /**
      * Get unread message count for a user
      */
     fun getUnreadMessageCount(userId: String): Flow<Int> = callbackFlow {
