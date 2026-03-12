@@ -291,20 +291,46 @@ class ChatRepository {
     /**
      * Add reaction to a message
      */
-    suspend fun addReaction(chatId: String, messageId: String, userId: String, emoji: String): Result<Unit> {
+    suspend fun addReaction(chatId: String, messageId: String, userId: String, emoji: String, senderName: String, senderPhotoUrl: String): Result<Unit> {
         return try {
             android.util.Log.d("ChatRepository", "addReaction: $emoji to message $messageId")
             
-            // Update message with reaction
-            val messageRef = db.collection("chatSessions")
+            // Get message data first to find original sender
+            val messageDoc = db.collection("chatSessions")
                 .document(chatId)
                 .collection("messages")
                 .document(messageId)
+                .get()
+                .await()
             
-            // Use FieldValue to update the reactions map
-            messageRef.update("reactions.$userId", emoji).await()
+            val originalSenderId = messageDoc.getString("senderId") ?: ""
+            val messageText = messageDoc.getString("text") ?: ""
+            
+            // Update message with reaction
+            messageDoc.reference.update("reactions.$userId", emoji).await()
             
             android.util.Log.d("ChatRepository", "addReaction SUCCESS")
+            
+            // Create notification for original message sender (if different from reactor)
+            if (originalSenderId.isNotEmpty() && originalSenderId != userId) {
+                val notification = hashMapOf(
+                    "userId" to originalSenderId,
+                    "type" to "REACTION",
+                    "title" to "$senderName reacted to your message",
+                    "message" to "$emoji ${messageText.take(30)}${if (messageText.length > 30) "..." else ""}",
+                    "senderId" to userId,
+                    "senderName" to senderName,
+                    "senderPhotoUrl" to senderPhotoUrl,
+                    "chatId" to chatId,
+                    "messageId" to messageId,
+                    "timestamp" to System.currentTimeMillis(),
+                    "isRead" to false
+                )
+                
+                db.collection("notifications").add(notification).await()
+                android.util.Log.d("ChatRepository", "Reaction notification created for $originalSenderId")
+            }
+            
             Result.Success(Unit)
         } catch (e: Exception) {
             android.util.Log.e("ChatRepository", "addReaction FAILED: ${e.message}", e)

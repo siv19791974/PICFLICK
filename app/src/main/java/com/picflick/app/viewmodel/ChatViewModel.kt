@@ -275,10 +275,10 @@ class ChatViewModel : ViewModel() {
     /**
      * Add reaction to message
      */
-    fun addReaction(chatId: String, messageId: String, userId: String, emoji: String) {
+    fun addReaction(chatId: String, messageId: String, userId: String, emoji: String, senderName: String, senderPhotoUrl: String) {
         viewModelScope.launch {
             android.util.Log.d("ChatViewModel", "addReaction: $emoji to message $messageId")
-            when (val result = repository.addReaction(chatId, messageId, userId, emoji)) {
+            when (val result = repository.addReaction(chatId, messageId, userId, emoji, senderName, senderPhotoUrl)) {
                 is Result.Success -> {
                     android.util.Log.d("ChatViewModel", "addReaction success")
                     loadMessages(chatId)

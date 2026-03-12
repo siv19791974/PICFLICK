@@ -30,7 +30,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import kotlinx.coroutines.tasks.await
 import coil3.compose.AsyncImage
 import com.picflick.app.data.ChatMessage
 import com.picflick.app.data.ChatSession
@@ -40,6 +39,7 @@ import com.picflick.app.ui.theme.ThemeManager
 import com.picflick.app.ui.theme.isDarkModeBackground
 import com.picflick.app.viewmodel.ChatViewModel
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -151,22 +151,26 @@ fun ChatDetailScreen(
                             tint = MaterialTheme.colorScheme.onSurface
                         )
                     }
-                    // Space for quick chat switcher (5 recent chats)
+                    // Space for symmetry (removed logo - YELLOW fix)
                     Spacer(modifier = Modifier.weight(1f))
+                    // Space for symmetry (same width as back button)
+                    Spacer(modifier = Modifier.size(48.dp))
                 }
             }
         },
         bottomBar = {
             // Message input area - WhatsApp style
             Surface(
-                modifier = Modifier.fillMaxWidth(),
-                color = Color.Black,  // Black to match above
-                tonalElevation = 2.dp
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .imePadding(),  // Moves up with keyboard, no gap
+                color = Color.Black,
+                tonalElevation = 0.dp  // Flat black bar
             ) {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 8.dp, vertical = 8.dp)
+                        .padding(horizontal = 8.dp, vertical = 4.dp)  // Reduced vertical padding
                 ) {
                     // Reply preview
                     if (replyToMessage != null) {
@@ -250,7 +254,7 @@ fun ChatDetailScreen(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding)
+                .padding(top = padding.calculateTopPadding())  // Only apply top padding
                 .pullRefresh(pullRefreshState)
         ) {
             Column(
@@ -339,7 +343,7 @@ fun ChatDetailScreen(
                                     currentUserId = currentUser.uid,
                                     onReplyClick = { replyToMessage = message },
                                     onReaction = { emoji ->
-                                        viewModel.addReaction(chatId, message.id, currentUser.uid, emoji)
+                                        viewModel.addReaction(chatId, message.id, currentUser.uid, emoji, currentUser.displayName, currentUser.photoUrl)
                                     }
                                 )
                                 Spacer(modifier = Modifier.height(4.dp))
@@ -349,11 +353,13 @@ fun ChatDetailScreen(
                 }
             }
 
-            // PullRefreshIndicator
+            // PullRefreshIndicator - visible at top when pulling
             PullRefreshIndicator(
                 refreshing = viewModel.isLoading,
                 state = pullRefreshState,
-                modifier = Modifier.align(Alignment.TopCenter)
+                modifier = Modifier.align(Alignment.TopCenter),
+                backgroundColor = MaterialTheme.colorScheme.surface,
+                contentColor = MaterialTheme.colorScheme.primary
             )
         }
     }
@@ -407,55 +413,42 @@ private fun ChatBubble(
         horizontalArrangement = if (isMe) Arrangement.End else Arrangement.Start,
         verticalAlignment = Alignment.Top
     ) {
-        // Other user's photo (for received messages)
-        if (!isMe && otherUserPhoto.isNotEmpty()) {
-            AsyncImage(
-                model = otherUserPhoto,
-                contentDescription = null,
-                modifier = Modifier
-                    .size(28.dp)
-                    .clip(CircleShape),
-                contentScale = ContentScale.Crop
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-        } else if (!isMe) {
-            Box(
-                modifier = Modifier
-                    .size(28.dp)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.2f))
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-        }
+        // GREEN: User B profile pics REMOVED completely
 
-        // Message bubble with sexy gradient and shadow
-        Column(
+        // Message bubble - max 85% width, wraps to content size, aligns top
+        Box(
             modifier = Modifier
-                .padding(horizontal = if (isMe) 8.dp else 0.dp)
+                .fillMaxWidth(0.85f),  // Container allows up to 85%
+            contentAlignment = if (isMe) Alignment.TopEnd else Alignment.TopStart
         ) {
-            Box(
+            Column(
                 modifier = Modifier
-                    .background(bubbleColor, bubbleShape)
-                    .padding(horizontal = 14.dp, vertical = 10.dp)
+                    .padding(horizontal = if (isMe) 8.dp else 0.dp)
             ) {
-                Column {
-                    // Show quoted message if this is a reply
-                    if (message.isReply()) {
-                        QuotedMessage(
-                            quotedSenderName = message.quotedSenderName ?: "Unknown",
-                            quotedText = message.quotedText ?: "",
-                            isMe = isMe
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
-                    }
-                    
-                    // Message text with timestamp inline at top
-                    Row(
-                        modifier = Modifier.wrapContentWidth(),
-                        horizontalArrangement = Arrangement.Start,
-                        verticalAlignment = Alignment.Top
+                // DARK BLUE: Box aligns to TOP and shrinks to fit content
+                Box(
+                    modifier = Modifier
+                        .wrapContentWidth()  // WRAPS to text content
+                        .wrapContentHeight()  // MINIMUM height for text
+                        .background(bubbleColor, bubbleShape)
+                        .padding(horizontal = 10.dp, vertical = 4.dp),  // Minimal padding
+                    contentAlignment = Alignment.TopStart  // Aligns to TOP
+                ) {
+                    Column(
+                        modifier = Modifier.wrapContentHeight(),  // Shrinks to fit
+                        verticalArrangement = Arrangement.Top  // Content at TOP
                     ) {
-                        // Message text - wraps naturally
+                        // Show quoted message if this is a reply
+                        if (message.isReply()) {
+                            QuotedMessage(
+                                quotedSenderName = message.quotedSenderName ?: "Unknown",
+                                quotedText = message.quotedText ?: "",
+                                isMe = isMe
+                            )
+                            Spacer(modifier = Modifier.height(2.dp))
+                        }
+                        
+                        // Message text - at TOP of box
                         Text(
                             text = message.text,
                             fontSize = 15.sp,
@@ -464,70 +457,75 @@ private fun ChatBubble(
                             modifier = Modifier.wrapContentWidth(),
                             softWrap = true
                         )
-                        
-                        Spacer(modifier = Modifier.width(8.dp))
-                        
-                        // Time and status - fixed at top right
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.End
-                        ) {
-                            // Dot FIRST (left of timestamp)
-                            if (isMe) {
-                                // Read status dot (green = read, red = unread)
-                                val dotColor = if (message.read) Color(0xFF25D366) else Color.Red
-                                Box(
-                                    modifier = Modifier
-                                        .size(8.dp)
-                                        .clip(CircleShape)
-                                        .background(dotColor)
-                                        .align(Alignment.CenterVertically)
-                                )
-                                Spacer(modifier = Modifier.width(4.dp))
-                            }
-                            
-                            // Timestamp AFTER dot
-                            Text(
-                                text = formatMessageTime(message.timestamp),
-                                fontSize = 11.sp,
-                                color = Color.Black.copy(alpha = 0.7f)
+                    }
+                }
+                
+                // RED: Timestamp and dot - FORCED to bottom of message area
+                Row(
+                    modifier = Modifier
+                        .wrapContentWidth()
+                        .padding(top = 2.dp, start = 4.dp, end = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = if (isMe) Arrangement.End else Arrangement.Start
+                ) {
+                    // Timestamp first
+                    Text(
+                        text = formatMessageTime(message.timestamp),
+                        fontSize = 10.sp,
+                        color = Color.Black.copy(alpha = 0.6f)
+                    )
+                    
+                    Spacer(modifier = Modifier.width(4.dp))
+                    
+                    // Read status dot - for my messages only
+                    if (isMe) {
+                        val dotColor = if (message.read) Color(0xFF25D366) else Color.Red
+                        Box(
+                            modifier = Modifier
+                                .size(6.dp)
+                                .clip(CircleShape)
+                                .background(dotColor)
+                        )
+                    }
+                }
+                
+                // YELLOW/RED: Reactions STICKING to bottom corner
+                if (message.reactions.isNotEmpty()) {
+                    Box(
+                        modifier = Modifier
+                            .offset(
+                                x = if (isMe) 8.dp else (-8).dp,
+                                y = (-6).dp
                             )
-                        }
+                            .background(
+                                color = MaterialTheme.colorScheme.surface,
+                                shape = RoundedCornerShape(10.dp)
+                            )
+                            .padding(horizontal = 4.dp, vertical = 1.dp)
+                            .align(if (isMe) Alignment.End else Alignment.Start)
+                    ) {
+                        Text(
+                            text = message.reactions.values.toSet().joinToString(" "),
+                            fontSize = 11.sp
+                        )
                     }
-                    
-                    // Reactions row
-                    if (message.reactions.isNotEmpty()) {
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = if (isMe) Arrangement.End else Arrangement.Start
-                        ) {
-                            message.reactions.values.toSet().forEach { emoji ->
-                                Text(
-                                    text = emoji,
-                                    fontSize = 14.sp,
-                                    modifier = Modifier.padding(horizontal = 2.dp)
-                                )
-                            }
-                        }
-                    }
-                    
-                    // Emoji picker
-                    if (showEmojiPicker) {
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = if (isMe) Arrangement.End else Arrangement.Start
-                        ) {
-                            emojiReactions.forEach { emoji ->
-                                TextButton(
-                                    onClick = {
-                                        onReaction(emoji)
-                                        showEmojiPicker = false
-                                    }
-                                ) {
-                                    Text(emoji, fontSize = 18.sp)
+                }
+                
+                // Emoji picker
+                if (showEmojiPicker) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = if (isMe) Arrangement.End else Arrangement.Start
+                    ) {
+                        emojiReactions.forEach { emoji ->
+                            TextButton(
+                                onClick = {
+                                    onReaction(emoji)
+                                    showEmojiPicker = false
                                 }
+                            ) {
+                                Text(emoji, fontSize = 18.sp)
                             }
                         }
                     }

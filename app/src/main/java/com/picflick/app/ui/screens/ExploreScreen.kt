@@ -2,7 +2,6 @@ package com.picflick.app.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -22,15 +21,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
-import com.picflick.app.R
 import com.picflick.app.data.Flick
 import com.picflick.app.data.UserProfile
-import com.picflick.app.ui.theme.PicFlickBannerBackground
 import com.picflick.app.viewmodel.HomeViewModel
 
 /**
@@ -63,29 +59,7 @@ fun ExploreScreen(
             .fillMaxSize()
             .background(Color.Black)
     ) {
-        // Header - PicFlick black banner with logo
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(56.dp)
-                .background(PicFlickBannerBackground)
-                .padding(horizontal = 16.dp),
-            contentAlignment = Alignment.CenterStart
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                // PicFlick Logo centered
-                Image(
-                    painter = painterResource(id = R.drawable.logo),
-                    contentDescription = "PicFlick",
-                    modifier = Modifier.height(32.dp),
-                    contentScale = ContentScale.Fit
-                )
-            }
-        }
+        // NO BANNER - banner is in MainActivity
 
         // Search Bar
         SearchBar(
