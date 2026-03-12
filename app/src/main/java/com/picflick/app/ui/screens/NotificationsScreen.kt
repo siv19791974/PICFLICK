@@ -23,9 +23,6 @@ import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material3.SwipeToDismissBox
 import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.rememberSwipeToDismissBoxState
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -134,10 +131,6 @@ fun NotificationsScreen(
             }
         }
 
-            // Spacer to balance the layout (back button on left, title center, spacer on right)
-            Spacer(modifier = Modifier.width(48.dp))
-        }
-
         // Modern PullRefresh content
         Box(
             modifier = Modifier
@@ -183,72 +176,73 @@ fun NotificationsScreen(
                     }
                 }
 
-            else -> {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    items(notifications, key = { it.id }) { notification ->
-                        SwipeableNotificationItem(
-                            notification = notification,
-                            isDarkMode = isDarkMode,
-                            onClick = {
-                                if (!notification.isRead) {
-                                    viewModel.markAsRead(notification.id)
-                                }
-                                // Navigate based on notification type
-                                when (notification.type) {
-                                    NotificationType.LIKE,
-                                    NotificationType.REACTION,
-                                    NotificationType.COMMENT,
-                                    NotificationType.MENTION,
-                                    NotificationType.PHOTO_ADDED -> {
-                                        // Navigate to photo
-                                        notification.flickId?.let { flickId ->
-                                            onPhotoClick(flickId, notification.flickImageUrl, notification.senderId)
+                else -> {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        items(notifications, key = { it.id }) { notification ->
+                            SwipeableNotificationItem(
+                                notification = notification,
+                                isDarkMode = isDarkMode,
+                                onClick = {
+                                    if (!notification.isRead) {
+                                        viewModel.markAsRead(notification.id)
+                                    }
+                                    // Navigate based on notification type
+                                    when (notification.type) {
+                                        NotificationType.LIKE,
+                                        NotificationType.REACTION,
+                                        NotificationType.COMMENT,
+                                        NotificationType.MENTION,
+                                        NotificationType.PHOTO_ADDED -> {
+                                            // Navigate to photo
+                                            notification.flickId?.let { flickId ->
+                                                onPhotoClick(flickId, notification.flickImageUrl, notification.senderId)
+                                            }
+                                        }
+                                        NotificationType.FOLLOW -> {
+                                            // Navigate to follower's profile
+                                            onUserProfileClick(notification.senderId)
+                                        }
+                                        NotificationType.FRIEND_REQUEST -> {
+                                            // Don't navigate, buttons handle the action
+                                        }
+                                        NotificationType.MESSAGE -> {
+                                            // Navigate to chat - need to get chat session
+                                            // For now, just show the chat list
+                                            onChatClick("", notification.senderId, notification.senderName, notification.senderPhotoUrl)
+                                        }
+                                        else -> {
+                                            // Default: just mark as read
                                         }
                                     }
-                                    NotificationType.FOLLOW -> {
-                                        // Navigate to follower's profile
-                                        onUserProfileClick(notification.senderId)
-                                    }
-                                    NotificationType.FRIEND_REQUEST -> {
-                                        // Don't navigate, buttons handle the action
-                                    }
-                                    NotificationType.MESSAGE -> {
-                                        // Navigate to chat - need to get chat session
-                                        // For now, just show the chat list
-                                        onChatClick("", notification.senderId, notification.senderName, notification.senderPhotoUrl)
-                                    }
-                                    else -> {
-                                        // Default: just mark as read
-                                    }
+                                },
+                                onDelete = {
+                                    viewModel.deleteNotification(notification.id)
+                                },
+                                onUserProfileClick = { senderId: String ->
+                                    onUserProfileClick(senderId)
+                                },
+                                onAcceptFriendRequest = { senderId: String ->
+                                    // Accept the friend request and delete notification
+                                    viewModel.acceptFollowRequest(userProfile.uid, senderId, notification.id)
+                                },
+                                onDeclineFriendRequest = { senderId: String ->
+                                    // Decline the friend request and delete notification
+                                    viewModel.declineFollowRequest(userProfile.uid, senderId, notification.id)
+                                },
+                                onAcceptTag = { flickId: String, notificationId: String ->
+                                    // Accept being tagged in photo
+                                    viewModel.acceptTag(flickId, notificationId)
+                                },
+                                onDeclineTag = { flickId: String, notificationId: String ->
+                                    // Decline being tagged in photo
+                                    viewModel.declineTag(flickId, notificationId)
                                 }
-                            },
-                            onDelete = {
-                                viewModel.deleteNotification(notification.id)
-                            },
-                            onUserProfileClick = { senderId ->
-                                onUserProfileClick(senderId)
-                            },
-                            onAcceptFriendRequest = { senderId ->
-                                // Accept the friend request and delete notification
-                                viewModel.acceptFollowRequest(userProfile.uid, senderId, notification.id)
-                            },
-                            onDeclineFriendRequest = { senderId ->
-                                // Decline the friend request and delete notification
-                                viewModel.declineFollowRequest(userProfile.uid, senderId, notification.id)
-                            },
-                            onAcceptTag = { flickId, notificationId ->
-                                // Accept being tagged in photo
-                                viewModel.acceptTag(flickId, notificationId)
-                            },
-                            onDeclineTag = { flickId, notificationId ->
-                                // Decline being tagged in photo
-                                viewModel.declineTag(flickId, notificationId)
-                            }
-                        )
+                            )
+                        }
                     }
                 }
             }
@@ -258,7 +252,7 @@ fun NotificationsScreen(
         PullRefreshIndicator(
             refreshing = isLoading,
             state = pullRefreshState,
-            modifier = Modifier.align(Alignment.TopCenter),
+            modifier = Modifier.align(Alignment.CenterHorizontally),
             backgroundColor = MaterialTheme.colorScheme.surface,
             contentColor = MaterialTheme.colorScheme.primary
         )
@@ -375,7 +369,7 @@ private fun NotificationItem(
                             onAcceptFriendRequest(notification.senderId)
                         } else {
                             // Accept tag
-                            onAcceptTag?.invoke(notification.flickId ?: "", notification.id)
+                            onAcceptTag.invoke(notification.flickId ?: "", notification.id)
                         }
                     },
                     shape = RoundedCornerShape(20.dp),
@@ -384,38 +378,38 @@ private fun NotificationItem(
                         containerColor = Color(0xFF4CAF50) // Green
                     )
                 ) {
-                        Text(if (notification.type == NotificationType.FRIEND_REQUEST) "Accept" else "Accept Tag", fontSize = 12.sp)
-                    }
-                    
-                    Spacer(modifier = Modifier.height(4.dp))
-                    
-                    OutlinedButton(
-                        onClick = { 
-                            if (notification.type == NotificationType.FRIEND_REQUEST) {
-                                onDeclineFriendRequest(notification.senderId)
-                            } else {
-                                // Decline tag
-                                onDeclineTag?.invoke(notification.flickId ?: "", notification.id)
-                            }
-                        },
-                        shape = RoundedCornerShape(20.dp),
-                        modifier = Modifier.wrapContentWidth(),
-                        colors = ButtonDefaults.outlinedButtonColors(
-                            contentColor = Color(0xFFFF4444) // Red
-                        )
-                    ) {
-                        Text(if (notification.type == NotificationType.FRIEND_REQUEST) "Decline" else "Decline Tag", fontSize = 12.sp)
-                    }
+                    Text(if (notification.type == NotificationType.FRIEND_REQUEST) "Accept" else "Accept Tag", fontSize = 12.sp)
                 }
-            } else {
-                // Unread indicator only (delete via swipe)
-                if (!notification.isRead) {
-                    Box(
-                        modifier = Modifier
-                            .size(8.dp)
-                            .background(Color.Red, CircleShape)
+                    
+                Spacer(modifier = Modifier.height(4.dp))
+                    
+                OutlinedButton(
+                    onClick = { 
+                        if (notification.type == NotificationType.FRIEND_REQUEST) {
+                            onDeclineFriendRequest(notification.senderId)
+                        } else {
+                            // Decline tag
+                            onDeclineTag.invoke(notification.flickId ?: "", notification.id)
+                        }
+                    },
+                    shape = RoundedCornerShape(20.dp),
+                    modifier = Modifier.wrapContentWidth(),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        contentColor = Color(0xFFFF4444) // Red
                     )
+                ) {
+                    Text(if (notification.type == NotificationType.FRIEND_REQUEST) "Decline" else "Decline Tag", fontSize = 12.sp)
                 }
+            }
+        } else {
+            // Unread indicator only (delete via swipe)
+            if (!notification.isRead) {
+                Box(
+                    modifier = Modifier
+                        .size(8.dp)
+                        .background(Color.Red, CircleShape)
+                )
+            }
         }
     }
 }
@@ -432,7 +426,6 @@ private fun SwipeableNotificationItem(
     onAcceptTag: (String, String) -> Unit = { _, _ -> },
     onDeclineTag: (String, String) -> Unit = { _, _ -> }
 ) {
-    val scope = rememberCoroutineScope()
     val dismissState = rememberSwipeToDismissBoxState(
         confirmValueChange = { value ->
             if (value == SwipeToDismissBoxValue.StartToEnd) {  // Swipe RIGHT to delete
