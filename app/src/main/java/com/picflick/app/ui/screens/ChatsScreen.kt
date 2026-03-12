@@ -644,37 +644,37 @@ private fun FullScreenFriendItem(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 8.dp),
+            .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Profile photo - clickable
+        // Profile photo - 56dp like ChatListItem
         Box(
-            modifier = Modifier.clickable { onProfilePhotoClick() }
+            modifier = Modifier
+                .size(56.dp)
+                .clickable { onProfilePhotoClick() }
         ) {
             if (friend.photoUrl.isNotEmpty()) {
                 AsyncImage(
                     model = friend.photoUrl,
-                    contentDescription = null,
+                    contentDescription = friend.displayName,
                     modifier = Modifier
-                        .size(52.dp)
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.surface),
+                        .fillMaxSize()
+                        .clip(CircleShape),
                     contentScale = ContentScale.Crop
                 )
             } else {
                 Box(
                     modifier = Modifier
-                        .size(52.dp)
+                        .fillMaxSize()
                         .clip(CircleShape)
-                        .background(if (isDarkMode) Color(0xFF2A2A2A) else Color(0xFFE0E0E0)),
+                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)),
                     contentAlignment = Alignment.Center
                 ) {
-                    val initial = friend.displayName.firstOrNull()?.uppercase() ?: "?"
-                    Text(
-                        text = initial,
-                        fontSize = 22.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = if (isDarkMode) Color.White else Color.DarkGray
+                    Icon(
+                        imageVector = Icons.Default.Person,
+                        contentDescription = null,
+                        modifier = Modifier.size(28.dp),
+                        tint = MaterialTheme.colorScheme.primary
                     )
                 }
             }
@@ -682,27 +682,32 @@ private fun FullScreenFriendItem(
 
         Spacer(modifier = Modifier.width(16.dp))
 
-        // Friend info
+        // Friend info - same structure as ChatListItem
         Column(
             modifier = Modifier.weight(1f)
         ) {
+            // Name row
             Text(
                 text = friend.displayName,
-                fontSize = 17.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = if (isDarkMode) Color.White else Color.Black,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface,
                 maxLines = 1,
-                overflow = TextOverflow.Ellipsis
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.fillMaxWidth()
             )
-            
-            // Show status or "Available" subtitle
+
+            Spacer(modifier = Modifier.height(4.dp))
+
+            // Bio/subtitle row - like last message
             val subtitle = friend.bio.takeIf { it.isNotBlank() } ?: "Available"
             Text(
                 text = subtitle,
                 fontSize = 14.sp,
-                color = if (isDarkMode) Color.Gray else Color.DarkGray,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
                 maxLines = 1,
-                overflow = TextOverflow.Ellipsis
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.fillMaxWidth()
             )
         }
     }

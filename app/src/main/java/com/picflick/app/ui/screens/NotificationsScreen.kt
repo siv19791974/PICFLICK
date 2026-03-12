@@ -277,114 +277,113 @@ private fun NotificationItem(
     onAcceptTag: (String, String) -> Unit = { _, _ -> }, // flickId, notificationId
     onDeclineTag: (String, String) -> Unit = { _, _ -> } // flickId, notificationId
 ) {
-    val backgroundColor = if (isDarkMode) {
-        if (notification.isRead) Color(0xFF203A5F) else Color(0xFF2A4A73) // Mid blue - darker than background
-    } else {
-        if (notification.isRead) Color(0xFF9FC8E8) else Color(0xFFB8D4F0) // Mid blue
-    }
-
-    Card(
+    // Use Row like ChatListItem - no card
+    Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onClick() },
-        colors = CardDefaults.cardColors(containerColor = backgroundColor),
-        shape = RoundedCornerShape(12.dp)
+            .clickable { onClick() }
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Row(
+        // Sender avatar with notification icon overlay - 56dp like ChatListItem
+        Box(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically
+                .size(56.dp)
+                .clickable { onUserProfileClick(notification.senderId) }
         ) {
-            // Sender avatar with notification icon overlay - clickable to view profile
+            AsyncImage(
+                model = notification.senderPhotoUrl,
+                contentDescription = notification.senderName,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clip(CircleShape)
+                    .background(if (isDarkMode) Color.Gray else Color.LightGray),
+                contentScale = ContentScale.Crop
+            )
+
+            // Notification type icon (small overlay)
             Box(
-                modifier = Modifier.clickable { onUserProfileClick(notification.senderId) }
+                modifier = Modifier
+                    .size(20.dp)
+                    .align(Alignment.BottomEnd)
+                    .background(
+                        color = getNotificationColor(notification.type),
+                        shape = CircleShape
+                    ),
+                contentAlignment = Alignment.Center
             ) {
-                AsyncImage(
-                    model = notification.senderPhotoUrl,
+                Icon(
+                    imageVector = getNotificationIcon(notification.type),
                     contentDescription = null,
-                    modifier = Modifier
-                        .size(50.dp)
-                        .clip(CircleShape)
-                        .background(if (isDarkMode) Color.Gray else Color.LightGray),
-                    contentScale = ContentScale.Crop
+                    modifier = Modifier.size(12.dp),
+                    tint = if (isDarkMode) Color.White else Color.Black
                 )
-
-                // Notification type icon (small overlay)
-                Box(
-                    modifier = Modifier
-                        .size(20.dp)
-                        .align(Alignment.BottomEnd)
-                        .background(
-                            color = getNotificationColor(notification.type),
-                            shape = CircleShape
-                        ),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = getNotificationIcon(notification.type),
-                        contentDescription = null,
-                        modifier = Modifier.size(12.dp),
-                        tint = if (isDarkMode) Color.White else Color.Black
-                    )
-                }
             }
+        }
 
-            Spacer(modifier = Modifier.width(12.dp))
+        Spacer(modifier = Modifier.width(16.dp))
 
-            // Notification content
-            Column(
-                modifier = Modifier.weight(1f)
+        // Notification content - same structure as ChatListItem
+        Column(
+            modifier = Modifier.weight(1f)
+        ) {
+            // Title and time row (like name/time in ChatListItem)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
                     text = notification.title,
-                    fontSize = 14.sp,
+                    fontSize = 16.sp,
                     fontWeight = if (notification.isRead) FontWeight.Normal else FontWeight.Bold,
-                    color = if (isDarkMode) Color.White else Color.Black,
+                    color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f)
                 )
-
-                Spacer(modifier = Modifier.height(2.dp))
-
-                Text(
-                    text = notification.message,
-                    fontSize = 13.sp,
-                    color = if (isDarkMode) Color.LightGray else Color.DarkGray,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
-                )
-
-                Spacer(modifier = Modifier.height(4.dp))
-
+                
                 Text(
                     text = formatTimestamp(notification.timestamp),
-                    fontSize = 11.sp,
-                    color = if (isDarkMode) Color.Gray else Color.DarkGray
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
                 )
             }
 
-            // Action area - Accept/Decline for FRIEND_REQUEST or MENTION (tag), or delete/unread
-            if ((notification.type == NotificationType.FRIEND_REQUEST || notification.type == NotificationType.MENTION) && !notification.isRead) {
-                // Accept/Decline buttons stacked vertically
-                Column(
-                    horizontalAlignment = Alignment.End
+            Spacer(modifier = Modifier.height(4.dp))
+
+            // Message row (like last message in ChatListItem)
+            Text(
+                text = notification.message,
+                fontSize = 14.sp,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+
+        // Action area - Accept/Decline buttons for FRIEND_REQUEST or MENTION
+        if ((notification.type == NotificationType.FRIEND_REQUEST || notification.type == NotificationType.MENTION) && !notification.isRead) {
+            // Accept/Decline buttons stacked vertically
+            Column(
+                horizontalAlignment = Alignment.End
+            ) {
+                Button(
+                    onClick = { 
+                        if (notification.type == NotificationType.FRIEND_REQUEST) {
+                            onAcceptFriendRequest(notification.senderId)
+                        } else {
+                            // Accept tag
+                            onAcceptTag?.invoke(notification.flickId ?: "", notification.id)
+                        }
+                    },
+                    shape = RoundedCornerShape(20.dp),
+                    modifier = Modifier.wrapContentWidth(),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFF4CAF50) // Green
+                    )
                 ) {
-                    Button(
-                        onClick = { 
-                            if (notification.type == NotificationType.FRIEND_REQUEST) {
-                                onAcceptFriendRequest(notification.senderId)
-                            } else {
-                                // Accept tag
-                                onAcceptTag?.invoke(notification.flickId ?: "", notification.id)
-                            }
-                        },
-                        shape = RoundedCornerShape(20.dp),
-                        modifier = Modifier.wrapContentWidth(),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = Color(0xFF4CAF50) // Green
-                        )
-                    ) {
                         Text(if (notification.type == NotificationType.FRIEND_REQUEST) "Accept" else "Accept Tag", fontSize = 12.sp)
                     }
                     
