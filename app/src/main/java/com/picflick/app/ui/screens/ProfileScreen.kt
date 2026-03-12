@@ -40,10 +40,12 @@ import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.CachePolicy
 import com.picflick.app.data.Flick
+import com.picflick.app.data.ReactionType
 import com.picflick.app.data.UserProfile
 import com.picflick.app.data.getColor
 import com.picflick.app.data.getDarkColor
 import com.picflick.app.data.getLightColor
+import com.picflick.app.ui.components.AnimatedReactionPicker
 import com.picflick.app.ui.theme.ThemeManager
 import com.picflick.app.ui.theme.isDarkModeBackground
 
@@ -65,9 +67,14 @@ fun ProfileScreen(
     onProfilePhotoClick: () -> Unit = {},
     onRefresh: () -> Unit = {},
     onPlanOptions: () -> Unit = {},
+    onReaction: (Flick, ReactionType?) -> Unit = { _, _ -> },
     isLoading: Boolean = false
 ) {
     val isDarkMode = ThemeManager.isDarkMode.value
+    
+    // Reaction picker state
+    var showReactionPicker by remember { mutableStateOf(false) }
+    var flickForReaction by remember { mutableStateOf<Flick?>(null) }
     
     // Keep photo URL stable - don't clear when profile temporarily reloads
     var cachedPhotoUrl by remember { mutableStateOf(userProfile.photoUrl) }
@@ -371,9 +378,16 @@ fun ProfileScreen(
                         MyPhotoCard(
                             flick = flick,
                             userProfile = userProfile,
-                            onPhotoClick = { 
+                            onPhotoClick = {
                                 val index = photos.indexOf(flick)
-                                onPhotoClick(flick, index) 
+                                onPhotoClick(flick, index)
+                            },
+                            onLongPress = {
+                                // Only allow reacting to OTHER people's photos
+                                if (flick.userId != userProfile.uid) {
+                                    flickForReaction = flick
+                                    showReactionPicker = true
+                                }
                             },
                             rowHeight = rowHeight
                         )
@@ -424,6 +438,25 @@ fun ProfileScreen(
         )
     }
     // End of Box (pull-refresh container)
+    
+    // Reaction Picker Dialog for long-press on photos
+    if (showReactionPicker && flickForReaction != null) {
+        AnimatedReactionPicker(
+            onDismiss = {
+                showReactionPicker = false
+                flickForReaction = null
+            },
+            onReactionSelected = { reactionType ->
+                // Handle reaction
+                flickForReaction?.let { flick ->
+                    onReaction(flick, reactionType)
+                }
+                showReactionPicker = false
+                flickForReaction = null
+            },
+            currentReaction = flickForReaction?.getUserReaction(userProfile.uid)
+        )
+    }
 }
 
 // Photo sizes for dynamic grid
@@ -450,6 +483,7 @@ private data class PhotoGridPosition(
 private fun DynamicPhotoGrid(
     photos: List<Flick>,
     onPhotoClick: (Flick, Int) -> Unit,
+    onLongPress: (Flick) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     // Create varied layout pattern based on photo index
@@ -484,7 +518,10 @@ private fun DynamicPhotoGrid(
                     .offset(xOffset.dp, yOffset.dp)
                     .width(width.dp)
                     .height(height.dp)
-                    .combinedClickable(onClick = { onPhotoClick(flick, index) }),
+                    .combinedClickable(
+                        onClick = { onPhotoClick(flick, index) },
+                        onLongClick = { onLongPress(flick) }
+                    ),
                 shape = RoundedCornerShape(8.dp),
                 elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
                 colors = CardDefaults.cardColors(containerColor = Color.DarkGray)
@@ -970,13 +1007,17 @@ private fun MyPhotoCard(
     flick: Flick,
     userProfile: UserProfile,
     onPhotoClick: () -> Unit,
+    onLongPress: () -> Unit = {},
     rowHeight: androidx.compose.ui.unit.Dp
 ) {
     Card(
         modifier = Modifier
             .padding(1.dp)
             .height(rowHeight)
-            .combinedClickable(onClick = onPhotoClick),
+            .combinedClickable(
+                onClick = onPhotoClick,
+                onLongClick = onLongPress
+            ),
         shape = RectangleShape,
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         colors = CardDefaults.cardColors(containerColor = Color.Transparent)

@@ -176,8 +176,11 @@ fun HomeScreen(
                         selectedFlickIndex = viewModel.flicks.indexOf(flick)
                     },
                     onLongPress = { flick ->
-                        flickForReaction = flick
-                        showReactionPicker = true
+                        // Only allow reacting to OTHER people's photos
+                        if (flick.userId != userProfile.uid) {
+                            flickForReaction = flick
+                            showReactionPicker = true
+                        }
                     },
                     isLoadingMore = viewModel.isLoadingMore,
                     canLoadMore = viewModel.canLoadMore,
@@ -223,25 +226,24 @@ fun HomeScreen(
     }
 
     // Full-screen photo viewer with comments
+    // Use key to force recomposition when reactions change
+    val flicksHash = viewModel.flicks.sumOf { it.getTotalReactions() }
     selectedFlick?.let { flick ->
-        FullScreenPhotoViewer(
+        key(flicksHash) {
+            FullScreenPhotoViewer(
             flick = flick,
             currentUser = userProfile,
             onDismiss = { selectedFlick = null },
             onReaction = { reactionType ->
+                // Get the CURRENT flick based on selected index (not the stale flick reference)
+                val currentFlick = viewModel.flicks.getOrNull(selectedFlickIndex) ?: flick
                 // Handle reaction via ViewModel
-                viewModel.toggleReaction(flick, userProfile.uid, userProfile.displayName, userProfile.photoUrl, reactionType)
-                // Update local copy for UI
-                selectedFlick = if (reactionType != null) {
-                    val newReactions = flick.reactions.toMutableMap().apply {
-                        put(userProfile.uid, reactionType.name)
-                    }
-                    flick.copy(reactions = newReactions)
-                } else {
-                    val newReactions = flick.reactions.toMutableMap().apply {
-                        remove(userProfile.uid)
-                    }
-                    flick.copy(reactions = newReactions)
+                viewModel.toggleReaction(currentFlick, userProfile.uid, userProfile.displayName, userProfile.photoUrl, reactionType)
+                // IMMEDIATELY update selectedFlick with the latest data from ViewModel
+                // This ensures the UI shows the reaction immediately
+                val updatedFlick = viewModel.flicks.getOrNull(selectedFlickIndex)
+                if (updatedFlick != null) {
+                    selectedFlick = updatedFlick
                 }
             },
             onShareClick = {
@@ -267,6 +269,7 @@ fun HomeScreen(
                 onUserProfileClick(userId)
             }
         )
+        } // End key
     }
 
     // Animated Reaction Picker Dialog for long press
@@ -496,7 +499,6 @@ private fun FlickGrid(
                 FlickCard(
                     flick = flick,
                     userId = userProfile.uid,
-                    onLikeClick = { onLikeClick(flick) },
                     onPhotoClick = { onPhotoClick(flick) },
                     onLongPress = { onLongPress(flick) },
                     rowHeight = rowHeight
@@ -528,16 +530,16 @@ private fun FlickGrid(
 private fun FlickCard(
     flick: Flick,
     userId: String,
-    onLikeClick: () -> Unit,
     onPhotoClick: () -> Unit,
     onLongPress: () -> Unit,
     rowHeight: androidx.compose.ui.unit.Dp
 ) {
-    val userReaction = flick.getUserReaction(userId)
+    // Get the top reaction (highest count) to display on thumbnail
+    val reactionCounts = flick.getReactionCounts()
+    val topReaction = reactionCounts.maxByOrNull { it.value }
+    val topReactionCount = topReaction?.value ?: 0
+    val topReactionEmoji = topReaction?.key?.toEmoji() ?: "❤️"
     val totalReactions = flick.getTotalReactions()
-    val isLiked = userReaction != null
-    var showLikeAnimation by remember { mutableStateOf(false) }
-    var isUnlikeAnimation by remember { mutableStateOf(false) }
     
     Card(
         modifier = Modifier
@@ -554,24 +556,7 @@ private fun FlickCard(
         )
     ) {
         Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .pointerInput(Unit) {
-                    detectTapGestures(
-                        onTap = { 
-                            // Single tap to open full screen
-                            onPhotoClick()
-                        },
-                        onDoubleTap = { 
-                            // Double-tap to toggle like/unlike - only for others' photos
-                            if (flick.userId != userId) {
-                                isUnlikeAnimation = isLiked // If already liked, this is an unlike
-                                onLikeClick()
-                                showLikeAnimation = true
-                            }
-                        }
-                    )
-                }
+            modifier = Modifier.fillMaxSize()
         ) {
             // Photo
             AsyncImage(
@@ -580,14 +565,6 @@ private fun FlickCard(
                 modifier = Modifier.fillMaxSize(), // Fill the exact height
                 contentScale = ContentScale.Crop
             )
-            
-            // Like animation overlay (when double-tapped)
-            if (showLikeAnimation) {
-                LikeAnimation(
-                    isUnlike = isUnlikeAnimation,
-                    onAnimationComplete = { showLikeAnimation = false }
-                )
-            }
             
             // Info overlay at bottom (username + reactions)
             Box(
@@ -617,10 +594,10 @@ private fun FlickCard(
                         modifier = Modifier.weight(1f)
                     )
                     
-                    // Right: Reaction info (if any)
-                    if (totalReactions > 0) {
+                    // Right: Show only the TOP reaction (highest count) on thumbnail
+                    if (topReactionCount > 0) {
                         Text(
-                            text = "${userReaction?.toEmoji() ?: "❤️"} $totalReactions",
+                            text = "$topReactionEmoji $topReactionCount",
                             fontSize = 10.sp,
                             color = Color.White
                         )

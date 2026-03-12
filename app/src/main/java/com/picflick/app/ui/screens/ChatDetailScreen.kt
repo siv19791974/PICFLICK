@@ -102,10 +102,13 @@ fun ChatDetailScreen(
 
     // Load messages
     LaunchedEffect(chatId) {
+        android.util.Log.d("ChatDetailScreen", "Loading chat: $chatId, currentUser: ${currentUser.uid}")
         viewModel.loadMessages(chatId)
         // Mark messages as delivered (recipient received them)
+        android.util.Log.d("ChatDetailScreen", "Calling markAsDelivered for user: ${currentUser.uid}")
         viewModel.markAsDelivered(chatId, currentUser.uid)
         // Mark messages as read (recipient opened chat)
+        android.util.Log.d("ChatDetailScreen", "Calling markAsRead for user: ${currentUser.uid}")
         viewModel.markAsRead(chatId, currentUser.uid)
     }
 
@@ -419,6 +422,10 @@ private fun ChatBubble(
     otherUserPhoto: String,
     onReplyClick: () -> Unit = {}
 ) {
+    // Debug logging
+    if (isMe) {
+        android.util.Log.d("ChatBubble", "Message ${message.id}: read=${message.read}, delivered=${message.delivered}")
+    }
     // Black background like Notifications/FindFriends
     val backgroundColor = Color.Black
     val cardColor = Color(0xFF1A1A1A) // Dark gray card like notifications

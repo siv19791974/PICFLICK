@@ -43,6 +43,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.picflick.app.data.ChatSession
 import com.picflick.app.navigation.Screen
 import com.picflick.app.repository.FlickRepository
+import com.picflick.app.data.Flick
 import com.picflick.app.ui.components.BottomNavBar
 import com.picflick.app.ui.components.LogoImage
 import com.picflick.app.ui.components.UploadSourceDialog
@@ -168,6 +169,9 @@ fun MainScreen(
     var currentScreen by remember { mutableStateOf<Screen>(Screen.Home) }
     var wasPreviouslyLoggedOut by remember { mutableStateOf(true) }
 
+    // State for push notification photo (opens FullScreenPhotoViewer directly)
+    var pushPhoto by remember { mutableStateOf<Flick?>(null) }
+
     // Track login state for analytics
     val activity = LocalContext.current as? MainActivity
 
@@ -205,6 +209,31 @@ fun MainScreen(
                 "profile" -> {
                     if (senderId != null) {
                         currentScreen = Screen.UserProfile(senderId)
+                    }
+                }
+                "photo" -> {
+                    val flickId = pushData.getString("flickId")
+                    android.util.Log.d("MainActivity", "Opening photo from push: flickId=$flickId")
+                    if (flickId != null) {
+                        // Load the flick and open FullScreenPhotoViewer
+                        val repository = FlickRepository.getInstance()
+                        repository.getFlickById(flickId) { result ->
+                            when (result) {
+                                is com.picflick.app.data.Result.Success -> {
+                                    android.util.Log.d("MainActivity", "Photo loaded: ${result.data.imageUrl}")
+                                    pushPhoto = result.data
+                                }
+                                is com.picflick.app.data.Result.Error -> {
+                                    android.util.Log.e("MainActivity", "Failed to load photo from push: ${result.message}")
+                                    // Fall back to notifications screen
+                                    currentScreen = Screen.Notifications
+                                }
+                                else -> {}
+                            }
+                        }
+                    } else {
+                        // No flickId provided, open notifications
+                        currentScreen = Screen.Notifications
                     }
                 }
             }
@@ -678,7 +707,9 @@ fun MainScreen(
                     selectedPhotoUri = selectedPhotoUri,
                     onPhotoSelected = { uri ->
                         profilePhotoToUpload = uri
-                    }
+                    },
+                    pushPhoto = pushPhoto,
+                    onPushPhotoConsumed = { pushPhoto = null }
                 )
             } else {
                 // Loading state - profile not loaded yet
