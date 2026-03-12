@@ -10,10 +10,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.ExperimentalMaterialApi
-import androidx.compose.material.pullrefresh.PullRefreshIndicator
-import androidx.compose.material.pullrefresh.pullRefresh
-import androidx.compose.material.pullrefresh.rememberPullRefreshState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Send
@@ -46,7 +42,7 @@ import java.util.*
 /**
  * WhatsApp-style Chat Detail Screen
  */
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterialApi::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ChatDetailScreen(
     chatSession: ChatSession,
@@ -81,12 +77,8 @@ fun ChatDetailScreen(
     val scope = rememberCoroutineScope()
     val isDarkMode = ThemeManager.isDarkMode.value
 
-    // Pull-to-refresh state
-    val pullRefreshState = rememberPullRefreshState(
-        refreshing = viewModel.isLoading,
-        onRefresh = { viewModel.loadMessages(chatId) }
-    )
-
+    // Removed pull-to-refresh - Firebase provides real-time updates automatically
+    
     val context = LocalContext.current
 
     // Image picker for sending photos
@@ -125,6 +117,19 @@ fun ChatDetailScreen(
             }
         }
     }
+    
+    // REAL-TIME READ RECEIPTS: Mark new messages as read immediately when they arrive
+    // This ensures when User A sends a message and User B is already in chat, 
+    // the dot turns green immediately on User A's screen
+    LaunchedEffect(viewModel.messages) {
+        val hasUnreadFromOther = viewModel.messages.any { 
+            it.senderId != currentUser.uid && !it.read 
+        }
+        if (hasUnreadFromOther) {
+            android.util.Log.d("ChatDetailScreen", "New unread messages from other user, marking as read")
+            viewModel.markAsRead(chatId, currentUser.uid)
+        }
+    }
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
@@ -160,11 +165,9 @@ fun ChatDetailScreen(
         },
         bottomBar = {
             // Message input area - WhatsApp style
-            // Handle IME insets to stay above keyboard
+            // REMOVED: windowInsetsPadding - Scaffold handles keyboard automatically
             Surface(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .windowInsetsPadding(WindowInsets.ime),
+                modifier = Modifier.fillMaxWidth(),
                 color = Color.Black,
                 tonalElevation = 0.dp
             ) {
@@ -200,19 +203,27 @@ fun ChatDetailScreen(
                         
                         Spacer(modifier = Modifier.width(4.dp))
 
-                        // Text field with emoji placeholder
+                        // Text field with dark background matching input bar
                         TextField(
                             value = messageText,
                             onValueChange = { messageText = it },
-                            placeholder = { Text(if (replyToMessage != null) "Reply to message..." else "Message") },
+                            placeholder = { 
+                                Text(
+                                    if (replyToMessage != null) "Reply to message..." else "Message",
+                                    color = Color.Gray
+                                ) 
+                            },
                             modifier = Modifier
                                 .weight(1f)
                                 .heightIn(min = 48.dp, max = 120.dp),
                             colors = TextFieldDefaults.colors(
-                                focusedContainerColor = MaterialTheme.colorScheme.surface,
-                                unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                                focusedContainerColor = Color(0xFF1A1A1A),  // Dark grey matching black bar
+                                unfocusedContainerColor = Color(0xFF1A1A1A),
                                 focusedIndicatorColor = Color.Transparent,
-                                unfocusedIndicatorColor = Color.Transparent
+                                unfocusedIndicatorColor = Color.Transparent,
+                                focusedTextColor = Color.White,
+                                unfocusedTextColor = Color.White,
+                                cursorColor = Color.White
                             ),
                             shape = RoundedCornerShape(24.dp),
                             maxLines = 5
@@ -255,10 +266,8 @@ fun ChatDetailScreen(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .pullRefresh(pullRefreshState)
-                // Consume all insets except top (for status bar)
-                .consumeWindowInsets(WindowInsets(bottom = 0))
-                .padding(top = padding.calculateTopPadding())
+                // Use all Scaffold padding for proper insets handling
+                .padding(padding)
         ) {
             Column(
                 modifier = Modifier
@@ -356,14 +365,7 @@ fun ChatDetailScreen(
                 }
             }
 
-            // PullRefreshIndicator - visible at top when pulling
-            PullRefreshIndicator(
-                refreshing = viewModel.isLoading,
-                state = pullRefreshState,
-                modifier = Modifier.align(Alignment.TopCenter),
-                backgroundColor = MaterialTheme.colorScheme.surface,
-                contentColor = MaterialTheme.colorScheme.primary
-            )
+            // Removed PullRefreshIndicator - Firebase provides real-time updates automatically
         }
     }
 }
@@ -418,126 +420,202 @@ private fun ChatBubble(
     ) {
         // GREEN: User B profile pics REMOVED completely
 
-        // Message bubble - max 85% width, wraps to content size, aligns top
-        Box(
-            modifier = Modifier
-                .fillMaxWidth(0.85f),  // Container allows up to 85%
-            contentAlignment = if (isMe) Alignment.TopEnd else Alignment.TopStart
-        ) {
-            Column(
+        // Message bubble container - different layout for User A vs User B
+        if (isMe) {
+            // USER A (Right side): Timestamp INSIDE bubble at top-right
+            Box(
                 modifier = Modifier
-                    .padding(horizontal = if (isMe) 8.dp else 0.dp)
+                    .fillMaxWidth(0.85f),
+                contentAlignment = Alignment.TopEnd
             ) {
-                // DARK BLUE: Box aligns to TOP and shrinks to fit content
-                Box(
-                    modifier = Modifier
-                        .wrapContentWidth()  // WRAPS to text content
-                        .wrapContentHeight()  // MINIMUM height for text
-                        .background(bubbleColor, bubbleShape)
-                        .padding(horizontal = 10.dp, vertical = 4.dp),  // Minimal padding
-                    contentAlignment = Alignment.TopStart  // Aligns to TOP
+                Column(
+                    modifier = Modifier.padding(horizontal = 8.dp)
                 ) {
-                    Column(
-                        modifier = Modifier.wrapContentHeight(),  // Shrinks to fit
-                        verticalArrangement = Arrangement.Top  // Content at TOP
-                    ) {
-                        // Show quoted message if this is a reply
-                        if (message.isReply()) {
-                            QuotedMessage(
-                                quotedSenderName = message.quotedSenderName ?: "Unknown",
-                                quotedText = message.quotedText ?: "",
-                                isMe = isMe
-                            )
-                            Spacer(modifier = Modifier.height(2.dp))
-                        }
-                        
-                        // Message text - at TOP of box
-                        Text(
-                            text = message.text,
-                            fontSize = 15.sp,
-                            color = Color.Black,
-                            fontWeight = FontWeight.Medium,
-                            modifier = Modifier.wrapContentWidth(),
-                            softWrap = true
-                        )
-                    }
-                }
-                
-                // RED: Timestamp and dot - FORCED to bottom of message area
-                Row(
-                    modifier = Modifier
-                        .wrapContentWidth()
-                        .padding(top = 2.dp, start = 4.dp, end = 4.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = if (isMe) Arrangement.End else Arrangement.Start
-                ) {
-                    // Timestamp first
-                    Text(
-                        text = formatMessageTime(message.timestamp),
-                        fontSize = 10.sp,
-                        color = Color.Black.copy(alpha = 0.6f)
-                    )
-                    
-                    Spacer(modifier = Modifier.width(4.dp))
-                    
-                    // Read status dot - for my messages only
-                    if (isMe) {
-                        val dotColor = if (message.read) Color(0xFF25D366) else Color.Red
-                        Box(
-                            modifier = Modifier
-                                .size(6.dp)
-                                .clip(CircleShape)
-                                .background(dotColor)
-                        )
-                    }
-                }
-                
-                // YELLOW/RED/GREEN: Reactions STICKING to bottom corner of message bubble
-                if (message.reactions.isNotEmpty()) {
+                    // Message bubble with timestamp inside
                     Box(
                         modifier = Modifier
-                            .padding(top = 2.dp)
-                            .fillMaxWidth(),  // Take full width to align properly
-                        contentAlignment = if (isMe) Alignment.BottomEnd else Alignment.BottomStart
+                            .wrapContentWidth()
+                            .wrapContentHeight()
+                            .background(bubbleColor, bubbleShape)
+                            .padding(horizontal = 10.dp, vertical = 6.dp),
+                        contentAlignment = Alignment.TopStart
                     ) {
-                        Box(
-                            modifier = Modifier
-                                .offset(
-                                    x = if (isMe) 12.dp else (-12).dp,
-                                    y = (-8).dp
-                                )
-                                .background(
-                                    color = MaterialTheme.colorScheme.surface,
-                                    shape = RoundedCornerShape(10.dp)
-                                )
-                                .padding(horizontal = 6.dp, vertical = 2.dp)
+                        Row(
+                            modifier = Modifier.wrapContentHeight(),
+                            verticalAlignment = Alignment.Top
                         ) {
-                            Text(
-                                text = message.reactions.values.toSet().joinToString(" "),
-                                fontSize = 12.sp
-                            )
-                        }
-                    }
-                }
-                
-                // Emoji picker
-                if (showEmojiPicker) {
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = if (isMe) Arrangement.End else Arrangement.Start
-                    ) {
-                        emojiReactions.forEach { emoji ->
-                            TextButton(
-                                onClick = {
-                                    onReaction(emoji)
-                                    showEmojiPicker = false
-                                }
+                            Column(
+                                modifier = Modifier.weight(1f, fill = false),
+                                verticalArrangement = Arrangement.Top
                             ) {
-                                Text(emoji, fontSize = 18.sp)
+                                if (message.isReply()) {
+                                    QuotedMessage(
+                                        quotedSenderName = message.quotedSenderName ?: "Unknown",
+                                        quotedText = message.quotedText ?: "",
+                                        isMe = isMe
+                                    )
+                                    Spacer(modifier = Modifier.height(2.dp))
+                                }
+                                Text(
+                                    text = message.text,
+                                    fontSize = 15.sp,
+                                    color = Color.Black,
+                                    fontWeight = FontWeight.Medium,
+                                    modifier = Modifier.wrapContentWidth(),
+                                    softWrap = true
+                                )
+                            }
+                            
+                            // Timestamp inside bubble
+                            Row(
+                                modifier = Modifier
+                                    .wrapContentHeight()
+                                    .padding(start = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically,  // FORCE CENTER alignment
+                                horizontalArrangement = Arrangement.End
+                            ) {
+                                Text(
+                                    text = formatMessageTime(message.timestamp),
+                                    fontSize = 10.sp,
+                                    color = Color.Black.copy(alpha = 0.5f)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                val dotColor = if (message.read) Color(0xFF25D366) else Color.Red
+                                Box(
+                                    modifier = Modifier
+                                        .size(6.dp)
+                                        .clip(CircleShape)
+                                        .background(dotColor)
+                                        .align(Alignment.CenterVertically)  // FORCE dot to center
+                                )
                             }
                         }
                     }
+                    
+                    // Emoji picker
+                    if (showEmojiPicker) {
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.End
+                        ) {
+                            emojiReactions.forEach { emoji ->
+                                TextButton(
+                                    onClick = {
+                                        onReaction(emoji)
+                                        showEmojiPicker = false
+                                    }
+                                ) {
+                                    Text(emoji, fontSize = 18.sp)
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                // Reactions positioned at bottom-right corner of bubble
+                if (message.reactions.isNotEmpty()) {
+                    Text(
+                        text = message.reactions.values.toSet().joinToString(" "),
+                        fontSize = 14.sp,
+                        modifier = Modifier
+                            .align(Alignment.BottomEnd)
+                            .offset(x = (-4).dp, y = 4.dp)  // Closer to bubble edge
+                    )
+                }
+            }
+        } else {
+            // USER B (Left side): Timestamp INSIDE bubble like User A
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(0.85f),
+                contentAlignment = Alignment.TopStart
+            ) {
+                Column(
+                    modifier = Modifier.padding(horizontal = 0.dp)
+                ) {
+                    // Message bubble with timestamp on LEFT side for User B
+                    Box(
+                        modifier = Modifier
+                            .wrapContentWidth()
+                            .wrapContentHeight()
+                            .background(bubbleColor, bubbleShape)
+                            .padding(horizontal = 10.dp, vertical = 6.dp),
+                        contentAlignment = Alignment.TopStart
+                    ) {
+                        Row(
+                            modifier = Modifier.wrapContentHeight(),
+                            verticalAlignment = Alignment.Top
+                        ) {
+                            // Timestamp on LEFT side for User B
+                            Row(
+                                modifier = Modifier
+                                    .wrapContentHeight()
+                                    .padding(end = 8.dp),
+                                verticalAlignment = Alignment.Top,
+                                horizontalArrangement = Arrangement.Start
+                            ) {
+                                Text(
+                                    text = formatMessageTime(message.timestamp),
+                                    fontSize = 10.sp,
+                                    color = Color.Gray.copy(alpha = 0.7f)
+                                )
+                            }
+                            
+                            Column(
+                                modifier = Modifier.weight(1f, fill = false),
+                                verticalArrangement = Arrangement.Top
+                            ) {
+                                if (message.isReply()) {
+                                    QuotedMessage(
+                                        quotedSenderName = message.quotedSenderName ?: "Unknown",
+                                        quotedText = message.quotedText ?: "",
+                                        isMe = isMe
+                                    )
+                                    Spacer(modifier = Modifier.height(2.dp))
+                                }
+                                Text(
+                                    text = message.text,
+                                    fontSize = 15.sp,
+                                    color = Color.Black,
+                                    fontWeight = FontWeight.Medium,
+                                    modifier = Modifier.wrapContentWidth(),
+                                    softWrap = true
+                                )
+                            }
+                        }
+                    }
+                    
+                    // Emoji picker
+                    if (showEmojiPicker) {
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.Start
+                        ) {
+                            emojiReactions.forEach { emoji ->
+                                TextButton(
+                                    onClick = {
+                                        onReaction(emoji)
+                                        showEmojiPicker = false
+                                    }
+                                ) {
+                                    Text(emoji, fontSize = 18.sp)
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                // Reactions positioned at bottom-left corner of bubble
+                if (message.reactions.isNotEmpty()) {
+                    Text(
+                        text = message.reactions.values.toSet().joinToString(" "),
+                        fontSize = 14.sp,
+                        modifier = Modifier
+                            .align(Alignment.BottomStart)
+                            .offset(x = (-8).dp, y = 4.dp)  // At the corner
+                    )
                 }
             }
         }

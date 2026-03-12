@@ -350,13 +350,31 @@ private fun ChatListItem(
                     modifier = Modifier.weight(1f)
                 )
 
-                // Time and read status row
+                // Time and read/unread status row
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.End
                 ) {
-                    // Show dot if you sent the last message
-                    if (isLastMessageFromMe) {
+                    // If you RECEIVED the last message, show BLUE dot with count
+                    if (!isLastMessageFromMe && session.unreadCount > 0) {
+                        Box(
+                            modifier = Modifier
+                                .size(20.dp)
+                                .clip(CircleShape)
+                                .background(Color(0xFF1565C0)),  // BLUE matching bottom nav
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = if (session.unreadCount > 9) "9+" else session.unreadCount.toString(),
+                                color = Color.White,
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(4.dp))
+                    }
+                    // If you SENT the last message, show red/green dot
+                    else if (isLastMessageFromMe) {
                         val isRead = session.lastMessageRead
                         val dotColor = if (isRead) Color(0xFF25D366) else Color.Red
                         Box(
@@ -372,7 +390,7 @@ private fun ChatListItem(
                     Text(
                         text = formatChatTime(session.lastTimestamp),
                         fontSize = 12.sp,
-                        color = if (hasUnread) Color(0xFF25D366) else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                        color = if (hasUnread) Color(0xFF1565C0) else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
                         fontWeight = if (hasUnread) FontWeight.Bold else FontWeight.Normal
                     )
                 }
