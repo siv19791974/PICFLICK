@@ -7,6 +7,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -299,6 +301,8 @@ fun ChatDetailScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
+                .systemBarsPadding()
+                .imePadding()  // Prevents keyboard from covering messages
                 .pullRefresh(pullRefreshState)
         ) {
             Column(
@@ -426,11 +430,15 @@ private fun ChatBubble(
     if (isMe) {
         android.util.Log.d("ChatBubble", "Message ${message.id}: read=${message.read}, delivered=${message.delivered}")
     }
-    // Black background like Notifications/FindFriends
-    val backgroundColor = Color.Black
-    val cardColor = Color(0xFF1A1A1A) // Dark gray card like notifications
-    val sentColor = Color(0xFF2D4A3E) // Dark green for sent (subtle)
-    val receivedColor = Color(0xFF2A2A2A) // Dark gray for received
+    
+    val isDarkMode = ThemeManager.isDarkMode.value
+    
+    // MID BLUE for User A (sender/me), GREY for User B (other)
+    val sentColor = if (isDarkMode) Color(0xFF2A4A73) else Color(0xFFB8D4F0)      // Mid blue
+    val receivedColor = if (isDarkMode) Color(0xFF2A2A2A) else Color(0xFFE0E0E0)  // Grey
+    
+    val sentTextColor = if (isDarkMode) Color.White else Color.Black
+    val receivedTextColor = if (isDarkMode) Color.White else Color.Black
 
     val bubbleShape = if (isMe) {
         RoundedCornerShape(
