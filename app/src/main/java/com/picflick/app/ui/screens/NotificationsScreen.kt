@@ -416,7 +416,6 @@ private fun NotificationItem(
                             .background(Color.Red, CircleShape)
                     )
                 }
-            }
         }
     }
 }
