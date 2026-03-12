@@ -542,6 +542,18 @@ private fun ChatBubble(
                         horizontalArrangement = Arrangement.End,
                         modifier = Modifier.align(Alignment.End)
                     ) {
+                        // Read status dot (only for sent messages)
+                        if (isMe) {
+                            val dotColor = if (message.read) Color(0xFF25D366) else Color.Red
+                            Box(
+                                modifier = Modifier
+                                    .size(8.dp)
+                                    .clip(CircleShape)
+                                    .background(dotColor)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                        }
+                        
                         Text(
                             text = formatMessageTime(message.timestamp),
                             fontSize = 11.sp,
