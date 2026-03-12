@@ -160,17 +160,18 @@ fun ChatDetailScreen(
         },
         bottomBar = {
             // Message input area - WhatsApp style
+            // Handle IME insets to stay above keyboard
             Surface(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .imePadding(),  // Moves up with keyboard, no gap
+                    .windowInsetsPadding(WindowInsets.ime),
                 color = Color.Black,
-                tonalElevation = 0.dp  // Flat black bar
+                tonalElevation = 0.dp
             ) {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 8.dp, vertical = 4.dp)  // Reduced vertical padding
+                        .padding(horizontal = 8.dp, vertical = 4.dp)
                 ) {
                     // Reply preview
                     if (replyToMessage != null) {
@@ -254,7 +255,9 @@ fun ChatDetailScreen(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .pullRefresh(pullRefreshState)  // Pull-to-refresh on the main content
+                .pullRefresh(pullRefreshState)
+                // Consume all insets except top (for status bar)
+                .consumeWindowInsets(WindowInsets(bottom = 0))
                 .padding(top = padding.calculateTopPadding())
         ) {
             Column(
