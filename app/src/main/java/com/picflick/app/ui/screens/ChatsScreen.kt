@@ -18,6 +18,10 @@ import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.AddCircle
+import androidx.compose.material.icons.filled.AccountCircle
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.LaunchedEffect
@@ -544,6 +548,15 @@ private fun NewChatDialog(
                                 tint = Color.White
                             )
                         }
+                        
+                        // Compose/New Message button
+                        IconButton(onClick = { /* Compose new message */ }) {
+                            Icon(
+                                imageVector = Icons.Default.Edit,
+                                contentDescription = "Compose",
+                                tint = Color.White
+                            )
+                        }
                     }
                 }
                 
@@ -593,18 +606,6 @@ private fun NewChatDialog(
                             LazyColumn(
                                 modifier = Modifier.fillMaxSize()
                             ) {
-                                // Section header
-                                item {
-                                    Text(
-                                        text = "Contacts on PicFlick",
-                                        fontSize = 14.sp,
-                                        color = if (isDarkMode) Color.Gray else Color.DarkGray,
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(horizontal = 16.dp, vertical = 8.dp)
-                                    )
-                                }
-                                
                                 items(friends) { friend ->
                                     FullScreenFriendItem(
                                         friend = friend,
@@ -624,12 +625,72 @@ private fun NewChatDialog(
                     containerColor = Color.Black,
                     contentColor = Color.White
                 ) {
+                    // Home tab
+                    NavigationBarItem(
+                        icon = { Icon(Icons.Filled.Home, contentDescription = "Home") },
+                        label = { Text("Home") },
+                        selected = false,
+                        onClick = { /* Navigate to Home */ },
+                        colors = NavigationBarItemDefaults.colors(
+                            selectedIconColor = Color.White,
+                            selectedTextColor = Color.White,
+                            unselectedIconColor = Color.Gray,
+                            unselectedTextColor = Color.Gray,
+                            indicatorColor = Color.DarkGray
+                        )
+                    )
+                    
+                    // Search tab
+                    NavigationBarItem(
+                        icon = { Icon(Icons.Filled.Search, contentDescription = "Search") },
+                        label = { Text("Search") },
+                        selected = false,
+                        onClick = { /* Navigate to Search */ },
+                        colors = NavigationBarItemDefaults.colors(
+                            selectedIconColor = Color.White,
+                            selectedTextColor = Color.White,
+                            unselectedIconColor = Color.Gray,
+                            unselectedTextColor = Color.Gray,
+                            indicatorColor = Color.DarkGray
+                        )
+                    )
+                    
+                    // Create/Add tab (center)
+                    NavigationBarItem(
+                        icon = { Icon(Icons.Filled.AddCircle, contentDescription = "Create") },
+                        label = { Text("Create") },
+                        selected = false,
+                        onClick = { /* Navigate to Create */ },
+                        colors = NavigationBarItemDefaults.colors(
+                            selectedIconColor = Color.White,
+                            selectedTextColor = Color.White,
+                            unselectedIconColor = Color.Gray,
+                            unselectedTextColor = Color.Gray,
+                            indicatorColor = Color.DarkGray
+                        )
+                    )
+                    
                     // Messages tab selected since we're in messaging flow
                     NavigationBarItem(
                         icon = { Icon(Icons.AutoMirrored.Filled.Chat, contentDescription = "Messages") },
                         label = { Text("Messages") },
                         selected = true,
                         onClick = { /* Already in messages */ },
+                        colors = NavigationBarItemDefaults.colors(
+                            selectedIconColor = Color.White,
+                            selectedTextColor = Color.White,
+                            unselectedIconColor = Color.Gray,
+                            unselectedTextColor = Color.Gray,
+                            indicatorColor = Color.DarkGray
+                        )
+                    )
+                    
+                    // Profile tab
+                    NavigationBarItem(
+                        icon = { Icon(Icons.Filled.AccountCircle, contentDescription = "Profile") },
+                        label = { Text("Profile") },
+                        selected = false,
+                        onClick = { /* Navigate to Profile */ },
                         colors = NavigationBarItemDefaults.colors(
                             selectedIconColor = Color.White,
                             selectedTextColor = Color.White,
