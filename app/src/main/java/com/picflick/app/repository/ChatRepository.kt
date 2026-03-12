@@ -138,7 +138,9 @@ class ChatRepository {
         userId1: String,
         userId2: String,
         user1Name: String,
-        user2Name: String
+        user2Name: String,
+        user1Photo: String = "",
+        user2Photo: String = ""
     ): Result<String> {
         return try {
             // SECURITY CHECK: Verify users are friends (mutual followers)
@@ -169,6 +171,7 @@ class ChatRepository {
                     "id" to "",
                     "participants" to listOf(userId1, userId2),
                     "participantNames" to mapOf(userId1 to user1Name, userId2 to user2Name),
+                    "participantPhotos" to mapOf(userId1 to user1Photo, userId2 to user2Photo),
                     "lastMessage" to "",
                     "lastTimestamp" to System.currentTimeMillis(),
                     "createdAt" to System.currentTimeMillis()
