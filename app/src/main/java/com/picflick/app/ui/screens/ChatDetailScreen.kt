@@ -47,6 +47,7 @@ import com.picflick.app.ui.theme.ThemeManager
 import com.picflick.app.ui.theme.isDarkModeBackground
 import com.picflick.app.viewmodel.ChatViewModel
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -65,7 +66,23 @@ fun ChatDetailScreen(
 ) {
     val chatId = chatSession.id
     val otherUserName = chatSession.participantNames[otherUserId] ?: "Unknown"
-    val otherUserPhoto = chatSession.participantPhotos[otherUserId] ?: ""
+    var otherUserPhoto by remember { mutableStateOf(chatSession.participantPhotos[otherUserId] ?: "") }
+    
+    // Fetch photo from UserProfile if not in chat session
+    LaunchedEffect(otherUserId) {
+        if (otherUserPhoto.isEmpty()) {
+            try {
+                val userDoc = com.google.firebase.firestore.FirebaseFirestore.getInstance()
+                    .collection("users")
+                    .document(otherUserId)
+                    .get()
+                    .await()
+                otherUserPhoto = userDoc.getString("photoUrl") ?: ""
+            } catch (e: Exception) {
+                // Keep empty if fetch fails
+            }
+        }
+    }
 
     var messageText by remember { mutableStateOf("") }
     var replyToMessage by remember { mutableStateOf<ChatMessage?>(null) }
