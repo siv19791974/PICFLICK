@@ -10,8 +10,10 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -85,7 +87,9 @@ fun AuthenticatedContent(
     onSetSelectedChat: (ChatSession, String) -> Unit,
     onSignOut: () -> Unit,
     selectedPhotoUri: Uri?,
-    onPhotoSelected: (Uri) -> Unit
+    onPhotoSelected: (Uri) -> Unit,
+    pushPhoto: Flick? = null,
+    onPushPhotoConsumed: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -107,6 +111,7 @@ fun AuthenticatedContent(
             userProfile = userProfile,
             profileViewModel = profileViewModel,
             authViewModel = authViewModel,
+            homeViewModel = homeViewModel,
             onScreenChange = onScreenChange,
             onPhotoSelected = onPhotoSelected
         )
@@ -210,6 +215,7 @@ fun AuthenticatedContent(
             userProfile = userProfile,
             friendsViewModel = friendsViewModel,
             authViewModel = authViewModel,
+            homeViewModel = homeViewModel,
             onScreenChange = onScreenChange
         )
 
@@ -246,6 +252,43 @@ fun AuthenticatedContent(
             // Preview screen - for now navigate to Home
             // TODO: Implement proper preview screen
             onScreenChange(Screen.Home)
+        }
+    }
+
+    // FullScreenPhotoViewer for push notification photos (overlays any screen)
+    pushPhoto?.let { flick ->
+        // Use key to force recomposition when pushPhoto changes
+        key(flick.id) {
+            PhotoViewerWrapper(
+                selectedPhoto = flick,
+                currentUser = userProfile,
+                allPhotos = listOf(flick), // Single photo list for navigation context
+                currentIndex = 0,
+                onDismiss = { onPushPhotoConsumed() },
+                onNavigateToPhoto = { },
+                onNavigateToFindFriends = {
+                    onPushPhotoConsumed()
+                    onScreenChange(Screen.FindFriends)
+                },
+                onUserProfileClick = { userId ->
+                    onPushPhotoConsumed()
+                    onScreenChange(
+                        if (userId == userProfile.uid) Screen.Profile
+                        else Screen.UserProfile(userId)
+                    )
+                },
+                onReaction = { f, reactionType ->
+                    reactionType?.let {
+                        homeViewModel.toggleReaction(
+                            f, userProfile.uid, userProfile.displayName, userProfile.photoUrl, it
+                        )
+                    }
+                },
+                onShareClick = { },
+                onDeleteClick = { onPushPhotoConsumed() },
+                canDelete = flick.userId == userProfile.uid,
+                onCaptionUpdated = { _, _ -> }
+            )
         }
     }
 }
@@ -292,6 +335,7 @@ private fun ProfileScreenContent(
     userProfile: UserProfile,
     profileViewModel: ProfileViewModel,
     authViewModel: AuthViewModel,
+    homeViewModel: HomeViewModel,
     onScreenChange: (Screen) -> Unit,
     onPhotoSelected: (Uri) -> Unit
 ) {
@@ -339,54 +383,65 @@ private fun ProfileScreenContent(
             authViewModel.reloadUserProfile()
         },
         onPlanOptions = { onScreenChange(Screen.PlanOptions) },
+        onReaction = { flick, reactionType ->
+            reactionType?.let {
+                homeViewModel.toggleReaction(
+                    flick, userProfile.uid, userProfile.displayName, userProfile.photoUrl, it
+                )
+            }
+        },
         isLoading = profileViewModel.isLoading
     )
 
     // FullScreenPhotoViewer when photo selected
-    PhotoViewerWrapper(
-        selectedPhoto = selectedPhoto,
-        currentUser = userProfile,
-        allPhotos = profileViewModel.photos,
-        currentIndex = selectedPhotoIndex,
-        onDismiss = { selectedPhoto = null },
-        onNavigateToPhoto = { index ->
-            selectedPhotoIndex = index
-            selectedPhoto = profileViewModel.photos.getOrNull(index)
-        },
-        onNavigateToFindFriends = {
-            selectedPhoto = null
-            onScreenChange(Screen.FindFriends)
-        },
-        onUserProfileClick = { userId ->
-            selectedPhoto = null
-            onScreenChange(
-                if (userId == userProfile.uid) Screen.Profile
-                else Screen.UserProfile(userId)
-            )
-        },
-        onReaction = { flick, reactionType ->
-            profileViewModel.toggleReaction(
-                flick, userProfile.uid, userProfile.displayName, userProfile.photoUrl, reactionType
-            )
-        },
-        onShareClick = { flick ->
-            val shareIntent = Intent().apply {
-                action = Intent.ACTION_SEND
-                type = "text/plain"
-                putExtra(Intent.EXTRA_TEXT, "Check out my photo on PicFlick: ${flick.imageUrl}")
+    // Use key to force recomposition when photos list changes (reactions update)
+    val photosHash = profileViewModel.photos.sumOf { it.getTotalReactions() }
+    key(photosHash) {
+        PhotoViewerWrapper(
+            selectedPhoto = selectedPhoto,
+            currentUser = userProfile,
+            allPhotos = profileViewModel.photos,
+            currentIndex = selectedPhotoIndex,
+            onDismiss = { selectedPhoto = null },
+            onNavigateToPhoto = { index ->
+                selectedPhotoIndex = index
+                selectedPhoto = profileViewModel.photos.getOrNull(index)
+            },
+            onNavigateToFindFriends = {
+                selectedPhoto = null
+                onScreenChange(Screen.FindFriends)
+            },
+            onUserProfileClick = { userId ->
+                selectedPhoto = null
+                onScreenChange(
+                    if (userId == userProfile.uid) Screen.Profile
+                    else Screen.UserProfile(userId)
+                )
+            },
+            onReaction = { flick, reactionType ->
+                profileViewModel.toggleReaction(
+                    flick, userProfile.uid, userProfile.displayName, userProfile.photoUrl, reactionType
+                )
+            },
+            onShareClick = { flick ->
+                val shareIntent = Intent().apply {
+                    action = Intent.ACTION_SEND
+                    type = "text/plain"
+                    putExtra(Intent.EXTRA_TEXT, "Check out my photo on PicFlick: ${flick.imageUrl}")
+                }
+                context.startActivity(Intent.createChooser(shareIntent, "Share Photo"))
+            },
+            onDeleteClick = { flick ->
+                profileViewModel.deletePhoto(flick.id) { success ->
+                    if (success) selectedPhoto = null
+                }
+            },
+            canDelete = true,
+            onCaptionUpdated = { flick, newCaption ->
+                profileViewModel.updateCaption(flick.id, newCaption)
             }
-            context.startActivity(Intent.createChooser(shareIntent, "Share Photo"))
-        },
-        onDeleteClick = { flick ->
-            profileViewModel.deletePhoto(flick.id) { success ->
-                if (success) selectedPhoto = null
-            }
-        },
-        canDelete = true,
-        onCaptionUpdated = { flick, newCaption ->
-            profileViewModel.updateCaption(flick.id, newCaption)
-        }
-    )
+        )
+    }
 }
 
 @Composable
@@ -450,6 +505,13 @@ private fun ChatDetailScreenContent(
     chatViewModel: ChatViewModel,
     onScreenChange: (Screen) -> Unit
 ) {
+    // Clear chat when leaving this screen
+    DisposableEffect(Unit) {
+        onDispose {
+            chatViewModel.clearCurrentChat()
+        }
+    }
+    
     if (selectedChatSession != null) {
         ChatDetailScreen(
             chatSession = selectedChatSession,
@@ -728,41 +790,45 @@ private fun ExploreScreenContent(
     )
 
     // FullScreenPhotoViewer when photo selected
-    PhotoViewerWrapper(
-        selectedPhoto = selectedPhoto,
-        currentUser = userProfile,
-        allPhotos = homeViewModel.exploreFlicks,
-        currentIndex = selectedPhotoIndex,
-        onDismiss = { selectedPhoto = null },
-        onNavigateToPhoto = { index ->
-            selectedPhotoIndex = index
-            selectedPhoto = homeViewModel.exploreFlicks.getOrNull(index)
-        },
-        onNavigateToFindFriends = {
-            selectedPhoto = null
-            onScreenChange(Screen.FindFriends)
-        },
-        onUserProfileClick = { userId ->
-            selectedPhoto = null
-            onScreenChange(Screen.UserProfile(userId))
-        },
-        onReaction = { flick, reactionType ->
-            homeViewModel.toggleReaction(
-                flick, userProfile.uid, userProfile.displayName, userProfile.photoUrl, reactionType
-            )
-        },
-        onShareClick = { flick ->
-            val shareIntent = Intent().apply {
-                action = Intent.ACTION_SEND
-                type = "text/plain"
-                putExtra(Intent.EXTRA_TEXT, "Check out this photo on PicFlick: ${flick.imageUrl}")
-            }
-            context.startActivity(Intent.createChooser(shareIntent, "Share Photo"))
-        },
-        onDeleteClick = { },
-        canDelete = false,
-        onCaptionUpdated = { _, _ -> }
-    )
+    // Use key to force recomposition when reactions change
+    val exploreHash = homeViewModel.exploreFlicks.sumOf { it.getTotalReactions() }
+    key(exploreHash) {
+        PhotoViewerWrapper(
+            selectedPhoto = selectedPhoto,
+            currentUser = userProfile,
+            allPhotos = homeViewModel.exploreFlicks,
+            currentIndex = selectedPhotoIndex,
+            onDismiss = { selectedPhoto = null },
+            onNavigateToPhoto = { index ->
+                selectedPhotoIndex = index
+                selectedPhoto = homeViewModel.exploreFlicks.getOrNull(index)
+            },
+            onNavigateToFindFriends = {
+                selectedPhoto = null
+                onScreenChange(Screen.FindFriends)
+            },
+            onUserProfileClick = { userId ->
+                selectedPhoto = null
+                onScreenChange(Screen.UserProfile(userId))
+            },
+            onReaction = { flick, reactionType ->
+                homeViewModel.toggleReaction(
+                    flick, userProfile.uid, userProfile.displayName, userProfile.photoUrl, reactionType
+                )
+            },
+            onShareClick = { flick ->
+                val shareIntent = Intent().apply {
+                    action = Intent.ACTION_SEND
+                    type = "text/plain"
+                    putExtra(Intent.EXTRA_TEXT, "Check out this photo on PicFlick: ${flick.imageUrl}")
+                }
+                context.startActivity(Intent.createChooser(shareIntent, "Share Photo"))
+            },
+            onDeleteClick = { },
+            canDelete = false,
+            onCaptionUpdated = { _, _ -> }
+        )
+    }
 }
 
 @Composable
@@ -771,6 +837,7 @@ private fun UserProfileScreenContent(
     userProfile: UserProfile,
     friendsViewModel: FriendsViewModel,
     authViewModel: AuthViewModel,
+    homeViewModel: HomeViewModel,
     onScreenChange: (Screen) -> Unit
 ) {
     val context = LocalContext.current
@@ -919,6 +986,13 @@ private fun UserProfileScreenContent(
                 friendsViewModel.unfollowUser(userProfile.uid, target.uid)
                 Toast.makeText(context, "${target.displayName} has been removed from friends", Toast.LENGTH_LONG).show()
                 onScreenChange(Screen.Home)
+            },
+            onReaction = { flick, reactionType ->
+                reactionType?.let {
+                    homeViewModel.toggleReaction(
+                        flick, userProfile.uid, userProfile.displayName, userProfile.photoUrl, it
+                    )
+                }
             }
         )
 

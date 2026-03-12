@@ -322,17 +322,26 @@ class HomeViewModel : ViewModel() {
                     android.util.Log.d("HomeViewModel", "toggleReaction SUCCESS")
                     // Track reaction analytics
                     reactionType?.let { Analytics.trackReactionSent(it.name) }
-                    // Update local state optimistically
-                    val index = flicks.indexOfFirst { it.id == flick.id }
-                    if (index != -1) {
-                        val newReactions = flick.reactions.toMutableMap().apply {
-                            if (reactionType == null) {
-                                remove(userId)
-                            } else {
-                                put(userId, reactionType.name)
-                            }
+                    // Update local state optimistically in BOTH lists
+                    val newReactions = flick.reactions.toMutableMap().apply {
+                        if (reactionType == null) {
+                            remove(userId)
+                        } else {
+                            put(userId, reactionType.name)
                         }
-                        flicks[index] = flick.copy(reactions = newReactions.toMap())
+                    }
+                    val updatedFlick = flick.copy(reactions = newReactions.toMap())
+                    
+                    // Update in flicks list (main feed)
+                    val flicksIndex = flicks.indexOfFirst { it.id == flick.id }
+                    if (flicksIndex != -1) {
+                        flicks[flicksIndex] = updatedFlick
+                    }
+                    
+                    // Update in exploreFlicks list (explore tab)
+                    val exploreIndex = exploreFlicks.indexOfFirst { it.id == flick.id }
+                    if (exploreIndex != -1) {
+                        exploreFlicks[exploreIndex] = updatedFlick
                     }
                 }
                 is Result.Error -> {

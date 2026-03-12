@@ -46,6 +46,9 @@ class ChatViewModel : ViewModel() {
     /** ID of currently open chat session */
     var currentChatId by mutableStateOf<String?>(null)
         private set
+    
+    /** Job for message collection - prevents duplicate listeners */
+    private var messagesJob: kotlinx.coroutines.Job? = null
 
     /** Total unread messages across all chats */
     var unreadCount by mutableStateOf(0)
@@ -84,18 +87,25 @@ class ChatViewModel : ViewModel() {
     /**
      * Load messages for a specific chat
      * Sets up real-time listener for new messages
+     * FIXED: Cancels previous job to prevent duplicate listeners
      * 
      * @param chatId The chat session ID to load messages for
      */
     fun loadMessages(chatId: String) {
+        // Cancel any existing message collection job
+        messagesJob?.cancel()
+        
         currentChatId = chatId
-        viewModelScope.launch {
+        messagesJob = viewModelScope.launch {
             errorMessage = null // Clear previous error
             try {
+                android.util.Log.d("ChatViewModel", "Starting message collection for chat: $chatId")
                 repository.getMessages(chatId).collectLatest { msgs ->
+                    android.util.Log.d("ChatViewModel", "Received ${msgs.size} messages from repository")
                     messages = msgs
                 }
             } catch (e: Exception) {
+                android.util.Log.e("ChatViewModel", "Message collection error: ${e.message}")
                 errorMessage = "Failed to load messages: ${e.message}"
             }
         }
@@ -220,20 +230,43 @@ class ChatViewModel : ViewModel() {
     }
 
     /**
-     * Mark messages as read
+     * Mark messages as read and reload to refresh UI
      */
     fun markAsRead(chatId: String, userId: String) {
         viewModelScope.launch {
-            repository.markMessagesAsRead(chatId, userId)
+            android.util.Log.d("ChatViewModel", "markAsRead starting for chat $chatId")
+            when (val result = repository.markMessagesAsRead(chatId, userId)) {
+                is Result.Success -> {
+                    android.util.Log.d("ChatViewModel", "markAsRead success, reloading messages")
+                    // Reload messages to refresh UI with new read status
+                    loadMessages(chatId)
+                }
+                is Result.Error -> {
+                    android.util.Log.e("ChatViewModel", "markAsRead failed: ${result.message}")
+                }
+                else -> {}
+            }
         }
     }
 
     /**
-     * Mark messages as delivered (recipient received them)
+     * Mark messages as delivered and reload to refresh UI
      */
     fun markAsDelivered(chatId: String, userId: String) {
         viewModelScope.launch {
-            repository.markMessagesAsDelivered(chatId, userId)
+            android.util.Log.d("ChatViewModel", "markAsDelivered starting for chat $chatId")
+            when (val result = repository.markMessagesAsDelivered(chatId, userId)) {
+                is Result.Success -> {
+                    android.util.Log.d("ChatViewModel", "markAsDelivered success, reloading messages")
+                    // Small delay to let Firestore propagate, then reload
+                    kotlinx.coroutines.delay(300)
+                    loadMessages(chatId)
+                }
+                is Result.Error -> {
+                    android.util.Log.e("ChatViewModel", "markAsDelivered failed: ${result.message}")
+                }
+                else -> {}
+            }
         }
     }
 
@@ -260,9 +293,11 @@ class ChatViewModel : ViewModel() {
     }
 
     /**
-     * Clear current chat
+     * Clear current chat and stop listening
      */
     fun clearCurrentChat() {
+        messagesJob?.cancel()
+        messagesJob = null
         currentChatId = null
         messages = emptyList()
     }

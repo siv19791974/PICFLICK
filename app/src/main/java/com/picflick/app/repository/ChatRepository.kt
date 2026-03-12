@@ -42,19 +42,29 @@ class ChatRepository {
      * Get messages for a specific chat session
      */
     fun getMessages(chatId: String): Flow<List<ChatMessage>> = callbackFlow {
+        android.util.Log.d("ChatRepository", "Setting up messages listener for chat: $chatId")
         val subscription = db.collection("chatSessions")
             .document(chatId)
             .collection("messages")
             .orderBy("timestamp", Query.Direction.ASCENDING)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
+                    android.util.Log.e("ChatRepository", "Messages listener error: ${error.message}")
                     close(error)
                     return@addSnapshotListener
                 }
                 val messages = snapshot?.toObjects(ChatMessage::class.java) ?: emptyList()
+                android.util.Log.d("ChatRepository", "Messages updated: ${messages.size} messages, docChanges: ${snapshot?.documentChanges?.size ?: 0}")
+                // Log status of first few messages
+                messages.take(3).forEach { msg ->
+                    android.util.Log.d("ChatRepository", "  Msg ${msg.id.take(8)}: read=${msg.read}, delivered=${msg.delivered}, sender=${msg.senderId.take(8)}")
+                }
                 trySend(messages)
             }
-        awaitClose { subscription.remove() }
+        awaitClose { 
+            android.util.Log.d("ChatRepository", "Removing messages listener for chat: $chatId")
+            subscription.remove() 
+        }
     }
 
     /**
@@ -108,7 +118,11 @@ class ChatRepository {
                 "isRead" to false
             )
 
+            android.util.Log.d("ChatRepository", "Creating notification for recipient: $recipientId")
+            
             db.collection("notifications").add(notification).await()
+            
+            android.util.Log.d("ChatRepository", "Notification created successfully")
 
             Result.Success(Unit)
         } catch (e: Exception) {
@@ -172,53 +186,94 @@ class ChatRepository {
     /**
      * Mark messages as delivered (recipient received but hasn't opened)
      * Called automatically when recipient loads messages
+     * FIXED: Removed whereNotEqualTo to avoid composite index requirement
      */
     suspend fun markMessagesAsDelivered(chatId: String, userId: String): Result<Unit> {
         return try {
-            // Find messages sent TO this user that aren't delivered yet
+            android.util.Log.d("ChatRepository", "markAsDelivered START: chatId=$chatId, userId=$userId")
+            
+            // Query all undelivered messages (single field query - no composite index needed)
             val undeliveredMessages = db.collection("chatSessions")
                 .document(chatId)
                 .collection("messages")
-                .whereNotEqualTo("senderId", userId) // Messages from others
-                .whereEqualTo("delivered", false)   // Not yet delivered
+                .whereEqualTo("delivered", false)
                 .get()
                 .await()
 
-            if (undeliveredMessages.documents.isNotEmpty()) {
+            android.util.Log.d("ChatRepository", "Found ${undeliveredMessages.size()} undelivered messages total")
+
+            // Filter out user's own messages client-side
+            val messagesToUpdate = undeliveredMessages.documents.filter { doc ->
+                val senderId = doc.getString("senderId")
+                val shouldUpdate = senderId != userId
+                android.util.Log.d("ChatRepository", "Message ${doc.id}: senderId=$senderId, currentUser=$userId, shouldUpdate=$shouldUpdate")
+                shouldUpdate
+            }
+
+            android.util.Log.d("ChatRepository", "Messages to mark as delivered: ${messagesToUpdate.size}")
+
+            if (messagesToUpdate.isNotEmpty()) {
                 val batch = db.batch()
-                undeliveredMessages.documents.forEach { doc ->
+                messagesToUpdate.forEach { doc ->
+                    android.util.Log.d("ChatRepository", "Adding to batch: ${doc.id}")
                     batch.update(doc.reference, "delivered", true)
                 }
                 batch.commit().await()
+                android.util.Log.d("ChatRepository", "Batch commit SUCCESS - marked ${messagesToUpdate.size} messages as delivered")
+            } else {
+                android.util.Log.d("ChatRepository", "No messages to update")
             }
 
             Result.Success(Unit)
         } catch (e: Exception) {
+            android.util.Log.e("ChatRepository", "markAsDelivered FAILED: ${e.message}", e)
             Result.Error(e, e.message ?: "Failed to mark messages as delivered")
         }
     }
 
     /**
      * Mark messages as read in a chat
+     * FIXED: Removed whereNotEqualTo to avoid composite index requirement
      */
     suspend fun markMessagesAsRead(chatId: String, userId: String): Result<Unit> {
         return try {
+            android.util.Log.d("ChatRepository", "markAsRead START: chatId=$chatId, userId=$userId")
+            
+            // Query all unread messages (single field query - no composite index needed)
             val unreadMessages = db.collection("chatSessions")
                 .document(chatId)
                 .collection("messages")
-                .whereNotEqualTo("senderId", userId)
                 .whereEqualTo("read", false)
                 .get()
                 .await()
 
-            val batch = db.batch()
-            unreadMessages.documents.forEach { doc ->
-                batch.update(doc.reference, "read", true)
+            android.util.Log.d("ChatRepository", "Found ${unreadMessages.size()} unread messages total")
+
+            // Filter out user's own messages client-side
+            val messagesToUpdate = unreadMessages.documents.filter { doc ->
+                val senderId = doc.getString("senderId")
+                val shouldUpdate = senderId != userId
+                android.util.Log.d("ChatRepository", "Message ${doc.id}: senderId=$senderId, currentUser=$userId, shouldUpdate=$shouldUpdate")
+                shouldUpdate
             }
-            batch.commit().await()
+
+            android.util.Log.d("ChatRepository", "Messages to mark as read: ${messagesToUpdate.size}")
+
+            if (messagesToUpdate.isNotEmpty()) {
+                val batch = db.batch()
+                messagesToUpdate.forEach { doc ->
+                    android.util.Log.d("ChatRepository", "Adding to batch: ${doc.id}")
+                    batch.update(doc.reference, "read", true)
+                }
+                batch.commit().await()
+                android.util.Log.d("ChatRepository", "Batch commit SUCCESS - marked ${messagesToUpdate.size} messages as read")
+            } else {
+                android.util.Log.d("ChatRepository", "No messages to update")
+            }
 
             Result.Success(Unit)
         } catch (e: Exception) {
+            android.util.Log.e("ChatRepository", "markAsRead FAILED: ${e.message}", e)
             Result.Error(e, e.message ?: "Failed to mark messages as read")
         }
     }

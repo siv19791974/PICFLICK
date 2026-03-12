@@ -21,8 +21,8 @@ import com.google.firebase.messaging.RemoteMessage
 class PicFlickMessagingService : FirebaseMessagingService() {
 
     companion object {
-        const val CHANNEL_ID = "picflick_notifications"
-        const val CHANNEL_NAME = "PicFlick Notifications"
+        const val CHANNEL_ID = "picflick_important"  // Must match Firebase Function
+        const val CHANNEL_NAME = "PicFlick Important"
     }
 
     override fun onNewToken(token: String) {
@@ -67,9 +67,9 @@ class PicFlickMessagingService : FirebaseMessagingService() {
             val channel = NotificationChannel(
                 CHANNEL_ID,
                 CHANNEL_NAME,
-                NotificationManager.IMPORTANCE_DEFAULT
+                NotificationManager.IMPORTANCE_HIGH  // Changed to HIGH for important messages
             ).apply {
-                description = "Notifications for likes, comments, and new followers"
+                description = "Important notifications for messages, friend requests, and activity"
             }
             notificationManager.createNotificationChannel(channel)
         }
@@ -77,9 +77,18 @@ class PicFlickMessagingService : FirebaseMessagingService() {
         // Create intent to open app
         val intent = Intent(this, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
-            // Add any data payload
+            // Add explicit data fields for notification routing
+            putExtra("targetScreen", data["targetScreen"] ?: "notifications")
+            putExtra("type", data["type"] ?: "")
+            putExtra("flickId", data["flickId"] ?: "")
+            putExtra("senderId", data["senderId"] ?: "")
+            putExtra("senderName", data["senderName"] ?: "")
+            putExtra("chatId", data["chatId"] ?: "")
+            // Add any other data payload fields
             data.forEach { (key, value) ->
-                putExtra(key, value)
+                if (!hasExtra(key)) { // Don't overwrite explicit fields
+                    putExtra(key, value)
+                }
             }
         }
 

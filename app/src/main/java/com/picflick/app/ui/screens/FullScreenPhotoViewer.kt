@@ -126,9 +126,7 @@ fun FullScreenPhotoViewer(
     var isLoadingComments by remember { mutableStateOf(true) }
     var showDeleteConfirmation by remember { mutableStateOf(false) }
     var showEditCaption by remember { mutableStateOf(false) }
-    var editCaptionText by remember { mutableStateOf(flick.description) }
-    var currentDescription by remember { mutableStateOf(flick.description) }
-    
+
     // Report and block menu state
     var showMoreMenu by remember { mutableStateOf(false) }
     var showReportDialog by remember { mutableStateOf(false) }
@@ -141,15 +139,21 @@ fun FullScreenPhotoViewer(
     // 2D Pager state
     var currentPageIndex by remember { mutableIntStateOf(currentIndex) }
     
-    // Filter out photos with empty image URLs to prevent Coil crash
-    val validPhotos = remember(allPhotos) {
-        allPhotos.filter { it.imageUrl.isNotBlank() }
-    }
+    // Filter out photos with empty image URLs - NO remember() so it updates when reactions change
+    val validPhotos = allPhotos.filter { it.imageUrl.isNotBlank() }
     
     // Current flick based on page index
     val currentFlick = if (validPhotos.isNotEmpty() && currentPageIndex in validPhotos.indices) {
         validPhotos[currentPageIndex]
     } else flick
+    
+    // Calculate if user can delete/react based on CURRENT flick (updates when swiping)
+    val canDeleteCurrent = currentFlick.userId == currentUser.uid
+    val canReactCurrent = !canDeleteCurrent
+    
+    // Description states - keyed to currentFlick.id to reset when swiping
+    var editCaptionText by remember(currentFlick.id) { mutableStateOf(currentFlick.description) }
+    var currentDescription by remember(currentFlick.id) { mutableStateOf(currentFlick.description) }
     
     // Get user's current reaction
     val userReaction = currentFlick.getUserReaction(currentUser.uid)
@@ -232,7 +236,7 @@ fun FullScreenPhotoViewer(
     }
     
     // Edit caption dialog
-    if (showEditCaption && canDelete) {
+    if (showEditCaption && canDeleteCurrent) {
         AlertDialog(
             onDismissRequest = { showEditCaption = false },
             title = { Text("Edit Caption") },
@@ -616,15 +620,8 @@ fun FullScreenPhotoViewer(
                                 )
                                 .pointerInput(Unit) {
                                     detectTapGestures(
-                                        onTap = { uiVisible = !uiVisible },
-                                        onDoubleTap = {
-                                            // Double-tap to toggle like/unlike
-                                            if (!canDelete) { // Only allow if not own photo
-                                                isUnlikeAnimation = isLiked
-                                                onReaction(if (isLiked) null else ReactionType.LIKE)
-                                                showLikeAnimation = true
-                                            }
-                                        }
+                                        onTap = { uiVisible = !uiVisible }
+                                        // NO onDoubleTap - reactions only via sidebar!
                                     )
                                 }
                                 .then(
@@ -747,7 +744,7 @@ fun FullScreenPhotoViewer(
                             horizontalAlignment = Alignment.CenterHorizontally,
                             verticalArrangement = Arrangement.spacedBy(20.dp)
                         ) {
-                            if (canDelete) {
+                            if (canDeleteCurrent) {
                                 // MY PHOTOS MODE - 4 icons: Tag Friends, Share, Edit, Delete
                                 
                                 // TAG FRIENDS BUTTON
@@ -841,7 +838,12 @@ fun FullScreenPhotoViewer(
                                                 Color.Black.copy(alpha = 0.4f),
                                                 CircleShape
                                             )
-                                            .clickable { showReactionPicker = true },
+                                            .clickable { 
+                                                // Only allow reacting to OTHER people's photos
+                                                if (!canDeleteCurrent) {
+                                                    showReactionPicker = true 
+                                                }
+                                            },
                                         contentAlignment = Alignment.Center
                                     ) {
                                         if (userReaction != null) {
@@ -1396,7 +1398,7 @@ fun FullScreenPhotoViewer(
                                                 color = descriptionColor,
                                                 fontSize = 13.sp,
                                                 maxLines = 1,
-                                                modifier = if (canDelete) {
+                                                modifier = if (canDeleteCurrent) {
                                                     Modifier.clickable { showEditCaption = true }
                                                 } else Modifier
                                             )
@@ -1421,8 +1423,13 @@ fun FullScreenPhotoViewer(
                                 // RIGHT: Reactions with counts
                                 ReactionCountersRow(
                                     flick = currentFlick,
-                                    canReact = !canDelete, // Can't react to own photos
-                                    onReactionClick = { showReactionPicker = true }
+                                    canReact = !canDeleteCurrent, // Can't react to own photos
+                                    onReactionClick = { 
+                                        // Only open picker for other people's photos
+                                        if (!canDeleteCurrent) {
+                                            showReactionPicker = true 
+                                        }
+                                    }
                                 )
                             }
                             

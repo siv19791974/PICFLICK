@@ -427,6 +427,30 @@ class FlickRepository private constructor() {
     }
 
     /**
+     * Get a single flick by ID
+     * Used for opening specific photos from push notifications
+     */
+    fun getFlickById(flickId: String, onResult: (Result<Flick>) -> Unit) {
+        db.collection("flicks").document(flickId).get()
+            .addOnSuccessListener { doc ->
+                val flick = doc.toObject(Flick::class.java)
+                if (flick != null) {
+                    // Ensure the ID is set from the document reference
+                    val flickWithId = flick.copy(id = doc.id)
+                    android.util.Log.d("FlickRepository", "Loaded flick: id=${flickWithId.id}, imageUrl=${flickWithId.imageUrl.take(50)}...")
+                    onResult(Result.Success(flickWithId))
+                } else {
+                    android.util.Log.e("FlickRepository", "Photo not found: $flickId")
+                    onResult(Result.Error(Exception("Photo not found"), "Photo not found"))
+                }
+            }
+            .addOnFailureListener { e -> 
+                android.util.Log.e("FlickRepository", "Failed to load photo: ${e.message}")
+                onResult(Result.Error(e, "Failed to load photo"))
+            }
+    }
+
+    /**
      * Get user profile
      */
     fun getUserProfile(userId: String, onResult: (Result<UserProfile>) -> Unit) {
