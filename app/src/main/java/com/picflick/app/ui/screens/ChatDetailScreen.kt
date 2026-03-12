@@ -30,6 +30,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.tasks.await
 import coil3.compose.AsyncImage
 import com.picflick.app.data.ChatMessage
 import com.picflick.app.data.ChatSession
@@ -57,8 +58,23 @@ fun ChatDetailScreen(
 ) {
     val chatId = chatSession.id
     val otherUserName = chatSession.participantNames[otherUserId] ?: "Unknown"
-    val otherUserPhoto = chatSession.participantPhotos[otherUserId] ?: ""
+    var otherUserPhoto by remember { mutableStateOf(chatSession.participantPhotos[otherUserId] ?: "") }
 
+    // Fetch photo from users collection if not in chat session (for old chats)
+    LaunchedEffect(otherUserId) {
+        if (otherUserPhoto.isEmpty()) {
+            try {
+                val userDoc = com.google.firebase.firestore.FirebaseFirestore.getInstance()
+                    .collection("users")
+                    .document(otherUserId)
+                    .get()
+                    .await()
+                otherUserPhoto = userDoc.getString("photoUrl") ?: ""
+            } catch (e: Exception) {
+                // Keep empty if fetch fails
+            }
+        }
+    }
     var messageText by remember { mutableStateOf("") }
     var replyToMessage by remember { mutableStateOf<ChatMessage?>(null) }
     val listState = rememberLazyListState()
@@ -144,7 +160,7 @@ fun ChatDetailScreen(
             // Message input area - WhatsApp style
             Surface(
                 modifier = Modifier.fillMaxWidth(),
-                color = PicFlickBannerBackground,
+                color = Color.Black,  // Black to match above
                 tonalElevation = 2.dp
             ) {
                 Column(
