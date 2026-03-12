@@ -382,16 +382,6 @@ private fun ChatListItem(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Show ticks if last message is from me
-                if (isLastMessageFromMe) {
-                    Text(
-                        text = "✓✓",
-                        fontSize = 10.sp,  // Smaller WhatsApp-style
-                        color = if (session.unreadCount > 0) Color.Gray else Color(0xFF25D366),
-                        modifier = Modifier.padding(end = 4.dp)
-                    )
-                }
-
                 Text(
                     text = buildString {
                         if (isLastMessageFromMe) append("You: ")
