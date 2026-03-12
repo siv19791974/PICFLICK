@@ -2,6 +2,7 @@ package com.picflick.app.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -26,6 +27,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -37,6 +39,7 @@ import coil3.compose.AsyncImage
 import com.picflick.app.R
 import com.picflick.app.data.ChatSession
 import com.picflick.app.data.UserProfile
+import com.picflick.app.ui.theme.PicFlickBannerBackground
 import com.picflick.app.ui.theme.ThemeManager
 import com.picflick.app.ui.theme.isDarkModeBackground
 import com.picflick.app.viewmodel.ChatViewModel
@@ -477,12 +480,12 @@ private fun NewChatDialog(
             Column(
                 modifier = Modifier.fillMaxSize()
             ) {
-                // Header - like WhatsApp's "Select contact"
+                // Header - PicFlick black banner with logo
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(56.dp)
-                        .background(if (isDarkMode) Color.Black else Color(0xFFB8D4F0))
+                        .background(PicFlickBannerBackground)
                         .padding(horizontal = 16.dp),
                     contentAlignment = Alignment.CenterStart
                 ) {
@@ -501,86 +504,27 @@ private fun NewChatDialog(
                                 Icon(
                                     imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                                     contentDescription = "Back",
-                                    tint = if (isDarkMode) Color.White else Color.Black
+                                    tint = Color.White
                                 )
                             }
                             Spacer(modifier = Modifier.width(8.dp))
-                            Column {
-                                Text(
-                                    text = "Select contact",
-                                    fontSize = 18.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = if (isDarkMode) Color.White else Color.Black
-                                )
-                                Text(
-                                    text = "${friends.size} contacts",
-                                    fontSize = 14.sp,
-                                    color = if (isDarkMode) Color.Gray else Color.DarkGray
-                                )
-                            }
+                            // PicFlick Logo
+                            Image(
+                                painter = painterResource(id = R.drawable.logo),
+                                contentDescription = "PicFlick",
+                                modifier = Modifier.height(32.dp),
+                                contentScale = ContentScale.Fit
+                            )
                         }
                         
                         IconButton(onClick = { /* Search */ }) {
                             Icon(
                                 imageVector = Icons.Default.Search,
                                 contentDescription = "Search",
-                                tint = if (isDarkMode) Color.White else Color.Black
+                                tint = Color.White
                             )
                         }
                     }
-                }
-                
-                // New Group / New Contact buttons like WhatsApp
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 8.dp)
-                ) {
-                    // New Group button
-                    NewContactActionItem(
-                        icon = {
-                            Box(
-                                modifier = Modifier
-                                    .size(48.dp)
-                                    .clip(CircleShape)
-                                    .background(Color(0xFF25D366)), // WhatsApp green
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Person,
-                                    contentDescription = null,
-                                    tint = Color.White,
-                                    modifier = Modifier.size(28.dp)
-                                )
-                            }
-                        },
-                        title = "New group",
-                        isDarkMode = isDarkMode,
-                        onClick = { /* TODO: New group */ }
-                    )
-                    
-                    // New Contact button
-                    NewContactActionItem(
-                        icon = {
-                            Box(
-                                modifier = Modifier
-                                    .size(48.dp)
-                                    .clip(CircleShape)
-                                    .background(Color(0xFF25D366)), // WhatsApp green
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Add,
-                                    contentDescription = null,
-                                    tint = Color.White,
-                                    modifier = Modifier.size(28.dp)
-                                )
-                            }
-                        },
-                        title = "New contact",
-                        isDarkMode = isDarkMode,
-                        onClick = { /* TODO: New contact */ }
-                    )
                 }
                 
                 // Contacts list - edge to edge
