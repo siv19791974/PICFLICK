@@ -78,8 +78,6 @@ fun ChatDetailScreen(
     var showReactionPickerFor by remember { mutableStateOf<String?>(null) }  // Message ID showing reaction picker
     var replyToMessage by remember { mutableStateOf<ChatMessage?>(null) }
     var messageText by remember { mutableStateOf("") }
-    var replyToMessage by remember { mutableStateOf<ChatMessage?>(null) }
-    val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
     val isDarkMode = ThemeManager.isDarkMode.value
 
@@ -694,6 +692,133 @@ private fun QuotedMessage(
                 maxLines = 1
             )
         }
+    }
+}
+
+/**
+ * Quick Chat Switcher - Shows 5 recent chat profile pics for fast switching
+ */
+@Composable
+private fun QuickChatSwitcher(
+    recentChats: List<ChatSession>,
+    currentUserId: String,
+    currentChatId: String,
+    isDarkMode: Boolean,
+    onChatSwitch: (ChatSession) -> Unit
+) {
+    val backgroundColor = if (isDarkMode) Color.Black else Color(0xFFB8D4F0)
+    
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(backgroundColor)
+            .padding(vertical = 8.dp)
+    ) {
+        LazyRow(
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            contentPadding = PaddingValues(horizontal = 16.dp),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            items(
+                items = recentChats.take(5),
+                key = { it.id }
+            ) { chat ->
+                val otherUserId = chat.participants.find { it != currentUserId } ?: ""
+                val otherUserPhoto = chat.participantPhotos[otherUserId] ?: ""
+                val otherUserName = chat.participantNames[otherUserId] ?: "Unknown"
+                val isActive = chat.id == currentChatId
+                
+                QuickChatItem(
+                    photoUrl = otherUserPhoto,
+                    name = otherUserName,
+                    isActive = isActive,
+                    isDarkMode = isDarkMode,
+                    onClick = { onChatSwitch(chat) }
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Single quick chat item - circular profile pic with name
+ */
+@Composable
+private fun QuickChatItem(
+    photoUrl: String,
+    name: String,
+    isActive: Boolean,
+    isDarkMode: Boolean,
+    onClick: () -> Unit
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier
+            .width(60.dp)
+            .clickable(onClick = onClick)
+    ) {
+        // Profile photo with active indicator ring
+        Box(
+            modifier = Modifier
+                .size(52.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            // Active ring (green border for active chat)
+            if (isActive) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .clip(CircleShape)
+                        .background(Color(0xFF25D366)) // WhatsApp green
+                )
+            }
+            
+            // Profile photo
+            Box(
+                modifier = Modifier
+                    .size(if (isActive) 46.dp else 52.dp)
+                    .clip(CircleShape)
+                    .background(if (isDarkMode) Color(0xFF2A2A2A) else Color(0xFFE0E0E0))
+            ) {
+                if (photoUrl.isNotEmpty()) {
+                    AsyncImage(
+                        model = photoUrl,
+                        contentDescription = name,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                } else {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Person,
+                            contentDescription = null,
+                            modifier = Modifier.size(24.dp),
+                            tint = if (isDarkMode) Color.Gray else Color.DarkGray
+                        )
+                    }
+                }
+            }
+        }
+        
+        Spacer(modifier = Modifier.height(4.dp))
+        
+        // Name (truncated)
+        Text(
+            text = if (name.length > 6) name.take(6) + ".." else name,
+            fontSize = 10.sp,
+            color = if (isActive) {
+                Color(0xFF25D366)
+            } else if (isDarkMode) {
+                Color.White
+            } else {
+                Color.Black
+            },
+            fontWeight = if (isActive) FontWeight.Bold else FontWeight.Normal,
+            maxLines = 1
+        )
     }
 }
 /**
