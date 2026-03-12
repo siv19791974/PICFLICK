@@ -11,6 +11,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Send
@@ -46,7 +47,7 @@ import java.util.*
 
 /**
  * WhatsApp-style Chat Detail Screen
- * Uses Box layout to keep header/bottom fixed when keyboard opens
+ * Uses Scaffold with proper insets handling
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -137,16 +138,11 @@ fun ChatDetailScreen(
         }
     }
 
-    // Use Box instead of Scaffold to have full control over layout
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(isDarkModeBackground(isDarkMode))
-    ) {
-        Column(
-            modifier = Modifier.fillMaxSize()
-        ) {
-            // HEADER - Fixed at top (56dp height)
+    Scaffold(
+        modifier = Modifier.fillMaxSize(),
+        contentWindowInsets = WindowInsets(0, 0, 0, 0), // Prevent double insets
+        topBar = {
+            // Header with other user's info
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -214,110 +210,9 @@ fun ChatDetailScreen(
                     Spacer(modifier = Modifier.size(48.dp))
                 }
             }
-            
-            // MESSAGES LIST - Takes remaining space and handles keyboard
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f)
-                    // REMOVED: imePadding() - windowSoftInputMode="adjustResize" handles this
-            ) {
-                Column(
-                    modifier = Modifier.fillMaxSize()
-                ) {
-                    // Error message display
-                    viewModel.errorMessage?.let { error ->
-                        Surface(
-                            modifier = Modifier.fillMaxWidth(),
-                            color = MaterialTheme.colorScheme.errorContainer,
-                            tonalElevation = 2.dp
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 16.dp, vertical = 12.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    text = error,
-                                    color = MaterialTheme.colorScheme.onErrorContainer,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    modifier = Modifier.weight(1f)
-                                )
-                                TextButton(
-                                    onClick = { 
-                                        viewModel.clearError()
-                                        viewModel.loadMessages(chatId) 
-                                    }
-                                ) {
-                                    Text("Retry", color = MaterialTheme.colorScheme.onErrorContainer)
-                                }
-                            }
-                        }
-                    }
-
-                    // Messages list
-                    when {
-                        viewModel.isLoading && viewModel.messages.isEmpty() -> {
-                            Box(
-                                modifier = Modifier.fillMaxSize(),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                CircularProgressIndicator()
-                            }
-                        }
-                        viewModel.messages.isEmpty() -> {
-                            Box(
-                                modifier = Modifier.fillMaxSize(),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                    Text(
-                                        text = "No messages yet",
-                                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
-                                    )
-                                    Spacer(modifier = Modifier.height(8.dp))
-                                    Text(
-                                        text = "Say hello!",
-                                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
-                                        fontSize = 14.sp
-                                    )
-                                }
-                            }
-                        }
-                        else -> {
-                            LazyColumn(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .padding(horizontal = 8.dp),
-                                state = listState,
-                                contentPadding = PaddingValues(start = 0.dp, top = 8.dp, end = 0.dp, bottom = 8.dp)
-                            ) {
-                                items(
-                                    items = viewModel.messages,
-                                    key = { it.id }
-                                ) { message ->
-                                    val isMe = message.senderId == currentUser.uid
-                                    ChatBubble(
-                                        message = message,
-                                        isMe = isMe,
-                                        otherUserPhoto = if (isMe) "" else otherUserPhoto,
-                                        currentUserId = currentUser.uid,
-                                        onReplyClick = { replyToMessage = message },
-                                        onReaction = { emoji ->
-                                            viewModel.addReaction(chatId, message.id, currentUser.uid, emoji, currentUser.displayName, currentUser.photoUrl)
-                                        }
-                                    )
-                                    Spacer(modifier = Modifier.height(4.dp))
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-            
-            // MESSAGE INPUT - Fixed at bottom
+        },
+        bottomBar = {
+            // Message input area (adjustPan in Manifest handles positioning)
             Surface(
                 modifier = Modifier.fillMaxWidth(),
                 color = Color.Black,
@@ -369,7 +264,7 @@ fun ChatDetailScreen(
                                 .weight(1f)
                                 .heightIn(min = 48.dp, max = 120.dp),
                             colors = TextFieldDefaults.colors(
-                                focusedContainerColor = Color(0xFF1A1A1A),  // Dark grey matching black bar
+                                focusedContainerColor = Color(0xFF1A1A1A),
                                 unfocusedContainerColor = Color(0xFF1A1A1A),
                                 focusedIndicatorColor = Color.Transparent,
                                 unfocusedIndicatorColor = Color.Transparent,
@@ -414,6 +309,106 @@ fun ChatDetailScreen(
                 }
             }
         }
+    ) { padding ->
+        // Content area with messages
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .background(isDarkModeBackground(isDarkMode))
+        ) {
+            Column(modifier = Modifier.fillMaxSize()) {
+                // Error message display
+                viewModel.errorMessage?.let { error ->
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        color = MaterialTheme.colorScheme.errorContainer,
+                        tonalElevation = 2.dp
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 12.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = error,
+                                color = MaterialTheme.colorScheme.onErrorContainer,
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.weight(1f)
+                            )
+                            TextButton(
+                                onClick = { 
+                                    viewModel.clearError()
+                                    viewModel.loadMessages(chatId) 
+                                }
+                            ) {
+                                Text("Retry", color = MaterialTheme.colorScheme.onErrorContainer)
+                            }
+                        }
+                    }
+                }
+
+                // Messages list
+                when {
+                    viewModel.isLoading && viewModel.messages.isEmpty() -> {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator()
+                        }
+                    }
+                    viewModel.messages.isEmpty() -> {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text(
+                                    text = "No messages yet",
+                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(
+                                    text = "Say hello!",
+                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
+                                    fontSize = 14.sp
+                                )
+                            }
+                        }
+                    }
+                    else -> {
+                        LazyColumn(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(horizontal = 8.dp),
+                            state = listState,
+                            contentPadding = PaddingValues(start = 0.dp, top = 8.dp, end = 0.dp, bottom = 8.dp)
+                        ) {
+                            items(
+                                items = viewModel.messages,
+                                key = { it.id }
+                            ) { message ->
+                                val isMe = message.senderId == currentUser.uid
+                                ChatBubble(
+                                    message = message,
+                                    isMe = isMe,
+                                    otherUserPhoto = if (isMe) "" else otherUserPhoto,
+                                    currentUserId = currentUser.uid,
+                                    onReplyClick = { replyToMessage = message },
+                                    onReaction = { emoji ->
+                                        viewModel.addReaction(chatId, message.id, currentUser.uid, emoji, currentUser.displayName, currentUser.photoUrl)
+                                    }
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -430,29 +425,18 @@ private fun ChatBubble(
     val isDarkMode = ThemeManager.isDarkMode.value
     
     // MID BLUE for User A (sender/me), GREY for User B (other)
-    val sentColor = if (isDarkMode) Color(0xFF2A4A73) else Color(0xFFB8D4F0)      // Mid blue
-    val receivedColor = if (isDarkMode) Color(0xFF2A2A2A) else Color(0xFFE0E0E0)  // Grey
+    val sentColor = if (isDarkMode) Color(0xFF2A4A73) else Color(0xFFB8D4F0)
+    val receivedColor = if (isDarkMode) Color(0xFF2A2A2A) else Color(0xFFE0E0E0)
     
     val bubbleColor = if (isMe) sentColor else receivedColor
 
-    // Reaction state
     var showEmojiPicker by remember { mutableStateOf(false) }
     val emojiReactions = listOf("❤️", "😂", "😮", "😢", "👍", "🔥", "👏")
 
     val bubbleShape = if (isMe) {
-        RoundedCornerShape(
-            topStart = 20.dp,
-            topEnd = 4.dp,
-            bottomStart = 20.dp,
-            bottomEnd = 20.dp
-        )
+        RoundedCornerShape(topStart = 20.dp, topEnd = 4.dp, bottomStart = 20.dp, bottomEnd = 20.dp)
     } else {
-        RoundedCornerShape(
-            topStart = 4.dp,
-            topEnd = 20.dp,
-            bottomStart = 20.dp,
-            bottomEnd = 20.dp
-        )
+        RoundedCornerShape(topStart = 4.dp, topEnd = 20.dp, bottomStart = 20.dp, bottomEnd = 20.dp)
     }
 
     Row(
@@ -465,20 +449,13 @@ private fun ChatBubble(
         horizontalArrangement = if (isMe) Arrangement.End else Arrangement.Start,
         verticalAlignment = Alignment.Top
     ) {
-        // GREEN: User B profile pics REMOVED completely
-
-        // Message bubble container - different layout for User A vs User B
         if (isMe) {
-            // USER A (Right side): Timestamp INSIDE bubble at top-right
+            // USER A (Right side)
             Box(
-                modifier = Modifier
-                    .fillMaxWidth(0.85f),
+                modifier = Modifier.fillMaxWidth(0.85f),
                 contentAlignment = Alignment.TopEnd
             ) {
-                Column(
-                    modifier = Modifier.padding(horizontal = 8.dp)
-                ) {
-                    // Message bubble with timestamp inside
+                Column(modifier = Modifier.padding(horizontal = 8.dp)) {
                     Box(
                         modifier = Modifier
                             .wrapContentWidth()
@@ -513,12 +490,11 @@ private fun ChatBubble(
                                 )
                             }
                             
-                            // Timestamp inside bubble
                             Row(
                                 modifier = Modifier
                                     .wrapContentHeight()
                                     .padding(start = 8.dp),
-                                verticalAlignment = Alignment.CenterVertically,  // FORCE CENTER alignment
+                                verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.End
                             ) {
                                 Text(
@@ -533,13 +509,11 @@ private fun ChatBubble(
                                         .size(6.dp)
                                         .clip(CircleShape)
                                         .background(dotColor)
-                                        .align(Alignment.CenterVertically)  // FORCE dot to center
                                 )
                             }
                         }
                     }
                     
-                    // Emoji picker
                     if (showEmojiPicker) {
                         Spacer(modifier = Modifier.height(4.dp))
                         Row(
@@ -552,36 +526,29 @@ private fun ChatBubble(
                                         onReaction(emoji)
                                         showEmojiPicker = false
                                     }
-                                ) {
-                                    Text(emoji, fontSize = 18.sp)
-                                }
+                                ) { Text(emoji, fontSize = 18.sp) }
                             }
                         }
                     }
                 }
                 
-                // Reactions positioned at bottom-right corner of bubble
                 if (message.reactions.isNotEmpty()) {
                     Text(
                         text = message.reactions.values.toSet().joinToString(" "),
                         fontSize = 14.sp,
                         modifier = Modifier
                             .align(Alignment.BottomEnd)
-                            .offset(x = (-4).dp, y = 4.dp)  // Closer to bubble edge
+                            .offset(x = (-4).dp, y = 4.dp)
                     )
                 }
             }
         } else {
-            // USER B (Left side): Timestamp INSIDE bubble like User A
+            // USER B (Left side)
             Box(
-                modifier = Modifier
-                    .fillMaxWidth(0.85f),
+                modifier = Modifier.fillMaxWidth(0.85f),
                 contentAlignment = Alignment.TopStart
             ) {
-                Column(
-                    modifier = Modifier.padding(horizontal = 0.dp)
-                ) {
-                    // Message bubble with timestamp on LEFT side for User B
+                Column(modifier = Modifier.padding(horizontal = 0.dp)) {
                     Box(
                         modifier = Modifier
                             .wrapContentWidth()
@@ -594,7 +561,6 @@ private fun ChatBubble(
                             modifier = Modifier.wrapContentHeight(),
                             verticalAlignment = Alignment.Top
                         ) {
-                            // Timestamp on LEFT side for User B
                             Row(
                                 modifier = Modifier
                                     .wrapContentHeight()
@@ -633,7 +599,6 @@ private fun ChatBubble(
                         }
                     }
                     
-                    // Emoji picker
                     if (showEmojiPicker) {
                         Spacer(modifier = Modifier.height(4.dp))
                         Row(
@@ -646,22 +611,19 @@ private fun ChatBubble(
                                         onReaction(emoji)
                                         showEmojiPicker = false
                                     }
-                                ) {
-                                    Text(emoji, fontSize = 18.sp)
-                                }
+                                ) { Text(emoji, fontSize = 18.sp) }
                             }
                         }
                     }
                 }
                 
-                // Reactions positioned at bottom-left corner of bubble
                 if (message.reactions.isNotEmpty()) {
                     Text(
                         text = message.reactions.values.toSet().joinToString(" "),
                         fontSize = 14.sp,
                         modifier = Modifier
                             .align(Alignment.BottomStart)
-                            .offset(x = (-8).dp, y = 4.dp)  // At the corner
+                            .offset(x = (-8).dp, y = 4.dp)
                     )
                 }
             }
@@ -673,9 +635,6 @@ private fun formatMessageTime(timestamp: Long): String {
     return SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(timestamp))
 }
 
-/**
- * Reply preview component shown above text input
- */
 @Composable
 private fun ReplyPreview(
     message: ChatMessage,
@@ -722,9 +681,6 @@ private fun ReplyPreview(
     }
 }
 
-/**
- * Quoted message preview component for replies
- */
 @Composable
 private fun QuotedMessage(
     quotedSenderName: String,
