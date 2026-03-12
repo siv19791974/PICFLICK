@@ -5,6 +5,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -141,70 +142,15 @@ fun ChatDetailScreen(
                             tint = MaterialTheme.colorScheme.onSurface
                         )
                     }
-                    // Profile photo - clickable to view profile
-                    Box(
-                        modifier = Modifier
-                            .size(36.dp)
-                            .clickable { onUserProfileClick(otherUserId) }
-                    ) {
-                        if (otherUserPhoto.isNotEmpty()) {
-                            AsyncImage(
-                                model = otherUserPhoto,
-                                contentDescription = otherUserName,
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .clip(CircleShape),
-                                contentScale = ContentScale.Crop
-                            )
-                        } else {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .clip(CircleShape)
-                                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Person,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(24.dp),
-                                    tint = MaterialTheme.colorScheme.primary
-                                )
-                            }
-                        }
-                        // Online indicator
-                        Box(
-                            modifier = Modifier
-                                .size(10.dp)
-                                .clip(CircleShape)
-                                .background(Color(0xFF25D366))
-                                .align(Alignment.BottomEnd)
-                        )
-                    }
-                    Spacer(modifier = Modifier.width(8.dp))
-                    // User info column
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = otherUserName,
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Medium,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                        Text(
-                            text = "online",
-                            fontSize = 11.sp,
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-                        )
-                    }
+                    // Space for quick chat switcher (5 recent chats)
+                    Spacer(modifier = Modifier.weight(1f))
                 }
             }
         },
         bottomBar = {
-            // Message input area - WhatsApp style with keyboard padding
+            // Message input area - WhatsApp style
             Surface(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .imePadding(),
+                modifier = Modifier.fillMaxWidth(),
                 color = PicFlickBannerBackground,
                 tonalElevation = 2.dp
             ) {
@@ -517,14 +463,8 @@ private fun ChatBubble(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.End
                         ) {
-                            Text(
-                                text = formatMessageTime(message.timestamp),
-                                fontSize = 11.sp,
-                                color = Color.Black.copy(alpha = 0.7f)
-                            )
-                            
+                            // Dot FIRST (left of timestamp)
                             if (isMe) {
-                                Spacer(modifier = Modifier.width(4.dp))
                                 // Read status dot (green = read, red = unread)
                                 val dotColor = if (message.read) Color(0xFF25D366) else Color.Red
                                 Box(
@@ -534,7 +474,15 @@ private fun ChatBubble(
                                         .background(dotColor)
                                         .align(Alignment.CenterVertically)
                                 )
+                                Spacer(modifier = Modifier.width(4.dp))
                             }
+                            
+                            // Timestamp AFTER dot
+                            Text(
+                                text = formatMessageTime(message.timestamp),
+                                fontSize = 11.sp,
+                                color = Color.Black.copy(alpha = 0.7f)
+                            )
                         }
                     }
                     
@@ -574,22 +522,6 @@ private fun ChatBubble(
                             }
                         }
                     }
-                }
-            }
-            
-            // Reply button for received messages
-            if (!isMe) {
-                Spacer(modifier = Modifier.width(4.dp))
-                IconButton(
-                    onClick = onReplyClick,
-                    modifier = Modifier.size(28.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.Reply,
-                        contentDescription = "Reply",
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(20.dp)
-                    )
                 }
             }
         }
