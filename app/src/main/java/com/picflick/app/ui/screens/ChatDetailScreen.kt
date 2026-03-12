@@ -412,22 +412,13 @@ private fun ChatBubble(
     onReplyClick: () -> Unit = {},
     onReaction: (String) -> Unit = {}
 ) {
-    // Sexy gradient backgrounds for message bubbles
-    val sentBrush = Brush.linearGradient(
-        colors = listOf(
-            Color(0xFF667eea), // Soft purple
-            Color(0xFF764ba2)  // Deep purple
-        )
-    )
+    val isDarkMode = ThemeManager.isDarkMode.value
     
-    val receivedBrush = Brush.linearGradient(
-        colors = listOf(
-            Color(0xFFf093fb), // Pink
-            Color(0xFFf5576c)  // Coral
-        )
-    )
+    // MID BLUE for User A (sender/me), GREY for User B (other)
+    val sentColor = if (isDarkMode) Color(0xFF2A4A73) else Color(0xFFB8D4F0)      // Mid blue
+    val receivedColor = if (isDarkMode) Color(0xFF2A2A2A) else Color(0xFFE0E0E0)  // Grey
     
-    val bubbleBrush = if (isMe) sentBrush else receivedBrush
+    val bubbleColor = if (isMe) sentColor else receivedColor
 
     // Reaction state
     var showEmojiPicker by remember { mutableStateOf(false) }
@@ -493,7 +484,7 @@ private fun ChatBubble(
                         ambientColor = if (isMe) Color(0xFF667eea) else Color(0xFFf5576c),
                         spotColor = if (isMe) Color(0xFF667eea) else Color(0xFFf5576c)
                     )
-                    .background(bubbleBrush, bubbleShape)
+                    .background(bubbleColor, bubbleShape)
                     .padding(horizontal = 14.dp, vertical = 10.dp)
             ) {
                 Column {
@@ -510,7 +501,7 @@ private fun ChatBubble(
                     Text(
                         text = message.text,
                         fontSize = 15.sp,
-                        color = Color.White, // White text on gradient
+                        color = Color.Black, // Black text
                         fontWeight = FontWeight.Medium
                     )
 
@@ -525,35 +516,19 @@ private fun ChatBubble(
                         Text(
                             text = formatMessageTime(message.timestamp),
                             fontSize = 11.sp,
-                            color = Color.White.copy(alpha = 0.85f)
+                            color = Color.Black.copy(alpha = 0.7f)
                         )
 
                         if (isMe) {
                             Spacer(modifier = Modifier.width(4.dp))
-                            // Message status icon with sexy colors
-                            when {
-                                message.read -> {
-                                    Text(
-                                        text = "✓✓",
-                                        fontSize = 12.sp,
-                                        color = Color(0xFF00E5FF) // Cyan glow for read
-                                    )
-                                }
-                                message.delivered -> {
-                                    Text(
-                                        text = "✓✓",
-                                        fontSize = 12.sp,
-                                        color = Color.White.copy(alpha = 0.7f)
-                                    )
-                                }
-                                else -> {
-                                    Text(
-                                        text = "✓",
-                                        fontSize = 12.sp,
-                                        color = Color.White.copy(alpha = 0.5f)
-                                    )
-                                }
-                            }
+                            // Read status dot (green = read, red = unread)
+                            val dotColor = if (message.read) Color(0xFF25D366) else Color.Red
+                            Box(
+                                modifier = Modifier
+                                    .size(8.dp)
+                                    .clip(CircleShape)
+                                    .background(dotColor)
+                            )
                         }
                     }
                     
