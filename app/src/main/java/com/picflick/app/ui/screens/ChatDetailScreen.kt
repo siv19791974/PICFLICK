@@ -200,9 +200,11 @@ fun ChatDetailScreen(
             }
         },
         bottomBar = {
-            // Message input area - WhatsApp style
+            // Message input area - WhatsApp style with keyboard padding
             Surface(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .imePadding(),
                 color = PicFlickBannerBackground,
                 tonalElevation = 2.dp
             ) {
@@ -368,7 +370,7 @@ fun ChatDetailScreen(
                                 .fillMaxSize()
                                 .padding(horizontal = 8.dp),
                             state = listState,
-                            contentPadding = PaddingValues(vertical = 8.dp)
+                            contentPadding = PaddingValues(start = 0.dp, top = 8.dp, end = 0.dp, bottom = 16.dp)
                         ) {
                             items(
                                 items = viewModel.messages,
@@ -478,12 +480,6 @@ private fun ChatBubble(
         ) {
             Box(
                 modifier = Modifier
-                    .shadow(
-                        elevation = 4.dp,
-                        shape = bubbleShape,
-                        ambientColor = if (isMe) Color(0xFF667eea) else Color(0xFFf5576c),
-                        spotColor = if (isMe) Color(0xFF667eea) else Color(0xFFf5576c)
-                    )
                     .background(bubbleColor, bubbleShape)
                     .padding(horizontal = 14.dp, vertical = 10.dp)
             ) {
@@ -498,37 +494,47 @@ private fun ChatBubble(
                         Spacer(modifier = Modifier.height(4.dp))
                     }
                     
-                    Text(
-                        text = message.text,
-                        fontSize = 15.sp,
-                        color = Color.Black, // Black text
-                        fontWeight = FontWeight.Medium
-                    )
-
-                    Spacer(modifier = Modifier.height(4.dp))
-
-                    // Time and status
+                    // Message text with timestamp inline at top
                     Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.End,
-                        modifier = Modifier.align(Alignment.End)
+                        modifier = Modifier.wrapContentWidth(),
+                        horizontalArrangement = Arrangement.Start,
+                        verticalAlignment = Alignment.Top
                     ) {
+                        // Message text - wraps naturally
                         Text(
-                            text = formatMessageTime(message.timestamp),
-                            fontSize = 11.sp,
-                            color = Color.Black.copy(alpha = 0.7f)
+                            text = message.text,
+                            fontSize = 15.sp,
+                            color = Color.Black,
+                            fontWeight = FontWeight.Medium,
+                            modifier = Modifier.wrapContentWidth(),
+                            softWrap = true
                         )
-
-                        if (isMe) {
-                            Spacer(modifier = Modifier.width(4.dp))
-                            // Read status dot (green = read, red = unread)
-                            val dotColor = if (message.read) Color(0xFF25D366) else Color.Red
-                            Box(
-                                modifier = Modifier
-                                    .size(8.dp)
-                                    .clip(CircleShape)
-                                    .background(dotColor)
+                        
+                        Spacer(modifier = Modifier.width(8.dp))
+                        
+                        // Time and status - fixed at top right
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.End
+                        ) {
+                            Text(
+                                text = formatMessageTime(message.timestamp),
+                                fontSize = 11.sp,
+                                color = Color.Black.copy(alpha = 0.7f)
                             )
+                            
+                            if (isMe) {
+                                Spacer(modifier = Modifier.width(4.dp))
+                                // Read status dot (green = read, red = unread)
+                                val dotColor = if (message.read) Color(0xFF25D366) else Color.Red
+                                Box(
+                                    modifier = Modifier
+                                        .size(8.dp)
+                                        .clip(CircleShape)
+                                        .background(dotColor)
+                                        .align(Alignment.CenterVertically)
+                                )
+                            }
                         }
                     }
                     
