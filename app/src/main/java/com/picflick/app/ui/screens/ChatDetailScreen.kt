@@ -550,6 +550,7 @@ private fun ChatBubble(
                                     .size(8.dp)
                                     .clip(CircleShape)
                                     .background(dotColor)
+                                    .align(Alignment.CenterVertically)
                             )
                             Spacer(modifier = Modifier.width(4.dp))
                         }
