@@ -352,9 +352,10 @@ private fun ChatListItem(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.End
                 ) {
-                    // Show dot if last message was from me
+                    // Show dot if you sent the last message
                     if (isLastMessageFromMe) {
-                        val dotColor = if (session.lastMessageRead) Color(0xFF25D366) else Color.Red
+                        val isRead = session.lastMessageRead
+                        val dotColor = if (isRead) Color(0xFF25D366) else Color.Red
                         Box(
                             modifier = Modifier
                                 .size(8.dp)
