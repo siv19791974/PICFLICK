@@ -214,10 +214,12 @@ class ChatViewModel : ViewModel() {
         otherUserId: String,
         userName: String,
         otherUserName: String,
+        userPhoto: String = "",
+        otherUserPhoto: String = "",
         onChatReady: (String) -> Unit
     ) {
         viewModelScope.launch {
-            when (val result = repository.getOrCreateChatSession(userId, otherUserId, userName, otherUserName)) {
+            when (val result = repository.getOrCreateChatSession(userId, otherUserId, userName, otherUserName, userPhoto, otherUserPhoto)) {
                 is Result.Success -> {
                     onChatReady(result.data)
                 }

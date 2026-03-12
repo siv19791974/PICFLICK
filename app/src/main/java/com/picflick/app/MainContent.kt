@@ -478,13 +478,15 @@ private fun ChatsScreenContent(
             onSetSelectedChat(session, otherUserId)
             onScreenChange(Screen.ChatDetail)
         },
-        onStartNewChat = { friendId ->
+        onStartNewChat = { friendId, friendName, friendPhoto ->
             // Start chat with friend
             chatViewModel.startChat(
                 userId = userProfile.uid,
                 otherUserId = friendId,
                 userName = userProfile.displayName,
-                otherUserName = "", // Will be fetched
+                otherUserName = friendName,
+                userPhoto = userProfile.photoUrl,
+                otherUserPhoto = friendPhoto,
                 onChatReady = { chatId ->
                     // Navigate to chat detail
                     onScreenChange(Screen.ChatDetail)
@@ -942,7 +944,9 @@ private fun UserProfileScreenContent(
                             userId1 = userProfile.uid,
                             userId2 = target.uid,
                             user1Name = userProfile.displayName,
-                            user2Name = target.displayName
+                            user2Name = target.displayName,
+                            user1Photo = userProfile.photoUrl,
+                            user2Photo = target.photoUrl
                         )
                         when (result) {
                             is com.picflick.app.data.Result.Success<String> -> {

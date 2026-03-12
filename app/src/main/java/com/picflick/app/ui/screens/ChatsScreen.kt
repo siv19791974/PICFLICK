@@ -55,7 +55,7 @@ fun ChatsScreen(
     onBack: () -> Unit,
     onNavigateHome: () -> Unit = onBack,
     onChatClick: (ChatSession, String) -> Unit,
-    onStartNewChat: ((String) -> Unit)? = null,
+    onStartNewChat: ((String, String, String) -> Unit)? = null,
     onUserProfileClick: (String) -> Unit = {}
 ) {
     LaunchedEffect(userProfile.uid) {
@@ -235,9 +235,9 @@ fun ChatsScreen(
             isLoading = friendsViewModel.isLoading,
             isDarkMode = isDarkMode,
             onDismiss = { showNewChatDialog = false },
-            onFriendSelected = { friendId ->
+            onFriendSelected = { friendId, friendName, friendPhoto ->
                 showNewChatDialog = false
-                onStartNewChat?.invoke(friendId)
+                onStartNewChat?.invoke(friendId, friendName, friendPhoto)
             },
             onUserProfileClick = onUserProfileClick
         )
@@ -323,7 +323,7 @@ private fun ChatListItem(
                 Text(
                     text = otherUserName,
                     fontSize = 16.sp,
-                    fontWeight = if (hasUnread) FontWeight.Bold else FontWeight.Normal,
+                    fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -431,7 +431,7 @@ private fun NewChatDialog(
     isLoading: Boolean,
     isDarkMode: Boolean,
     onDismiss: () -> Unit,
-    onFriendSelected: (String) -> Unit,
+    onFriendSelected: (String, String, String) -> Unit,
     onUserProfileClick: (String) -> Unit
 ) {
     val backgroundColor = if (isDarkMode) Color.Black else Color(0xFFB8D4F0) // Light blue in light mode
@@ -618,7 +618,7 @@ private fun NewChatDialog(
                                     FullScreenFriendItem(
                                         friend = friend,
                                         isDarkMode = isDarkMode,
-                                        onClick = { onFriendSelected(friend.uid) },
+                                        onClick = { onFriendSelected(friend.uid, friend.displayName, friend.photoUrl) },
                                         onProfilePhotoClick = { onUserProfileClick(friend.uid) }
                                     )
                                 }
