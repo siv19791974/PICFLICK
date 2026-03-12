@@ -2,6 +2,7 @@ package com.picflick.app.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -38,11 +39,14 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.compose.ui.res.painterResource
 import coil3.compose.AsyncImage
+import com.picflick.app.R
 import com.picflick.app.data.Notification
 import com.picflick.app.data.NotificationType
 import com.picflick.app.data.UserProfile
 import com.picflick.app.ui.theme.isDarkModeBackground
+import com.picflick.app.ui.theme.PicFlickBannerBackground
 import com.picflick.app.ui.theme.ThemeManager
 import com.picflick.app.viewmodel.NotificationViewModel
 import java.text.SimpleDateFormat
@@ -84,42 +88,51 @@ fun NotificationsScreen(
             .fillMaxSize()
             .background(isDarkModeBackground(isDarkMode))
     ) {
-        // Header with back button, title, and mark all read
-        Row(
+        // Header - PicFlick black banner with logo
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
+                .height(56.dp)
+                .background(PicFlickBannerBackground)
+                .padding(horizontal = 16.dp),
+            contentAlignment = Alignment.CenterStart
         ) {
-            // Back button
-            Icon(
-                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                contentDescription = "Go back",
-                modifier = Modifier
-                    .size(36.dp)
-                    .clickable { onBack() },
-                tint = if (isDarkMode) Color.LightGray else Color.DarkGray
-            )
-
-            // Title with badge
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    text = "Notifications",
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = if (isDarkMode) Color.White else Color.Black
-                )
-                if (unreadCount > 0) {
-                    Badge(
-                        modifier = Modifier.padding(start = 8.dp),
-                        containerColor = Color.Red,
-                        contentColor = Color.White
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    IconButton(
+                        onClick = onBack,
+                        modifier = Modifier.size(40.dp)
                     ) {
-                        Text(text = unreadCount.toString())
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Back",
+                            tint = Color.White
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    // PicFlick Logo
+                    Image(
+                        painter = painterResource(id = R.drawable.logo),
+                        contentDescription = "PicFlick",
+                        modifier = Modifier.height(32.dp),
+                        contentScale = ContentScale.Fit
+                    )
+                }
+                
+                // Mark all read button
+                if (unreadCount > 0) {
+                    TextButton(onClick = { viewModel.markAllAsRead(userProfile.uid) }) {
+                        Text("Mark all read", color = Color.White)
                     }
                 }
             }
+        }
 
             // Spacer to balance the layout (back button on left, title center, spacer on right)
             Spacer(modifier = Modifier.width(48.dp))
@@ -250,7 +263,6 @@ fun NotificationsScreen(
             contentColor = MaterialTheme.colorScheme.primary
         )
     }
-}
 }
 
 @Composable

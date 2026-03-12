@@ -2,6 +2,7 @@ package com.picflick.app.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -12,6 +13,7 @@ import androidx.compose.material.pullrefresh.PullRefreshIndicator
 import androidx.compose.material.pullrefresh.pullRefresh
 import androidx.compose.material.pullrefresh.rememberPullRefreshState
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
@@ -27,9 +29,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
+import com.picflick.app.R
 import com.picflick.app.data.UserProfile
 import com.picflick.app.ui.components.ListItemShimmer
 import com.picflick.app.ui.theme.isDarkModeBackground
+import com.picflick.app.ui.theme.PicFlickBannerBackground
 import com.picflick.app.ui.theme.ThemeManager
 import com.picflick.app.viewmodel.FriendsViewModel
 
@@ -64,7 +68,52 @@ fun FriendsScreen(
             .fillMaxSize()
             .background(isDarkModeBackground(isDarkMode))
     ) {
-        // NO BANNER - banner is now in MainActivity's Scaffold topBar!
+        // Header - PicFlick black banner with logo
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(56.dp)
+                .background(PicFlickBannerBackground)
+                .padding(horizontal = 16.dp),
+            contentAlignment = Alignment.CenterStart
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    IconButton(
+                        onClick = onBack,
+                        modifier = Modifier.size(40.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Back",
+                            tint = Color.White
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    // PicFlick Logo
+                    Image(
+                        painter = painterResource(id = R.drawable.logo),
+                        contentDescription = "PicFlick",
+                        modifier = Modifier.height(32.dp),
+                        contentScale = ContentScale.Fit
+                    )
+                }
+                
+                IconButton(onClick = onFindFriendsClick) {
+                    Icon(
+                        imageVector = Icons.Default.Search,
+                        contentDescription = "Find Friends",
+                        tint = Color.White
+                    )
+                }
+            }
+        }
 
         // Modern PullRefresh content - takes all available space
         Box(
