@@ -5,6 +5,14 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.imePadding
@@ -60,13 +68,15 @@ fun ChatDetailScreen(
     otherUserId: String,
     currentUser: UserProfile,
     viewModel: ChatViewModel,
+    recentChats: List<ChatSession> = emptyList(),  // Quick switcher chats
+    onChatSwitch: (ChatSession) -> Unit = {},       // Switch to another chat
     onBack: () -> Unit,
     onUserProfileClick: (String) -> Unit = {}
 ) {
     val chatId = chatSession.id
     val otherUserName = chatSession.participantNames[otherUserId] ?: "Unknown"
-    val otherUserPhoto = chatSession.participantPhotos[otherUserId] ?: ""
-
+    var showReactionPickerFor by remember { mutableStateOf<String?>(null) }  // Message ID showing reaction picker
+    var replyToMessage by remember { mutableStateOf<ChatMessage?>(null) }
     var messageText by remember { mutableStateOf("") }
     var replyToMessage by remember { mutableStateOf<ChatMessage?>(null) }
     val listState = rememberLazyListState()
@@ -126,6 +136,7 @@ fun ChatDetailScreen(
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         topBar = {
+            Column {
             // Custom compact 48dp title bar
             Box(
                 modifier = Modifier
@@ -205,8 +216,17 @@ fun ChatDetailScreen(
                     }
                 }
             }
-        },
-        bottomBar = {
+                // Quick Chat Switcher - Shows 5 recent chats
+                if (recentChats.isNotEmpty()) {
+                    QuickChatSwitcher(
+                        recentChats = recentChats,
+                        currentUserId = currentUser.uid,
+                        currentChatId = chatSession.id,
+                        isDarkMode = isDarkMode,
+                        onChatSwitch = onChatSwitch
+                    )
+                }
+            }
             // Message input area - WhatsApp style
             Surface(
                 modifier = Modifier.fillMaxWidth(),
@@ -673,6 +693,50 @@ private fun QuotedMessage(
                 color = Color.White.copy(alpha = 0.8f),
                 maxLines = 1
             )
+        }
+    }
+}
+/**
+ * WhatsApp-style Reaction Picker - Shows 5 reactions on long press
+ */
+@Composable
+private fun ReactionPicker(
+    onReactionSelected: (String) -> Unit,
+    onDismiss: () -> Unit
+) {
+    val reactions = listOf("??", "??", "??", "??", "??")
+    
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center
+    ) {
+        // Backdrop
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black.copy(alpha = 0.3f))
+                .clickable { onDismiss() }
+        )
+        
+        // Reaction bubbles
+        Row(
+            modifier = Modifier
+                .background(
+                    color = Color(0xFF2A2A2A),
+                    shape = RoundedCornerShape(20.dp)
+                )
+                .padding(horizontal = 12.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            reactions.forEach { reaction ->
+                Text(
+                    text = reaction,
+                    fontSize = 24.sp,
+                    modifier = Modifier
+                        .clickable { onReactionSelected(reaction) }
+                        .padding(4.dp)
+                )
+            }
         }
     }
 }
