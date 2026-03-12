@@ -547,34 +547,6 @@ private fun ChatBubble(
                             fontSize = 11.sp,
                             color = Color.Black.copy(alpha = 0.7f)
                         )
-
-                        if (isMe) {
-                            Spacer(modifier = Modifier.width(4.dp))
-                            // Message status - subtle colors
-                            when {
-                                message.read -> {
-                                    Text(
-                                        text = "✓✓",
-                                        fontSize = 12.sp,
-                                        color = Color(0xFF25D366) // WhatsApp green for read
-                                    )
-                                }
-                                message.delivered -> {
-                                    Text(
-                                        text = "✓✓",
-                                        fontSize = 12.sp,
-                                        color = Color.Gray
-                                    )
-                                }
-                                else -> {
-                                    Text(
-                                        text = "✓",
-                                        fontSize = 12.sp,
-                                        color = Color.Gray
-                                    )
-                                }
-                            }
-                        }
                     }
                 }
             }
