@@ -347,12 +347,31 @@ private fun ChatListItem(
                     modifier = Modifier.weight(1f)
                 )
 
-                Text(
-                    text = formatChatTime(session.lastTimestamp),
-                    fontSize = 12.sp,
-                    color = if (hasUnread) Color(0xFF25D366) else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
-                    fontWeight = if (hasUnread) FontWeight.Bold else FontWeight.Normal
-                )
+                // Time and read status row
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    // Show dot if last message was from me
+                    if (isLastMessageFromMe) {
+                        val dotColor = if (hasUnread) Color.Red else Color(0xFF25D366)
+                        Box(
+                            modifier = Modifier
+                                .size(8.dp)
+                                .clip(CircleShape)
+                                .background(dotColor)
+                                .align(Alignment.CenterVertically)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                    }
+                    
+                    Text(
+                        text = formatChatTime(session.lastTimestamp),
+                        fontSize = 12.sp,
+                        color = if (hasUnread) Color(0xFF25D366) else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                        fontWeight = if (hasUnread) FontWeight.Bold else FontWeight.Normal
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.height(4.dp))
