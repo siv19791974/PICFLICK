@@ -144,11 +144,10 @@ fun ChatDetailScreen(
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         topBar = {
-            // Custom compact 48dp title bar with status bar padding
+            // Custom compact 48dp title bar - solid, no gap
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .statusBarsPadding()
                     .height(48.dp)
                     .background(PicFlickBannerBackground),
                 contentAlignment = Alignment.CenterStart
@@ -531,39 +530,47 @@ private fun ChatBubble(
                         Spacer(modifier = Modifier.height(4.dp))
                     }
                     
-                    Text(
-                        text = message.text,
-                        fontSize = 15.sp,
-                        color = Color.Black,
-                        fontWeight = FontWeight.Medium
-                    )
-
-                    Spacer(modifier = Modifier.height(4.dp))
-
-                    // Time and status
+                    // Message text with timestamp/dot inline at top
                     Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.End,
-                        modifier = Modifier.align(Alignment.End)
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.Top
                     ) {
-                        // Read status dot (only for sent messages)
-                        if (isMe) {
-                            val dotColor = if (message.read) Color(0xFF25D366) else Color.Red
-                            Box(
-                                modifier = Modifier
-                                    .size(8.dp)
-                                    .clip(CircleShape)
-                                    .background(dotColor)
-                                    .align(Alignment.CenterVertically)
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                        }
-                        
+                        // Message text - wraps to next lines
                         Text(
-                            text = formatMessageTime(message.timestamp),
-                            fontSize = 11.sp,
-                            color = Color.Black.copy(alpha = 0.7f)
+                            text = message.text,
+                            fontSize = 15.sp,
+                            color = Color.Black,
+                            fontWeight = FontWeight.Medium,
+                            modifier = Modifier.weight(1f)
                         )
+                        
+                        Spacer(modifier = Modifier.width(8.dp))
+                        
+                        // Time and status - fixed at top right
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.End
+                        ) {
+                            // Read status dot (only for sent messages)
+                            if (isMe) {
+                                val dotColor = if (message.read) Color(0xFF25D366) else Color.Red
+                                Box(
+                                    modifier = Modifier
+                                        .size(8.dp)
+                                        .clip(CircleShape)
+                                        .background(dotColor)
+                                        .align(Alignment.CenterVertically)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                            }
+                            
+                            Text(
+                                text = formatMessageTime(message.timestamp),
+                                fontSize = 11.sp,
+                                color = Color.Black.copy(alpha = 0.7f)
+                            )
+                        }
                     }
                 }
             }
