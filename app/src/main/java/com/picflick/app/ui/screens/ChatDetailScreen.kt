@@ -254,8 +254,8 @@ fun ChatDetailScreen(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(top = padding.calculateTopPadding())  // Only apply top padding
-                .pullRefresh(pullRefreshState)
+                .pullRefresh(pullRefreshState)  // Pull-to-refresh on the main content
+                .padding(top = padding.calculateTopPadding())
         ) {
             Column(
                 modifier = Modifier
@@ -329,7 +329,7 @@ fun ChatDetailScreen(
                                 .fillMaxSize()
                                 .padding(horizontal = 8.dp),
                             state = listState,
-                            contentPadding = PaddingValues(start = 0.dp, top = 8.dp, end = 0.dp, bottom = 16.dp)
+                            contentPadding = PaddingValues(start = 0.dp, top = 8.dp, end = 0.dp, bottom = 80.dp)  // YELLOW: Increased bottom padding
                         ) {
                             items(
                                 items = viewModel.messages,
@@ -489,25 +489,31 @@ private fun ChatBubble(
                     }
                 }
                 
-                // YELLOW/RED: Reactions STICKING to bottom corner
+                // YELLOW/RED/GREEN: Reactions STICKING to bottom corner of message bubble
                 if (message.reactions.isNotEmpty()) {
                     Box(
                         modifier = Modifier
-                            .offset(
-                                x = if (isMe) 8.dp else (-8).dp,
-                                y = (-6).dp
-                            )
-                            .background(
-                                color = MaterialTheme.colorScheme.surface,
-                                shape = RoundedCornerShape(10.dp)
-                            )
-                            .padding(horizontal = 4.dp, vertical = 1.dp)
-                            .align(if (isMe) Alignment.End else Alignment.Start)
+                            .padding(top = 2.dp)
+                            .fillMaxWidth(),  // Take full width to align properly
+                        contentAlignment = if (isMe) Alignment.BottomEnd else Alignment.BottomStart
                     ) {
-                        Text(
-                            text = message.reactions.values.toSet().joinToString(" "),
-                            fontSize = 11.sp
-                        )
+                        Box(
+                            modifier = Modifier
+                                .offset(
+                                    x = if (isMe) 12.dp else (-12).dp,
+                                    y = (-8).dp
+                                )
+                                .background(
+                                    color = MaterialTheme.colorScheme.surface,
+                                    shape = RoundedCornerShape(10.dp)
+                                )
+                                .padding(horizontal = 6.dp, vertical = 2.dp)
+                        ) {
+                            Text(
+                                text = message.reactions.values.toSet().joinToString(" "),
+                                fontSize = 12.sp
+                            )
+                        }
                     }
                 }
                 
