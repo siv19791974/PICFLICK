@@ -1404,6 +1404,104 @@ class FlickRepository private constructor() {
     }
 
     /**
+     * Toggle reaction on a comment
+     */
+    fun toggleCommentReaction(
+        commentId: String,
+        userId: String,
+        userName: String,
+        userPhotoUrl: String,
+        emoji: String,
+        onResult: (Result<Unit>) -> Unit
+    ) {
+        db.collection("comments").document(commentId).get()
+            .addOnSuccessListener { doc ->
+                val comment = doc.toObject(Comment::class.java)
+                if (comment == null) {
+                    onResult(Result.Error(Exception("Comment not found"), "Comment not found"))
+                    return@addOnSuccessListener
+                }
+
+                val currentReaction = comment.reactions[userId]
+
+                if (currentReaction == emoji) {
+                    // Remove reaction (same emoji clicked)
+                    doc.reference.update("reactions.${userId}", FieldValue.delete())
+                        .addOnSuccessListener { onResult(Result.Success(Unit)) }
+                        .addOnFailureListener { e -> onResult(Result.Error(e, "Failed to remove reaction")) }
+                } else {
+                    // Add/update reaction
+                    doc.reference.update("reactions.${userId}", emoji)
+                        .addOnSuccessListener {
+                            // Create notification for comment owner
+                            if (comment.userId != userId) {
+                                createCommentReactionNotification(
+                                    commentId = commentId,
+                                    flickId = comment.flickId,
+                                    ownerId = comment.userId,
+                                    reactorId = userId,
+                                    reactorName = userName,
+                                    reactorPhotoUrl = userPhotoUrl,
+                                    emoji = emoji,
+                                    commentText = comment.text
+                                )
+                            }
+                            onResult(Result.Success(Unit))
+                        }
+                        .addOnFailureListener { e -> onResult(Result.Error(e, "Failed to add reaction")) }
+                }
+            }
+            .addOnFailureListener { e -> onResult(Result.Error(e, "Failed to get comment")) }
+    }
+
+    /**
+     * Create notification for comment reaction
+     */
+    private fun createCommentReactionNotification(
+        commentId: String,
+        flickId: String,
+        ownerId: String,
+        reactorId: String,
+        reactorName: String,
+        reactorPhotoUrl: String,
+        emoji: String,
+        commentText: String
+    ) {
+        android.util.Log.d("NotificationDebug", "Creating COMMENT REACTION notification: $reactorId -> $ownerId")
+
+        db.collection("flicks").document(flickId).get()
+            .addOnSuccessListener { flickDoc ->
+                val flickImageUrl = flickDoc.getString("imageUrl")
+                val truncatedComment = if (commentText.length > 30) commentText.take(30) + "..." else commentText
+
+                val notification = hashMapOf(
+                    "id" to UUID.randomUUID().toString(),
+                    "userId" to ownerId,
+                    "senderId" to reactorId,
+                    "senderName" to reactorName,
+                    "senderPhotoUrl" to reactorPhotoUrl,
+                    "type" to "REACTION",
+                    "title" to "$reactorName reacted $emoji to your comment",
+                    "message" to "$emoji \"$truncatedComment\"",
+                    "flickId" to flickId,
+                    "flickImageUrl" to flickImageUrl,
+                    "commentId" to commentId,
+                    "reactionEmoji" to emoji,
+                    "isRead" to false,
+                    "timestamp" to System.currentTimeMillis()
+                )
+
+                db.collection("notifications").add(notification)
+                    .addOnSuccessListener { docRef ->
+                        android.util.Log.d("NotificationDebug", "COMMENT REACTION notification created: ${docRef.id}")
+                    }
+                    .addOnFailureListener { e ->
+                        android.util.Log.e("NotificationDebug", "FAILED to create comment reaction notification: ${e.message}")
+                    }
+            }
+    }
+
+    /**
      * Create notification for comment on a photo
      */
     private fun createCommentNotification(
