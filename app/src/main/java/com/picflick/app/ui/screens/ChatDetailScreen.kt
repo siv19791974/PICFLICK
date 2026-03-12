@@ -2,6 +2,7 @@ package com.picflick.app.ui.screens
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
@@ -15,6 +16,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.AttachFile
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -23,10 +25,13 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
+import com.picflick.app.R
 import com.picflick.app.data.ChatMessage
 import com.picflick.app.data.ChatSession
 import com.picflick.app.data.UserProfile
@@ -41,6 +46,7 @@ import java.util.*
 
 /**
  * WhatsApp-style Chat Detail Screen
+ * Uses Box layout to keep header/bottom fixed when keyboard opens
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -131,19 +137,27 @@ fun ChatDetailScreen(
         }
     }
 
-    Scaffold(
-        modifier = Modifier.fillMaxSize(),
-        topBar = {
-            // Custom compact 48dp title bar
+    // Use Box instead of Scaffold to have full control over layout
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(isDarkModeBackground(isDarkMode))
+    ) {
+        Column(
+            modifier = Modifier.fillMaxSize()
+        ) {
+            // HEADER - Fixed at top (56dp height)
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(48.dp)
+                    .height(56.dp)
                     .background(PicFlickBannerBackground),
                 contentAlignment = Alignment.CenterStart
             ) {
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     IconButton(
@@ -153,19 +167,157 @@ fun ChatDetailScreen(
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Back",
-                            tint = MaterialTheme.colorScheme.onSurface
+                            tint = Color.White
                         )
                     }
-                    // Space for symmetry (removed logo - YELLOW fix)
-                    Spacer(modifier = Modifier.weight(1f))
-                    // Space for symmetry (same width as back button)
+                    
+                    // Other user's profile pic
+                    if (otherUserPhoto.isNotEmpty()) {
+                        AsyncImage(
+                            model = otherUserPhoto,
+                            contentDescription = otherUserName,
+                            modifier = Modifier
+                                .size(40.dp)
+                                .clip(CircleShape),
+                            contentScale = ContentScale.Crop
+                        )
+                    } else {
+                        Box(
+                            modifier = Modifier
+                                .size(40.dp)
+                                .clip(CircleShape)
+                                .background(Color.Gray),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Person,
+                                contentDescription = null,
+                                tint = Color.White
+                            )
+                        }
+                    }
+                    
+                    Spacer(modifier = Modifier.width(12.dp))
+                    
+                    // Other user's name
+                    Text(
+                        text = otherUserName,
+                        color = Color.White,
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f)
+                    )
+                    
+                    // Options menu or call button could go here
                     Spacer(modifier = Modifier.size(48.dp))
                 }
             }
-        },
-        bottomBar = {
-            // Message input area - WhatsApp style
-            // REMOVED: windowInsetsPadding - Scaffold handles keyboard automatically
+            
+            // MESSAGES LIST - Takes remaining space and handles keyboard
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
+                    // REMOVED: imePadding() - windowSoftInputMode="adjustResize" handles this
+            ) {
+                Column(
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    // Error message display
+                    viewModel.errorMessage?.let { error ->
+                        Surface(
+                            modifier = Modifier.fillMaxWidth(),
+                            color = MaterialTheme.colorScheme.errorContainer,
+                            tonalElevation = 2.dp
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = error,
+                                    color = MaterialTheme.colorScheme.onErrorContainer,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                TextButton(
+                                    onClick = { 
+                                        viewModel.clearError()
+                                        viewModel.loadMessages(chatId) 
+                                    }
+                                ) {
+                                    Text("Retry", color = MaterialTheme.colorScheme.onErrorContainer)
+                                }
+                            }
+                        }
+                    }
+
+                    // Messages list
+                    when {
+                        viewModel.isLoading && viewModel.messages.isEmpty() -> {
+                            Box(
+                                modifier = Modifier.fillMaxSize(),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                CircularProgressIndicator()
+                            }
+                        }
+                        viewModel.messages.isEmpty() -> {
+                            Box(
+                                modifier = Modifier.fillMaxSize(),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Text(
+                                        text = "No messages yet",
+                                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                                    )
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Text(
+                                        text = "Say hello!",
+                                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
+                                        fontSize = 14.sp
+                                    )
+                                }
+                            }
+                        }
+                        else -> {
+                            LazyColumn(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(horizontal = 8.dp),
+                                state = listState,
+                                contentPadding = PaddingValues(start = 0.dp, top = 8.dp, end = 0.dp, bottom = 8.dp)
+                            ) {
+                                items(
+                                    items = viewModel.messages,
+                                    key = { it.id }
+                                ) { message ->
+                                    val isMe = message.senderId == currentUser.uid
+                                    ChatBubble(
+                                        message = message,
+                                        isMe = isMe,
+                                        otherUserPhoto = if (isMe) "" else otherUserPhoto,
+                                        currentUserId = currentUser.uid,
+                                        onReplyClick = { replyToMessage = message },
+                                        onReaction = { emoji ->
+                                            viewModel.addReaction(chatId, message.id, currentUser.uid, emoji, currentUser.displayName, currentUser.photoUrl)
+                                        }
+                                    )
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            
+            // MESSAGE INPUT - Fixed at bottom
             Surface(
                 modifier = Modifier.fillMaxWidth(),
                 color = Color.Black,
@@ -261,111 +413,6 @@ fun ChatDetailScreen(
                     }
                 }
             }
-        }
-    ) { padding ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                // Use all Scaffold padding for proper insets handling
-                .padding(padding)
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(isDarkModeBackground(isDarkMode))
-            ) {
-                // Error message display
-                viewModel.errorMessage?.let { error ->
-                    Surface(
-                        modifier = Modifier.fillMaxWidth(),
-                        color = MaterialTheme.colorScheme.errorContainer,
-                        tonalElevation = 2.dp
-                    ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 12.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = error,
-                                color = MaterialTheme.colorScheme.onErrorContainer,
-                                style = MaterialTheme.typography.bodyMedium,
-                                modifier = Modifier.weight(1f)
-                            )
-                            TextButton(
-                                onClick = { 
-                                    viewModel.clearError()
-                                    viewModel.loadMessages(chatId) 
-                                }
-                            ) {
-                                Text("Retry", color = MaterialTheme.colorScheme.onErrorContainer)
-                            }
-                        }
-                    }
-                }
-
-                // Messages list
-                when {
-                    viewModel.isLoading && viewModel.messages.isEmpty() -> {
-                        Box(
-                            modifier = Modifier.fillMaxSize(),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            CircularProgressIndicator()
-                        }
-                    }
-                    viewModel.messages.isEmpty() -> {
-                        Box(
-                            modifier = Modifier.fillMaxSize(),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Text(
-                                    text = "No messages yet",
-                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
-                                )
-                                Spacer(modifier = Modifier.height(8.dp))
-                                Text(
-                                    text = "Say hello!",
-                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
-                                    fontSize = 14.sp
-                                )
-                            }
-                        }
-                    }
-                    else -> {
-                        LazyColumn(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .padding(horizontal = 8.dp),
-                            state = listState,
-                            contentPadding = PaddingValues(start = 0.dp, top = 8.dp, end = 0.dp, bottom = 80.dp)  // YELLOW: Increased bottom padding
-                        ) {
-                            items(
-                                items = viewModel.messages,
-                                key = { it.id }
-                            ) { message ->
-                                val isMe = message.senderId == currentUser.uid
-                                ChatBubble(
-                                    message = message,
-                                    isMe = isMe,
-                                    otherUserPhoto = if (isMe) "" else otherUserPhoto,
-                                    currentUserId = currentUser.uid,
-                                    onReplyClick = { replyToMessage = message },
-                                    onReaction = { emoji ->
-                                        viewModel.addReaction(chatId, message.id, currentUser.uid, emoji, currentUser.displayName, currentUser.photoUrl)
-                                    }
-                                )
-                                Spacer(modifier = Modifier.height(4.dp))
-                            }
-                        }
-                    }
-                }
-            }
-
-            // Removed PullRefreshIndicator - Firebase provides real-time updates automatically
         }
     }
 }
