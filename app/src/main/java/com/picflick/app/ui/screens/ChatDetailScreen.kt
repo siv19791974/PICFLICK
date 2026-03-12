@@ -379,7 +379,11 @@ fun ChatDetailScreen(
                                     message = message,
                                     isMe = isMe,
                                     otherUserPhoto = if (isMe) "" else otherUserPhoto,
-                                    onReplyClick = { replyToMessage = message }
+                                    currentUserId = currentUser.uid,
+                                    onReplyClick = { replyToMessage = message },
+                                    onReaction = { emoji ->
+                                        viewModel.addReaction(chatId, message.id, currentUser.uid, emoji)
+                                    }
                                 )
                                 Spacer(modifier = Modifier.height(4.dp))
                             }
@@ -404,7 +408,9 @@ private fun ChatBubble(
     message: ChatMessage,
     isMe: Boolean,
     otherUserPhoto: String,
-    onReplyClick: () -> Unit = {}
+    currentUserId: String,
+    onReplyClick: () -> Unit = {},
+    onReaction: (String) -> Unit = {}
 ) {
     // Sexy gradient backgrounds for message bubbles
     val sentBrush = Brush.linearGradient(
@@ -422,6 +428,10 @@ private fun ChatBubble(
     )
     
     val bubbleBrush = if (isMe) sentBrush else receivedBrush
+
+    // Reaction state
+    var showEmojiPicker by remember { mutableStateOf(false) }
+    val emojiReactions = listOf("❤️", "😂", "😮", "😢", "👍", "🔥", "👏")
 
     val bubbleShape = if (isMe) {
         RoundedCornerShape(
@@ -444,7 +454,7 @@ private fun ChatBubble(
             .fillMaxWidth()
             .combinedClickable(
                 onClick = { },
-                onLongClick = { onReplyClick() }
+                onLongClick = { showEmojiPicker = !showEmojiPicker }
             ),
         horizontalArrangement = if (isMe) Arrangement.End else Arrangement.Start,
         verticalAlignment = Alignment.Top
@@ -542,6 +552,43 @@ private fun ChatBubble(
                                         fontSize = 12.sp,
                                         color = Color.White.copy(alpha = 0.5f)
                                     )
+                                }
+                            }
+                        }
+                    }
+                    
+                    // Reactions row
+                    if (message.reactions.isNotEmpty()) {
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = if (isMe) Arrangement.End else Arrangement.Start
+                        ) {
+                            message.reactions.values.toSet().forEach { emoji ->
+                                Text(
+                                    text = emoji,
+                                    fontSize = 14.sp,
+                                    modifier = Modifier.padding(horizontal = 2.dp)
+                                )
+                            }
+                        }
+                    }
+                    
+                    // Emoji picker
+                    if (showEmojiPicker) {
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = if (isMe) Arrangement.End else Arrangement.Start
+                        ) {
+                            emojiReactions.forEach { emoji ->
+                                TextButton(
+                                    onClick = {
+                                        onReaction(emoji)
+                                        showEmojiPicker = false
+                                    }
+                                ) {
+                                    Text(emoji, fontSize = 18.sp)
                                 }
                             }
                         }

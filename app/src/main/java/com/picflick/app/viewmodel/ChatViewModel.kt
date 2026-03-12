@@ -271,6 +271,25 @@ class ChatViewModel : ViewModel() {
     }
 
     /**
+     * Add reaction to message
+     */
+    fun addReaction(chatId: String, messageId: String, userId: String, emoji: String) {
+        viewModelScope.launch {
+            android.util.Log.d("ChatViewModel", "addReaction: $emoji to message $messageId")
+            when (val result = repository.addReaction(chatId, messageId, userId, emoji)) {
+                is Result.Success -> {
+                    android.util.Log.d("ChatViewModel", "addReaction success")
+                    loadMessages(chatId)
+                }
+                is Result.Error -> {
+                    android.util.Log.e("ChatViewModel", "addReaction failed: ${result.message}")
+                }
+                else -> {}
+            }
+        }
+    }
+
+    /**
      * Observe unread message count
      */
     fun observeUnreadCount(userId: String) {
