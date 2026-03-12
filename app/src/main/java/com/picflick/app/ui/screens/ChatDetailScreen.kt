@@ -6,6 +6,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -34,9 +35,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
@@ -397,6 +400,10 @@ private fun ChatBubble(
         android.util.Log.d("ChatBubble", "Message ${message.id}: read=${message.read}, delivered=${message.delivered}")
     }
     
+    // Swipe state for reply gesture
+    var swipeOffset by remember { mutableFloatStateOf(0f) }
+    val maxSwipe = 80f // Maximum swipe distance
+    
     val isDarkMode = ThemeManager.isDarkMode.value
     
     // MID BLUE for User A (sender/me), GREY for User B (other)
@@ -422,16 +429,57 @@ private fun ChatBubble(
         )
     }
 
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .combinedClickable(
-                onClick = { },
-                onLongClick = { onReplyClick() }
-            ),
-        horizontalArrangement = if (isMe) Arrangement.End else Arrangement.Start,
-        verticalAlignment = Alignment.Top
+    // Swipeable row with reply gesture
+    Box(
+        modifier = Modifier.fillMaxWidth()
     ) {
+        // Reply icon background (shown when swiping)
+        if (swipeOffset > 20f) {
+            Box(
+                modifier = Modifier
+                    .align(if (isMe) Alignment.CenterEnd else Alignment.CenterStart)
+                    .padding(horizontal = 16.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.Reply,
+                    contentDescription = "Reply",
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+        }
+        
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .offset { IntOffset(swipeOffset.toInt(), 0) }
+                .pointerInput(Unit) {
+                    detectHorizontalDragGestures(
+                        onDragEnd = {
+                            if (swipeOffset > maxSwipe * 0.6f) {
+                                // Trigger reply if swiped far enough
+                                onReplyClick()
+                            }
+                            swipeOffset = 0f
+                        },
+                        onHorizontalDrag = { change, dragAmount ->
+                            change.consume()
+                            // Only allow swipe towards left for me (right to left), right for others (left to right)
+                            val newOffset = swipeOffset + dragAmount
+                            swipeOffset = when {
+                                isMe -> newOffset.coerceIn(-maxSwipe, 0f) // Swipe left
+                                else -> newOffset.coerceIn(0f, maxSwipe)   // Swipe right
+                            }
+                        }
+                    )
+                }
+                .combinedClickable(
+                    onClick = { },
+                    onLongClick = { onReplyClick() }
+                ),
+            horizontalArrangement = if (isMe) Arrangement.End else Arrangement.Start,
+            verticalAlignment = Alignment.Top
+        ) {
         // Other user's photo (for received messages)
         if (!isMe && otherUserPhoto.isNotEmpty()) {
             AsyncImage(
