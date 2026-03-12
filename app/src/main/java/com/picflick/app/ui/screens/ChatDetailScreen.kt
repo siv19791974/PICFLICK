@@ -8,6 +8,7 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -143,10 +144,11 @@ fun ChatDetailScreen(
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         topBar = {
-            // Custom compact 48dp title bar
+            // Custom compact 48dp title bar with status bar padding
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .statusBarsPadding()
                     .height(48.dp)
                     .background(PicFlickBannerBackground),
                 contentAlignment = Alignment.CenterStart
@@ -224,9 +226,11 @@ fun ChatDetailScreen(
             }
         },
         bottomBar = {
-            // Message input area - WhatsApp style
+            // Message input area - WhatsApp style with keyboard padding
             Surface(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .imePadding(),
                 color = PicFlickBannerBackground,
                 tonalElevation = 2.dp
             ) {
@@ -405,7 +409,7 @@ fun ChatDetailScreen(
                                 .weight(1f)
                                 .padding(horizontal = 8.dp),
                             state = listState,
-                            contentPadding = PaddingValues(vertical = 8.dp)
+                            contentPadding = PaddingValues(start = 0.dp, top = 8.dp, end = 0.dp, bottom = 16.dp)
                         ) {
                             items(
                                 items = viewModel.messages,
