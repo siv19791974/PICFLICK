@@ -5,20 +5,11 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.gestures.detectHorizontalDragGestures
-import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
@@ -56,7 +47,6 @@ import com.picflick.app.ui.theme.ThemeManager
 import com.picflick.app.ui.theme.isDarkModeBackground
 import com.picflick.app.viewmodel.ChatViewModel
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.tasks.await
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -70,34 +60,15 @@ fun ChatDetailScreen(
     otherUserId: String,
     currentUser: UserProfile,
     viewModel: ChatViewModel,
-    recentChats: List<ChatSession> = emptyList(),  // Quick switcher chats
-    onChatSwitch: (ChatSession) -> Unit = {},       // Switch to another chat
     onBack: () -> Unit,
     onUserProfileClick: (String) -> Unit = {}
 ) {
     val chatId = chatSession.id
     val otherUserName = chatSession.participantNames[otherUserId] ?: "Unknown"
-    var otherUserPhoto by remember { mutableStateOf(chatSession.participantPhotos[otherUserId] ?: "") }
-    
-    // Fetch photo from UserProfile if not in chat session (for old chats)
-    LaunchedEffect(otherUserId, chatSession.participantPhotos) {
-        if (otherUserPhoto.isEmpty()) {
-            try {
-                val userDoc = com.google.firebase.firestore.FirebaseFirestore.getInstance()
-                    .collection("users")
-                    .document(otherUserId)
-                    .get()
-                    .await()
-                otherUserPhoto = userDoc.getString("photoUrl") ?: ""
-            } catch (e: Exception) {
-                // Keep empty if fetch fails
-            }
-        }
-    }
-    
-    var showReactionPickerFor by remember { mutableStateOf<String?>(null) }  // Message ID showing reaction picker
-    var replyToMessage by remember { mutableStateOf<ChatMessage?>(null) }
+    val otherUserPhoto = chatSession.participantPhotos[otherUserId] ?: ""
+
     var messageText by remember { mutableStateOf("") }
+    var replyToMessage by remember { mutableStateOf<ChatMessage?>(null) }
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
     val isDarkMode = ThemeManager.isDarkMode.value
@@ -155,7 +126,6 @@ fun ChatDetailScreen(
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         topBar = {
-            Column {
             // Custom compact 48dp title bar
             Box(
                 modifier = Modifier
@@ -223,8 +193,8 @@ fun ChatDetailScreen(
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
                             text = otherUserName,
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Medium,
                             color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
@@ -235,17 +205,8 @@ fun ChatDetailScreen(
                     }
                 }
             }
-                // Quick Chat Switcher - Shows 5 recent chats
-                if (recentChats.isNotEmpty()) {
-                    QuickChatSwitcher(
-                        recentChats = recentChats,
-                        currentUserId = currentUser.uid,
-                        currentChatId = chatSession.id,
-                        isDarkMode = isDarkMode,
-                        onChatSwitch = onChatSwitch
-                    )
-                }
-            }
+        },
+        bottomBar = {
             // Message input area - WhatsApp style
             Surface(
                 modifier = Modifier.fillMaxWidth(),
@@ -476,8 +437,8 @@ private fun ChatBubble(
     val sentColor = if (isDarkMode) Color(0xFF2A4A73) else Color(0xFFB8D4F0)      // Mid blue
     val receivedColor = if (isDarkMode) Color(0xFF2A2A2A) else Color(0xFFE0E0E0)  // Grey
     
-    val sentTextColor = Color.Black
-    val receivedTextColor = Color.Black
+    val sentTextColor = if (isDarkMode) Color.White else Color.Black
+    val receivedTextColor = if (isDarkMode) Color.White else Color.Black
 
     val bubbleShape = if (isMe) {
         RoundedCornerShape(
@@ -552,7 +513,7 @@ private fun ChatBubble(
                     Text(
                         text = message.text,
                         fontSize = 15.sp,
-                        color = if (isMe) sentTextColor else receivedTextColor,
+                        color = Color.White,
                         fontWeight = FontWeight.Medium
                     )
 
@@ -567,7 +528,7 @@ private fun ChatBubble(
                         Text(
                             text = formatMessageTime(message.timestamp),
                             fontSize = 11.sp,
-                            color = Color.Black.copy(alpha = 0.7f)
+                            color = Color.White.copy(alpha = 0.85f)
                         )
 
                         if (isMe) {
@@ -713,176 +674,5 @@ private fun QuotedMessage(
                 maxLines = 1
             )
         }
-    }
-}
-/**
- * WhatsApp-style Reaction Picker - Shows 5 reactions on long press
- */
-@Composable
-private fun ReactionPicker(
-    onReactionSelected: (String) -> Unit,
-    onDismiss: () -> Unit
-) {
-    val reactions = listOf("??", "??", "??", "??", "??")
-    
-    Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
-    ) {
-        // Backdrop
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Color.Black.copy(alpha = 0.3f))
-                .clickable { onDismiss() }
-        )
-        
-        // Reaction bubbles
-        Row(
-            modifier = Modifier
-                .background(
-                    color = Color(0xFF2A2A2A),
-                    shape = RoundedCornerShape(20.dp)
-                )
-                .padding(horizontal = 12.dp, vertical = 8.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            reactions.forEach { reaction ->
-                Text(
-                    text = reaction,
-                    fontSize = 24.sp,
-                    modifier = Modifier
-                        .clickable { onReactionSelected(reaction) }
-                        .padding(4.dp)
-                )
-            }
-        }
-    }
-}
-
-/**
- * Quick Chat Switcher - Shows 5 recent chat profile pics for fast switching
- */
-@Composable
-private fun QuickChatSwitcher(
-    recentChats: List<ChatSession>,
-    currentUserId: String,
-    currentChatId: String,
-    isDarkMode: Boolean,
-    onChatSwitch: (ChatSession) -> Unit
-) {
-    val backgroundColor = if (isDarkMode) Color.Black else Color(0xFFB8D4F0)
-    
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(backgroundColor)
-            .padding(vertical = 8.dp)
-    ) {
-        LazyRow(
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
-            contentPadding = PaddingValues(horizontal = 16.dp),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            items(
-                items = recentChats.take(5),
-                key = { it.id }
-            ) { chat ->
-                val otherUserId = chat.participants.find { it != currentUserId } ?: ""
-                val otherUserPhoto = chat.participantPhotos[otherUserId] ?: ""
-                val otherUserName = chat.participantNames[otherUserId] ?: "Unknown"
-                val isActive = chat.id == currentChatId
-                
-                QuickChatItem(
-                    photoUrl = otherUserPhoto,
-                    name = otherUserName,
-                    isActive = isActive,
-                    isDarkMode = isDarkMode,
-                    onClick = { onChatSwitch(chat) }
-                )
-            }
-        }
-    }
-}
-
-/**
- * Single quick chat item - circular profile pic with name
- */
-@Composable
-private fun QuickChatItem(
-    photoUrl: String,
-    name: String,
-    isActive: Boolean,
-    isDarkMode: Boolean,
-    onClick: () -> Unit
-) {
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier
-            .width(60.dp)
-            .clickable(onClick = onClick)
-    ) {
-        // Profile photo with active indicator ring
-        Box(
-            modifier = Modifier
-                .size(52.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            // Active ring (green border for active chat)
-            if (isActive) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .clip(CircleShape)
-                        .background(Color(0xFF25D366)) // WhatsApp green
-                )
-            }
-            
-            // Profile photo
-            Box(
-                modifier = Modifier
-                    .size(if (isActive) 46.dp else 52.dp)
-                    .clip(CircleShape)
-                    .background(if (isDarkMode) Color(0xFF2A2A2A) else Color(0xFFE0E0E0))
-            ) {
-                if (photoUrl.isNotEmpty()) {
-                    AsyncImage(
-                        model = photoUrl,
-                        contentDescription = name,
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop
-                    )
-                } else {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Person,
-                            contentDescription = null,
-                            modifier = Modifier.size(24.dp),
-                            tint = if (isDarkMode) Color.Gray else Color.DarkGray
-                        )
-                    }
-                }
-            }
-        }
-        
-        Spacer(modifier = Modifier.height(4.dp))
-        
-        // Name (truncated)
-        Text(
-            text = if (name.length > 6) name.take(6) + ".." else name,
-            fontSize = 10.sp,
-            color = if (isActive) {
-                Color(0xFF25D366)
-            } else if (isDarkMode) {
-                Color.White
-            } else {
-                Color.Black
-            },
-            fontWeight = if (isActive) FontWeight.Bold else FontWeight.Normal,
-            maxLines = 1
-        )
     }
 }
