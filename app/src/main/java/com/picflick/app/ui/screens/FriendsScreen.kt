@@ -26,6 +26,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
@@ -185,79 +186,88 @@ private fun FriendListItem(
     onDeleteFriend: () -> Unit = {}
 ) {
     val isDarkMode = ThemeManager.isDarkMode.value
-    Card(
+    
+    // Use Row like ChatListItem - no card
+    Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 4.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = if (isDarkMode) Color(0xFF2A4A73) else Color(0xFFB8D4F0) // Mid blue - darker than background
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Row(
+        // Profile photo - 56dp like ChatListItem
+        Box(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically
+                .size(56.dp)
+                .clickable { onProfilePhotoClick() }
         ) {
-            // Profile photo - clickable
             if (friend.photoUrl.isNotEmpty()) {
                 AsyncImage(
                     model = friend.photoUrl,
-                    contentDescription = null,
+                    contentDescription = friend.displayName,
                     modifier = Modifier
-                        .size(56.dp)
-                        .clip(CircleShape)
-                        .clickable { onProfilePhotoClick() },
+                        .fillMaxSize()
+                        .clip(CircleShape),
                     contentScale = ContentScale.Crop,
                     error = painterResource(id = android.R.drawable.ic_menu_myplaces)
                 )
             } else {
                 Box(
                     modifier = Modifier
-                        .size(56.dp)
+                        .fillMaxSize()
                         .clip(CircleShape)
-                        .background(if (isDarkMode) Color(0xFF3A3A3C) else Color(0xFFE0E0E0))
-                        .clickable { onProfilePhotoClick() },
+                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         imageVector = Icons.Default.Person,
                         contentDescription = null,
-                        modifier = Modifier.size(32.dp),
-                        tint = if (isDarkMode) Color.Gray else Color.DarkGray
+                        modifier = Modifier.size(28.dp),
+                        tint = MaterialTheme.colorScheme.primary
                     )
                 }
             }
+        }
 
-            Spacer(modifier = Modifier.width(12.dp))
+        Spacer(modifier = Modifier.width(16.dp))
 
-            // User info - takes available space
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = friend.displayName,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color = if (isDarkMode) Color.White else Color.Black
-                )
-                Text(
-                    text = "${friend.followers.size} followers",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = if (isDarkMode) Color.Gray else Color.DarkGray
-                )
-            }
+        // User info - same structure as ChatListItem
+        Column(
+            modifier = Modifier.weight(1f)
+        ) {
+            // Name - 16sp Bold, maxLines=1
+            Text(
+                text = friend.displayName,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.fillMaxWidth()
+            )
             
-            // Delete Friend button - small, on the right
-            OutlinedButton(
-                onClick = onDeleteFriend,
-                shape = RoundedCornerShape(20.dp),
-                modifier = Modifier.wrapContentWidth(),
-                colors = ButtonDefaults.outlinedButtonColors(
-                    contentColor = Color(0xFFFF4444) // Red
-                )
-            ) {
-                Text("Delete", fontSize = 12.sp)
-            }
+            Spacer(modifier = Modifier.height(4.dp))
+            
+            // Followers count - 14sp like message preview
+            Text(
+                text = "${friend.followers.size} followers",
+                fontSize = 14.sp,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+        
+        // Delete Friend button - small, on the right
+        OutlinedButton(
+            onClick = onDeleteFriend,
+            shape = RoundedCornerShape(20.dp),
+            modifier = Modifier.wrapContentWidth(),
+            colors = ButtonDefaults.outlinedButtonColors(
+                contentColor = Color(0xFFFF4444) // Red
+            )
+        ) {
+            Text("Delete", fontSize = 12.sp)
         }
     }
 }
