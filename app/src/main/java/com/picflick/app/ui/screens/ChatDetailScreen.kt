@@ -310,11 +310,12 @@ fun ChatDetailScreen(
             }
         }
     ) { padding ->
-        // Content area with messages
+        // Content area with keyboard handling
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
+                .imePadding() // Handle keyboard in Compose
                 .background(isDarkModeBackground(isDarkMode))
         ) {
             Column(modifier = Modifier.fillMaxSize()) {
