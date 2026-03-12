@@ -92,7 +92,9 @@ class ChatRepository {
                 .update(
                     mapOf(
                         "lastMessage" to if (message.text.isBlank() && message.imageUrl.isNotEmpty()) "📷 Photo" else message.text,
-                        "lastTimestamp" to message.timestamp
+                        "lastTimestamp" to message.timestamp,
+                        "lastSenderId" to message.senderId,
+                        "lastMessageRead" to false  // Reset to unread when sending
                     )
                 )
                 .await()
@@ -270,6 +272,11 @@ class ChatRepository {
                 }
                 batch.commit().await()
                 android.util.Log.d("ChatRepository", "Batch commit SUCCESS - marked ${messagesToUpdate.size} messages as read")
+                
+                // Update chat session to mark last message as read
+                db.collection("chatSessions").document(chatId)
+                    .update("lastMessageRead", true)
+                    .await()
             } else {
                 android.util.Log.d("ChatRepository", "No messages to update")
             }

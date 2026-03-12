@@ -354,7 +354,7 @@ private fun ChatListItem(
                 ) {
                     // Show dot if last message was from me
                     if (isLastMessageFromMe) {
-                        val dotColor = if (hasUnread) Color.Red else Color(0xFF25D366)
+                        val dotColor = if (session.lastMessageRead) Color(0xFF25D366) else Color.Red
                         Box(
                             modifier = Modifier
                                 .size(8.dp)
