@@ -92,7 +92,9 @@ class ChatRepository {
                 .update(
                     mapOf(
                         "lastMessage" to if (message.text.isBlank() && message.imageUrl.isNotEmpty()) "📷 Photo" else message.text,
-                        "lastTimestamp" to message.timestamp
+                        "lastTimestamp" to message.timestamp,
+                        "lastSenderId" to message.senderId,
+                        "lastMessageRead" to false  // Reset to unread when sending
                     )
                 )
                 .await()
@@ -138,7 +140,9 @@ class ChatRepository {
         userId1: String,
         userId2: String,
         user1Name: String,
-        user2Name: String
+        user2Name: String,
+        user1Photo: String = "",
+        user2Photo: String = ""
     ): Result<String> {
         return try {
             // SECURITY CHECK: Verify users are friends (mutual followers)
@@ -169,6 +173,7 @@ class ChatRepository {
                     "id" to "",
                     "participants" to listOf(userId1, userId2),
                     "participantNames" to mapOf(userId1 to user1Name, userId2 to user2Name),
+                    "participantPhotos" to mapOf(userId1 to user1Photo, userId2 to user2Photo),
                     "lastMessage" to "",
                     "lastTimestamp" to System.currentTimeMillis(),
                     "createdAt" to System.currentTimeMillis()
@@ -267,6 +272,11 @@ class ChatRepository {
                 }
                 batch.commit().await()
                 android.util.Log.d("ChatRepository", "Batch commit SUCCESS - marked ${messagesToUpdate.size} messages as read")
+                
+                // Update chat session to mark last message as read
+                db.collection("chatSessions").document(chatId)
+                    .update("lastMessageRead", true)
+                    .await()
             } else {
                 android.util.Log.d("ChatRepository", "No messages to update")
             }
