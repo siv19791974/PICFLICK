@@ -24,7 +24,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -43,8 +43,8 @@ import java.text.SimpleDateFormat
 import java.util.*
 
 /**
- * Chat Detail Screen - Restored with Working Keyboard Fix
- * Uses imeInsets minus navInsets for accurate keyboard height
+ * Chat Detail Screen - Simple Layout
+ * Let Android's adjustResize handle keyboard naturally
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -82,14 +82,6 @@ fun ChatDetailScreen(
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
     val isDarkMode = ThemeManager.isDarkMode.value
-
-    // KEYBOARD FIX: Calculate height above bottom nav
-    // Bottom nav is ~80dp, so we subtract that from IME to get true keyboard height
-    val imeInsets = WindowInsets.ime
-    val density = LocalDensity.current
-    val imeBottom = with(density) { imeInsets.getBottom(density).toDp() }
-    val bottomNavHeight = 130.dp // Adjusted to remove the gap
-    val keyboardHeight = (imeBottom - bottomNavHeight).coerceAtLeast(0.dp)
 
     // Image picker for sending photos
     val imagePickerLauncher = rememberLauncherForActivityResult(
@@ -136,7 +128,7 @@ fun ChatDetailScreen(
         }
     }
 
-    // LAYOUT: Box + Column with keyboard-aware input
+    // SIMPLE LAYOUT: Box + Column - let system handle keyboard
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -310,11 +302,9 @@ fun ChatDetailScreen(
                 }
             }
 
-            // Message input area with dynamic keyboard padding
+            // Message input area - NO keyboard padding, let system handle it
             Surface(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = keyboardHeight),
+                modifier = Modifier.fillMaxWidth(),
                 color = Color.Black,
                 tonalElevation = 0.dp
             ) {

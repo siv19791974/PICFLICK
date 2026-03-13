@@ -647,7 +647,7 @@ fun MainScreen(
             }
         },
         bottomBar = {
-            // Only show bottom nav when authenticated
+            // Show bottom nav when authenticated (including in chat)
             if (currentUser != null && userProfile != null) {
                 BottomNavBar(
                     currentRoute = when (currentScreen) {

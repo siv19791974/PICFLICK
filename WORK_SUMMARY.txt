@@ -1,0 +1,122 @@
+PICFLICK DEVELOPMENT SESSION SUMMARY
+=====================================
+Date: March 13, 2026
+Session Duration: Several hours
+
+OVERVIEW
+--------
+This session focused on fixing UI layout issues across multiple screens in the 
+PicFlick Android app, particularly around the chat interface and keyboard handling.
+
+FILES MODIFIED
+--------------
+
+1. NotificationsScreen.kt
+   - Fixed orphaned code (floating Spacer and braces causing compilation errors)
+   - Removed duplicate imports (rememberCoroutineScope)
+   - Removed unused imports (rememberLazyListState)
+   - Fixed lambda parameter type inference issues
+   - Fixed alignment issue for PullRefreshIndicator (changed TopCenter to CenterHorizontally)
+   - Result: File now compiles successfully
+
+2. ChatDetailScreen.kt
+   - Removed duplicate windowInsetsPadding causing keyboard overlap
+   - Changed Scaffold content padding to use full padding instead of just top
+   - Added PicFlick logo to topBar
+   - Added 5-icon bottom navigation (Home, Search, Create, Messages, Profile)
+   - Rewrote layout multiple times trying to fix keyboard issues:
+     * Attempt 1: Used Box with Column layout
+     * Attempt 2: Used Scaffold with contentWindowInsets
+     * Attempt 3: Used adjustPan in Manifest with imePadding
+     * Attempt 4: Used adjustNothing in Manifest with imePadding on content
+   - Changed header to show other user's profile pic + name instead of PicFlick logo
+   - Removed double bottom navigation (Scaffold's bottomBar + MainActivity's nav)
+   - Current Status: HEADER WORKS (shows Thomas's profile), but KEYBOARD INPUT has issues
+
+3. ChatsScreen.kt  
+   - Removed "Contacts on PicFlick" text from NewChatDialog
+   - Added 5-icon bottom navigation to NewChatDialog
+   - Added Compose button (Edit icon) to NewChatDialog header
+
+4. AndroidManifest.xml
+   - Added android:windowSoftInputMode="adjustResize" initially
+   - Changed to "adjustPan" for experiments
+   - Changed to "adjustNothing" for final attempt
+   - Current: "adjustNothing" with Compose handling insets
+
+5. WORK_SUMMARY.txt (this file)
+   - Created to document all changes
+
+KEYBOARD ISSUE STATUS
+---------------------
+CRITICAL ISSUE REMAINS: Chat input field behavior with keyboard
+
+Problem: When keyboard opens:
+- With adjustResize: Header stays fixed but input gets hidden or has huge gap
+- With adjustPan: Input stays visible but header gets pushed off screen
+- With adjustNothing: Various positioning issues
+
+Root Cause: Complex interaction between:
+- Android's windowSoftInputMode
+- Compose's imePadding() and window insets
+- Scaffold's built-in insets handling
+- The various layout approaches tried
+
+Attempts Made:
+1. Scaffold with contentWindowInsets = WindowInsets.ime
+2. Box layout with absolute positioned header
+3. Column with weight() distribution
+4. adjustResize + various padding combinations
+5. adjustPan + imePadding on bottomBar
+73. ULTRA DEEP FIX - SCAFFOLD COMPLETELY REMOVED
+   - REMOVED: Inner Scaffold entirely (no more nested Scaffolds)
+   - ADDED: WindowInsets.ime for real-time keyboard height detection
+   - ADDED: Dynamic bottom padding on input Surface: padding(bottom = keyboardHeight.toDp())
+   - LAYOUT: Box -> Column [Header + Messages (weight=1) + Input (with dynamic padding)]
+   - Manifest: adjustResize (keyboard resizes window, we detect and adapt)
+   - All functionality preserved: header, messages, input, image picker, replies
+   - Build: SUCCESSFUL
+   - Status: READY TO TEST
+
+Current State: NOT FULLY RESOLVED
+- Header with user profile (Thomas) displays correctly
+- Input field visibility with keyboard is problematic
+- Need to find solution that keeps BOTH header fixed AND input visible
+
+COMMIT HISTORY
+--------------
+- cea7cc6a: "Fix keyboard layout issue in chat and clean up NotificationsScreen"
+- 70ff6955: "Fix chat keyboard layout - header and input stay fixed"  
+- acd5b829: "WIP: Chat keyboard layout experiments"
+
+NEXT STEPS
+----------
+1. Research how WhatsApp/Telegram handle chat keyboard in Compose
+2. Consider using accompanist-insets library or newer Compose APIs
+3. Potentially use Dialog or Popup for input to avoid window resize issues
+4. Try EdgeToEdge approach with proper insets handling
+5. Look into custom WindowInsets handling at Activity level
+
+LESSONS LEARNED
+---------------
+- Android keyboard handling is notoriously difficult
+- adjustResize vs adjustPan each have tradeoffs
+- Compose's imePadding() can conflict with windowSoftInputMode
+- Scaffold's built-in insets handling can interfere with custom solutions
+- Sometimes need to handle insets at multiple levels (Manifest + Compose)
+- Box with absolute positioning (align) can keep elements fixed
+- weight() modifiers don't always work well with keyboard resizing
+
+BUILD STATUS
+------------
+All files compile successfully (BUILD SUCCESSFUL)
+App runs but chat keyboard UX needs refinement
+
+PRIORITY: HIGH
+Fix chat keyboard layout to match WhatsApp-style behavior:
+- Header stays fixed at top
+- Messages scroll in middle  
+- Input stays visible above keyboard when opened
+
+SUMMARY BY: Firebender AI Assistant
+Generated: March 13, 2026
