@@ -69,6 +69,7 @@ fun PicFlickTheme(
         SideEffect {
             val window = (view.context as Activity).window
             window.statusBarColor = PicFlickBannerBackground.toArgb()
+            window.navigationBarColor = Color.Black.toArgb() // Black nav bar
             WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = !isDarkModeEnabled
         }
     }
