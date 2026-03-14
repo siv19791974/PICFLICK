@@ -96,6 +96,7 @@ fun FullScreenPhotoViewer(
     onUserProfileClick: (String) -> Unit = {},
     onShareToFriend: (String, String) -> Unit = { _, _ -> },
     onNavigateToFindFriends: () -> Unit = {},
+    onEditPhotoClick: (Flick) -> Unit = {},
 ) {
     val context = LocalContext.current
     val configuration = LocalConfiguration.current
@@ -786,9 +787,9 @@ fun FullScreenPhotoViewer(
                             verticalArrangement = Arrangement.spacedBy(20.dp)
                         ) {
                             if (canDeleteCurrent) {
-                                // MY PHOTOS MODE - 4 icons: Tag Friends, Share, Edit, Delete
+                                // MY PHOTOS MODE - Icons: Tag, Comment, Chat/Message, Edit, Delete
                                 
-                                // TAG FRIENDS BUTTON
+                                // 1. TAG FRIENDS BUTTON
                                 Box(
                                     modifier = Modifier
                                         .size(44.dp)
@@ -809,45 +810,7 @@ fun FullScreenPhotoViewer(
                                     )
                                 }
                                 
-                                // SHARE BUTTON - In-app share to friends
-                                Box(
-                                    modifier = Modifier
-                                        .size(44.dp)
-                                        .background(
-                                            Color.Black.copy(alpha = 0.4f),
-                                            CircleShape
-                                        )
-                                        .clickable { showShareDialog = true },
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.AutoMirrored.Filled.Send,
-                                        contentDescription = "Share to friends",
-                                        tint = Color.White,
-                                        modifier = Modifier.size(28.dp)
-                                    )
-                                }
-                                
-                                // EDIT PHOTO/CAPTION BUTTON
-                                Box(
-                                    modifier = Modifier
-                                        .size(44.dp)
-                                        .background(
-                                            Color.Black.copy(alpha = 0.4f),
-                                            CircleShape
-                                        )
-                                        .clickable { showEditCaption = true },
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Edit,
-                                        contentDescription = "Edit Photo",
-                                        tint = Color.White,
-                                        modifier = Modifier.size(28.dp)
-                                    )
-                                }
-                                
-                                // COMMENT BUTTON - Available to everyone including photo owner
+                                // 2. COMMENT BUTTON
                                 Column(
                                     horizontalAlignment = Alignment.CenterHorizontally
                                 ) {
@@ -878,7 +841,45 @@ fun FullScreenPhotoViewer(
                                     }
                                 }
                                 
-                                // DELETE BUTTON
+                                // 3. CHAT/MESSAGE BUTTON (Share to friends)
+                                Box(
+                                    modifier = Modifier
+                                        .size(44.dp)
+                                        .background(
+                                            Color.Black.copy(alpha = 0.4f),
+                                            CircleShape
+                                        )
+                                        .clickable { showShareDialog = true },
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.AutoMirrored.Filled.Send,
+                                        contentDescription = "Share to friends",
+                                        tint = Color.White,
+                                        modifier = Modifier.size(28.dp)
+                                    )
+                                }
+                                
+                                // 4. EDIT PHOTO/CAPTION BUTTON - Navigates to Edit Photo screen
+                                Box(
+                                    modifier = Modifier
+                                        .size(44.dp)
+                                        .background(
+                                            Color.Black.copy(alpha = 0.4f),
+                                            CircleShape
+                                        )
+                                        .clickable { onEditPhotoClick(currentFlick) },
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Edit,
+                                        contentDescription = "Edit Photo",
+                                        tint = Color.White,
+                                        modifier = Modifier.size(28.dp)
+                                    )
+                                }
+                                
+                                // 5. DELETE BUTTON
                                 Box(
                                     modifier = Modifier
                                         .size(44.dp)
