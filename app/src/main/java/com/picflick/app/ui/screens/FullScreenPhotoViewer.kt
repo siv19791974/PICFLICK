@@ -1764,7 +1764,16 @@ private fun CompactCommentItem(
                     IconButton(
                         onClick = {
                             coroutineScope.launch {
-                                repository.deleteComment(comment.id, flickId)
+                                try {
+                                    val result = repository.deleteComment(comment.id, flickId)
+                                    if (result is com.picflick.app.data.Result.Error) {
+                                        android.util.Log.e("CommentDelete", "Failed to delete: ${result.exception?.message}")
+                                    } else {
+                                        android.util.Log.d("CommentDelete", "Comment deleted successfully: ${comment.id}")
+                                    }
+                                } catch (e: Exception) {
+                                    android.util.Log.e("CommentDelete", "Exception: ${e.message}")
+                                }
                             }
                         },
                         modifier = Modifier.size(32.dp)
