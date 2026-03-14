@@ -1208,6 +1208,10 @@ fun FullScreenPhotoViewer(
                                                 onReplyClick = {
                                                     replyingToComment = comment
                                                     keyboardController?.show()
+                                                },
+                                                onDelete = {
+                                                    // Remove from UI immediately
+                                                    comments = comments.filter { it.id != comment.id }
                                                 }
                                             )
                                         }
@@ -1641,6 +1645,7 @@ private fun CompactCommentItem(
     flickId: String,
     repository: FlickRepository,
     onReplyClick: () -> Unit = {},
+    onDelete: () -> Unit = {},  // NEW: Callback to remove from UI immediately
     showReplies: Boolean = false,
     replies: List<Comment> = emptyList(),
     onLoadReplies: () -> Unit = {}
@@ -1790,6 +1795,10 @@ private fun CompactCommentItem(
                             android.util.Log.d("CommentDebug", "Is Firebase Auth null: ${auth.currentUser == null}")
                             
                             android.util.Log.d("CommentDelete", "Delete clicked for comment ID: '${comment.id}', flickId: '${flickId}'")
+                            
+                            // Remove from UI immediately (optimistic update)
+                            onDelete()
+                            
                             coroutineScope.launch {
                                 try {
                                     val result = repository.deleteComment(comment.id, flickId)
