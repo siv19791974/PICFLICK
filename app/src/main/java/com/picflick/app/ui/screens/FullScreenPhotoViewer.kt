@@ -623,6 +623,13 @@ fun FullScreenPhotoViewer(
                         val swipeScale = if (isDragging) 1f - (maxProgress * 0.15f).coerceIn(0f, 0.15f) else 1f
                         val swipeAlpha = if (isDragging) 1f - (maxProgress * 0.3f).coerceIn(0f, 0.3f) else 1f
                         
+                        // Smooth fade animation when comments panel opens
+                        val commentPanelAlpha by animateFloatAsState(
+                            targetValue = if (showCommentPanel && isCurrent) 0.6f else 1f,
+                            animationSpec = tween(durationMillis = 300),
+                            label = "commentPanelAlpha"
+                        )
+                        
                         // Track last tap time to detect double-tap manually
                         var lastTapTime by remember { mutableLongStateOf(0L) }
                         val doubleTapTimeout = 300L // ms
@@ -639,7 +646,7 @@ fun FullScreenPhotoViewer(
                                     translationY = finalY,
                                     scaleX = swipeScale,
                                     scaleY = swipeScale,
-                                    alpha = swipeAlpha
+                                    alpha = swipeAlpha * commentPanelAlpha // Smooth fade when comments open
                                 )
                                 .pointerInput(Unit) {
                                     detectTapGestures(
@@ -667,7 +674,7 @@ fun FullScreenPhotoViewer(
                                     .build(),
                                 contentDescription = null,
                                 modifier = Modifier.fillMaxSize(),
-                                contentScale = if (showCommentPanel) ContentScale.Crop else ContentScale.Fit
+                                contentScale = ContentScale.Fit // Always fit, no jump when comments open
                             )
                             
                             // Like animation overlay for current photo
