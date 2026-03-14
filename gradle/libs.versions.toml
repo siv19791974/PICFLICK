@@ -23,6 +23,7 @@ accompanist = "0.36.0"
 billing = "7.1.1"
 review = "2.0.1"
 analytics = "22.0.0"
+cloudinary = "2.5.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -103,6 +104,9 @@ firebase-analytics = { group = "com.google.firebase", name = "firebase-analytics
 # Unit Testing
 mockk = { group = "io.mockk", name = "mockk", version.ref = "mockk" }
 kotlinx-coroutines-test = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-test", version.ref = "coroutinesTest" }
+
+# Cloudinary for professional photo filters
+cloudinary-android = { group = "com.cloudinary", name = "cloudinary-android", version.ref = "cloudinary" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
