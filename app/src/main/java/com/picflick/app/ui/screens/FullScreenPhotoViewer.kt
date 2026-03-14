@@ -1317,6 +1317,7 @@ fun FullScreenPhotoViewer(
                                                     is com.picflick.app.data.Result.Error -> {
                                                         android.util.Log.e("CommentAdd", "Failed to add comment: ${result.exception?.message}")
                                                     }
+                                                    else -> { /* Loading - do nothing */ }
                                                 }
                                             }
                                         }
