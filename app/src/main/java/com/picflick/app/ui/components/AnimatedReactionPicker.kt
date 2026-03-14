@@ -21,11 +21,12 @@ import com.picflick.app.data.ReactionType
 
 /**
  * Animated reaction picker that shows on long press
+ * Supports toggling: clicking the current reaction removes it
  */
 @Composable
 fun AnimatedReactionPicker(
     onDismiss: () -> Unit,
-    onReactionSelected: (ReactionType) -> Unit,
+    onReactionSelected: (ReactionType?) -> Unit,  // Changed to nullable - null = remove reaction
     currentReaction: ReactionType? = null
 ) {
     val reactions = listOf(
@@ -70,7 +71,8 @@ fun AnimatedReactionPicker(
                         isSelected = isSelected,
                         delay = index * 50,
                         onClick = {
-                            onReactionSelected(reactionType)
+                            // Toggle: if already selected, remove reaction (null), else select
+                            onReactionSelected(if (isSelected) null else reactionType)
                             onDismiss()
                         }
                     )

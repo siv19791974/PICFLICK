@@ -9,18 +9,22 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.*
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -31,6 +35,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
@@ -827,7 +834,7 @@ fun FullScreenPhotoViewer(
                             } else {
                                 // OTHER USER'S PHOTOS MODE - Original icons
                                 
-                                // REACTION BUTTON - Shows filled heart if liked
+                                // REACTION BUTTON - Shows filled heart if liked, toggles on click
                                 Column(
                                     horizontalAlignment = Alignment.CenterHorizontally
                                 ) {
@@ -841,7 +848,13 @@ fun FullScreenPhotoViewer(
                                             .clickable { 
                                                 // Only allow reacting to OTHER people's photos
                                                 if (!canDeleteCurrent) {
-                                                    showReactionPicker = true 
+                                                    // Toggle reaction: if already reacted, remove it; else show picker
+                                                    if (userReaction != null) {
+                                                        // Remove reaction by passing null
+                                                        onReaction(null)
+                                                    } else {
+                                                        showReactionPicker = true
+                                                    }
                                                 }
                                             },
                                         contentAlignment = Alignment.Center
@@ -885,7 +898,7 @@ fun FullScreenPhotoViewer(
                                         contentAlignment = Alignment.Center
                                     ) {
                                         Icon(
-                                            imageVector = Icons.Default.Email,
+                                            imageVector = Icons.AutoMirrored.Filled.Chat,
                                             contentDescription = "Comments",
                                             tint = Color.White,
                                             modifier = Modifier.size(28.dp)
@@ -937,7 +950,7 @@ fun FullScreenPhotoViewer(
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Icon(
-                                        imageVector = Icons.Default.KeyboardArrowDown,
+                                        imageVector = Icons.Default.Download,
                                         contentDescription = "Save to device",
                                         tint = Color.White,
                                         modifier = Modifier.size(28.dp)
@@ -1028,11 +1041,18 @@ fun FullScreenPhotoViewer(
                 ) {
                     val keyboardController = LocalSoftwareKeyboardController.current
                     
+                    // Get system bar heights
+                    val navInsets = WindowInsets.navigationBars
+                    val imeInsets = WindowInsets.ime
+                    val density = LocalDensity.current
+                    val navBarHeight = with(density) { navInsets.getBottom(density).toDp() }
+                    val imeHeight = with(density) { imeInsets.getBottom(density).toDp() }
+                    val keyboardOffset = (imeHeight - navBarHeight - 48.dp).coerceAtLeast(0.dp)
+                    
                     Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.BottomCenter
+                        modifier = Modifier.fillMaxSize()
                     ) {
-                        // Backdrop
+                        // Backdrop - semi-transparent so photo is visible
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
@@ -1043,19 +1063,18 @@ fun FullScreenPhotoViewer(
                                 }
                         )
                         
-                        // Compact comment panel - photo stays visible!
+                        // Comment panel - compact with fixed height for photo visibility
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .wrapContentHeight()
-                                .heightIn(max = 280.dp) // Compact - leaves photo visible
+                                .height(320.dp) // FIXED height - leaves photo visible!
+                                .align(Alignment.BottomCenter)
+                                .offset(y = -keyboardOffset)
                                 .background(
-                                    Color.Black.copy(alpha = 0.95f),
+                                    Color.Black.copy(alpha = 0.95f), // 95% solid - photo still shows a bit
                                     RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)
                                 )
                                 .padding(horizontal = 12.dp, vertical = 8.dp)
-                                // Only handle nav bars, not IME (let it overlay)
-                                .windowInsetsPadding(WindowInsets.navigationBars)
                         ) {
                             // Handle bar
                             Box(
@@ -1104,35 +1123,40 @@ fun FullScreenPhotoViewer(
                                 modifier = Modifier.padding(vertical = 12.dp)
                             )
                             
-                            // Comments list - compact fixed height
+                            // Comments list - using LazyColumn for better scrolling performance
                             Box(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .heightIn(max = 120.dp) // Compact, leaves photo visible
+                                    .weight(1f) // Take available space, leave room for input
                             ) {
-                                Column(
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .verticalScroll(scrollState)
-                                ) {
-                                    if (isLoadingComments) {
-                                        Box(
-                                            modifier = Modifier.fillMaxWidth(),
-                                            contentAlignment = Alignment.Center
-                                        ) {
-                                            CircularProgressIndicator(
-                                                color = Color.White,
-                                                strokeWidth = 2.dp
-                                            )
-                                        }
-                                    } else if (comments.isEmpty()) {
+                                if (isLoadingComments) {
+                                    Box(
+                                        modifier = Modifier.fillMaxSize(),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        CircularProgressIndicator(
+                                            color = Color.White,
+                                            strokeWidth = 2.dp
+                                        )
+                                    }
+                                } else if (comments.isEmpty()) {
+                                    Box(
+                                        modifier = Modifier.fillMaxSize(),
+                                        contentAlignment = Alignment.Center
+                                    ) {
                                         Text(
                                             text = "No comments yet. Be the first!",
                                             color = Color.Gray,
                                             modifier = Modifier.padding(vertical = 16.dp)
                                         )
-                                    } else {
-                                        comments.forEach { comment ->
+                                    }
+                                } else {
+                                    LazyColumn(
+                                        modifier = Modifier.fillMaxSize(),
+                                        contentPadding = PaddingValues(vertical = 4.dp),
+                                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        items(comments, key = { it.id }) { comment ->
                                             CompactCommentItem(
                                                 comment = comment,
                                                 currentUserId = currentUser.uid,
@@ -1148,49 +1172,48 @@ fun FullScreenPhotoViewer(
                                 }
                             }
                             
-                            // Comment input bar - positioned by Column insets
+                            // Comment input bar - Chat style at bottom
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(top = 12.dp, bottom = 8.dp)
-                                    .background(
-                                        Color.DarkGray.copy(alpha = 0.5f),
-                                        RoundedCornerShape(24.dp)
-                                    )
-                                    .padding(horizontal = 12.dp, vertical = 10.dp),
+                                    .padding(top = 12.dp, bottom = 72.dp), // 72dp for nav bar - push up more!
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                AsyncImage(
-                                    model = currentUser.photoUrl,
-                                    contentDescription = null,
-                                    modifier = Modifier
-                                        .size(32.dp)
-                                        .clip(CircleShape),
-                                    contentScale = ContentScale.Crop
-                                )
-                                
-                                Spacer(modifier = Modifier.width(10.dp))
-                                
+                                // Text field with dark background (Chat style)
+                                val focusRequester = remember { FocusRequester() }
                                 TextField(
                                     value = newCommentText,
                                     onValueChange = { newCommentText = it },
-                                    placeholder = { Text("Add a comment...", color = Color.Gray, fontSize = 14.sp) },
+                                    placeholder = { 
+                                        Text(
+                                            "Add a comment...",
+                                            color = Color.Gray
+                                        ) 
+                                    },
                                     modifier = Modifier
                                         .weight(1f)
-                                        .heightIn(min = 40.dp, max = 100.dp),
-                                    maxLines = 3,
+                                        .heightIn(min = 48.dp, max = 120.dp)
+                                        .focusRequester(focusRequester)
+                                        .onFocusChanged { 
+                                            if (it.isFocused) keyboardController?.show()
+                                        },
                                     colors = TextFieldDefaults.colors(
-                                        focusedContainerColor = Color.Transparent,
-                                        unfocusedContainerColor = Color.Transparent,
+                                        focusedContainerColor = Color(0xFF1A1A1A),
+                                        unfocusedContainerColor = Color(0xFF1A1A1A),
+                                        focusedIndicatorColor = Color.Transparent,
+                                        unfocusedIndicatorColor = Color.Transparent,
                                         focusedTextColor = Color.White,
                                         unfocusedTextColor = Color.White,
-                                        focusedIndicatorColor = Color.Transparent,
-                                        unfocusedIndicatorColor = Color.Transparent
+                                        cursorColor = Color.White
                                     ),
-                                    textStyle = MaterialTheme.typography.bodyMedium
+                                    shape = RoundedCornerShape(24.dp),
+                                    maxLines = 5
                                 )
-                                
-                                IconButton(
+
+                                Spacer(modifier = Modifier.width(8.dp))
+
+                                // Send button (Chat style - FloatingActionButton)
+                                FloatingActionButton(
                                     onClick = {
                                         if (newCommentText.isNotBlank()) {
                                             coroutineScope.launch {
@@ -1214,14 +1237,13 @@ fun FullScreenPhotoViewer(
                                             }
                                         }
                                     },
-                                    enabled = newCommentText.isNotBlank(),
-                                    modifier = Modifier.size(36.dp)
+                                    modifier = Modifier.size(48.dp),
+                                    containerColor = MaterialTheme.colorScheme.primary
                                 ) {
                                     Icon(
                                         Icons.AutoMirrored.Filled.Send,
                                         contentDescription = "Send",
-                                        tint = if (newCommentText.isNotBlank()) Color(0xFF00E5FF) else Color.Gray,
-                                        modifier = Modifier.size(24.dp)
+                                        tint = Color.White
                                     )
                                 }
                             } 
@@ -1292,12 +1314,15 @@ fun FullScreenPhotoViewer(
                 }
                 
                 // BOTTOM USER INFO - With gradient transparent box
+                // Completely hidden when comment panel opens
                 Box(
                     modifier = Modifier
                         .align(Alignment.BottomStart)
                         .fillMaxWidth()
                         .padding(16.dp)
                         .padding(bottom = 64.dp)
+                        .alpha(if (showCommentPanel) 0f else 1f) // HIDE completely when comments open
+                        .clickable(enabled = !showCommentPanel) { } // Block clicks when comments open
                 ) {
                     // Gradient transparent background box
                     Box(
@@ -1322,192 +1347,170 @@ fun FullScreenPhotoViewer(
                             )
                             .padding(16.dp)
                     ) {
-                        // Profile pic + name/description + reactions row
-                        Column(
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            // MAIN ROW: Profile + Name + Reactions
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.SpaceBetween,
+                            // Profile pic + name/description + reactions row
+                            Column(
                                 modifier = Modifier.fillMaxWidth()
                             ) {
-                                // LEFT: Profile pic + name/description
+                                // MAIN ROW: Profile + Name + Reactions
                                 Row(
                                     verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                                    modifier = Modifier.weight(1f)
-                                ) {
-                                    // Profile picture - USE CURRENT USER'S PHOTO
-                                    val profilePhotoUrl = if (currentFlick.userId == currentUser.uid) {
-                                        currentUser.photoUrl // Use current/up-to-date photo for own photos
-                                    } else {
-                                        currentFlick.userPhotoUrl // Use stored photo for others
-                                    }
-                                    
-                                    Box(
-                                        modifier = Modifier
-                                            .size(44.dp)
-                                            .clip(CircleShape)
-                                            .background(Color.Gray.copy(alpha = 0.4f))
-                                            .border(2.dp, Color.White.copy(alpha = 0.8f), CircleShape)
-                                            .clickable { onUserProfileClick(currentFlick.userId) },
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        if (profilePhotoUrl.isNotBlank()) {
-                                            AsyncImage(
-                                                model = profilePhotoUrl,
-                                                contentDescription = "View ${currentFlick.userName}'s profile",
-                                                modifier = Modifier.fillMaxSize(),
-                                                contentScale = ContentScale.Crop
-                                            )
-                                        } else {
-                                            // Fallback - show initial
-                                            Text(
-                                                text = currentFlick.userName.take(1).uppercase(),
-                                                color = Color.White,
-                                                fontSize = 20.sp,
-                                                fontWeight = FontWeight.Bold
-                                            )
-                                        }
-                                    }
-                                    
-                                    // Name + Description + Time in one column
-                                    Column(
-                                        modifier = Modifier.clickable { onUserProfileClick(currentFlick.userId) }
-                                    ) {
-                                        // Username
-                                        Text(
-                                            text = currentFlick.userName,
-                                            color = Color.White,
-                                            fontSize = 16.sp,
-                                            fontWeight = FontWeight.Bold
-                                        )
-                                        
-                                        // Description and timestamp in ONE LINE
-                                        Row(
-                                            verticalAlignment = Alignment.CenterVertically,
-                                            horizontalArrangement = Arrangement.spacedBy(6.dp)
-                                        ) {
-                                            // Description - clickable to edit if owner
-                                            val descriptionText = currentDescription.ifEmpty { "Add a caption..." }
-                                            val descriptionColor = if (currentDescription.isEmpty()) Color.White.copy(alpha = 0.5f) else Color.White.copy(alpha = 0.85f)
-                                            
-                                            Text(
-                                                text = descriptionText,
-                                                color = descriptionColor,
-                                                fontSize = 13.sp,
-                                                maxLines = 1,
-                                                modifier = if (canDeleteCurrent) {
-                                                    Modifier.clickable { showEditCaption = true }
-                                                } else Modifier
-                                            )
-                                            
-                                            // Dot separator
-                                            Box(
-                                                modifier = Modifier
-                                                    .size(3.dp)
-                                                    .background(Color.White.copy(alpha = 0.4f), CircleShape)
-                                            )
-                                            
-                                            // Timestamp
-                                            Text(
-                                                text = formatTimestamp(currentFlick.timestamp),
-                                                color = Color.White.copy(alpha = 0.6f),
-                                                fontSize = 12.sp
-                                            )
-                                        }
-                                    }
-                                }
-                                
-                                // RIGHT: Reactions with counts
-                                ReactionCountersRow(
-                                    flick = currentFlick,
-                                    canReact = !canDeleteCurrent, // Can't react to own photos
-                                    onReactionClick = { 
-                                        // Only open picker for other people's photos
-                                        if (!canDeleteCurrent) {
-                                            showReactionPicker = true 
-                                        }
-                                    }
-                                )
-                            }
-                            
-                            // TAGGED FRIENDS ROW (if any)
-                            if (taggedFriendsProfiles.isNotEmpty()) {
-                                Spacer(modifier = Modifier.height(8.dp))
-                                
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
                                     modifier = Modifier.fillMaxWidth()
                                 ) {
-                                    // Label
-                                    Text(
-                                        text = "with",
-                                        color = Color.White.copy(alpha = 0.6f),
-                                        fontSize = 12.sp
-                                    )
-                                    
-                                    // Profile pics of tagged friends
+                                    // LEFT: Profile pic + name/description
                                     Row(
-                                        horizontalArrangement = Arrangement.spacedBy((-8).dp),
-                                        verticalAlignment = Alignment.CenterVertically
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                        modifier = Modifier.weight(1f)
                                     ) {
-                                        taggedFriendsProfiles.take(5).forEach { friend ->
-                                            Box(
-                                                modifier = Modifier
-                                                    .size(28.dp)
-                                                    .clip(CircleShape)
-                                                    .border(1.5.dp, Color.White.copy(alpha = 0.8f), CircleShape)
-                                                    .clickable { onUserProfileClick(friend.uid) },
-                                                contentAlignment = Alignment.Center
-                                            ) {
+                                        // Profile picture - USE CURRENT USER'S PHOTO
+                                        val profilePhotoUrl = if (currentFlick.userId == currentUser.uid) {
+                                            currentUser.photoUrl // Use current/up-to-date photo for own photos
+                                        } else {
+                                            currentFlick.userPhotoUrl // Use stored photo for others
+                                        }
+                                        
+                                        Box(
+                                            modifier = Modifier
+                                                .size(44.dp)
+                                                .clip(CircleShape)
+                                                .background(Color.Gray.copy(alpha = 0.4f))
+                                                .border(2.dp, Color.White.copy(alpha = 0.8f), CircleShape)
+                                                .clickable { onUserProfileClick(currentFlick.userId) },
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            if (profilePhotoUrl.isNotBlank()) {
                                                 AsyncImage(
-                                                    model = friend.photoUrl,
-                                                    contentDescription = friend.displayName,
+                                                    model = profilePhotoUrl,
+                                                    contentDescription = "View ${currentFlick.userName}'s profile",
                                                     modifier = Modifier.fillMaxSize(),
                                                     contentScale = ContentScale.Crop
                                                 )
-                                            }
-                                        }
-                                        
-                                        // Show "+X more" if more than 5 tagged
-                                        if (taggedFriendsProfiles.size > 5) {
-                                            Box(
-                                                modifier = Modifier
-                                                    .size(28.dp)
-                                                    .clip(CircleShape)
-                                                    .background(Color.Black.copy(alpha = 0.6f))
-                                                    .border(1.5.dp, Color.White.copy(alpha = 0.8f), CircleShape),
-                                                contentAlignment = Alignment.Center
-                                            ) {
+                                            } else {
+                                                // Fallback - show initial
                                                 Text(
-                                                    text = "+${taggedFriendsProfiles.size - 5}",
+                                                    text = currentFlick.userName.take(1).uppercase(),
                                                     color = Color.White,
-                                                    fontSize = 10.sp,
+                                                    fontSize = 20.sp,
                                                     fontWeight = FontWeight.Bold
                                                 )
                                             }
                                         }
+                                        
+                                        // Name + Description + Time in one column
+                                        Column(
+                                            modifier = Modifier.clickable { onUserProfileClick(currentFlick.userId) }
+                                        ) {
+                                            // Username
+                                            Text(
+                                                text = currentFlick.userName,
+                                                color = Color.White,
+                                                fontSize = 16.sp,
+                                                fontWeight = FontWeight.Bold
+                                            )
+                                            
+                                            // Description and timestamp in ONE LINE
+                                            Row(
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                            ) {
+                                                // Description - clickable to edit if owner
+                                                val descriptionText = currentDescription.ifEmpty { "Add a caption..." }
+                                                val descriptionColor = if (currentDescription.isEmpty()) Color.White.copy(alpha = 0.5f) else Color.White.copy(alpha = 0.85f)
+                                                
+                                                Text(
+                                                    text = descriptionText,
+                                                    color = descriptionColor,
+                                                    fontSize = 13.sp,
+                                                    maxLines = 1,
+                                                    modifier = if (canDeleteCurrent) {
+                                                        Modifier.clickable { showEditCaption = true }
+                                                    } else Modifier
+                                                )
+                                                
+                                                // Dot separator
+                                                Box(
+                                                    modifier = Modifier
+                                                        .size(3.dp)
+                                                        .background(Color.White.copy(alpha = 0.4f), CircleShape)
+                                                )
+                                                
+                                                // Timestamp
+                                                Text(
+                                                    text = formatTimestamp(currentFlick.timestamp),
+                                                    color = Color.White.copy(alpha = 0.6f),
+                                                    fontSize = 12.sp
+                                                )
+                                            }
+                                        }
                                     }
                                     
-                                    // Names (first 2 names)
-                                    val namesText = if (taggedFriendsProfiles.size <= 2) {
-                                        taggedFriendsProfiles.joinToString(" and ") { it.displayName }
-                                    } else {
-                                        "${taggedFriendsProfiles[0].displayName} and ${taggedFriendsProfiles.size - 1} others"
-                                    }
-                                    
-                                    Text(
-                                        text = namesText,
-                                        color = Color.White.copy(alpha = 0.8f),
-                                        fontSize = 12.sp,
-                                        maxLines = 1,
-                                        modifier = Modifier
-                                            .weight(1f)
-                                            .padding(start = 4.dp)
-                                    )
+                                    // RIGHT: Reactions with counts + Tagged friends below
+                                    Column(
+                                        horizontalAlignment = Alignment.End,
+                                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                                    ) {
+                                        ReactionCountersRow(
+                                            flick = currentFlick,
+                                            canReact = !canDeleteCurrent, // Can't react to own photos
+                                            onReactionClick = { 
+                                                // Only open picker for other people's photos
+                                                if (!canDeleteCurrent) {
+                                                    showReactionPicker = true 
+                                                }
+                                            }
+                                        )
+                                        
+                                        // TAGGED FRIENDS (if any) - Profile pics only, shown below reactions on right
+                                        if (taggedFriendsProfiles.isNotEmpty()) {
+                                            Row(
+                                                horizontalArrangement = Arrangement.End,
+                                                verticalAlignment = Alignment.CenterVertically
+                                            ) {
+                                                // Profile pics of tagged friends - side by side with small gap
+                                                Row(
+                                                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                                    verticalAlignment = Alignment.CenterVertically
+                                                ) {
+                                                    taggedFriendsProfiles.take(5).forEach { friend ->
+                                                        Box(
+                                                            modifier = Modifier
+                                                                .size(24.dp)
+                                                                .clip(CircleShape)
+                                                                .border(1.5.dp, Color.White.copy(alpha = 0.8f), CircleShape)
+                                                                .clickable { onUserProfileClick(friend.uid) },
+                                                            contentAlignment = Alignment.Center
+                                                        ) {
+                                                            AsyncImage(
+                                                                model = friend.photoUrl,
+                                                                contentDescription = friend.displayName,
+                                                                modifier = Modifier.fillMaxSize(),
+                                                                contentScale = ContentScale.Crop
+                                                            )
+                                                        }
+                                                    }
+                                                    
+                                                    // Show "+X more" if more than 5 tagged
+                                                    if (taggedFriendsProfiles.size > 5) {
+                                                        Box(
+                                                            modifier = Modifier
+                                                                .size(24.dp)
+                                                                .clip(CircleShape)
+                                                                .background(Color.Black.copy(alpha = 0.6f))
+                                                                .border(1.5.dp, Color.White.copy(alpha = 0.8f), CircleShape),
+                                                            contentAlignment = Alignment.Center
+                                                        ) {
+                                                            Text(
+                                                                text = "+${taggedFriendsProfiles.size - 5}",
+                                                                color = Color.White,
+                                                                fontSize = 10.sp,
+                                                                fontWeight = FontWeight.Bold
+                                                            )
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
                                 }
                             }
                         }
