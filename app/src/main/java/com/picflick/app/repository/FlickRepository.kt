@@ -1954,19 +1954,44 @@ class FlickRepository private constructor() {
     }
 
     /**
-     * Delete a comment
+     * Delete a comment and all its replies
      */
     suspend fun deleteComment(commentId: String, flickId: String): Result<Unit> {
         return try {
+            // Validate commentId
+            if (commentId.isBlank()) {
+                return Result.Error(IllegalArgumentException("Comment ID is blank"), "Cannot delete: Comment ID is invalid")
+            }
+            
+            // Delete the comment
             db.collection("comments").document(commentId).delete().await()
-
-            // Decrement flick comment count
-            db.collection("flicks").document(flickId)
-                .update("commentCount", FieldValue.increment(-1))
+            
+            // Also delete any replies to this comment
+            val repliesQuery = db.collection("comments")
+                .whereEqualTo("parentCommentId", commentId)
+                .get()
                 .await()
-
+            
+            val batch = db.batch()
+            var replyCount = 0
+            for (replyDoc in repliesQuery.documents) {
+                batch.delete(replyDoc.reference)
+                replyCount++
+            }
+            
+            if (replyCount > 0) {
+                batch.commit().await()
+            }
+            
+            // Decrement flick comment count by 1 + number of deleted replies
+            val totalDeleted = 1 + replyCount
+            db.collection("flicks").document(flickId)
+                .update("commentCount", FieldValue.increment(-totalDeleted.toLong()))
+                .await()
+            
             Result.Success(Unit)
         } catch (e: Exception) {
+            android.util.Log.e("FlickRepository", "Failed to delete comment: ${e.message}")
             Result.Error(e, "Failed to delete comment")
         }
     }
