@@ -1196,6 +1196,12 @@ fun FullScreenPhotoViewer(
                                     }
                                 } else {
                                     val listState = rememberLazyListState()
+                                    var activeReactionPickerCommentId by remember { mutableStateOf<String?>(null) }
+                                    
+                                    // Separate top-level comments and replies FIRST (needed for LaunchedEffect)
+                                    val topLevelComments = comments.filter { it.parentCommentId == null }
+                                    val repliesByParent = comments.filter { it.parentCommentId != null }
+                                        .groupBy { it.parentCommentId }
                                     
                                     // Auto-scroll to latest comment when list changes
                                     LaunchedEffect(comments.size) {
@@ -1204,10 +1210,15 @@ fun FullScreenPhotoViewer(
                                         }
                                     }
                                     
-                                    // Separate top-level comments and replies
-                                    val topLevelComments = comments.filter { it.parentCommentId == null }
-                                    val repliesByParent = comments.filter { it.parentCommentId != null }
-                                        .groupBy { it.parentCommentId }
+                                    // Auto-scroll to comment when reaction picker opens
+                                    LaunchedEffect(activeReactionPickerCommentId) {
+                                        activeReactionPickerCommentId?.let { commentId ->
+                                            val index = topLevelComments.indexOfFirst { it.id == commentId }
+                                            if (index != -1) {
+                                                listState.animateScrollToItem(index)
+                                            }
+                                        }
+                                    }
                                     
                                     LazyColumn(
                                         state = listState,
@@ -1221,6 +1232,7 @@ fun FullScreenPhotoViewer(
                                                 CompactCommentItem(
                                                     comment = comment,
                                                     currentUserId = currentUser.uid,
+                                                    currentUserName = currentUser.displayName ?: "",
                                                     flickId = currentFlick.id,
                                                     repository = repository,
                                                     coroutineScope = coroutineScope,
@@ -1230,6 +1242,9 @@ fun FullScreenPhotoViewer(
                                                     },
                                                     onDelete = {
                                                         comments = comments.filter { it.id != comment.id }
+                                                    },
+                                                    onReactionPickerVisibilityChanged = { isVisible ->
+                                                        activeReactionPickerCommentId = if (isVisible) comment.id else null
                                                     }
                                                 )
                                                 
@@ -1244,6 +1259,7 @@ fun FullScreenPhotoViewer(
                                                             CompactCommentItem(
                                                                 comment = reply,
                                                                 currentUserId = currentUser.uid,
+                                                                currentUserName = currentUser.displayName ?: "",
                                                                 flickId = currentFlick.id,
                                                                 repository = repository,
                                                                 coroutineScope = coroutineScope,
@@ -1253,6 +1269,9 @@ fun FullScreenPhotoViewer(
                                                                 },
                                                                 onDelete = {
                                                                     comments = comments.filter { it.id != reply.id }
+                                                                },
+                                                                onReactionPickerVisibilityChanged = { isVisible ->
+                                                                    activeReactionPickerCommentId = if (isVisible) reply.id else null
                                                                 }
                                                             )
                                                         }
@@ -1698,17 +1717,30 @@ fun FullScreenPhotoViewer(
 private fun CompactCommentItem(
     comment: Comment,
     currentUserId: String,
+    currentUserName: String,  // NEW: Need actual name for notifications
     flickId: String,
     repository: FlickRepository,
-    coroutineScope: kotlinx.coroutines.CoroutineScope, // NEW: Stable scope from parent
+    coroutineScope: kotlinx.coroutines.CoroutineScope,
     onReplyClick: () -> Unit = {},
     onDelete: () -> Unit = {},
+    onReactionPickerVisibilityChanged: (Boolean) -> Unit = {},
     showReplies: Boolean = false,
     replies: List<Comment> = emptyList(),
     onLoadReplies: () -> Unit = {}
 ) {
     var showReactionPicker by remember { mutableStateOf(false) }
-    // Removed: val coroutineScope = rememberCoroutineScope() - use passed scope instead
+    // Track reaction locally for optimistic update
+    var localReactions by remember { mutableStateOf(comment.reactions) }
+    
+    // Update local when comment changes
+    LaunchedEffect(comment.reactions) {
+        localReactions = comment.reactions
+    }
+    
+    // Notify parent when picker visibility changes
+    LaunchedEffect(showReactionPicker) {
+        onReactionPickerVisibilityChanged(showReactionPicker)
+    }
     
     Column(
         modifier = Modifier
@@ -1783,23 +1815,25 @@ private fun CompactCommentItem(
             ) {
                 // Reaction button
                 Box(contentAlignment = Alignment.TopEnd) {
-                    val userReaction = comment.reactions[currentUserId]
+                    val userReaction = localReactions[currentUserId]
                     IconButton(
                         onClick = { 
                             if (userReaction != null) {
+                                // Optimistically remove reaction from UI first
+                                localReactions = localReactions - currentUserId
                                 // Remove reaction if already reacted
                                 coroutineScope.launch {
                                     repository.toggleCommentReaction(
                                         commentId = comment.id,
                                         userId = currentUserId,
-                                        userName = "", // Not needed for removal
+                                        userName = currentUserName,
                                         userPhotoUrl = "",
                                         emoji = userReaction,
                                         onResult = {}
                                     )
                                 }
                             } else {
-                                showReactionPicker = !showReactionPicker // TOGGLE: click to open, click again to close
+                                showReactionPicker = !showReactionPicker
                             }
                         },
                         modifier = Modifier.size(32.dp)
@@ -1819,8 +1853,8 @@ private fun CompactCommentItem(
                         }
                     }
                     
-                    // Reaction count badge
-                    if (comment.getTotalReactions() > 0) {
+                    // Reaction count badge - use local count for optimistic update
+                    if (localReactions.isNotEmpty()) {
                         Box(
                             modifier = Modifier
                                 .padding(top = 20.dp, end = 4.dp)
@@ -1829,7 +1863,7 @@ private fun CompactCommentItem(
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
-                                text = "${comment.getTotalReactions()}",
+                                text = "${localReactions.size}",
                                 color = Color.White,
                                 fontSize = 10.sp,
                                 fontWeight = FontWeight.Bold
@@ -1893,17 +1927,21 @@ private fun CompactCommentItem(
                 ReactionPicker(
                     currentReaction = null,
                     onReactionSelected = { reactionType ->
+                        val emoji = reactionType.toEmoji()
+                        // Optimistically add to UI immediately
+                        localReactions = localReactions + (currentUserId to emoji)
+                        showReactionPicker = false
+                        
                         coroutineScope.launch {
                             repository.toggleCommentReaction(
                                 commentId = comment.id,
                                 userId = currentUserId,
-                                userName = currentUserId,
+                                userName = currentUserName,
                                 userPhotoUrl = "",
-                                emoji = reactionType.toEmoji(),
+                                emoji = emoji,
                                 onResult = {}
                             )
                         }
-                        showReactionPicker = false
                     },
                     onDismiss = { showReactionPicker = false }
                 )
@@ -1922,7 +1960,8 @@ private fun CompactCommentItem(
                         reply = reply,
                         flickId = flickId,
                         repository = repository,
-                        currentUserId = currentUserId
+                        currentUserId = currentUserId,
+                        currentUserName = currentUserName
                     )
                 }
             }
@@ -1935,10 +1974,18 @@ private fun CompactReplyItem(
     reply: Comment,
     flickId: String,
     repository: FlickRepository,
-    currentUserId: String
+    currentUserId: String,
+    currentUserName: String = ""  // NEW: Need for notifications
 ) {
     var showReactionPicker by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
+    // Track reaction locally for optimistic update
+    var localReactions by remember { mutableStateOf(reply.reactions) }
+    
+    // Update local when reply changes
+    LaunchedEffect(reply.reactions) {
+        localReactions = reply.reactions
+    }
     
     Row(
         modifier = Modifier
@@ -1986,22 +2033,24 @@ private fun CompactReplyItem(
         
         // Reaction button
         Box(contentAlignment = Alignment.TopEnd) {
-            val userReaction = reply.reactions[currentUserId]
+            val userReaction = localReactions[currentUserId]
             IconButton(
                 onClick = { 
                     if (userReaction != null) {
+                        // Optimistically remove reaction from UI first
+                        localReactions = localReactions - currentUserId
                         coroutineScope.launch {
                             repository.toggleCommentReaction(
                                 commentId = reply.id,
                                 userId = currentUserId,
-                                userName = "",
+                                userName = currentUserName,
                                 userPhotoUrl = "",
                                 emoji = userReaction,
                                 onResult = {}
                             )
                         }
                     } else {
-                        showReactionPicker = !showReactionPicker // TOGGLE: click to open, click again to close
+                        showReactionPicker = !showReactionPicker
                     }
                 },
                 modifier = Modifier.size(28.dp)
@@ -2018,7 +2067,8 @@ private fun CompactReplyItem(
                 }
             }
             
-            if (reply.getTotalReactions() > 0) {
+            // Reaction count badge - use local count for optimistic update
+            if (localReactions.isNotEmpty()) {
                 Box(
                     modifier = Modifier
                         .padding(top = 16.dp, end = 2.dp)
@@ -2027,7 +2077,7 @@ private fun CompactReplyItem(
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = "${reply.getTotalReactions()}",
+                        text = "${localReactions.size}",
                         color = Color.White,
                         fontSize = 9.sp,
                         fontWeight = FontWeight.Bold
@@ -2041,17 +2091,21 @@ private fun CompactReplyItem(
         ReactionPicker(
             currentReaction = null,
             onReactionSelected = { reactionType ->
+                val emoji = reactionType.toEmoji()
+                // Optimistically add to UI immediately
+                localReactions = localReactions + (currentUserId to emoji)
+                showReactionPicker = false
+                
                 coroutineScope.launch {
                     repository.toggleCommentReaction(
                         commentId = reply.id,
                         userId = currentUserId,
-                        userName = currentUserId,
+                        userName = currentUserName,
                         userPhotoUrl = "",
-                        emoji = reactionType.toEmoji(),
+                        emoji = emoji,
                         onResult = {}
                     )
                 }
-                showReactionPicker = false
             },
             onDismiss = { showReactionPicker = false },
             modifier = Modifier.padding(start = 180.dp)
