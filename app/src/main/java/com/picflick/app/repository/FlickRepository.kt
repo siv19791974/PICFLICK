@@ -1743,8 +1743,13 @@ class FlickRepository private constructor() {
 
                 if (snapshot != null) {
                     val comments = snapshot.documents.mapNotNull { doc ->
-                        doc.toObject(Comment::class.java)?.copy(id = doc.id)
+                        val comment = doc.toObject(Comment::class.java)?.copy(id = doc.id)
+                        if (comment != null && comment.id.isBlank()) {
+                            android.util.Log.w("CommentDebug", "Comment has blank ID after mapping! Doc ID: ${doc.id}")
+                        }
+                        comment
                     }
+                    android.util.Log.d("CommentDebug", "Loaded ${comments.size} comments, first ID: ${comments.firstOrNull()?.id}")
                     onResult(Result.Success(comments))
                 }
             }
@@ -1960,39 +1965,26 @@ class FlickRepository private constructor() {
         return try {
             // Validate commentId
             if (commentId.isBlank()) {
+                android.util.Log.e("CommentDelete", "Comment ID is blank!")
                 return Result.Error(IllegalArgumentException("Comment ID is blank"), "Cannot delete: Comment ID is invalid")
             }
             
+            android.util.Log.d("CommentDelete", "Attempting to delete comment: $commentId")
+            
             // Delete the comment
             db.collection("comments").document(commentId).delete().await()
-            
-            // Also delete any replies to this comment
-            val repliesQuery = db.collection("comments")
-                .whereEqualTo("parentCommentId", commentId)
-                .get()
-                .await()
-            
-            val batch = db.batch()
-            var replyCount = 0
-            for (replyDoc in repliesQuery.documents) {
-                batch.delete(replyDoc.reference)
-                replyCount++
-            }
-            
-            if (replyCount > 0) {
-                batch.commit().await()
-            }
-            
-            // Decrement flick comment count by 1 + number of deleted replies
-            val totalDeleted = 1 + replyCount
+            android.util.Log.d("CommentDelete", "Comment deleted successfully")
+
+            // Decrement flick comment count by 1
             db.collection("flicks").document(flickId)
-                .update("commentCount", FieldValue.increment(-totalDeleted.toLong()))
+                .update("commentCount", FieldValue.increment(-1))
                 .await()
-            
+            android.util.Log.d("CommentDelete", "Flick comment count decremented")
+
             Result.Success(Unit)
         } catch (e: Exception) {
-            android.util.Log.e("FlickRepository", "Failed to delete comment: ${e.message}")
-            Result.Error(e, "Failed to delete comment")
+            android.util.Log.e("CommentDelete", "Failed to delete comment: ${e.message}", e)
+            Result.Error(e, "Failed to delete comment: ${e.message}")
         }
     }
 

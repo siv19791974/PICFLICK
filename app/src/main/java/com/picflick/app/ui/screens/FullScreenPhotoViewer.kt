@@ -1763,6 +1763,7 @@ private fun CompactCommentItem(
                 if (comment.userId == currentUserId) {
                     IconButton(
                         onClick = {
+                            android.util.Log.d("CommentDelete", "Delete clicked for comment ID: '${comment.id}', flickId: '${flickId}'")
                             coroutineScope.launch {
                                 try {
                                     val result = repository.deleteComment(comment.id, flickId)
