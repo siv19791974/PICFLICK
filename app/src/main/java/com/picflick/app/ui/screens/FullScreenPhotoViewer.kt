@@ -844,6 +844,37 @@ fun FullScreenPhotoViewer(
                                     )
                                 }
                                 
+                                // COMMENT BUTTON - Available to everyone including photo owner
+                                Column(
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(44.dp)
+                                            .background(
+                                                Color.Black.copy(alpha = 0.4f),
+                                                CircleShape
+                                            )
+                                            .clickable { showCommentPanel = true },
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.AutoMirrored.Filled.Chat,
+                                            contentDescription = "Comments",
+                                            tint = Color.White,
+                                            modifier = Modifier.size(28.dp)
+                                        )
+                                    }
+                                    if (currentFlick.commentCount > 0) {
+                                        Text(
+                                            text = "${currentFlick.commentCount}",
+                                            color = Color.White,
+                                            fontSize = 12.sp,
+                                            fontWeight = FontWeight.Medium
+                                        )
+                                    }
+                                }
+                                
                                 // DELETE BUTTON
                                 Box(
                                     modifier = Modifier
