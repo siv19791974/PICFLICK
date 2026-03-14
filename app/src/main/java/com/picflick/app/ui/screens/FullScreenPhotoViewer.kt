@@ -1052,7 +1052,7 @@ fun FullScreenPhotoViewer(
                 if (showCommentPanel) {
                     val coroutineScope = rememberCoroutineScope()
                     val keyboardController = LocalSoftwareKeyboardController.current
-                    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+                    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
                     var replyingToComment by remember { mutableStateOf<Comment?>(null) }
                     
                     ModalBottomSheet(
@@ -1060,6 +1060,7 @@ fun FullScreenPhotoViewer(
                         sheetState = sheetState,
                         containerColor = Color.Black,
                         contentColor = Color.White,
+                        scrimColor = Color.Black.copy(alpha = 0.6f),
                         dragHandle = {
                             Box(
                                 modifier = Modifier
@@ -1624,30 +1625,37 @@ private fun CompactCommentItem(
             Spacer(modifier = Modifier.width(8.dp))
             
             Column(modifier = Modifier.weight(1f)) {
-                // Username and text - aligned to start with timestamp at end
+                // Username, text, and timestamp - username left, text center-ish, timestamp right
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.Top
                 ) {
-                    Row(modifier = Modifier.weight(1f, fill = false)) {
+                    // Left side: Username + comment text
+                    Row(
+                        modifier = Modifier.weight(1f),
+                        horizontalArrangement = Arrangement.Start
+                    ) {
                         Text(
                             text = comment.userName,
                             color = Color.White,
                             fontWeight = FontWeight.Bold,
                             fontSize = 12.sp
                         )
-                        Spacer(modifier = Modifier.width(4.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
                         Text(
                             text = comment.text,
                             color = Color.White.copy(alpha = 0.9f),
-                            fontSize = 12.sp
+                            fontSize = 12.sp,
+                            modifier = Modifier.weight(1f)
                         )
                     }
-                    // Timestamp at right
+                    // Right side: Timestamp
                     Text(
                         text = comment.timestamp?.let { formatTimestamp(it.time) } ?: "",
                         color = Color.Gray,
-                        fontSize = 10.sp
+                        fontSize = 10.sp,
+                        modifier = Modifier.padding(start = 8.dp)
                     )
                 }
                 
