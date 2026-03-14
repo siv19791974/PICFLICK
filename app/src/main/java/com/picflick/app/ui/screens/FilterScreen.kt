@@ -386,156 +386,20 @@ fun FilterScreen(
                                 .padding(vertical = 8.dp) // Reduced padding
                                 .windowInsetsPadding(WindowInsets.navigationBars) // Handle nav bar insets
                         ) {
-                            // Filter Type Tabs (Local / Cloud)
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                                horizontalArrangement = Arrangement.Center
+                            // Filter Icons (simplified - no text)
+                            LazyRow(
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                contentPadding = PaddingValues(horizontal = 16.dp),
+                                modifier = Modifier.padding(bottom = 8.dp) // Reduced from 16.dp
                             ) {
-                                // Local Filters Tab
-                                Box(
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .clickable { useCloudinaryFilters = false }
-                                        .background(
-                                            if (!useCloudinaryFilters) {
-                                                if (isDarkMode) Color(0xFF87CEEB) else Color(0xFF1565C0)
-                                            } else Color.Transparent,
-                                            RoundedCornerShape(16.dp)
-                                        )
-                                        .border(
-                                            width = 1.dp,
-                                            color = if (!useCloudinaryFilters) Color.Transparent else if (isDarkMode) Color.White.copy(alpha = 0.3f) else Color.Black.copy(alpha = 0.3f),
-                                            shape = RoundedCornerShape(16.dp)
-                                        )
-                                        .padding(vertical = 8.dp),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Text(
-                                        text = "Local Filters",
-                                        color = if (!useCloudinaryFilters) {
-                                            if (isDarkMode) Color.Black else Color.White
-                                        } else {
-                                            if (isDarkMode) Color.White else Color.Black
-                                        },
-                                        fontSize = 12.sp,
-                                        fontWeight = if (!useCloudinaryFilters) FontWeight.Bold else FontWeight.Normal
+                                items(filters) { filter ->
+                                    FilterIcon(
+                                        filter = filter,
+                                        isSelected = selectedFilter == filter,
+                                        onClick = { selectedFilter = filter },
+                                        bitmap = bmp,
+                                        isDarkMode = isDarkMode
                                     )
-                                }
-                                
-                                Spacer(modifier = Modifier.width(8.dp))
-                                
-                                // Cloud Filters Tab
-                                Box(
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .clickable { useCloudinaryFilters = true }
-                                        .background(
-                                            if (useCloudinaryFilters) {
-                                                if (isDarkMode) Color(0xFF87CEEB) else Color(0xFF1565C0)
-                                            } else Color.Transparent,
-                                            RoundedCornerShape(16.dp)
-                                        )
-                                        .border(
-                                            width = 1.dp,
-                                            color = if (useCloudinaryFilters) Color.Transparent else if (isDarkMode) Color.White.copy(alpha = 0.3f) else Color.Black.copy(alpha = 0.3f),
-                                            shape = RoundedCornerShape(16.dp)
-                                        )
-                                        .padding(vertical = 8.dp),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Text(
-                                        text = "Cloud Filters",
-                                        color = if (useCloudinaryFilters) {
-                                            if (isDarkMode) Color.Black else Color.White
-                                        } else {
-                                            if (isDarkMode) Color.White else Color.Black
-                                        },
-                                        fontSize = 12.sp,
-                                        fontWeight = if (useCloudinaryFilters) FontWeight.Bold else FontWeight.Normal
-                                    )
-                                }
-                            }
-                            
-                            // Show Local Filters
-                            if (!useCloudinaryFilters) {
-                                // Filter Icons (simplified - no text)
-                                LazyRow(
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                    contentPadding = PaddingValues(horizontal = 16.dp),
-                                    modifier = Modifier.padding(bottom = 8.dp)
-                                ) {
-                                    items(filters) { filter ->
-                                        FilterIcon(
-                                            filter = filter,
-                                            isSelected = selectedFilter == filter,
-                                            onClick = { selectedFilter = filter },
-                                            bitmap = bmp,
-                                            isDarkMode = isDarkMode
-                                        )
-                                    }
-                                }
-                            } else {
-                                // Cloud Filters UI
-                                // Category tabs
-                                LazyRow(
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                    contentPadding = PaddingValues(horizontal = 16.dp),
-                                    modifier = Modifier.padding(bottom = 8.dp)
-                                ) {
-                                    items(CloudinaryFilters.Filter.Category.values().toList()) { category ->
-                                        val categoryName = when (category) {
-                                            CloudinaryFilters.Filter.Category.BASIC -> "Basic"
-                                            CloudinaryFilters.Filter.Category.COLOR -> "Color"
-                                            CloudinaryFilters.Filter.Category.ARTISTIC -> "Artistic"
-                                            CloudinaryFilters.Filter.Category.EFFECTS -> "Effects"
-                                            CloudinaryFilters.Filter.Category.FUN -> "Fun"
-                                        }
-                                        Box(
-                                            modifier = Modifier
-                                                .clickable { selectedCloudCategory = category }
-                                                .background(
-                                                    if (selectedCloudCategory == category) {
-                                                        if (isDarkMode) Color(0xFF87CEEB) else Color(0xFF1565C0)
-                                                    } else Color.Transparent,
-                                                    RoundedCornerShape(16.dp)
-                                                )
-                                                .border(
-                                                    width = 1.dp,
-                                                    color = if (selectedCloudCategory == category) Color.Transparent else if (isDarkMode) Color.White.copy(alpha = 0.3f) else Color.Black.copy(alpha = 0.3f),
-                                                    shape = RoundedCornerShape(16.dp)
-                                                )
-                                                .padding(horizontal = 12.dp, vertical = 6.dp)
-                                        ) {
-                                            Text(
-                                                text = categoryName,
-                                                color = if (selectedCloudCategory == category) {
-                                                    if (isDarkMode) Color.Black else Color.White
-                                                } else {
-                                                    if (isDarkMode) Color.White else Color.Black
-                                                },
-                                                fontSize = 11.sp,
-                                                fontWeight = if (selectedCloudCategory == category) FontWeight.Bold else FontWeight.Normal
-                                            )
-                                        }
-                                    }
-                                }
-                                
-                                // Cloud filter thumbnails
-                                LazyRow(
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                    contentPadding = PaddingValues(horizontal = 16.dp),
-                                    modifier = Modifier.padding(bottom = 8.dp)
-                                ) {
-                                    items(cloudFilters[selectedCloudCategory] ?: emptyList()) { filter ->
-                                        CloudFilterIcon(
-                                            filter = filter,
-                                            isSelected = selectedCloudFilter == filter,
-                                            onClick = { selectedCloudFilter = filter },
-                                            isDarkMode = isDarkMode
-                                        )
-                                    }
                                 }
                             }
                             
@@ -693,62 +557,6 @@ private fun FilterIcon(
                     fontSize = 28.sp
                 )
             }
-        }
-        
-        Spacer(modifier = Modifier.height(4.dp))
-        
-        // Filter name
-        Text(
-            text = filter.displayName,
-            color = if (isSelected) {
-                if (isDarkMode) Color(0xFF87CEEB) else Color(0xFF1565C0)
-            } else {
-                if (isDarkMode) Color.White.copy(alpha = 0.7f) else Color.Black.copy(alpha = 0.7f)
-            },
-            fontSize = 12.sp,
-            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
-        )
-    }
-}
-
-@Composable
-private fun CloudFilterIcon(
-    filter: CloudinaryFilters.Filter,
-    isSelected: Boolean,
-    onClick: () -> Unit,
-    isDarkMode: Boolean
-) {
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier.clickable(onClick = onClick)
-    ) {
-        Box(
-            modifier = Modifier
-                .size(96.dp)
-                .clip(RoundedCornerShape(16.dp))
-                .border(
-                    width = if (isSelected) 4.dp else 2.dp,
-                    color = if (isSelected) {
-                        if (isDarkMode) Color(0xFF87CEEB) else Color(0xFF1565C0)
-                    } else {
-                        if (isDarkMode) Color.White.copy(alpha = 0.3f) else Color.Black.copy(alpha = 0.3f)
-                    },
-                    shape = RoundedCornerShape(16.dp)
-                )
-                .background(if (isDarkMode) Color(0xFF2C2C2E) else Color.White),
-            contentAlignment = Alignment.Center
-        ) {
-            // Show filter icon/emoji
-            Text(
-                text = when (filter.category) {
-                    CloudinaryFilters.Filter.Category.BASIC -> "⚡"
-                    CloudinaryFilters.Filter.Category.COLOR -> "🎨"
-                    CloudinaryFilters.Filter.Category.ARTISTIC -> "🎭"
-                    CloudinaryFilters.Filter.Category.EFFECTS -> "✨"
-                    CloudinaryFilters.Filter.Category.FUN -> "🎪"
-                },
-                fontSize = 28.sp
-            )
         }
         
         Spacer(modifier = Modifier.height(4.dp))
