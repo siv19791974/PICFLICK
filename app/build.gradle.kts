@@ -116,6 +116,9 @@ dependencies {
     // Firebase Analytics - Track user engagement and app usage
     implementation(libs.firebase.analytics)
     
+    // Cloudinary for professional photo filters
+    implementation(libs.cloudinary.android)
+    
     // Testing
     testImplementation(libs.junit)
     testImplementation(libs.mockk)
