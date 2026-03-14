@@ -1139,7 +1139,7 @@ fun FullScreenPhotoViewer(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text(
-                                    text = "Comments (${currentFlick.commentCount})",
+                                    text = "Comments (${comments.size})",
                                     color = Color.White,
                                     style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.Bold
@@ -1790,26 +1790,32 @@ private fun CompactCommentItem(
             }
         }
         
-        // Reaction picker popup
+        // Reaction picker popup - anchored above the reaction button
         if (showReactionPicker) {
-            ReactionPicker(
-                currentReaction = null,
-                onReactionSelected = { reactionType ->
-                    coroutineScope.launch {
-                        repository.toggleCommentReaction(
-                            commentId = comment.id,
-                            userId = currentUserId,
-                            userName = currentUserId, // Get from user profile
-                            userPhotoUrl = "",
-                            emoji = reactionType.toEmoji(),
-                            onResult = {}
-                        )
-                    }
-                    showReactionPicker = false
-                },
-                onDismiss = { showReactionPicker = false },
-                modifier = Modifier.padding(start = 200.dp, top = 4.dp)
-            )
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(end = 80.dp, bottom = 8.dp),
+                contentAlignment = Alignment.BottomEnd
+            ) {
+                ReactionPicker(
+                    currentReaction = null,
+                    onReactionSelected = { reactionType ->
+                        coroutineScope.launch {
+                            repository.toggleCommentReaction(
+                                commentId = comment.id,
+                                userId = currentUserId,
+                                userName = currentUserId,
+                                userPhotoUrl = "",
+                                emoji = reactionType.toEmoji(),
+                                onResult = {}
+                            )
+                        }
+                        showReactionPicker = false
+                    },
+                    onDismiss = { showReactionPicker = false }
+                )
+            }
         }
         
         // Replies section - indented ~1cm (40dp) in straight line

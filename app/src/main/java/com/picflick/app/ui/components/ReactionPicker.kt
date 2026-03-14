@@ -51,13 +51,13 @@ fun ReactionPicker(
         modifier = modifier
             .scale(scale)
             .background(
-                color = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
-                shape = RoundedCornerShape(24.dp)
+                color = Color.Black.copy(alpha = 0.8f), // Dark transparent background
+                shape = RoundedCornerShape(28.dp)
             )
-            .padding(horizontal = 12.dp, vertical = 8.dp)
+            .padding(horizontal = 8.dp, vertical = 6.dp) // Smaller padding to fit all emojis
     ) {
         Row(
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            horizontalArrangement = Arrangement.spacedBy(2.dp), // Smaller spacing
             verticalAlignment = Alignment.CenterVertically
         ) {
             reactions.forEach { reaction ->
