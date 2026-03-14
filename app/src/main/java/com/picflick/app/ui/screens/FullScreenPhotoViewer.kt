@@ -1591,38 +1591,6 @@ fun FullScreenPhotoViewer(
     }
 }
 
-// Format timestamp - made internal so it can be used by CompactCommentItem
-internal fun formatTimestamp(timestamp: Long): String {
-    if (timestamp == 0L) return ""
-    
-    val now = System.currentTimeMillis()
-    val diff = now - timestamp
-    
-    val seconds = diff / 1000
-    val minutes = seconds / 60
-    val hours = minutes / 60
-    val days = hours / 24
-    val weeks = days / 7
-    
-    return when {
-        seconds < 60 -> "Just now"
-        minutes < 60 -> "${minutes}m"
-        hours < 24 -> "${hours}h"
-        days < 7 -> "${days}d"
-        weeks < 4 -> "${weeks}w"
-        else -> {
-            val date = java.util.Date(timestamp)
-            val format = java.text.SimpleDateFormat("MMM d", java.util.Locale.getDefault())
-            format.format(date)
-        }
-    }
-}
-
-// Overload for Date type (used by Comment.timestamp)
-internal fun formatTimestamp(date: java.util.Date?): String {
-    return if (date != null) formatTimestamp(date.time) else ""
-}
-
 // Comment item
 @Composable
 private fun CompactCommentItem(
@@ -1677,7 +1645,7 @@ private fun CompactCommentItem(
                     }
                     // Timestamp at right
                     Text(
-                        text = formatTimestamp(comment.timestamp),
+                        text = comment.timestamp?.let { formatTimestamp(it.time) } ?: "",
                         color = Color.Gray,
                         fontSize = 10.sp
                     )
