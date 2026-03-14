@@ -11,6 +11,7 @@ import androidx.compose.foundation.gestures.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
@@ -1194,7 +1195,17 @@ fun FullScreenPhotoViewer(
                                         )
                                     }
                                 } else {
+                                    val listState = rememberLazyListState()
+                                    
+                                    // Auto-scroll to latest comment when list changes
+                                    LaunchedEffect(comments.size) {
+                                        if (comments.isNotEmpty()) {
+                                            listState.animateScrollToItem(comments.size - 1)
+                                        }
+                                    }
+                                    
                                     LazyColumn(
+                                        state = listState,
                                         modifier = Modifier.fillMaxSize(),
                                         contentPadding = PaddingValues(vertical = 4.dp),
                                         verticalArrangement = Arrangement.spacedBy(8.dp)
