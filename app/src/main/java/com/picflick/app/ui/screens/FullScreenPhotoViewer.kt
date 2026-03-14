@@ -623,11 +623,18 @@ fun FullScreenPhotoViewer(
                         val swipeScale = if (isDragging) 1f - (maxProgress * 0.15f).coerceIn(0f, 0.15f) else 1f
                         val swipeAlpha = if (isDragging) 1f - (maxProgress * 0.3f).coerceIn(0f, 0.3f) else 1f
                         
-                        // Smooth fade animation when comments panel opens
+                        // Smooth fade and slide animation when comments panel opens
                         val commentPanelAlpha by animateFloatAsState(
-                            targetValue = if (showCommentPanel && isCurrent) 0.6f else 1f,
+                            targetValue = if (showCommentPanel && isCurrent) 0.8f else 1f,
                             animationSpec = tween(durationMillis = 300),
                             label = "commentPanelAlpha"
+                        )
+                        
+                        // Move photo up when comments open (so it's visible above comments)
+                        val commentPanelOffset by animateIntOffsetAsState(
+                            targetValue = if (showCommentPanel && isCurrent) IntOffset(0, -150) else IntOffset(0, 0),
+                            animationSpec = tween(durationMillis = 300),
+                            label = "commentPanelOffset"
                         )
                         
                         // Track last tap time to detect double-tap manually
@@ -642,8 +649,8 @@ fun FullScreenPhotoViewer(
                             modifier = Modifier
                                 .fillMaxSize()
                                 .graphicsLayer(
-                                    translationX = finalX,
-                                    translationY = finalY,
+                                    translationX = finalX + commentPanelOffset.x,
+                                    translationY = finalY + commentPanelOffset.y,
                                     scaleX = swipeScale,
                                     scaleY = swipeScale,
                                     alpha = swipeAlpha * commentPanelAlpha // Smooth fade when comments open
