@@ -35,6 +35,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
@@ -467,6 +468,20 @@ fun FullScreenPhotoViewer(
             decorFitsSystemWindows = false
         )
     ) {
+        // Configure window for keyboard handling
+        val view = LocalView.current
+        val context = LocalContext.current
+        
+        SideEffect {
+            val window = (view.parent as? android.view.View)?.let {
+                (it.context as? android.app.Activity)?.window
+            } ?: (context as? android.app.Activity)?.window
+            
+            window?.setSoftInputMode(
+                android.view.WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE
+            )
+        }
+        
         Surface(
             modifier = Modifier.fillMaxSize(),
             color = Color.Black
@@ -651,7 +666,7 @@ fun FullScreenPhotoViewer(
                                     .build(),
                                 contentDescription = null,
                                 modifier = Modifier.fillMaxSize(),
-                                contentScale = ContentScale.Fit
+                                contentScale = if (showCommentPanel) ContentScale.Crop else ContentScale.Fit
                             )
                             
                             // Like animation overlay for current photo
@@ -1033,52 +1048,22 @@ fun FullScreenPhotoViewer(
                     }
                 }
                 
-                // COMPACT COMMENT OVERLAY - Photo stays visible!
-                AnimatedVisibility(
-                    visible = showCommentPanel,
-                    enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
-                    exit = slideOutVertically(targetOffsetY = { it }) + fadeOut()
-                ) {
+                // COMMENTS MODAL BOTTOM SHEET - Outside Dialog, handles keyboard automatically!
+                if (showCommentPanel) {
+                    val coroutineScope = rememberCoroutineScope()
                     val keyboardController = LocalSoftwareKeyboardController.current
+                    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
                     
-                    // Get system bar heights
-                    val navInsets = WindowInsets.navigationBars
-                    val imeInsets = WindowInsets.ime
-                    val density = LocalDensity.current
-                    val navBarHeight = with(density) { navInsets.getBottom(density).toDp() }
-                    val imeHeight = with(density) { imeInsets.getBottom(density).toDp() }
-                    val keyboardOffset = (imeHeight - navBarHeight - 48.dp).coerceAtLeast(0.dp)
-                    
-                    Box(
-                        modifier = Modifier.fillMaxSize()
-                    ) {
-                        // Backdrop - semi-transparent so photo is visible
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .background(Color.Black.copy(alpha = 0.5f))
-                                .clickable { 
-                                    showCommentPanel = false
-                                    keyboardController?.hide()
-                                }
-                        )
-                        
-                        // Comment panel - compact with fixed height for photo visibility
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(320.dp) // FIXED height - leaves photo visible!
-                                .align(Alignment.BottomCenter)
-                                .offset(y = -keyboardOffset)
-                                .background(
-                                    Color.Black.copy(alpha = 0.95f), // 95% solid - photo still shows a bit
-                                    RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)
-                                )
-                                .padding(horizontal = 12.dp, vertical = 8.dp)
-                        ) {
-                            // Handle bar
+                    ModalBottomSheet(
+                        onDismissRequest = { showCommentPanel = false },
+                        sheetState = sheetState,
+                        containerColor = Color.Black,
+                        contentColor = Color.White,
+                        dragHandle = {
                             Box(
-                                modifier = Modifier.fillMaxWidth(),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 12.dp),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Box(
@@ -1091,9 +1076,14 @@ fun FullScreenPhotoViewer(
                                         )
                                 )
                             }
-                            
-                            Spacer(modifier = Modifier.height(16.dp))
-                            
+                        }
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp)
+                                .padding(bottom = 16.dp) // Bottom padding for nav bar
+                        ) {
                             // Header
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
@@ -1107,7 +1097,10 @@ fun FullScreenPhotoViewer(
                                     fontWeight = FontWeight.Bold
                                 )
                                 IconButton(
-                                    onClick = { showCommentPanel = false },
+                                    onClick = { 
+                                        coroutineScope.launch { sheetState.hide() }
+                                        showCommentPanel = false 
+                                    },
                                     modifier = Modifier.size(32.dp)
                                 ) {
                                     Icon(
@@ -1123,11 +1116,11 @@ fun FullScreenPhotoViewer(
                                 modifier = Modifier.padding(vertical = 12.dp)
                             )
                             
-                            // Comments list - using LazyColumn for better scrolling performance
+                            // Comments list
                             Box(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .weight(1f) // Take available space, leave room for input
+                                    .heightIn(min = 100.dp, max = 300.dp)
                             ) {
                                 if (isLoadingComments) {
                                     Box(
@@ -1172,14 +1165,13 @@ fun FullScreenPhotoViewer(
                                 }
                             }
                             
-                            // Comment input bar - Chat style at bottom
+                            Spacer(modifier = Modifier.height(16.dp))
+                            
+                            // Input bar - keyboard handled automatically by ModalBottomSheet!
                             Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(top = 12.dp, bottom = 72.dp), // 72dp for nav bar - push up more!
+                                modifier = Modifier.fillMaxWidth(),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                // Text field with dark background (Chat style)
                                 val focusRequester = remember { FocusRequester() }
                                 TextField(
                                     value = newCommentText,
@@ -1212,7 +1204,7 @@ fun FullScreenPhotoViewer(
 
                                 Spacer(modifier = Modifier.width(8.dp))
 
-                                // Send button (Chat style - FloatingActionButton)
+                                // Send button
                                 FloatingActionButton(
                                     onClick = {
                                         if (newCommentText.isNotBlank()) {
@@ -1246,7 +1238,10 @@ fun FullScreenPhotoViewer(
                                         tint = Color.White
                                     )
                                 }
-                            } 
+                            }
+                            
+                            // Extra bottom padding for system nav bar (handled by ModalBottomSheet imePadding!)
+                            Spacer(modifier = Modifier.height(8.dp))
                         }
                     }
                 }
@@ -1314,16 +1309,17 @@ fun FullScreenPhotoViewer(
                 }
                 
                 // BOTTOM USER INFO - With gradient transparent box
-                // Completely hidden when comment panel opens
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.BottomStart)
-                        .fillMaxWidth()
-                        .padding(16.dp)
-                        .padding(bottom = 64.dp)
-                        .alpha(if (showCommentPanel) 0f else 1f) // HIDE completely when comments open
-                        .clickable(enabled = !showCommentPanel) { } // Block clicks when comments open
+                // Completely hidden when comment panel opens using AnimatedVisibility
+                AnimatedVisibility(
+                    visible = !showCommentPanel,
+                    modifier = Modifier.align(Alignment.BottomStart)
                 ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp)
+                            .padding(bottom = 64.dp)
+                    ) {
                     // Gradient transparent background box
                     Box(
                         modifier = Modifier
@@ -1511,6 +1507,7 @@ fun FullScreenPhotoViewer(
                                                 }
                                             }
                                         }
+                                    }
                                 }
                             }
                         }
