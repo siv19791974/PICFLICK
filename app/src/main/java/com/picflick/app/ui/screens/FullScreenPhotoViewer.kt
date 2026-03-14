@@ -1289,47 +1289,58 @@ fun FullScreenPhotoViewer(
                                 FloatingActionButton(
                                     onClick = {
                                         if (newCommentText.isNotBlank()) {
+                                            val text = newCommentText.trim()
+                                            val parentComment = replyingToComment
+                                            
+                                            // OPTIMISTIC UPDATE: Add to UI immediately
+                                            val tempComment = Comment(
+                                                id = "temp_${System.currentTimeMillis()}",
+                                                flickId = currentFlick.id,
+                                                userId = currentUser.uid,
+                                                userName = currentUser.displayName ?: "",
+                                                userPhotoUrl = currentUser.photoUrl ?: "",
+                                                text = text,
+                                                parentCommentId = parentComment?.id,
+                                                timestamp = java.util.Date()
+                                            )
+                                            comments = comments + tempComment
+                                            
+                                            // Clear input immediately
+                                            newCommentText = ""
+                                            keyboardController?.hide()
+                                            replyingToComment = null
+                                            
+                                            // Send to Firestore in background
                                             coroutineScope.launch {
-                                                // DEBUG: Check Firebase Auth state
-                                                val auth = FirebaseAuth.getInstance()
-                                                android.util.Log.d("CommentDebug", "=== ADD COMMENT DEBUG ===")
-                                                android.util.Log.d("CommentDebug", "Firebase Auth currentUser: ${auth.currentUser?.uid ?: "NULL"}")
-                                                android.util.Log.d("CommentDebug", "Passed currentUser.uid: ${currentUser.uid}")
-                                                android.util.Log.d("CommentDebug", "UIDs match: ${auth.currentUser?.uid == currentUser.uid}")
-                                                android.util.Log.d("CommentDebug", "Is Firebase Auth null: ${auth.currentUser == null}")
-                                                
-                                                android.util.Log.d("CommentAdd", "Adding comment: text='${newCommentText.trim()}', userId='${currentUser.uid}', flickId='${currentFlick.id}',")
-                                                val result = if (replyingToComment != null) {
-                                                    // Send reply
+                                                android.util.Log.d("CommentAdd", "Adding comment: text='$text', userId='${currentUser.uid}', flickId='${currentFlick.id}',")
+                                                val result = if (parentComment != null) {
                                                     repository.addReply(
                                                         flickId = currentFlick.id,
-                                                        parentCommentId = replyingToComment!!.id,
+                                                        parentCommentId = parentComment.id,
                                                         userId = currentUser.uid,
                                                         userName = currentUser.displayName ?: "",
                                                         userPhotoUrl = currentUser.photoUrl ?: "",
-                                                        text = newCommentText.trim()
+                                                        text = text
                                                     )
                                                 } else {
-                                                    // Add regular comment
                                                     repository.addComment(
-                                                        currentFlick.id, 
-                                                        currentUser.uid, 
-                                                        currentUser.displayName ?: "", 
+                                                        currentFlick.id,
+                                                        currentUser.uid,
+                                                        currentUser.displayName ?: "",
                                                         currentUser.photoUrl ?: "",
-                                                        newCommentText.trim()
+                                                        text
                                                     )
                                                 }
                                                 
-                                                // Only clear text if comment was saved successfully
                                                 when (result) {
                                                     is com.picflick.app.data.Result.Success -> {
-                                                        android.util.Log.d("CommentAdd", "Comment added successfully")
-                                                        newCommentText = ""
-                                                        keyboardController?.hide()
-                                                        replyingToComment = null // Reset reply state
+                                                        android.util.Log.d("CommentAdd", "Comment added successfully to Firestore")
+                                                        // Firestore listener will replace temp with real comment
                                                     }
                                                     is com.picflick.app.data.Result.Error -> {
                                                         android.util.Log.e("CommentAdd", "Failed to add comment: ${result.exception?.message}")
+                                                        // Remove temp comment on failure
+                                                        comments = comments.filter { it.id != tempComment.id }
                                                     }
                                                     else -> { /* Loading - do nothing */ }
                                                 }
