@@ -31,9 +31,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
-import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.LocalConfiguration
@@ -44,14 +41,16 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntOffset
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
+import net.engawapg.lib.zoomable.rememberZoomState
+import net.engawapg.lib.zoomable.zoomable
 import com.picflick.app.data.Comment
 import com.picflick.app.data.Flick
 import com.picflick.app.data.ReactionType
@@ -490,7 +489,7 @@ fun FullScreenPhotoViewer(
         ) {
             Box(modifier = Modifier.fillMaxSize()) {
                 
-                // SIMPLE 2D PAGER - Just direct positioning, no zoom
+                // SIMPLE 2D PAGER - Just direct positioning with Zoomable for pinch
                 // NO SPRING - direct snap only
                 val dragXAnim = remember { Animatable(0f) }
                 val dragYAnim = remember { Animatable(0f) }
@@ -515,7 +514,7 @@ fun FullScreenPhotoViewer(
                     modifier = Modifier
                         .fillMaxSize()
                         .pointerInput(Unit) {
-                            // SWIPE detection only - no zoom/pinch
+                            // SWIPE detection only - pinch handled by Zoomable library
                             detectDragGestures(
                                 onDragStart = {
                                     rawDragX = 0f
@@ -628,7 +627,10 @@ fun FullScreenPhotoViewer(
                         var lastTapTime by remember { mutableLongStateOf(0L) }
                         val doubleTapTimeout = 300L // ms
                         
-                        // Photo display - no zoom, just tap to toggle UI
+                        // Zoom state for current photo only
+                        val zoomState = if (isCurrent) rememberZoomState() else null
+                        
+                        // Modifier chain: zoomable LAST (outermost) gets pinch FIRST
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
@@ -644,7 +646,17 @@ fun FullScreenPhotoViewer(
                                         onTap = { uiVisible = !uiVisible }
                                         // NO onDoubleTap - reactions only via sidebar!
                                     )
-                                },
+                                }
+                                .then(
+                                    // ZOOMABLE LAST = OUTERMOST = gets events FIRST
+                                    // Double-tap zoom disabled - pass empty lambda
+                                    if (isCurrent && zoomState != null) {
+                                        Modifier.zoomable(
+                                            zoomState = zoomState,
+                                            onDoubleTap = { _ -> } // Disable double-tap zoom - do nothing
+                                        )
+                                    } else Modifier
+                                ),
                             contentAlignment = Alignment.Center
                         ) {
                             AsyncImage(
@@ -1041,16 +1053,14 @@ fun FullScreenPhotoViewer(
                 if (showCommentPanel) {
                     val coroutineScope = rememberCoroutineScope()
                     val keyboardController = LocalSoftwareKeyboardController.current
-                    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
+                    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
                     var replyingToComment by remember { mutableStateOf<Comment?>(null) }
-                    var showCommentReactionPicker by remember { mutableStateOf<Comment?>(null) }
                     
                     ModalBottomSheet(
                         onDismissRequest = { showCommentPanel = false },
                         sheetState = sheetState,
                         containerColor = Color.Black,
                         contentColor = Color.White,
-                        scrimColor = Color.Black.copy(alpha = 0.6f),
                         dragHandle = {
                             Box(
                                 modifier = Modifier
@@ -1137,13 +1147,7 @@ fun FullScreenPhotoViewer(
                                     }
                                 } else {
                                     LazyColumn(
-                                        modifier = Modifier
-                                            .fillMaxSize()
-                                            .nestedScroll(object : NestedScrollConnection {
-                                                override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
-                                                    return if (available.y > 0) available else Offset.Zero
-                                                }
-                                            }),
+                                        modifier = Modifier.fillMaxSize(),
                                         contentPadding = PaddingValues(vertical = 4.dp),
                                         verticalArrangement = Arrangement.spacedBy(8.dp)
                                     ) {
@@ -1151,8 +1155,27 @@ fun FullScreenPhotoViewer(
                                             CompactCommentItem(
                                                 comment = comment,
                                                 currentUserId = currentUser.uid,
-                                                onReactClick = {
-                                                    showCommentReactionPicker = comment
+                                                onLikeClick = {
+                                                    coroutineScope.launch {
+                                                        val isLiked = comment.likedBy.contains(currentUser.uid)
+                                                        if (isLiked) {
+                                                            repository.unlikeComment(comment.id, currentUser.uid)
+                                                        } else {
+                                                            repository.likeComment(
+                                                                commentId = comment.id,
+                                                                flickId = currentFlick.id,
+                                                                userId = currentUser.uid,
+                                                                userName = currentUser.displayName,
+                                                                userPhotoUrl = currentUser.photoUrl
+                                                            )
+                                                        }
+                                                        // Refresh comments
+                                                        repository.getComments(currentFlick.id) { result ->
+                                                            if (result is com.picflick.app.data.Result.Success) {
+                                                                comments = result.data
+                                                            }
+                                                        }
+                                                    }
                                                 },
                                                 onReplyClick = {
                                                     replyingToComment = comment
@@ -1195,9 +1218,7 @@ fun FullScreenPhotoViewer(
                             
                             // Input bar - keyboard handled automatically by ModalBottomSheet!
                             Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .windowInsetsPadding(WindowInsets.navigationBars.only(WindowInsetsSides.Bottom)),
+                                modifier = Modifier.fillMaxWidth(),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 val focusRequester = remember { FocusRequester() }
@@ -1279,38 +1300,6 @@ fun FullScreenPhotoViewer(
                                         tint = Color.White
                                     )
                                 }
-                            }
-                            
-                            // Comment Reaction Picker - shown when React is clicked
-                            if (showCommentReactionPicker != null) {
-                                AnimatedReactionPicker(
-                                    onDismiss = { showCommentReactionPicker = null },
-                                    onReactionSelected = { reactionType ->
-                                        coroutineScope.launch {
-                                            val comment = showCommentReactionPicker!!
-                                            if (reactionType == null) {
-                                                // Remove reaction
-                                                repository.unlikeComment(comment.id, currentUser.uid)
-                                            } else {
-                                                // For now, just like the comment (could be extended to support emoji reactions)
-                                                repository.likeComment(
-                                                    commentId = comment.id,
-                                                    flickId = currentFlick.id,
-                                                    userId = currentUser.uid,
-                                                    userName = currentUser.displayName,
-                                                    userPhotoUrl = currentUser.photoUrl
-                                                )
-                                            }
-                                            // Refresh comments
-                                            repository.getComments(currentFlick.id) { result ->
-                                                if (result is com.picflick.app.data.Result.Success) {
-                                                    comments = result.data
-                                                }
-                                            }
-                                        }
-                                    },
-                                    currentReaction = null // For now, comments only support like/unlike
-                                )
                             }
                             
                             // Extra bottom padding for system nav bar (handled by ModalBottomSheet imePadding!)
@@ -1608,7 +1597,7 @@ fun FullScreenPhotoViewer(
 private fun CompactCommentItem(
     comment: Comment,
     currentUserId: String,
-    onReactClick: () -> Unit = {},
+    onLikeClick: () -> Unit = {},
     onReplyClick: () -> Unit = {},
     showReplies: Boolean = false,
     replies: List<Comment> = emptyList(),
@@ -1636,51 +1625,50 @@ private fun CompactCommentItem(
             Spacer(modifier = Modifier.width(8.dp))
             
             Column(modifier = Modifier.weight(1f)) {
-                // Username, text, and timestamp - username left, text center-ish, timestamp right
+                // Username | Comment text (aligned right) | Timestamp
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.Top
                 ) {
-                    // Left side: Username + comment text
-                    Row(
-                        modifier = Modifier.weight(1f),
-                        horizontalArrangement = Arrangement.Start
-                    ) {
-                        Text(
-                            text = comment.userName,
-                            color = Color.White,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 12.sp
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(
-                            text = comment.text,
-                            color = Color.White.copy(alpha = 0.9f),
-                            fontSize = 12.sp,
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
-                    // Right side: Timestamp
+                    // Username on left
+                    Text(
+                        text = comment.userName,
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 12.sp
+                    )
+                    
+                    // Comment text - takes remaining space, aligned to right
+                    Text(
+                        text = comment.text,
+                        color = Color.White.copy(alpha = 0.9f),
+                        fontSize = 12.sp,
+                        modifier = Modifier
+                            .weight(1f)
+                            .padding(horizontal = 8.dp),
+                        textAlign = androidx.compose.ui.text.style.TextAlign.End
+                    )
+                    
+                    // Timestamp at far right
                     Text(
                         text = comment.timestamp?.let { formatTimestamp(it.time) } ?: "",
                         color = Color.Gray,
-                        fontSize = 10.sp,
-                        modifier = Modifier.padding(start = 8.dp)
+                        fontSize = 10.sp
                     )
                 }
                 
-                // React and Reply buttons row - aligned right, visually attached to comment
+                // React and Reply buttons row - aligned right
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(top = 2.dp),
+                        .padding(top = 4.dp),
                     horizontalArrangement = Arrangement.End,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                                            // React button (changed from Like)
+                    // React button (changed from Like)
                     TextButton(
-                        onClick = onReactClick,
+                        onClick = onLikeClick,
                         modifier = Modifier.height(20.dp),
                         contentPadding = PaddingValues(horizontal = 0.dp)
                     ) {
