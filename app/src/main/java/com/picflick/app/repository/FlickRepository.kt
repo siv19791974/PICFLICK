@@ -1749,7 +1749,7 @@ class FlickRepository private constructor() {
     }
 
     /**
-     * Add a reply to a comment
+     * Add a reply to a comment and notify the comment owner
      */
     suspend fun addReply(
         flickId: String,
@@ -1784,6 +1784,9 @@ class FlickRepository private constructor() {
                 .update("commentCount", FieldValue.increment(1))
                 .await()
 
+            // Create notification for comment owner (if not the replier)
+            createCommentReplyNotification(parentCommentId, flickId, userId, userName, userPhotoUrl, text)
+
             Result.Success(Unit)
         } catch (e: Exception) {
             Result.Error(e, "Failed to add reply")
@@ -1791,13 +1794,72 @@ class FlickRepository private constructor() {
     }
 
     /**
-     * Like a comment
+     * Create notification for reply to a comment
      */
-    suspend fun likeComment(commentId: String, userId: String): Result<Unit> {
+    private fun createCommentReplyNotification(
+        parentCommentId: String,
+        flickId: String,
+        replierId: String,
+        replierName: String,
+        replierPhotoUrl: String,
+        replyText: String
+    ) {
+        // Get the parent comment to find its owner
+        db.collection("comments").document(parentCommentId).get()
+            .addOnSuccessListener { commentDoc ->
+                val commentOwnerId = commentDoc.getString("userId")
+                
+                // Don't notify if user replies to their own comment
+                if (commentOwnerId != null && commentOwnerId != replierId) {
+                    val truncatedReply = if (replyText.length > 50)
+                        replyText.take(50) + "..."
+                    else
+                        replyText
+
+                    val notification = hashMapOf(
+                        "id" to UUID.randomUUID().toString(),
+                        "userId" to commentOwnerId,
+                        "type" to "COMMENT_REPLY",
+                        "title" to "$replierName replied to your comment",
+                        "message" to truncatedReply,
+                        "senderId" to replierId,
+                        "senderName" to replierName,
+                        "senderPhotoUrl" to replierPhotoUrl,
+                        "flickId" to flickId,
+                        "commentId" to parentCommentId,
+                        "isRead" to false,
+                        "timestamp" to System.currentTimeMillis()
+                    )
+
+                    db.collection("notifications").add(notification)
+                        .addOnSuccessListener { docRef ->
+                            android.util.Log.d("NotificationDebug", "COMMENT_REPLY notification created: ${docRef.id}")
+                        }
+                        .addOnFailureListener { e ->
+                            android.util.Log.e("NotificationDebug", "FAILED to create comment reply notification: ${e.message}")
+                        }
+                }
+            }
+    }
+
+    /**
+     * Like a comment and notify the comment owner
+     */
+    suspend fun likeComment(
+        commentId: String, 
+        flickId: String,
+        userId: String,
+        userName: String,
+        userPhotoUrl: String
+    ): Result<Unit> {
         return try {
             db.collection("comments").document(commentId)
                 .update("likes", FieldValue.arrayUnion(userId))
                 .await()
+            
+            // Create notification for comment owner
+            createCommentLikeNotification(commentId, flickId, userId, userName, userPhotoUrl)
+            
             Result.Success(Unit)
         } catch (e: Exception) {
             Result.Error(e, "Failed to like comment")
@@ -1816,6 +1878,55 @@ class FlickRepository private constructor() {
         } catch (e: Exception) {
             Result.Error(e, "Failed to unlike comment")
         }
+    }
+
+    /**
+     * Create notification for comment like (react)
+     */
+    private fun createCommentLikeNotification(
+        commentId: String,
+        flickId: String,
+        likerId: String,
+        likerName: String,
+        likerPhotoUrl: String
+    ) {
+        // Get the comment to find its owner
+        db.collection("comments").document(commentId).get()
+            .addOnSuccessListener { commentDoc ->
+                val commentOwnerId = commentDoc.getString("userId")
+                val commentText = commentDoc.getString("text") ?: ""
+                
+                // Don't notify if user likes their own comment
+                if (commentOwnerId != null && commentOwnerId != likerId) {
+                    val truncatedComment = if (commentText.length > 50)
+                        commentText.take(50) + "..."
+                    else
+                        commentText
+
+                    val notification = hashMapOf(
+                        "id" to UUID.randomUUID().toString(),
+                        "userId" to commentOwnerId,
+                        "type" to "COMMENT_LIKE",
+                        "title" to "$likerName reacted to your comment",
+                        "message" to truncatedComment,
+                        "senderId" to likerId,
+                        "senderName" to likerName,
+                        "senderPhotoUrl" to likerPhotoUrl,
+                        "flickId" to flickId,
+                        "commentId" to commentId,
+                        "isRead" to false,
+                        "timestamp" to System.currentTimeMillis()
+                    )
+
+                    db.collection("notifications").add(notification)
+                        .addOnSuccessListener { docRef ->
+                            android.util.Log.d("NotificationDebug", "COMMENT_LIKE notification created: ${docRef.id}")
+                        }
+                        .addOnFailureListener { e ->
+                            android.util.Log.e("NotificationDebug", "FAILED to create comment like notification: ${e.message}")
+                        }
+                }
+            }
     }
 
     /**

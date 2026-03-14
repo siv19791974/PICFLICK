@@ -1053,6 +1053,7 @@ fun FullScreenPhotoViewer(
                     val coroutineScope = rememberCoroutineScope()
                     val keyboardController = LocalSoftwareKeyboardController.current
                     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+                    var replyingToComment by remember { mutableStateOf<Comment?>(null) }
                     
                     ModalBottomSheet(
                         onDismissRequest = { showCommentPanel = false },
@@ -1120,7 +1121,7 @@ fun FullScreenPhotoViewer(
                             Box(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .heightIn(min = 100.dp, max = 300.dp)
+                                    .heightIn(min = 100.dp, max = 225.dp) // 25% shorter (was 300)
                             ) {
                                 if (isLoadingComments) {
                                     Box(
@@ -1154,10 +1155,30 @@ fun FullScreenPhotoViewer(
                                                 comment = comment,
                                                 currentUserId = currentUser.uid,
                                                 onLikeClick = {
-                                                    // TODO: Implement comment like
+                                                    coroutineScope.launch {
+                                                        val isLiked = comment.likedBy.contains(currentUser.uid)
+                                                        if (isLiked) {
+                                                            repository.unlikeComment(comment.id, currentUser.uid)
+                                                        } else {
+                                                            repository.likeComment(
+                                                                commentId = comment.id,
+                                                                flickId = currentFlick.id,
+                                                                userId = currentUser.uid,
+                                                                userName = currentUser.displayName,
+                                                                userPhotoUrl = currentUser.photoUrl
+                                                            )
+                                                        }
+                                                        // Refresh comments
+                                                        repository.getComments(currentFlick.id) { result ->
+                                                            if (result is com.picflick.app.data.Result.Success) {
+                                                                comments = result.data
+                                                            }
+                                                        }
+                                                    }
                                                 },
                                                 onReplyClick = {
-                                                    // TODO: Implement reply UI
+                                                    replyingToComment = comment
+                                                    keyboardController?.show()
                                                 }
                                             )
                                         }
@@ -1166,6 +1187,33 @@ fun FullScreenPhotoViewer(
                             }
                             
                             Spacer(modifier = Modifier.height(16.dp))
+                            
+                            // Reply indicator
+                            if (replyingToComment != null) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(bottom = 8.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = "Replying to ${replyingToComment?.userName}",
+                                        color = Color.Gray,
+                                        fontSize = 12.sp
+                                    )
+                                    TextButton(
+                                        onClick = { replyingToComment = null },
+                                        contentPadding = PaddingValues(horizontal = 0.dp)
+                                    ) {
+                                        Text(
+                                            text = "Cancel",
+                                            color = MaterialTheme.colorScheme.primary,
+                                            fontSize = 12.sp
+                                        )
+                                    }
+                                }
+                            }
                             
                             // Input bar - keyboard handled automatically by ModalBottomSheet!
                             Row(
@@ -1178,7 +1226,7 @@ fun FullScreenPhotoViewer(
                                     onValueChange = { newCommentText = it },
                                     placeholder = { 
                                         Text(
-                                            "Add a comment...",
+                                            if (replyingToComment != null) "Reply to ${replyingToComment?.userName}..." else "Add a comment...",
                                             color = Color.Gray
                                         ) 
                                     },
@@ -1209,21 +1257,34 @@ fun FullScreenPhotoViewer(
                                     onClick = {
                                         if (newCommentText.isNotBlank()) {
                                             coroutineScope.launch {
-                                                val comment = Comment(
+                                                if (replyingToComment != null) {
+                                                    // Send reply
+                                                    repository.addReply(
+                                                        flickId = currentFlick.id,
+                                                        parentCommentId = replyingToComment!!.id,
+                                                        userId = currentUser.uid,
+                                                        userName = currentUser.displayName,
+                                                        userPhotoUrl = currentUser.photoUrl,
+                                                        text = newCommentText.trim()
+                                                    )
+                                                    replyingToComment = null
+                                                } else {
+                                                    // Add regular comment
+                                                    repository.addComment(
+                                                        currentFlick.id, 
+                                                        currentUser.uid, 
+                                                        currentUser.displayName, 
+                                                        currentUser.photoUrl,
+                                                        newCommentText.trim()
+                                                    )
+                                                }
+                                                comments = comments + Comment(
                                                     flickId = currentFlick.id,
                                                     userId = currentUser.uid,
                                                     userName = currentUser.displayName,
                                                     userPhotoUrl = currentUser.photoUrl,
                                                     text = newCommentText.trim()
                                                 )
-                                                repository.addComment(
-                                                    currentFlick.id, 
-                                                    currentUser.uid, 
-                                                    currentUser.displayName, 
-                                                    currentUser.photoUrl,
-                                                    newCommentText.trim()
-                                                )
-                                                comments = comments + comment
                                                 newCommentText = ""
                                                 keyboardController?.hide()
                                             }
@@ -1530,8 +1591,8 @@ fun FullScreenPhotoViewer(
     }
 }
 
-// Format timestamp
-private fun formatTimestamp(timestamp: Long): String {
+// Format timestamp - made internal so it can be used by CompactCommentItem
+internal fun formatTimestamp(timestamp: Long): String {
     if (timestamp == 0L) return ""
     
     val now = System.currentTimeMillis()
@@ -1555,6 +1616,11 @@ private fun formatTimestamp(timestamp: Long): String {
             format.format(date)
         }
     }
+}
+
+// Overload for Date type (used by Comment.timestamp)
+internal fun formatTimestamp(date: java.util.Date?): String {
+    return if (date != null) formatTimestamp(date.time) else ""
 }
 
 // Comment item
@@ -1590,35 +1656,49 @@ private fun CompactCommentItem(
             Spacer(modifier = Modifier.width(8.dp))
             
             Column(modifier = Modifier.weight(1f)) {
-                // Username and text
-                Row {
+                // Username and text - aligned to start with timestamp at end
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Row(modifier = Modifier.weight(1f, fill = false)) {
+                        Text(
+                            text = comment.userName,
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 12.sp
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = comment.text,
+                            color = Color.White.copy(alpha = 0.9f),
+                            fontSize = 12.sp
+                        )
+                    }
+                    // Timestamp at right
                     Text(
-                        text = comment.userName,
-                        color = Color.White,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 12.sp
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(
-                        text = comment.text,
-                        color = Color.White.copy(alpha = 0.9f),
-                        fontSize = 12.sp
+                        text = formatTimestamp(comment.timestamp),
+                        color = Color.Gray,
+                        fontSize = 10.sp
                     )
                 }
                 
-                // Like and Reply buttons row
+                // React and Reply buttons row - aligned right
                 Row(
-                    modifier = Modifier.padding(top = 4.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 4.dp),
+                    horizontalArrangement = Arrangement.End,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // Like button
+                    // React button (changed from Like)
                     TextButton(
                         onClick = onLikeClick,
                         modifier = Modifier.height(20.dp),
                         contentPadding = PaddingValues(horizontal = 0.dp)
                     ) {
                         Text(
-                            text = if (comment.likedBy.contains(currentUserId)) "❤️ Liked" else "🤍 Like",
+                            text = if (comment.likedBy.contains(currentUserId)) "❤️ Reacted" else "🤍 React",
                             fontSize = 10.sp,
                             color = if (comment.likedBy.contains(currentUserId)) Color(0xFFFF4081) else Color.Gray
                         )
