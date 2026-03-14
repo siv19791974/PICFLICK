@@ -1,0 +1,147 @@
+PICFLICK WORK SUMMARY - Last 2 Hours
+=====================================
+Date: March 15, 2026
+Focus: Comment System Overhaul & Firestore Rules Fixes
+
+---
+
+1. FIRESTORE RULES FIXES
+------------------------
+Problem: PERMISSION_DENIED errors when adding/deleting comments
+
+Changes Made:
+- Fixed comment delete rule: Changed from isMine() helper to direct comparison
+  resource.data.userId == request.auth.uid
+- Fixed flick update rule: Allow anyone to update commentCount field
+- Added fallback for comments missing userId field
+- Temporarily allowed any auth user to delete (for debugging)
+- Restored proper ownership-based delete after testing
+
+Files: firestore.rules (deployed multiple times)
+
+---
+
+2. COMMENT SYSTEM - UI/UX IMPROVEMENTS
+--------------------------------------
+
+A. Optimistic UI Updates (Instant Feedback)
+- Adding comments: Now appear instantly on screen before Firestore confirms
+- Deleting comments: Removed from UI immediately, Firestore delete happens in background
+- Auto-scroll: Automatically scrolls to latest comment when adding new ones
+
+B. Comment Layout Redesign
+- Profile pic (36dp) on left
+- Name + timestamp on same line (bold name, gray timestamp with "·" separator)
+- Comment text right-aligned next to timestamp
+- Reply button below comment
+- Reaction button (❤️😍😂😮🔥) on far right with picker
+- Delete (trash) icon for comment owner
+
+C. Reaction System
+- 5-emoji picker: ❤️ 😍 😂 😮 🔥
+- Toggle reactions: Tap same emoji to remove
+- Shows reaction count badge
+- Transparent dark background for picker
+
+D. Notification Wiring
+- Comments create notifications for photo owner
+- Replies create notifications for parent comment owner
+- Like reactions create notifications
+- All wired through FlickRepository
+
+---
+
+3. PHOTO VIEWER IMPROVEMENTS
+-----------------------------
+- Photo slides up 500px when comments panel opens (smooth animation)
+- Photo fades to 80% opacity when comments open
+- No more "jump" - smooth transition only
+- Comment button now visible to photo owner (not just viewers)
+
+---
+
+4. BUG FIXES
+------------
+
+A. Coroutine Scope Cancellation (Critical Fix)
+Problem: LeftCompositionCancellationException when deleting comments
+Cause: CommentItem's coroutineScope cancelled when removed from UI
+Fix: Pass stable coroutineScope from parent (ModalBottomSheet) to CommentItem
+
+B. Comment ID Mapping
+Problem: Comments loaded without document ID, couldn't delete
+Fix: Changed getComments() to manually map doc.id to Comment.id
+  comments = snapshot.documents.mapNotNull { doc ->
+      doc.toObject(Comment::class.java)?.copy(id = doc.id)
+  }
+
+C. Panel Height
+- Reduced from 300dp to 225dp (25% shorter)
+- Input bar properly positioned with navigation bar padding
+
+---
+
+5. FILES MODIFIED
+-----------------
+1. app/src/main/java/com/picflick/app/ui/screens/FullScreenPhotoViewer.kt
+   - Added optimistic updates for add/delete comments
+   - Added auto-scroll to LazyColumn
+   - Fixed coroutine scope passing
+   - Redesigned CompactCommentItem layout
+   - Added reaction picker integration
+   - Added delete functionality with trash icon
+
+2. firestore.rules
+   - Multiple iterations to fix permission issues
+   - Final working rules for comments and flicks
+
+3. functions/index.js (Cloud Functions)
+   - Added COMMENT to IMPORTANT_TYPES for push notifications
+
+---
+
+6. TESTING RESULTS
+------------------
+✅ Comments add instantly and appear on screen
+✅ Comments delete instantly from UI
+✅ Firestore operations complete in background
+✅ Auto-scroll works when adding comments
+✅ No more PERMISSION_DENIED errors
+✅ Photo owner can comment on their own photos
+✅ Reaction picker works with all 5 emojis
+✅ Delete icon only shows for comment owner
+✅ Notifications fire for comments/replies/reactions
+
+---
+
+7. REMAINING WARNINGS (Non-Critical)
+-------------------------------------
+- Firestore mapper warnings about missing fields (edited, reactionEmojis, etc.)
+- These are harmless - fields don't exist in Comment data class
+- Can be fixed with @IgnoreExtraProperties annotation if needed
+
+---
+
+8. DEPLOYMENTS
+--------------
+- Firestore rules: Deployed ~10 times during debugging
+- Cloud Functions: Deployed once (COMMENT push notifications)
+- Android app: Multiple builds during testing
+
+---
+
+SUMMARY
+-------
+The comment system is now fully functional with:
+- Instant UI feedback (optimistic updates)
+- Proper Firestore security rules
+- Complete CRUD operations (Create, Read, Update, Delete)
+- Reaction system with 5 emojis
+- Notification integration
+- Auto-scrolling comment list
+- Smooth photo animations
+
+All critical bugs (permissions, coroutine cancellation, ID mapping) are resolved.
+
+---
+End of Summary
