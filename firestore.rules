@@ -54,10 +54,8 @@ service cloud.firestore {
       allow read: if isAuth();
       allow create: if isAuth();
       allow update: if isAuth() && isMine(resource.data.userId);
-      allow delete: if isAuth() && (
-        isMine(resource.data.userId) || 
-        isMine(resource.data.flickOwnerId)
-      );
+      // Allow comment owner to delete their own comment
+      allow delete: if isAuth() && isMine(resource.data.userId);
     }
     
     // REPLIES
