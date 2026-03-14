@@ -1216,6 +1216,7 @@ fun FullScreenPhotoViewer(
                                                 currentUserId = currentUser.uid,
                                                 flickId = currentFlick.id,
                                                 repository = repository,
+                                                coroutineScope = coroutineScope, // Pass stable scope
                                                 onReplyClick = {
                                                     replyingToComment = comment
                                                     keyboardController?.show()
@@ -1666,14 +1667,15 @@ private fun CompactCommentItem(
     currentUserId: String,
     flickId: String,
     repository: FlickRepository,
+    coroutineScope: kotlinx.coroutines.CoroutineScope, // NEW: Stable scope from parent
     onReplyClick: () -> Unit = {},
-    onDelete: () -> Unit = {},  // NEW: Callback to remove from UI immediately
+    onDelete: () -> Unit = {},
     showReplies: Boolean = false,
     replies: List<Comment> = emptyList(),
     onLoadReplies: () -> Unit = {}
 ) {
     var showReactionPicker by remember { mutableStateOf(false) }
-    val coroutineScope = rememberCoroutineScope()
+    // Removed: val coroutineScope = rememberCoroutineScope() - use passed scope instead
     
     Column(
         modifier = Modifier
