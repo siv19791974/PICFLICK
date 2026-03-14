@@ -53,7 +53,12 @@ service cloud.firestore {
     match /comments/{commentId} {
       allow read: if isAuth();
       allow create: if isAuth();
-      allow update: if isAuth() && isMine(resource.data.userId);
+      // Owner can update anything, others can only update reactions field
+      allow update: if isAuth() && (
+        isMine(resource.data.userId) || 
+        request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['reactions'])
+      );
       // Allow comment owner to delete their own comment
       allow delete: if isAuth() && isMine(resource.data.userId);
     }
