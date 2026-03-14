@@ -62,8 +62,12 @@ service cloud.firestore {
         request.resource.data.diff(resource.data).affectedKeys()
           .hasOnly(['reactions'])
       );
-      // DEBUG: Allow any authenticated user to delete for now
-      allow delete: if isAuth();
+      // Allow delete if user owns the comment (check both resource.data and request.auth)
+      allow delete: if isAuth() && (
+        resource.data.userId == request.auth.uid ||
+        // Fallback: if userId field missing, allow any auth user (app-level check protects)
+        !resource.data.keys().hasAny(['userId'])
+      );
     }
     
     // REPLIES
