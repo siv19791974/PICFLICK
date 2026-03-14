@@ -58,6 +58,7 @@ import com.picflick.app.data.UserProfile
 import com.picflick.app.data.toEmoji
 import com.picflick.app.repository.FlickRepository
 import com.picflick.app.ui.components.AnimatedReactionPicker
+import com.picflick.app.ui.components.ReactionPicker
 import android.app.Activity
 import android.content.ContentValues
 import android.content.Context
@@ -1169,28 +1170,8 @@ fun FullScreenPhotoViewer(
                                             CompactCommentItem(
                                                 comment = comment,
                                                 currentUserId = currentUser.uid,
-                                                onLikeClick = {
-                                                    coroutineScope.launch {
-                                                        val isLiked = comment.likedBy.contains(currentUser.uid)
-                                                        if (isLiked) {
-                                                            repository.unlikeComment(comment.id, currentUser.uid)
-                                                        } else {
-                                                            repository.likeComment(
-                                                                commentId = comment.id,
-                                                                flickId = currentFlick.id,
-                                                                userId = currentUser.uid,
-                                                                userName = currentUser.displayName,
-                                                                userPhotoUrl = currentUser.photoUrl
-                                                            )
-                                                        }
-                                                        // Refresh comments
-                                                        repository.getComments(currentFlick.id) { result ->
-                                                            if (result is com.picflick.app.data.Result.Success) {
-                                                                comments = result.data
-                                                            }
-                                                        }
-                                                    }
-                                                },
+                                                flickId = currentFlick.id,
+                                                repository = repository,
                                                 onReplyClick = {
                                                     replyingToComment = comment
                                                     keyboardController?.show()
@@ -1606,140 +1587,182 @@ fun FullScreenPhotoViewer(
     }
 }
 
-// Comment item
+// Comment item - Layout matching reference image (profile pic | name timestamp | comment | reply | reactions)
 @Composable
 private fun CompactCommentItem(
     comment: Comment,
     currentUserId: String,
-    onLikeClick: () -> Unit = {},
+    flickId: String,
+    repository: FlickRepository,
     onReplyClick: () -> Unit = {},
     showReplies: Boolean = false,
     replies: List<Comment> = emptyList(),
     onLoadReplies: () -> Unit = {}
 ) {
+    var showReactionPicker by remember { mutableStateOf(false) }
+    val coroutineScope = rememberCoroutineScope()
+    
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 4.dp)
     ) {
-        // Main comment row
+        // Main comment row - Profile pic + content
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.Top
         ) {
+            // Profile pic on left
             AsyncImage(
                 model = comment.userPhotoUrl,
                 contentDescription = null,
                 modifier = Modifier
-                    .size(24.dp)
+                    .size(36.dp)
                     .clip(CircleShape),
                 contentScale = ContentScale.Crop
             )
             
-            Spacer(modifier = Modifier.width(8.dp))
+            Spacer(modifier = Modifier.width(12.dp))
             
+            // Main content column (takes most space)
             Column(modifier = Modifier.weight(1f)) {
-                // Username | Comment text (aligned right) | Timestamp
+                // Name + Timestamp on same line
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.Top
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // Username on left
                     Text(
                         text = comment.userName,
                         color = Color.White,
                         fontWeight = FontWeight.Bold,
-                        fontSize = 12.sp
+                        fontSize = 14.sp
                     )
-                    
-                    // Comment text - takes remaining space, aligned to right
                     Text(
-                        text = comment.text,
-                        color = Color.White.copy(alpha = 0.9f),
-                        fontSize = 12.sp,
-                        modifier = Modifier
-                            .weight(1f)
-                            .padding(horizontal = 8.dp),
-                        textAlign = androidx.compose.ui.text.style.TextAlign.End
-                    )
-                    
-                    // Timestamp at far right
-                    Text(
-                        text = comment.timestamp?.let { formatTimestamp(it.time) } ?: "",
+                        text = " · ${comment.timestamp?.let { formatTimestamp(it.time) } ?: ""}",
                         color = Color.Gray,
-                        fontSize = 10.sp
+                        fontSize = 12.sp
                     )
                 }
                 
-                // React and Reply buttons row - aligned right
-                Row(
+                // Comment text directly under name (left aligned, wraps naturally)
+                Text(
+                    text = comment.text,
+                    color = Color.White.copy(alpha = 0.9f),
+                    fontSize = 14.sp,
+                    modifier = Modifier.padding(top = 2.dp)
+                )
+                
+                // Reply button directly under comment
+                TextButton(
+                    onClick = onReplyClick,
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 4.dp),
-                    horizontalArrangement = Arrangement.End,
-                    verticalAlignment = Alignment.CenterVertically
+                        .padding(top = 4.dp)
+                        .height(24.dp),
+                    contentPadding = PaddingValues(horizontal = 0.dp)
                 ) {
-                    // React button (changed from Like)
-                    TextButton(
-                        onClick = onLikeClick,
-                        modifier = Modifier.height(20.dp),
-                        contentPadding = PaddingValues(horizontal = 0.dp)
+                    Text(
+                        text = "Reply",
+                        fontSize = 12.sp,
+                        color = Color.Gray
+                    )
+                }
+            }
+            
+            // Reaction button on far right
+            Box(contentAlignment = Alignment.TopEnd) {
+                // Show current reaction or default like icon
+                val userReaction = comment.reactions[currentUserId]
+                IconButton(
+                    onClick = { 
+                        if (userReaction != null) {
+                            // Remove reaction if already reacted
+                            coroutineScope.launch {
+                                repository.toggleCommentReaction(
+                                    commentId = comment.id,
+                                    userId = currentUserId,
+                                    userName = "", // Not needed for removal
+                                    userPhotoUrl = "",
+                                    emoji = userReaction,
+                                    onResult = {}
+                                )
+                            }
+                        } else {
+                            showReactionPicker = true
+                        }
+                    },
+                    modifier = Modifier.size(32.dp)
+                ) {
+                    if (userReaction != null) {
+                        Text(
+                            text = userReaction,
+                            fontSize = 18.sp
+                        )
+                    } else {
+                        Icon(
+                            imageVector = Icons.Default.FavoriteBorder,
+                            contentDescription = "React",
+                            tint = Color.Gray,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                }
+                
+                // Reaction count badge
+                if (comment.getTotalReactions() > 0) {
+                    Box(
+                        modifier = Modifier
+                            .padding(top = 20.dp, end = 4.dp)
+                            .background(Color(0xFFFF4081), CircleShape)
+                            .size(16.dp),
+                        contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = if (comment.likedBy.contains(currentUserId)) "❤️ Reacted" else "🤍 React",
+                            text = "${comment.getTotalReactions()}",
+                            color = Color.White,
                             fontSize = 10.sp,
-                            color = if (comment.likedBy.contains(currentUserId)) Color(0xFFFF4081) else Color.Gray
-                        )
-                    }
-                    
-                    // Like count
-                    if (comment.likeCount > 0) {
-                        Text(
-                            text = "${comment.likeCount}",
-                            fontSize = 10.sp,
-                            color = Color.Gray,
-                            modifier = Modifier.padding(start = 4.dp)
-                        )
-                    }
-                    
-                    Spacer(modifier = Modifier.width(12.dp))
-                    
-                    // Reply button
-                    TextButton(
-                        onClick = onReplyClick,
-                        modifier = Modifier.height(20.dp),
-                        contentPadding = PaddingValues(horizontal = 0.dp)
-                    ) {
-                        Text(
-                            text = "💬 Reply",
-                            fontSize = 10.sp,
-                            color = Color.Gray
-                        )
-                    }
-                    
-                    // Reply count
-                    if (comment.replyCount > 0) {
-                        Text(
-                            text = "${comment.replyCount} replies",
-                            fontSize = 10.sp,
-                            color = Color.Gray,
-                            modifier = Modifier.padding(start = 4.dp)
+                            fontWeight = FontWeight.Bold
                         )
                     }
                 }
             }
         }
         
-        // Replies section (if any)
+        // Reaction picker popup
+        if (showReactionPicker) {
+            ReactionPicker(
+                currentReaction = null,
+                onReactionSelected = { reactionType ->
+                    coroutineScope.launch {
+                        repository.toggleCommentReaction(
+                            commentId = comment.id,
+                            userId = currentUserId,
+                            userName = currentUserId, // Get from user profile
+                            userPhotoUrl = "",
+                            emoji = reactionType.toEmoji(),
+                            onResult = {}
+                        )
+                    }
+                    showReactionPicker = false
+                },
+                onDismiss = { showReactionPicker = false },
+                modifier = Modifier.padding(start = 200.dp, top = 4.dp)
+            )
+        }
+        
+        // Replies section - indented ~1cm (40dp) in straight line
         if (replies.isNotEmpty()) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(start = 32.dp, top = 4.dp)
+                    .padding(start = 40.dp, top = 8.dp)
             ) {
                 replies.forEach { reply ->
-                    CompactReplyItem(reply = reply)
+                    CompactReplyItem(
+                        reply = reply,
+                        flickId = flickId,
+                        repository = repository,
+                        currentUserId = currentUserId
+                    )
                 }
             }
         }
@@ -1747,38 +1770,131 @@ private fun CompactCommentItem(
 }
 
 @Composable
-private fun CompactReplyItem(reply: Comment) {
+private fun CompactReplyItem(
+    reply: Comment,
+    flickId: String,
+    repository: FlickRepository,
+    currentUserId: String
+) {
+    var showReactionPicker by remember { mutableStateOf(false) }
+    val coroutineScope = rememberCoroutineScope()
+    
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 2.dp),
-        verticalAlignment = Alignment.CenterVertically
+            .padding(vertical = 4.dp),
+        verticalAlignment = Alignment.Top
     ) {
+        // Profile pic
         AsyncImage(
             model = reply.userPhotoUrl,
             contentDescription = null,
             modifier = Modifier
-                .size(16.dp)
+                .size(28.dp)
                 .clip(CircleShape),
             contentScale = ContentScale.Crop
         )
         
-        Spacer(modifier = Modifier.width(6.dp))
+        Spacer(modifier = Modifier.width(8.dp))
         
-        Row {
-            Text(
-                text = reply.userName,
-                color = Color.White.copy(alpha = 0.8f),
-                fontWeight = FontWeight.Bold,
-                fontSize = 10.sp
-            )
-            Spacer(modifier = Modifier.width(4.dp))
+        // Reply content
+        Column(modifier = Modifier.weight(1f)) {
+            // Name + Timestamp
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = reply.userName,
+                    color = Color.White,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 13.sp
+                )
+                Text(
+                    text = " · ${reply.timestamp?.let { formatTimestamp(it.time) } ?: ""}",
+                    color = Color.Gray,
+                    fontSize = 11.sp
+                )
+            }
+            
+            // Reply text
             Text(
                 text = reply.text,
-                color = Color.White.copy(alpha = 0.7f),
-                fontSize = 10.sp
+                color = Color.White.copy(alpha = 0.9f),
+                fontSize = 13.sp,
+                modifier = Modifier.padding(top = 2.dp)
             )
         }
+        
+        // Reaction button
+        Box(contentAlignment = Alignment.TopEnd) {
+            val userReaction = reply.reactions[currentUserId]
+            IconButton(
+                onClick = { 
+                    if (userReaction != null) {
+                        coroutineScope.launch {
+                            repository.toggleCommentReaction(
+                                commentId = reply.id,
+                                userId = currentUserId,
+                                userName = "",
+                                userPhotoUrl = "",
+                                emoji = userReaction,
+                                onResult = {}
+                            )
+                        }
+                    } else {
+                        showReactionPicker = true
+                    }
+                },
+                modifier = Modifier.size(28.dp)
+            ) {
+                if (userReaction != null) {
+                    Text(text = userReaction, fontSize = 16.sp)
+                } else {
+                    Icon(
+                        imageVector = Icons.Default.FavoriteBorder,
+                        contentDescription = "React",
+                        tint = Color.Gray,
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
+            }
+            
+            if (reply.getTotalReactions() > 0) {
+                Box(
+                    modifier = Modifier
+                        .padding(top = 16.dp, end = 2.dp)
+                        .background(Color(0xFFFF4081), CircleShape)
+                        .size(14.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "${reply.getTotalReactions()}",
+                        color = Color.White,
+                        fontSize = 9.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+        }
+    }
+    
+    if (showReactionPicker) {
+        ReactionPicker(
+            currentReaction = null,
+            onReactionSelected = { reactionType ->
+                coroutineScope.launch {
+                    repository.toggleCommentReaction(
+                        commentId = reply.id,
+                        userId = currentUserId,
+                        userName = currentUserId,
+                        userPhotoUrl = "",
+                        emoji = reactionType.toEmoji(),
+                        onResult = {}
+                    )
+                }
+                showReactionPicker = false
+            },
+            onDismiss = { showReactionPicker = false },
+            modifier = Modifier.padding(start = 180.dp)
+        )
     }
 }
 
