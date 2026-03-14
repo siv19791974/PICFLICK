@@ -105,8 +105,13 @@ class ChatViewModel : ViewModel() {
                     messages = msgs
                 }
             } catch (e: Exception) {
-                android.util.Log.e("ChatViewModel", "Message collection error: ${e.message}")
-                errorMessage = "Failed to load messages: ${e.message}"
+                // Don't log CancellationException as error - it's normal when leaving screen
+                if (e is kotlinx.coroutines.CancellationException) {
+                    android.util.Log.d("ChatViewModel", "Message collection cancelled (normal when leaving chat)")
+                } else {
+                    android.util.Log.e("ChatViewModel", "Message collection error: ${e.message}")
+                    errorMessage = "Failed to load messages: ${e.message}"
+                }
             }
         }
     }
