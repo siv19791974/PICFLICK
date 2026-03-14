@@ -1742,7 +1742,9 @@ class FlickRepository private constructor() {
                 }
 
                 if (snapshot != null) {
-                    val comments = snapshot.toObjects(Comment::class.java)
+                    val comments = snapshot.documents.mapNotNull { doc ->
+                        doc.toObject(Comment::class.java)?.copy(id = doc.id)
+                    }
                     onResult(Result.Success(comments))
                 }
             }
@@ -1943,7 +1945,9 @@ class FlickRepository private constructor() {
                 }
 
                 if (snapshot != null) {
-                    val replies = snapshot.toObjects(Comment::class.java)
+                    val replies = snapshot.documents.mapNotNull { doc ->
+                        doc.toObject(Comment::class.java)?.copy(id = doc.id)
+                    }
                     onResult(Result.Success(replies))
                 }
             }
