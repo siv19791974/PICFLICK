@@ -20,11 +20,14 @@ service cloud.firestore {
       // Only owner can create
       allow create: if isAuth() && isMine(request.resource.data.userId);
       
-      // Owner can update anything, others can only update reactions field
+      // Owner can update anything, others can only update reactions or commentCount
       allow update: if isAuth() && (
         isMine(resource.data.userId) || 
         request.resource.data.diff(resource.data).affectedKeys()
-          .hasOnly(['reactions', 'reactionCount', 'updatedAt'])
+          .hasOnly(['reactions', 'reactionCount', 'updatedAt']) ||
+        // Allow anyone to increment/decrement commentCount
+        request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['commentCount'])
       );
       
       // Only owner can delete
