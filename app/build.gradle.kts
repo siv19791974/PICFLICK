@@ -116,9 +116,6 @@ dependencies {
     // Firebase Analytics - Track user engagement and app usage
     implementation(libs.firebase.analytics)
     
-    // Cloudinary Core (lightweight URL generation for filters)
-    implementation(libs.cloudinary.core)
-    
     // Testing
     testImplementation(libs.junit)
     testImplementation(libs.mockk)

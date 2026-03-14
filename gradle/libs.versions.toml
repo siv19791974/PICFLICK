@@ -23,7 +23,6 @@ accompanist = "0.36.0"
 billing = "7.1.1"
 review = "2.0.1"
 analytics = "22.0.0"
-cloudinary = "1.33.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
