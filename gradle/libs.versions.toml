@@ -23,6 +23,7 @@ accompanist = "0.36.0"
 billing = "7.1.1"
 review = "2.0.1"
 analytics = "22.0.0"
+gpuimage = "2.1.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -103,6 +104,9 @@ firebase-analytics = { group = "com.google.firebase", name = "firebase-analytics
 # Unit Testing
 mockk = { group = "io.mockk", name = "mockk", version.ref = "mockk" }
 kotlinx-coroutines-test = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-test", version.ref = "coroutinesTest" }
+
+# GPUImage - Professional photo filters
+jp-co-cyberagent-android-gpuimage = { group = "jp.co.cyberagent.android", name = "gpuimage", version.ref = "gpuimage" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
