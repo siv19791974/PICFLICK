@@ -188,14 +188,29 @@ fun FullScreenPhotoViewer(
     // Show share dialog state
     var showShareDialog by remember { mutableStateOf(false) }
     
-    // Tagged friends display state
-    var taggedFriendsProfiles by remember { mutableStateOf<List<UserProfile>>(emptyList()) }
+    // Tagged friends display state - reset when flick changes
+    var taggedFriendsProfiles by remember(currentFlick.id) { mutableStateOf<List<UserProfile>>(emptyList()) }
     var isLoadingTaggedFriends by remember { mutableStateOf(false) }
+    
+    // Reset tagged friends profiles when flick changes
+    LaunchedEffect(currentFlick.id) {
+        taggedFriendsProfiles = emptyList()
+        isLoadingTaggedFriends = false
+    }
     
     // Tag friends dialog state
     var showTagFriendsDialog by remember { mutableStateOf(false) }
-    var taggedFriends by remember { mutableStateOf<List<String>>(currentFlick.taggedFriends) }
+    var taggedFriends by remember(currentFlick.id) { mutableStateOf<List<String>>(currentFlick.taggedFriends) }
     var isLoadingTagFriends by remember { mutableStateOf(false) }
+    
+    // Close dialogs when flick changes (user swiped to new photo)
+    LaunchedEffect(currentFlick.id) {
+        showShareDialog = false
+        showTagFriendsDialog = false
+        showEditCaption = false
+        showDeleteConfirmation = false
+        showMoreMenu = false
+    }
 
     // Load comments when flick changes - use DisposableEffect to properly manage listener
     DisposableEffect(currentFlick.id) {
@@ -502,9 +517,7 @@ fun FullScreenPhotoViewer(
                 var rawDragY by remember { mutableFloatStateOf(0f) }
                 var isDraggingVertically by remember { mutableStateOf(false) }
                 var isDragging by remember { mutableStateOf(false) }
-                
-                var currentPageIndex by remember { mutableIntStateOf(currentIndex) }
-                
+
                 // Reset drag when photo changes
                 LaunchedEffect(currentPageIndex) {
                     dragXAnim.snapTo(0f)
