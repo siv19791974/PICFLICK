@@ -1666,59 +1666,83 @@ private fun CompactCommentItem(
                 }
             }
             
-            // Reaction button on far right
-            Box(contentAlignment = Alignment.TopEnd) {
-                // Show current reaction or default like icon
-                val userReaction = comment.reactions[currentUserId]
-                IconButton(
-                    onClick = { 
-                        if (userReaction != null) {
-                            // Remove reaction if already reacted
-                            coroutineScope.launch {
-                                repository.toggleCommentReaction(
-                                    commentId = comment.id,
-                                    userId = currentUserId,
-                                    userName = "", // Not needed for removal
-                                    userPhotoUrl = "",
-                                    emoji = userReaction,
-                                    onResult = {}
-                                )
+            // Reaction and Delete buttons on far right
+            Row(
+                verticalAlignment = Alignment.Top,
+                horizontalArrangement = Arrangement.End
+            ) {
+                // Reaction button
+                Box(contentAlignment = Alignment.TopEnd) {
+                    val userReaction = comment.reactions[currentUserId]
+                    IconButton(
+                        onClick = { 
+                            if (userReaction != null) {
+                                // Remove reaction if already reacted
+                                coroutineScope.launch {
+                                    repository.toggleCommentReaction(
+                                        commentId = comment.id,
+                                        userId = currentUserId,
+                                        userName = "", // Not needed for removal
+                                        userPhotoUrl = "",
+                                        emoji = userReaction,
+                                        onResult = {}
+                                    )
+                                }
+                            } else {
+                                showReactionPicker = true
                             }
+                        },
+                        modifier = Modifier.size(32.dp)
+                    ) {
+                        if (userReaction != null) {
+                            Text(
+                                text = userReaction,
+                                fontSize = 18.sp
+                            )
                         } else {
-                            showReactionPicker = true
+                            Icon(
+                                imageVector = Icons.Default.FavoriteBorder,
+                                contentDescription = "React",
+                                tint = Color.Gray,
+                                modifier = Modifier.size(20.dp)
+                            )
                         }
-                    },
-                    modifier = Modifier.size(32.dp)
-                ) {
-                    if (userReaction != null) {
-                        Text(
-                            text = userReaction,
-                            fontSize = 18.sp
-                        )
-                    } else {
-                        Icon(
-                            imageVector = Icons.Default.FavoriteBorder,
-                            contentDescription = "React",
-                            tint = Color.Gray,
-                            modifier = Modifier.size(20.dp)
-                        )
+                    }
+                    
+                    // Reaction count badge
+                    if (comment.getTotalReactions() > 0) {
+                        Box(
+                            modifier = Modifier
+                                .padding(top = 20.dp, end = 4.dp)
+                                .background(Color(0xFFFF4081), CircleShape)
+                                .size(16.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "${comment.getTotalReactions()}",
+                                color = Color.White,
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
                     }
                 }
                 
-                // Reaction count badge
-                if (comment.getTotalReactions() > 0) {
-                    Box(
-                        modifier = Modifier
-                            .padding(top = 20.dp, end = 4.dp)
-                            .background(Color(0xFFFF4081), CircleShape)
-                            .size(16.dp),
-                        contentAlignment = Alignment.Center
+                // Delete button - only shown to comment owner
+                if (comment.userId == currentUserId) {
+                    IconButton(
+                        onClick = {
+                            coroutineScope.launch {
+                                repository.deleteComment(comment.id, flickId)
+                            }
+                        },
+                        modifier = Modifier.size(32.dp)
                     ) {
-                        Text(
-                            text = "${comment.getTotalReactions()}",
-                            color = Color.White,
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.Bold
+                        Icon(
+                            imageVector = Icons.Default.Delete,
+                            contentDescription = "Delete comment",
+                            tint = Color.Gray,
+                            modifier = Modifier.size(20.dp)
                         )
                     }
                 }
