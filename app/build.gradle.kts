@@ -116,9 +116,6 @@ dependencies {
     // Firebase Analytics - Track user engagement and app usage
     implementation(libs.firebase.analytics)
     
-    // GPUImage - Professional photo filters
-    implementation(libs.jp.co.cyberagent.android.gpuimage)
-    
     // Testing
     testImplementation(libs.junit)
     testImplementation(libs.mockk)
