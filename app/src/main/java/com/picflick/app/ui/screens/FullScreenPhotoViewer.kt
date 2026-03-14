@@ -76,6 +76,8 @@ import kotlinx.coroutines.Dispatchers
 import java.net.URL
 import java.net.HttpURLConnection
 
+import com.google.firebase.auth.FirebaseAuth
+
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun FullScreenPhotoViewer(
@@ -1284,6 +1286,14 @@ fun FullScreenPhotoViewer(
                                     onClick = {
                                         if (newCommentText.isNotBlank()) {
                                             coroutineScope.launch {
+                                                // DEBUG: Check Firebase Auth state
+                                                val auth = FirebaseAuth.getInstance()
+                                                android.util.Log.d("CommentDebug", "=== ADD COMMENT DEBUG ===")
+                                                android.util.Log.d("CommentDebug", "Firebase Auth currentUser: ${auth.currentUser?.uid ?: "NULL"}")
+                                                android.util.Log.d("CommentDebug", "Passed currentUser.uid: ${currentUser.uid}")
+                                                android.util.Log.d("CommentDebug", "UIDs match: ${auth.currentUser?.uid == currentUser.uid}")
+                                                android.util.Log.d("CommentDebug", "Is Firebase Auth null: ${auth.currentUser == null}")
+                                                
                                                 android.util.Log.d("CommentAdd", "Adding comment: text='${newCommentText.trim()}', userId='${currentUser.uid}', flickId='${currentFlick.id}',")
                                                 val result = if (replyingToComment != null) {
                                                     // Send reply
@@ -1770,6 +1780,15 @@ private fun CompactCommentItem(
                 if (comment.userId == currentUserId) {
                     IconButton(
                         onClick = {
+                            // DEBUG: Check Firebase Auth state
+                            val auth = FirebaseAuth.getInstance()
+                            android.util.Log.d("CommentDebug", "=== DELETE COMMENT DEBUG ===")
+                            android.util.Log.d("CommentDebug", "Firebase Auth currentUser: ${auth.currentUser?.uid ?: "NULL"}")
+                            android.util.Log.d("CommentDebug", "Passed currentUserId: $currentUserId")
+                            android.util.Log.d("CommentDebug", "Comment.userId: ${comment.userId}")
+                            android.util.Log.d("CommentDebug", "UIDs match: ${auth.currentUser?.uid == comment.userId}")
+                            android.util.Log.d("CommentDebug", "Is Firebase Auth null: ${auth.currentUser == null}")
+                            
                             android.util.Log.d("CommentDelete", "Delete clicked for comment ID: '${comment.id}', flickId: '${flickId}'")
                             coroutineScope.launch {
                                 try {
