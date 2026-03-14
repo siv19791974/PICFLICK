@@ -1054,6 +1054,7 @@ fun FullScreenPhotoViewer(
                     val keyboardController = LocalSoftwareKeyboardController.current
                     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
                     var replyingToComment by remember { mutableStateOf<Comment?>(null) }
+                    var showCommentReactionPicker by remember { mutableStateOf<Comment?>(null) }
                     
                     ModalBottomSheet(
                         onDismissRequest = { showCommentPanel = false },
@@ -1155,27 +1156,8 @@ fun FullScreenPhotoViewer(
                                             CompactCommentItem(
                                                 comment = comment,
                                                 currentUserId = currentUser.uid,
-                                                onLikeClick = {
-                                                    coroutineScope.launch {
-                                                        val isLiked = comment.likedBy.contains(currentUser.uid)
-                                                        if (isLiked) {
-                                                            repository.unlikeComment(comment.id, currentUser.uid)
-                                                        } else {
-                                                            repository.likeComment(
-                                                                commentId = comment.id,
-                                                                flickId = currentFlick.id,
-                                                                userId = currentUser.uid,
-                                                                userName = currentUser.displayName,
-                                                                userPhotoUrl = currentUser.photoUrl
-                                                            )
-                                                        }
-                                                        // Refresh comments
-                                                        repository.getComments(currentFlick.id) { result ->
-                                                            if (result is com.picflick.app.data.Result.Success) {
-                                                                comments = result.data
-                                                            }
-                                                        }
-                                                    }
+                                                onReactClick = {
+                                                    showCommentReactionPicker = comment
                                                 },
                                                 onReplyClick = {
                                                     replyingToComment = comment
@@ -1300,6 +1282,38 @@ fun FullScreenPhotoViewer(
                                         tint = Color.White
                                     )
                                 }
+                            }
+                            
+                            // Comment Reaction Picker - shown when React is clicked
+                            if (showCommentReactionPicker != null) {
+                                AnimatedReactionPicker(
+                                    onDismiss = { showCommentReactionPicker = null },
+                                    onReactionSelected = { reactionType ->
+                                        coroutineScope.launch {
+                                            val comment = showCommentReactionPicker!!
+                                            if (reactionType == null) {
+                                                // Remove reaction
+                                                repository.unlikeComment(comment.id, currentUser.uid)
+                                            } else {
+                                                // For now, just like the comment (could be extended to support emoji reactions)
+                                                repository.likeComment(
+                                                    commentId = comment.id,
+                                                    flickId = currentFlick.id,
+                                                    userId = currentUser.uid,
+                                                    userName = currentUser.displayName,
+                                                    userPhotoUrl = currentUser.photoUrl
+                                                )
+                                            }
+                                            // Refresh comments
+                                            repository.getComments(currentFlick.id) { result ->
+                                                if (result is com.picflick.app.data.Result.Success) {
+                                                    comments = result.data
+                                                }
+                                            }
+                                        }
+                                    },
+                                    currentReaction = null // For now, comments only support like/unlike
+                                )
                             }
                             
                             // Extra bottom padding for system nav bar (handled by ModalBottomSheet imePadding!)
@@ -1597,7 +1611,7 @@ fun FullScreenPhotoViewer(
 private fun CompactCommentItem(
     comment: Comment,
     currentUserId: String,
-    onLikeClick: () -> Unit = {},
+    onReactClick: () -> Unit = {},
     onReplyClick: () -> Unit = {},
     showReplies: Boolean = false,
     replies: List<Comment> = emptyList(),
@@ -1667,9 +1681,9 @@ private fun CompactCommentItem(
                     horizontalArrangement = Arrangement.End,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // React button (changed from Like)
+                                            // React button (changed from Like)
                     TextButton(
-                        onClick = onLikeClick,
+                        onClick = onReactClick,
                         modifier = Modifier.height(20.dp),
                         contentPadding = PaddingValues(horizontal = 0.dp)
                     ) {
