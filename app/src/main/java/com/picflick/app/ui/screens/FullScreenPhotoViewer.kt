@@ -1279,6 +1279,7 @@ fun FullScreenPhotoViewer(
                                                     newCommentText = ""
                                                     keyboardController?.hide()
                                                     // Don't manually add to list - let Firestore listener handle it
+                                                    replyingToComment = null // Reset reply state
                                                 }
                                             }
                                         }
