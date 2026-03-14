@@ -918,7 +918,7 @@ fun FullScreenPhotoViewer(
                                                         // Remove reaction by passing null
                                                         onReaction(null)
                                                     } else {
-                                                        showReactionPicker = true
+                                                        showReactionPicker = !showReactionPicker // TOGGLE: click to open, click again to close
                                                     }
                                                 }
                                             },
@@ -1615,7 +1615,7 @@ fun FullScreenPhotoViewer(
                                             onReactionClick = { 
                                                 // Only open picker for other people's photos
                                                 if (!canDeleteCurrent) {
-                                                    showReactionPicker = true 
+                                                    showReactionPicker = !showReactionPicker // TOGGLE: click to open, click again to close 
                                                 }
                                             }
                                         )
@@ -1799,7 +1799,7 @@ private fun CompactCommentItem(
                                     )
                                 }
                             } else {
-                                showReactionPicker = true
+                                showReactionPicker = !showReactionPicker // TOGGLE: click to open, click again to close
                             }
                         },
                         modifier = Modifier.size(32.dp)
@@ -2001,7 +2001,7 @@ private fun CompactReplyItem(
                             )
                         }
                     } else {
-                        showReactionPicker = true
+                        showReactionPicker = !showReactionPicker // TOGGLE: click to open, click again to close
                     }
                 },
                 modifier = Modifier.size(28.dp)
