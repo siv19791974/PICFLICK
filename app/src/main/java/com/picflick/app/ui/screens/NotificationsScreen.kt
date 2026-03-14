@@ -357,20 +357,15 @@ private fun NotificationItem(
             )
         }
 
-        // Action area - Accept/Decline buttons for FRIEND_REQUEST or MENTION
-        if ((notification.type == NotificationType.FRIEND_REQUEST || notification.type == NotificationType.MENTION) && !notification.isRead) {
+        // Action area - Accept/Decline buttons for FRIEND_REQUEST only
+        if (notification.type == NotificationType.FRIEND_REQUEST && !notification.isRead) {
             // Accept/Decline buttons stacked vertically
             Column(
                 horizontalAlignment = Alignment.End
             ) {
                 Button(
-                    onClick = { 
-                        if (notification.type == NotificationType.FRIEND_REQUEST) {
-                            onAcceptFriendRequest(notification.senderId)
-                        } else {
-                            // Accept tag
-                            onAcceptTag.invoke(notification.flickId ?: "", notification.id)
-                        }
+                    onClick = {
+                        onAcceptFriendRequest(notification.senderId)
                     },
                     shape = RoundedCornerShape(20.dp),
                     modifier = Modifier.wrapContentWidth(),
@@ -378,19 +373,14 @@ private fun NotificationItem(
                         containerColor = Color(0xFF4CAF50) // Green
                     )
                 ) {
-                    Text(if (notification.type == NotificationType.FRIEND_REQUEST) "Accept" else "Accept Tag", fontSize = 12.sp)
+                    Text("Accept", fontSize = 12.sp)
                 }
-                    
+
                 Spacer(modifier = Modifier.height(4.dp))
-                    
+
                 OutlinedButton(
-                    onClick = { 
-                        if (notification.type == NotificationType.FRIEND_REQUEST) {
-                            onDeclineFriendRequest(notification.senderId)
-                        } else {
-                            // Decline tag
-                            onDeclineTag.invoke(notification.flickId ?: "", notification.id)
-                        }
+                    onClick = {
+                        onDeclineFriendRequest(notification.senderId)
                     },
                     shape = RoundedCornerShape(20.dp),
                     modifier = Modifier.wrapContentWidth(),
@@ -398,7 +388,7 @@ private fun NotificationItem(
                         contentColor = Color(0xFFFF4444) // Red
                     )
                 ) {
-                    Text(if (notification.type == NotificationType.FRIEND_REQUEST) "Decline" else "Decline Tag", fontSize = 12.sp)
+                    Text("Decline", fontSize = 12.sp)
                 }
             }
         } else {

@@ -280,12 +280,14 @@ fun HomeScreen(
                 flickForReaction = null
             },
             onReactionSelected = { reactionType ->
-                // Trigger flying animation
-                val index = viewModel.flicks.indexOfFirst { it.id == flickForReaction?.id }
-                if (index != -1) {
-                    flyingReaction = reactionType to index
+                // Only show flying animation if adding a new reaction (not removing)
+                if (reactionType != null) {
+                    val index = viewModel.flicks.indexOfFirst { it.id == flickForReaction?.id }
+                    if (index != -1) {
+                        flyingReaction = reactionType to index
+                    }
                 }
-                // Handle reaction via ViewModel
+                // Handle reaction via ViewModel (null = remove reaction)
                 viewModel.toggleReaction(
                     flickForReaction!!,
                     userProfile.uid,

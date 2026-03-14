@@ -23,7 +23,7 @@ exports.sendPushNotification = functions.firestore
     }
     
     // ONLY send push for IMPORTANT notification types
-    const IMPORTANT_TYPES = ['FRIEND_REQUEST', 'MESSAGE', 'FOLLOW_ACCEPTED'];
+    const IMPORTANT_TYPES = ['FRIEND_REQUEST', 'MESSAGE', 'FOLLOW_ACCEPTED', 'MENTION', 'COMMENT'];
     
     if (!IMPORTANT_TYPES.includes(notification.type)) {
       console.log('Skipping push - type not important enough:', notification.type, 
@@ -65,6 +65,8 @@ exports.sendPushNotification = functions.firestore
         targetScreen = 'chat'; // Opens chat with sender
       } else if (notification.type === 'FOLLOW_ACCEPTED') {
         targetScreen = 'profile'; // Opens sender's profile
+      } else if (notification.type === 'MENTION' || notification.type === 'COMMENT') {
+        targetScreen = 'photo'; // Opens the photo
       }
       
       console.log('Push will open screen:', targetScreen, 'for type:', notification.type);

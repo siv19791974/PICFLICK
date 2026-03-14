@@ -1615,7 +1615,7 @@ class FlickRepository private constructor() {
                     "senderPhotoUrl" to photoOwnerPhotoUrl,
                     "type" to "MENTION",
                     "title" to "$photoOwnerName tagged you",
-                    "message" to "Accept or decline tag",
+                    "message" to "You're in a photo!",
                     "flickId" to flickId,
                     "flickImageUrl" to flickImageUrl,
                     "isRead" to false,
