@@ -2007,6 +2007,33 @@ class FlickRepository private constructor() {
     }
 
     /**
+     * Update flick with new filter and description
+     * Re-uploads the image with the applied filter
+     */
+    suspend fun updateFlickWithFilter(
+        flickId: String,
+        description: String,
+        filterType: String,
+        newImageUrl: String
+    ): Result<Unit> {
+        return try {
+            val updates = hashMapOf<String, Any>(
+                "description" to description,
+                "filter" to filterType,
+                "imageUrl" to newImageUrl,
+                "editedAt" to FieldValue.serverTimestamp()
+            )
+            
+            db.collection("flicks").document(flickId)
+                .update(updates)
+                .await()
+            Result.Success(Unit)
+        } catch (e: Exception) {
+            Result.Error(e, "Failed to update photo")
+        }
+    }
+
+    /**
      * Accept a tag (user accepts being tagged in a photo)
      */
     suspend fun acceptTag(flickId: String, userId: String): Result<Unit> {
