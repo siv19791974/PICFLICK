@@ -1204,28 +1204,61 @@ fun FullScreenPhotoViewer(
                                         }
                                     }
                                     
+                                    // Separate top-level comments and replies
+                                    val topLevelComments = comments.filter { it.parentCommentId == null }
+                                    val repliesByParent = comments.filter { it.parentCommentId != null }
+                                        .groupBy { it.parentCommentId }
+                                    
                                     LazyColumn(
                                         state = listState,
                                         modifier = Modifier.fillMaxSize(),
                                         contentPadding = PaddingValues(vertical = 4.dp),
                                         verticalArrangement = Arrangement.spacedBy(8.dp)
                                     ) {
-                                        items(comments, key = { it.id }) { comment ->
-                                            CompactCommentItem(
-                                                comment = comment,
-                                                currentUserId = currentUser.uid,
-                                                flickId = currentFlick.id,
-                                                repository = repository,
-                                                coroutineScope = coroutineScope, // Pass stable scope
-                                                onReplyClick = {
-                                                    replyingToComment = comment
-                                                    keyboardController?.show()
-                                                },
-                                                onDelete = {
-                                                    // Remove from UI immediately
-                                                    comments = comments.filter { it.id != comment.id }
+                                        items(topLevelComments, key = { it.id }) { comment ->
+                                            Column {
+                                                // Main comment
+                                                CompactCommentItem(
+                                                    comment = comment,
+                                                    currentUserId = currentUser.uid,
+                                                    flickId = currentFlick.id,
+                                                    repository = repository,
+                                                    coroutineScope = coroutineScope,
+                                                    onReplyClick = {
+                                                        replyingToComment = comment
+                                                        keyboardController?.show()
+                                                    },
+                                                    onDelete = {
+                                                        comments = comments.filter { it.id != comment.id }
+                                                    }
+                                                )
+                                                
+                                                // Replies (indented)
+                                                val replies = repliesByParent[comment.id] ?: emptyList()
+                                                if (replies.isNotEmpty()) {
+                                                    Column(
+                                                        modifier = Modifier
+                                                            .padding(start = 48.dp, top = 4.dp)
+                                                    ) {
+                                                        replies.forEach { reply ->
+                                                            CompactCommentItem(
+                                                                comment = reply,
+                                                                currentUserId = currentUser.uid,
+                                                                flickId = currentFlick.id,
+                                                                repository = repository,
+                                                                coroutineScope = coroutineScope,
+                                                                onReplyClick = {
+                                                                    replyingToComment = reply
+                                                                    keyboardController?.show()
+                                                                },
+                                                                onDelete = {
+                                                                    comments = comments.filter { it.id != reply.id }
+                                                                }
+                                                            )
+                                                        }
+                                                    }
                                                 }
-                                            )
+                                            }
                                         }
                                     }
                                 }
