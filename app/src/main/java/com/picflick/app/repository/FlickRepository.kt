@@ -1701,6 +1701,8 @@ class FlickRepository private constructor() {
         text: String
     ): Result<Unit> {
         return try {
+            android.util.Log.d("CommentAdd", "Creating comment: flickId=$flickId, userId=$userId, text=$text")
+            
             val comment = Comment(
                 id = UUID.randomUUID().toString(),
                 flickId = flickId,
@@ -1712,7 +1714,8 @@ class FlickRepository private constructor() {
             )
 
             // Add comment
-            db.collection("comments").add(comment).await()
+            val docRef = db.collection("comments").add(comment).await()
+            android.util.Log.d("CommentAdd", "Comment added with ID: ${docRef.id}")
 
             // Update flick comment count
             db.collection("flicks").document(flickId)
@@ -1724,7 +1727,8 @@ class FlickRepository private constructor() {
 
             Result.Success(Unit)
         } catch (e: Exception) {
-            Result.Error(e, "Failed to add comment")
+            android.util.Log.e("CommentAdd", "Failed to add comment: ${e.message}", e)
+            Result.Error(e, "Failed to add comment: ${e.message}")
         }
     }
 

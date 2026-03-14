@@ -1284,14 +1284,15 @@ fun FullScreenPhotoViewer(
                                     onClick = {
                                         if (newCommentText.isNotBlank()) {
                                             coroutineScope.launch {
+                                                android.util.Log.d("CommentAdd", "Adding comment: text='${newCommentText.trim()}', userId='${currentUser.uid}', flickId='${currentFlick.id}',")
                                                 val result = if (replyingToComment != null) {
                                                     // Send reply
                                                     repository.addReply(
                                                         flickId = currentFlick.id,
                                                         parentCommentId = replyingToComment!!.id,
                                                         userId = currentUser.uid,
-                                                        userName = currentUser.displayName,
-                                                        userPhotoUrl = currentUser.photoUrl,
+                                                        userName = currentUser.displayName ?: "",
+                                                        userPhotoUrl = currentUser.photoUrl ?: "",
                                                         text = newCommentText.trim()
                                                     )
                                                 } else {
@@ -1299,18 +1300,23 @@ fun FullScreenPhotoViewer(
                                                     repository.addComment(
                                                         currentFlick.id, 
                                                         currentUser.uid, 
-                                                        currentUser.displayName, 
-                                                        currentUser.photoUrl,
+                                                        currentUser.displayName ?: "", 
+                                                        currentUser.photoUrl ?: "",
                                                         newCommentText.trim()
                                                     )
                                                 }
                                                 
                                                 // Only clear text if comment was saved successfully
-                                                if (result is com.picflick.app.data.Result.Success) {
-                                                    newCommentText = ""
-                                                    keyboardController?.hide()
-                                                    // Don't manually add to list - let Firestore listener handle it
-                                                    replyingToComment = null // Reset reply state
+                                                when (result) {
+                                                    is com.picflick.app.data.Result.Success -> {
+                                                        android.util.Log.d("CommentAdd", "Comment added successfully")
+                                                        newCommentText = ""
+                                                        keyboardController?.hide()
+                                                        replyingToComment = null // Reset reply state
+                                                    }
+                                                    is com.picflick.app.data.Result.Error -> {
+                                                        android.util.Log.e("CommentAdd", "Failed to add comment: ${result.exception?.message}")
+                                                    }
                                                 }
                                             }
                                         }
