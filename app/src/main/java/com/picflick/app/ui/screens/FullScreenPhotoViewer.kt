@@ -52,8 +52,6 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
-import net.engawapg.lib.zoomable.rememberZoomState
-import net.engawapg.lib.zoomable.zoomable
 import com.picflick.app.data.Comment
 import com.picflick.app.data.Flick
 import com.picflick.app.data.ReactionType
@@ -492,7 +490,7 @@ fun FullScreenPhotoViewer(
         ) {
             Box(modifier = Modifier.fillMaxSize()) {
                 
-                // SIMPLE 2D PAGER - Just direct positioning with Zoomable for pinch
+                // SIMPLE 2D PAGER - Just direct positioning, no zoom
                 // NO SPRING - direct snap only
                 val dragXAnim = remember { Animatable(0f) }
                 val dragYAnim = remember { Animatable(0f) }
@@ -517,7 +515,7 @@ fun FullScreenPhotoViewer(
                     modifier = Modifier
                         .fillMaxSize()
                         .pointerInput(Unit) {
-                            // SWIPE detection only - pinch handled by Zoomable library
+                            // SWIPE detection only - no zoom/pinch
                             detectDragGestures(
                                 onDragStart = {
                                     rawDragX = 0f
@@ -630,10 +628,7 @@ fun FullScreenPhotoViewer(
                         var lastTapTime by remember { mutableLongStateOf(0L) }
                         val doubleTapTimeout = 300L // ms
                         
-                        // Zoom state for current photo only
-                        val zoomState = if (isCurrent) rememberZoomState() else null
-                        
-                        // Modifier chain: zoomable LAST (outermost) gets pinch FIRST
+                        // Photo display - no zoom, just tap to toggle UI
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
@@ -649,17 +644,7 @@ fun FullScreenPhotoViewer(
                                         onTap = { uiVisible = !uiVisible }
                                         // NO onDoubleTap - reactions only via sidebar!
                                     )
-                                }
-                                .then(
-                                    // ZOOMABLE LAST = OUTERMOST = gets events FIRST
-                                    // Double-tap zoom disabled - pass empty lambda
-                                    if (isCurrent && zoomState != null) {
-                                        Modifier.zoomable(
-                                            zoomState = zoomState,
-                                            onDoubleTap = { _ -> } // Disable double-tap zoom - do nothing
-                                        )
-                                    } else Modifier
-                                ),
+                                },
                             contentAlignment = Alignment.Center
                         ) {
                             AsyncImage(
