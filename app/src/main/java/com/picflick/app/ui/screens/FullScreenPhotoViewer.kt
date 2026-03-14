@@ -632,7 +632,7 @@ fun FullScreenPhotoViewer(
                         
                         // Move photo up when comments open (so it's visible above comments)
                         val commentPanelOffset by animateIntOffsetAsState(
-                            targetValue = if (showCommentPanel && isCurrent) IntOffset(0, -150) else IntOffset(0, 0),
+                            targetValue = if (showCommentPanel && isCurrent) IntOffset(0, -280) else IntOffset(0, 0),
                             animationSpec = tween(durationMillis = 300),
                             label = "commentPanelOffset"
                         )
