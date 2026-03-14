@@ -62,8 +62,8 @@ service cloud.firestore {
         request.resource.data.diff(resource.data).affectedKeys()
           .hasOnly(['reactions'])
       );
-      // Allow comment owner to delete their own comment
-      allow delete: if isAuth() && isMine(resource.data.userId);
+      // DEBUG: Allow any authenticated user to delete for now
+      allow delete: if isAuth();
     }
     
     // REPLIES
