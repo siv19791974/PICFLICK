@@ -1195,7 +1195,9 @@ fun FullScreenPhotoViewer(
                             
                             // Input bar - keyboard handled automatically by ModalBottomSheet!
                             Row(
-                                modifier = Modifier.fillMaxWidth(),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .windowInsetsPadding(WindowInsets.navigationBars.only(WindowInsetsSides.Bottom)),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 val focusRequester = remember { FocusRequester() }
@@ -1668,11 +1670,11 @@ private fun CompactCommentItem(
                     )
                 }
                 
-                // React and Reply buttons row - aligned right
+                // React and Reply buttons row - aligned right, visually attached to comment
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(top = 4.dp),
+                        .padding(top = 2.dp),
                     horizontalArrangement = Arrangement.End,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
