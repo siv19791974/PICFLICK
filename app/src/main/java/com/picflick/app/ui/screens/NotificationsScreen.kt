@@ -499,7 +499,7 @@ private fun getNotificationColor(type: NotificationType) = when (type) {
     NotificationType.SYSTEM -> Color(0xFF607D8B) // Blue Grey
 }
 
-private fun formatTimestamp(timestamp: Long): String {
+internal fun formatTimestamp(timestamp: Long): String {
     val date = Date(timestamp)
     val now = Date()
     val diff = now.time - date.time
