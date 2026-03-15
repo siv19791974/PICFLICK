@@ -35,6 +35,7 @@ import com.picflick.app.ui.screens.AboutScreen
 import com.picflick.app.ui.screens.ChatDetailScreen
 import com.picflick.app.ui.screens.ChatsScreen
 import com.picflick.app.ui.screens.ContactScreen
+import com.picflick.app.ui.screens.EditPhotoScreen
 import com.picflick.app.ui.screens.ExploreScreen
 import com.picflick.app.ui.screens.FilterScreen
 import com.picflick.app.ui.screens.FindFriendsScreen
@@ -253,6 +254,17 @@ fun AuthenticatedContent(
             // TODO: Implement proper preview screen
             onScreenChange(Screen.Home)
         }
+
+        is Screen.EditPhoto -> EditPhotoScreen(
+            flick = currentScreen.flick,
+            currentUser = userProfile,
+            cloudName = "", // TODO: Get from BuildConfig or settings
+            onBack = { onScreenChange(Screen.Home) },
+            onSave = { _, _, _ ->
+                // TODO: Implement actual save logic
+                onScreenChange(Screen.Home)
+            }
+        )
     }
 
     // FullScreenPhotoViewer for push notification photos (overlays any screen)
@@ -441,6 +453,9 @@ private fun ProfileScreenContent(
             canDelete = true,
             onCaptionUpdated = { flick, newCaption ->
                 profileViewModel.updateCaption(flick.id, newCaption)
+            },
+            onEditPhotoClick = { flick ->
+                onScreenChange(Screen.EditPhoto(flick))
             }
         )
     }
@@ -1067,7 +1082,8 @@ private fun PhotoViewerWrapper(
     onDeleteClick: (Flick) -> Unit,
     canDelete: Boolean,
     onCaptionUpdated: (Flick, String) -> Unit,
-    friendProfiles: Map<String, UserProfile> = emptyMap() // Map of userId -> UserProfile for looking up profile pics
+    friendProfiles: Map<String, UserProfile> = emptyMap(), // Map of userId -> UserProfile for looking up profile pics
+    onEditPhotoClick: (Flick) -> Unit = {} // Navigate to edit photo screen
 ) {
     selectedPhoto?.let { flick ->
         val isProfilePhoto = flick.id.startsWith("profile_")
@@ -1096,7 +1112,8 @@ private fun PhotoViewerWrapper(
             },
             onNavigateToFindFriends = onNavigateToFindFriends,
             onUserProfileClick = onUserProfileClick,
-            friendProfiles = friendProfiles // Pass friend profiles for User B profile pics
+            friendProfiles = friendProfiles, // Pass friend profiles for User B profile pics
+            onEditPhotoClick = onEditPhotoClick // Pass edit photo callback
         )
     }
 }
