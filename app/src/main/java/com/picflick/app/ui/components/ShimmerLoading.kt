@@ -3,8 +3,9 @@ package com.picflick.app.ui.components
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -15,6 +16,7 @@ import androidx.compose.ui.unit.dp
 
 /**
  * Shimmer loading effect for photo grid items
+ * Matches the actual FlickGrid size (screen height / 4.1 per row)
  */
 @Composable
 fun PhotoGridShimmer(
@@ -48,25 +50,29 @@ fun PhotoGridShimmer(
         end = Offset(x = translateAnim.value, y = translateAnim.value)
     )
 
-    Column(modifier = modifier.fillMaxSize()) {
-        // Photo grid shimmer
-        val rows = (itemCount + 2) / 3
-        repeat(rows) { row ->
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly
-            ) {
-                repeat(3) { col ->
-                    if (row * 3 + col < itemCount) {
-                        Box(
-                            modifier = Modifier
-                                .padding(4.dp)
-                                .size(110.dp)
-                                .clip(RoundedCornerShape(12.dp))
-                                .background(brush)
-                        )
-                    }
-                }
+    // Calculate height same as FlickGrid: screen height / 4.1 per row
+    BoxWithConstraints(modifier = modifier.fillMaxSize()) {
+        val rowHeight = this.maxHeight / 4.1f
+        
+        LazyVerticalGrid(
+            columns = GridCells.Fixed(3),
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(
+                start = 1.dp,
+                end = 1.dp,
+                top = 4.dp,
+                bottom = 80.dp
+            ),
+            userScrollEnabled = false // Disable scroll for shimmer
+        ) {
+            items(itemCount) {
+                Box(
+                    modifier = Modifier
+                        .padding(1.dp)
+                        .height(rowHeight)
+                        .fillMaxWidth()
+                        .background(brush)
+                )
             }
         }
     }
