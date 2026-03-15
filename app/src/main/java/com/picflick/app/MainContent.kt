@@ -368,7 +368,10 @@ private fun HomeScreenContent(
                 onScreenChange(Screen.UserProfile(userId))
             }
         },
-        friends = friendsViewModel.followingUsers // Pass friends for profile picture lookup
+        friends = friendsViewModel.followingUsers, // Pass friends for profile picture lookup
+        onEditPhotoClick = { flick ->
+            onScreenChange(Screen.EditPhoto(flick))
+        }
     )
 }
 

@@ -66,7 +66,8 @@ fun HomeScreen(
     onNavigate: (String) -> Unit,
     onSignOut: () -> Unit,
     onUserProfileClick: (String) -> Unit = {},
-    friends: List<UserProfile> = emptyList() // Friends list for profile picture lookup
+    friends: List<UserProfile> = emptyList(), // Friends list for profile picture lookup
+    onEditPhotoClick: (Flick) -> Unit = {} // Navigate to edit photo screen
 ) {
     val context = LocalContext.current
     var showUploadDialog by remember { mutableStateOf(false) }
@@ -269,7 +270,10 @@ fun HomeScreen(
             onUserProfileClick = { userId ->
                 onUserProfileClick(userId)
             },
-            friendProfiles = friends.associateBy { it.uid }
+            friendProfiles = friends.associateBy { it.uid },
+            onEditPhotoClick = { flick ->
+                onEditPhotoClick(flick)
+            }
         )
         } // End key
     }
