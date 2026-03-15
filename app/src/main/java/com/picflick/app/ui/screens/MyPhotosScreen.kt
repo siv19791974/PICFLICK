@@ -36,7 +36,8 @@ fun MyPhotosScreen(
     viewModel: ProfileViewModel,
     userId: String,
     currentUser: UserProfile,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    onEditPhotoClick: (Flick) -> Unit = {} // Add edit photo callback
 ) {
     val context = LocalContext.current
     val isDarkMode = ThemeManager.isDarkMode.value
@@ -113,7 +114,11 @@ fun MyPhotosScreen(
                 context.startActivity(android.content.Intent.createChooser(shareIntent, "Share photo"))
             },
             canDelete = photo.userId == currentUser.uid,
-            onDeleteClick = { /* Handle delete in viewModel if needed */ }
+            onDeleteClick = { /* Handle delete in viewModel if needed */ },
+            onEditPhotoClick = { flick ->
+                // Navigate to edit photo screen
+                onEditPhotoClick(flick)
+            }
         )
     }
 }
