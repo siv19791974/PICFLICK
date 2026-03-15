@@ -1,5 +1,7 @@
 package com.picflick.app.navigation
 
+import com.picflick.app.data.Flick
+
 /**
  * Sealed class for type-safe navigation in PicFlick app.
  * Each screen is represented as a data object or data class (for screens with arguments).

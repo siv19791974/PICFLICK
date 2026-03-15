@@ -104,6 +104,7 @@ fun AuthenticatedContent(
         is Screen.Home -> HomeScreenContent(
             userProfile = userProfile,
             homeViewModel = homeViewModel,
+            friendsViewModel = friendsViewModel,
             onScreenChange = onScreenChange,
             onSignOut = onSignOut
         )
@@ -312,6 +313,7 @@ fun AuthenticatedContent(
 private fun HomeScreenContent(
     userProfile: UserProfile,
     homeViewModel: HomeViewModel,
+    friendsViewModel: FriendsViewModel,
     onScreenChange: (Screen) -> Unit,
     onSignOut: () -> Unit
 ) {
