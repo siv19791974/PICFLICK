@@ -204,9 +204,10 @@ fun UserProfileScreen(
                             .padding(horizontal = 16.dp, vertical = 8.dp)
                     )
 
-                    val screenHeight = androidx.compose.ui.platform.LocalConfiguration.current.screenHeightDp.dp
-                    val homeLikeRowHeight = screenHeight / 4.1f
-                    val gridHeight = (homeLikeRowHeight * 4) + 12.dp
+                    // Match ProfileScreen standard sizing exactly
+                    val rowCount = ((photos.size + 2) / 3).coerceAtLeast(4)
+                    val homeLikeRowHeight = 148.dp
+                    val gridHeight = (rowCount * homeLikeRowHeight.value).dp + 8.dp
 
                     Box(
                         modifier = Modifier
@@ -220,8 +221,9 @@ fun UserProfileScreen(
                                 start = 1.dp,
                                 end = 1.dp,
                                 top = 4.dp,
-                                bottom = 8.dp
-                            )
+                                bottom = 0.dp
+                            ),
+                            userScrollEnabled = false
                         ) {
                             items(photos) { photo ->
                                 ProfilePhotoCard(
