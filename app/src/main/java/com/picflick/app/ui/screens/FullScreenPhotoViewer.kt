@@ -188,19 +188,30 @@ fun FullScreenPhotoViewer(
     var isUnlikeAnimation by remember { mutableStateOf(false) }
     val isLiked = userReaction != null
     
-    // Fetch User B's profile photo if not in friendProfiles
+    // Fetch User B's profile photo if not available
     var fetchedUserPhotoUrl by remember(currentFlick.userId) { mutableStateOf<String?>(null) }
-    
+
     LaunchedEffect(currentFlick.userId) {
-        // Only fetch if it's not the current user and not already in friendProfiles
-        if (currentFlick.userId != currentUser.uid && !friendProfiles.containsKey(currentFlick.userId)) {
+        // Check if we need to fetch: either not in friendProfiles, or in friendProfiles but with empty photo
+        val friendProfile = friendProfiles[currentFlick.userId]
+        val needsFetch = if (currentFlick.userId == currentUser.uid) {
+            false // Don't fetch for current user - use currentUser.photoUrl
+        } else if (currentFlick.userPhotoUrl.isNotBlank()) {
+            false // Already have photo stored in flick
+        } else if (friendProfile != null && !friendProfile.photoUrl.isNullOrBlank()) {
+            false // Have photo from friendProfiles
+        } else {
+            true // Need to fetch from Firestore
+        }
+        
+        if (needsFetch) {
             try {
                 val userDoc = com.google.firebase.firestore.FirebaseFirestore.getInstance()
                     .collection("users")
                     .document(currentFlick.userId)
                     .get()
                     .await()
-                
+
                 val photoUrl = userDoc.getString("photoUrl")
                 if (!photoUrl.isNullOrBlank()) {
                     fetchedUserPhotoUrl = photoUrl
