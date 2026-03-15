@@ -209,7 +209,7 @@ fun FilterScreen(
                                 showCountdownAnimation -> Color(0xFF00C853) // Green success color
                                 isLimitReached -> Color.Red
                                 isDarkMode -> Color(0xFF2C2C2E)
-                                else -> Color.White
+                                else -> PicFlickLightBackground
                             },
                             animationSpec = androidx.compose.animation.core.tween(300),
                             label = "backgroundColor"
@@ -328,7 +328,7 @@ fun FilterScreen(
                             Box(
                                 modifier = Modifier
                                     .fillMaxSize()
-                                    .background(if (isDarkMode) Color.Black.copy(alpha = 0.7f) else Color.White.copy(alpha = 0.7f)),
+                                    .background(if (isDarkMode) Color.Black.copy(alpha = 0.7f) else PicFlickLightBackground.copy(alpha = 0.7f)),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Column(
@@ -380,7 +380,7 @@ fun FilterScreen(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .weight(1f) // Fill remaining space
-                                .background(if (isDarkMode) Color(0xFF1C1C1E) else Color.White)
+                                .background(if (isDarkMode) Color(0xFF1C1C1E) else PicFlickLightBackground)
                                 .padding(vertical = 8.dp) // Reduced padding
                                 .windowInsetsPadding(WindowInsets.navigationBars) // Handle nav bar insets
                         ) {
@@ -465,8 +465,8 @@ fun FilterScreen(
                                         unfocusedTextColor = if (isDarkMode) Color.White else Color.Black,
                                         focusedBorderColor = if (isDarkMode) Color(0xFF87CEEB) else Color(0xFF1565C0),
                                         unfocusedBorderColor = if (isDarkMode) Color.White.copy(alpha = 0.3f) else Color.Black.copy(alpha = 0.3f),
-                                        focusedContainerColor = if (isDarkMode) Color(0xFF2C2C2E) else Color.White,
-                                        unfocusedContainerColor = if (isDarkMode) Color(0xFF2C2C2E) else Color.White
+                                        focusedContainerColor = if (isDarkMode) Color(0xFF2C2C2E) else PicFlickLightBackground,
+                                        unfocusedContainerColor = if (isDarkMode) Color(0xFF2C2C2E) else PicFlickLightBackground
                                     ),
                                     maxLines = 2,
                                     singleLine = false
@@ -532,7 +532,7 @@ private fun FilterIcon(
                     },
                     shape = RoundedCornerShape(16.dp)
                 )
-                .background(if (isDarkMode) Color(0xFF2C2C2E) else Color.White),
+                .background(if (isDarkMode) Color(0xFF2C2C2E) else PicFlickLightBackground),
             contentAlignment = Alignment.Center
         ) {
             if (bitmap != null) {
