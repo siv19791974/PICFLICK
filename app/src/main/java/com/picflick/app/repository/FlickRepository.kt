@@ -2034,6 +2034,31 @@ class FlickRepository private constructor() {
     }
 
     /**
+     * Update flick filter and description only (no image re-upload)
+     * Used by EditPhotoScreen for changing filters/captions on existing photos
+     */
+    suspend fun updateFlickFilterAndDescription(
+        flickId: String,
+        description: String,
+        filterType: String
+    ): Result<Unit> {
+        return try {
+            val updates = hashMapOf<String, Any>(
+                "description" to description,
+                "filter" to filterType,
+                "editedAt" to FieldValue.serverTimestamp()
+            )
+            
+            db.collection("flicks").document(flickId)
+                .update(updates)
+                .await()
+            Result.Success(Unit)
+        } catch (e: Exception) {
+            Result.Error(e, "Failed to update photo")
+        }
+    }
+
+    /**
      * Accept a tag (user accepts being tagged in a photo)
      */
     suspend fun acceptTag(flickId: String, userId: String): Result<Unit> {

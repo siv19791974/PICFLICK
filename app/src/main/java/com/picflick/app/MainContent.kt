@@ -261,9 +261,32 @@ fun AuthenticatedContent(
             currentUser = userProfile,
             cloudName = "", // TODO: Get from BuildConfig or settings
             onBack = { onScreenChange(Screen.Home) },
-            onSave = { _, _, _ ->
-                // TODO: Implement actual save logic
-                onScreenChange(Screen.Home)
+            onSave = { flick, filterType, description ->
+                scope.launch {
+                    val result = repository.updateFlickFilterAndDescription(
+                        flickId = flick.id,
+                        description = description,
+                        filterType = filterType
+                    )
+                    when (result) {
+                        is com.picflick.app.data.Result.Success -> {
+                            android.widget.Toast.makeText(
+                                context,
+                                "Photo updated!",
+                                android.widget.Toast.LENGTH_SHORT
+                            ).show()
+                            onScreenChange(Screen.Home)
+                        }
+                        is com.picflick.app.data.Result.Error -> {
+                            android.widget.Toast.makeText(
+                                context,
+                                "Failed to update: ${result.message}",
+                                android.widget.Toast.LENGTH_SHORT
+                            ).show()
+                        }
+                        else -> {}
+                    }
+                }
             }
         )
     }
