@@ -158,7 +158,7 @@ fun NotificationsScreen(
                 else -> {
                     LazyColumn(
                         modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(vertical = 8.dp)
+                        contentPadding = PaddingValues(0.dp)
                     ) {
                         items(notifications, key = { it.id }) { notification ->
                             SwipeableNotificationItem(
@@ -253,8 +253,9 @@ private fun NotificationItem(
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .background(if (isDarkMode) isDarkModeBackground(true) else isDarkModeBackground(false))
             .clickable { onClick() }
-            .padding(horizontal = 16.dp, vertical = 12.dp),
+            .padding(horizontal = 12.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         // Sender avatar with notification icon overlay - 56dp like ChatListItem
@@ -325,48 +326,60 @@ private fun NotificationItem(
             }
         }
 
-        // Action area - Accept/Decline buttons for FRIEND_REQUEST only
+        // Action area - quick actions by notification type
         if (notification.type == NotificationType.FRIEND_REQUEST && !notification.isRead) {
-            // Accept/Decline buttons stacked vertically
-            Column(
-                horizontalAlignment = Alignment.End
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Button(
-                    onClick = {
-                        onAcceptFriendRequest(notification.senderId)
-                    },
-                    shape = RoundedCornerShape(20.dp),
-                    modifier = Modifier.wrapContentWidth(),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFF4CAF50) // Green
-                    )
-                ) {
-                    Text("Accept", fontSize = 12.sp)
-                }
-
-                Spacer(modifier = Modifier.height(4.dp))
-
                 OutlinedButton(
-                    onClick = {
-                        onDeclineFriendRequest(notification.senderId)
-                    },
-                    shape = RoundedCornerShape(20.dp),
-                    modifier = Modifier.wrapContentWidth(),
+                    onClick = { onUserProfileClick(notification.senderId) },
+                    shape = RoundedCornerShape(16.dp),
+                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
                     colors = ButtonDefaults.outlinedButtonColors(
-                        contentColor = Color(0xFFFF4444) // Red
+                        contentColor = if (isDarkMode) Color.White else Color.Black
                     )
                 ) {
-                    Text("Decline", fontSize = 12.sp)
+                    Text("View", fontSize = 11.sp)
+                }
+                Button(
+                    onClick = { onAcceptFriendRequest(notification.senderId) },
+                    shape = RoundedCornerShape(16.dp),
+                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50))
+                ) {
+                    Text("Accept", fontSize = 11.sp, color = Color.White)
+                }
+                OutlinedButton(
+                    onClick = { onDeclineFriendRequest(notification.senderId) },
+                    shape = RoundedCornerShape(16.dp),
+                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFFF4444))
+                ) {
+                    Text("Decline", fontSize = 11.sp)
                 }
             }
         } else {
-            // Unread indicator only (delete via swipe)
-            if (!notification.isRead) {
-                Box(
-                    modifier = Modifier
-                        .size(8.dp)
-                        .background(Color.Red, CircleShape)
+            val actionLabel = when (notification.type) {
+                NotificationType.FOLLOW -> "Profile"
+                NotificationType.MESSAGE -> "Open"
+                else -> "View"
+            }
+
+            OutlinedButton(
+                onClick = {
+                    when (notification.type) {
+                        NotificationType.FOLLOW -> onUserProfileClick(notification.senderId)
+                        else -> onClick()
+                    }
+                },
+                shape = RoundedCornerShape(16.dp),
+                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                colors = ButtonDefaults.outlinedButtonColors(
+                    contentColor = if (isDarkMode) Color.White.copy(alpha = 0.9f) else Color.Black
                 )
+            ) {
+                Text(actionLabel, fontSize = 11.sp)
             }
         }
     }
@@ -404,7 +417,7 @@ private fun SwipeableNotificationItem(
             val color = if (dismissState.targetValue == SwipeToDismissBoxValue.StartToEnd) {
                 Color(0xFFFF4444) // Red when swiping right
             } else {
-                Color(0x80FF4444) // Semi-transparent red
+                Color.Transparent
             }
             Box(
                 modifier = Modifier
