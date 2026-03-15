@@ -129,7 +129,12 @@ fun FilterScreen(
         PhotoFilter._1977,
         PhotoFilter.NOIR,
         PhotoFilter.FADE,
-        PhotoFilter.VIVID
+        PhotoFilter.VIVID,
+        // New RenderEffect filters
+        PhotoFilter.BLUR_LIGHT,
+        PhotoFilter.BLUR_MEDIUM,
+        PhotoFilter.BLUR_HEAVY,
+        PhotoFilter.COLOR_INVERT
     )
     
     // Animation state for countdown - now triggered immediately on upload click
