@@ -43,7 +43,10 @@ import coil3.compose.AsyncImage
 import com.picflick.app.R
 import com.picflick.app.data.ChatSession
 import com.picflick.app.data.UserProfile
+import com.picflick.app.ui.components.BottomNavBar
+import com.picflick.app.ui.components.LogoImage
 import com.picflick.app.ui.theme.PicFlickBannerBackground
+import com.picflick.app.ui.theme.PicFlickLightBackground
 import com.picflick.app.ui.theme.ThemeManager
 import com.picflick.app.ui.theme.isDarkModeBackground
 import com.picflick.app.viewmodel.ChatViewModel
@@ -486,7 +489,7 @@ private fun NewChatDialog(
     onFriendSelected: (String, String, String) -> Unit,
     onUserProfileClick: (String) -> Unit
 ) {
-    val backgroundColor = if (isDarkMode) Color.Black else Color(0xFFB8D4F0)
+    val backgroundColor = if (isDarkMode) Color.Black else PicFlickLightBackground
     
     Dialog(
         onDismissRequest = onDismiss,
@@ -502,16 +505,15 @@ private fun NewChatDialog(
             Column(
                 modifier = Modifier.fillMaxSize()
             ) {
-                // MAIN HEADER - PicFlick Logo Bar (matches MainActivity)
+                // MAIN HEADER - Match app standard logo sizing/position
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(56.dp)
                         .background(Color.Black)
-                        .padding(horizontal = 16.dp),
+                        .padding(horizontal = 8.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    // Back button on left
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically
@@ -526,34 +528,21 @@ private fun NewChatDialog(
                                 tint = Color.White
                             )
                         }
-                        
-                        // PicFlick Logo centered
-                        Row(
-                            modifier = Modifier.weight(1f),
-                            horizontalArrangement = Arrangement.Center
+
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .padding(horizontal = 8.dp),
+                            contentAlignment = Alignment.Center
                         ) {
-                            Image(
-                                painter = painterResource(id = R.drawable.logo),
-                                contentDescription = "PicFlick",
-                                modifier = Modifier.height(32.dp),
-                                contentScale = ContentScale.Fit
-                            )
+                            LogoImage(modifier = Modifier.height(40.dp))
                         }
-                        
-                        // Search on right
-                        IconButton(onClick = { /* Search */ }) {
+
+                        // Keep only search on right (remove compose icon)
+                        IconButton(onClick = { /* Search */ }, modifier = Modifier.size(40.dp)) {
                             Icon(
                                 imageVector = Icons.Default.Search,
                                 contentDescription = "Search",
-                                tint = Color.White
-                            )
-                        }
-                        
-                        // Compose/New Message button
-                        IconButton(onClick = { /* Compose new message */ }) {
-                            Icon(
-                                imageVector = Icons.Default.Edit,
-                                contentDescription = "Compose",
                                 tint = Color.White
                             )
                         }
@@ -619,87 +608,11 @@ private fun NewChatDialog(
                     }
                 }
                 
-                // BOTTOM 5-WAY NAVIGATION BAR (matches MainActivity)
-                NavigationBar(
-                    modifier = Modifier.fillMaxWidth(),
-                    containerColor = Color.Black,
-                    contentColor = Color.White
-                ) {
-                    // Home tab
-                    NavigationBarItem(
-                        icon = { Icon(Icons.Filled.Home, contentDescription = "Home") },
-                        label = { Text("Home") },
-                        selected = false,
-                        onClick = { /* Navigate to Home */ },
-                        colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = Color.White,
-                            selectedTextColor = Color.White,
-                            unselectedIconColor = Color.Gray,
-                            unselectedTextColor = Color.Gray,
-                            indicatorColor = Color.DarkGray
-                        )
-                    )
-                    
-                    // Search tab
-                    NavigationBarItem(
-                        icon = { Icon(Icons.Filled.Search, contentDescription = "Search") },
-                        label = { Text("Search") },
-                        selected = false,
-                        onClick = { /* Navigate to Search */ },
-                        colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = Color.White,
-                            selectedTextColor = Color.White,
-                            unselectedIconColor = Color.Gray,
-                            unselectedTextColor = Color.Gray,
-                            indicatorColor = Color.DarkGray
-                        )
-                    )
-                    
-                    // Create/Add tab (center)
-                    NavigationBarItem(
-                        icon = { Icon(Icons.Filled.AddCircle, contentDescription = "Create") },
-                        label = { Text("Create") },
-                        selected = false,
-                        onClick = { /* Navigate to Create */ },
-                        colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = Color.White,
-                            selectedTextColor = Color.White,
-                            unselectedIconColor = Color.Gray,
-                            unselectedTextColor = Color.Gray,
-                            indicatorColor = Color.DarkGray
-                        )
-                    )
-                    
-                    // Messages tab selected since we're in messaging flow
-                    NavigationBarItem(
-                        icon = { Icon(Icons.AutoMirrored.Filled.Chat, contentDescription = "Messages") },
-                        label = { Text("Messages") },
-                        selected = true,
-                        onClick = { /* Already in messages */ },
-                        colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = Color.White,
-                            selectedTextColor = Color.White,
-                            unselectedIconColor = Color.Gray,
-                            unselectedTextColor = Color.Gray,
-                            indicatorColor = Color.DarkGray
-                        )
-                    )
-                    
-                    // Profile tab
-                    NavigationBarItem(
-                        icon = { Icon(Icons.Filled.AccountCircle, contentDescription = "Profile") },
-                        label = { Text("Profile") },
-                        selected = false,
-                        onClick = { /* Navigate to Profile */ },
-                        colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = Color.White,
-                            selectedTextColor = Color.White,
-                            unselectedIconColor = Color.Gray,
-                            unselectedTextColor = Color.Gray,
-                            indicatorColor = Color.DarkGray
-                        )
-                    )
-                }
+                // BOTTOM 5-WAY NAVIGATION BAR - use the app's standard component
+                BottomNavBar(
+                    currentRoute = "chats",
+                    onNavigate = { /* Keep dialog context; no navigation from modal */ }
+                )
             }
         }
     }
