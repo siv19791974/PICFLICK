@@ -97,6 +97,7 @@ fun FullScreenPhotoViewer(
     onShareToFriend: (String, String) -> Unit = { _, _ -> },
     onNavigateToFindFriends: () -> Unit = {},
     onEditPhotoClick: (Flick) -> Unit = {},
+    friendProfiles: Map<String, UserProfile> = emptyMap(), // Map of userId -> UserProfile for looking up profile pics
 ) {
     val context = LocalContext.current
     val configuration = LocalConfiguration.current
@@ -1559,7 +1560,10 @@ fun FullScreenPhotoViewer(
                                         val profilePhotoUrl = if (currentFlick.userId == currentUser.uid) {
                                             currentUser.photoUrl // Use current/up-to-date photo for own photos
                                         } else {
-                                            currentFlick.userPhotoUrl // Use stored photo for others
+                                            // Try stored photo first, then fall back to friendProfiles map
+                                            currentFlick.userPhotoUrl.takeIf { it.isNotBlank() }
+                                                ?: friendProfiles[currentFlick.userId]?.photoUrl // Fallback to friend profile
+                                                ?: "" // Empty will trigger initials fallback
                                         }
                                         
                                         Box(
