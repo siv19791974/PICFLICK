@@ -65,8 +65,8 @@ fun EditPhotoScreen(
     
     // Photo editing state
     var selectedFilter by remember { mutableStateOf(PhotoFilter.ORIGINAL) }
-    var useCloudinaryFilters by remember { mutableStateOf(false) }
     var selectedCloudFilter by remember { mutableStateOf(CloudinaryFilter.ORIGINAL) }
+    var useCloudFilter by remember { mutableStateOf(false) }
     var bitmap by remember { mutableStateOf<Bitmap?>(null) }
     var isLoading by remember { mutableStateOf(true) }
     var isSaving by remember { mutableStateOf(false) }
@@ -106,13 +106,10 @@ fun EditPhotoScreen(
         PhotoFilter.VIVID
     )
     
-    // Cloudinary filters grouped by category
+    // Cloudinary filters (flattened, excluding ORIGINAL since local filters have it)
     val cloudFilters = remember {
-        CloudinaryFilter.Category.values().associateWith { category ->
-            CloudinaryFilter.getByCategory(category)
-        }
+        CloudinaryFilter.values().filter { it != CloudinaryFilter.ORIGINAL }
     }
-    var selectedCloudCategory by remember { mutableStateOf(CloudinaryFilter.Category.BASIC) }
     
     // Save function
     fun triggerSave() {
@@ -120,7 +117,7 @@ fun EditPhotoScreen(
             isSaving = true
             scope.launch {
                 try {
-                    val filterTransformation = if (useCloudinaryFilters) {
+                    val filterTransformation = if (useCloudFilter) {
                         selectedCloudFilter.transformation
                     } else {
                         selectedFilter.name
@@ -278,7 +275,7 @@ fun EditPhotoScreen(
                                 .padding(horizontal = 24.dp, vertical = 16.dp),
                             contentAlignment = Alignment.Center
                         ) {
-                            if (!useCloudinaryFilters) {
+                            if (!useCloudFilter) {
                                 // Local filter preview
                                 val previewBitmap = remember(bmp, selectedFilter) {
                                     applyFilterToBitmap(bmp, selectedFilter, thumbnailSize = 0)
@@ -324,157 +321,38 @@ fun EditPhotoScreen(
                                 .padding(vertical = 8.dp)
                                 .windowInsetsPadding(WindowInsets.navigationBars)
                         ) {
-                            // Filter Type Tabs (Local / Cloud)
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                                horizontalArrangement = Arrangement.Center
+                            // All Filters - Local and Cloud in one row
+                            LazyRow(
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                contentPadding = PaddingValues(horizontal = 16.dp),
+                                modifier = Modifier.padding(bottom = 8.dp)
                             ) {
-                                // Local Filters Tab
-                                Box(
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .clickable { useCloudinaryFilters = false }
-                                        .background(
-                                            if (!useCloudinaryFilters) {
-                                                if (isDarkMode) Color(0xFF87CEEB) else Color(0xFF1565C0)
-                                            } else Color.Transparent,
-                                            RoundedCornerShape(16.dp)
-                                        )
-                                        .border(
-                                            width = 1.dp,
-                                            color = if (!useCloudinaryFilters) Color.Transparent else if (isDarkMode) Color.White.copy(alpha = 0.3f) else Color.Black.copy(alpha = 0.3f),
-                                            shape = RoundedCornerShape(16.dp)
-                                        )
-                                        .padding(vertical = 8.dp),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Text(
-                                        text = "Local Filters",
-                                        color = if (!useCloudinaryFilters) {
-                                            if (isDarkMode) Color.Black else Color.White
-                                        } else {
-                                            if (isDarkMode) Color.White else Color.Black
+                                // Local filters first
+                                items(localFilters) { filter ->
+                                    EditFilterIcon(
+                                        filter = filter,
+                                        isSelected = selectedFilter == filter && !useCloudFilter,
+                                        onClick = { 
+                                            selectedFilter = filter
+                                            useCloudFilter = false
                                         },
-                                        fontSize = 12.sp,
-                                        fontWeight = if (!useCloudinaryFilters) FontWeight.Bold else FontWeight.Normal
+                                        bitmap = bmp,
+                                        isDarkMode = isDarkMode
                                     )
                                 }
-                                
-                                Spacer(modifier = Modifier.width(8.dp))
-                                
-                                // Cloud Filters Tab
-                                Box(
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .clickable { useCloudinaryFilters = true }
-                                        .background(
-                                            if (useCloudinaryFilters) {
-                                                if (isDarkMode) Color(0xFF87CEEB) else Color(0xFF1565C0)
-                                            } else Color.Transparent,
-                                            RoundedCornerShape(16.dp)
-                                        )
-                                        .border(
-                                            width = 1.dp,
-                                            color = if (useCloudinaryFilters) Color.Transparent else if (isDarkMode) Color.White.copy(alpha = 0.3f) else Color.Black.copy(alpha = 0.3f),
-                                            shape = RoundedCornerShape(16.dp)
-                                        )
-                                        .padding(vertical = 8.dp),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Text(
-                                        text = "Cloud Filters",
-                                        color = if (useCloudinaryFilters) {
-                                            if (isDarkMode) Color.Black else Color.White
-                                        } else {
-                                            if (isDarkMode) Color.White else Color.Black
+                                // Cloud filters (excluding ORIGINAL to avoid duplication)
+                                items(cloudFilters) { filter ->
+                                    CloudinaryFilterIcon(
+                                        filter = filter,
+                                        flick = flick,
+                                        cloudName = cloudName,
+                                        isSelected = selectedCloudFilter == filter && useCloudFilter,
+                                        onClick = { 
+                                            selectedCloudFilter = filter
+                                            useCloudFilter = true
                                         },
-                                        fontSize = 12.sp,
-                                        fontWeight = if (useCloudinaryFilters) FontWeight.Bold else FontWeight.Normal
+                                        isDarkMode = isDarkMode
                                     )
-                                }
-                            }
-                            
-                            // Show Local Filters
-                            if (!useCloudinaryFilters) {
-                                // Filter Icons
-                                LazyRow(
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                    contentPadding = PaddingValues(horizontal = 16.dp),
-                                    modifier = Modifier.padding(bottom = 8.dp)
-                                ) {
-                                    items(localFilters) { filter ->
-                                        EditFilterIcon(
-                                            filter = filter,
-                                            isSelected = selectedFilter == filter,
-                                            onClick = { selectedFilter = filter },
-                                            bitmap = bmp,
-                                            isDarkMode = isDarkMode
-                                        )
-                                    }
-                                }
-                            } else {
-                                // Cloud Filters UI
-                                // Category tabs
-                                LazyRow(
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                    contentPadding = PaddingValues(horizontal = 16.dp),
-                                    modifier = Modifier.padding(bottom = 8.dp)
-                                ) {
-                                    items(CloudinaryFilter.Category.values().toList()) { category ->
-                                        val categoryName = when (category) {
-                                            CloudinaryFilter.Category.BASIC -> "Basic"
-                                            CloudinaryFilter.Category.COLOR -> "Color"
-                                            CloudinaryFilter.Category.ARTISTIC -> "Artistic"
-                                            CloudinaryFilter.Category.EFFECTS -> "Effects"
-                                            CloudinaryFilter.Category.FUN -> "Fun"
-                                            CloudinaryFilter.Category.STYLE -> "Style"
-                                        }
-                                        Box(
-                                            modifier = Modifier
-                                                .clickable { selectedCloudCategory = category }
-                                                .background(
-                                                    if (selectedCloudCategory == category) {
-                                                        if (isDarkMode) Color(0xFF87CEEB) else Color(0xFF1565C0)
-                                                    } else Color.Transparent,
-                                                    RoundedCornerShape(16.dp)
-                                                )
-                                                .border(
-                                                    width = 1.dp,
-                                                    color = if (selectedCloudCategory == category) Color.Transparent else if (isDarkMode) Color.White.copy(alpha = 0.3f) else Color.Black.copy(alpha = 0.3f),
-                                                    shape = RoundedCornerShape(16.dp)
-                                                )
-                                                .padding(horizontal = 12.dp, vertical = 6.dp)
-                                        ) {
-                                            Text(
-                                                text = categoryName,
-                                                color = if (selectedCloudCategory == category) {
-                                                    if (isDarkMode) Color.Black else Color.White
-                                                } else {
-                                                    if (isDarkMode) Color.White else Color.Black
-                                                },
-                                                fontSize = 11.sp,
-                                                fontWeight = if (selectedCloudCategory == category) FontWeight.Bold else FontWeight.Normal
-                                            )
-                                        }
-                                    }
-                                }
-                                
-                                // Cloud filter thumbnails
-                                LazyRow(
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                    contentPadding = PaddingValues(horizontal = 16.dp),
-                                    modifier = Modifier.padding(bottom = 8.dp)
-                                ) {
-                                    items(cloudFilters[selectedCloudCategory] ?: emptyList()) { filter ->
-                                        CloudinaryFilterIcon(
-                                            filter = filter,
-                                            isSelected = selectedCloudFilter == filter,
-                                            onClick = { selectedCloudFilter = filter },
-                                            isDarkMode = isDarkMode
-                                        )
-                                    }
                                 }
                             }
                             
@@ -581,6 +459,8 @@ private fun EditFilterIcon(
 @Composable
 private fun CloudinaryFilterIcon(
     filter: CloudinaryFilter,
+    flick: Flick,
+    cloudName: String,
     isSelected: Boolean,
     onClick: () -> Unit,
     isDarkMode: Boolean
@@ -591,31 +471,35 @@ private fun CloudinaryFilterIcon(
     ) {
         Box(
             modifier = Modifier
-                .size(96.dp)
-                .clip(RoundedCornerShape(16.dp))
+                .size(64.dp)
+                .clip(RoundedCornerShape(12.dp))
                 .border(
-                    width = if (isSelected) 4.dp else 2.dp,
+                    width = if (isSelected) 3.dp else 1.dp,
                     color = if (isSelected) {
                         if (isDarkMode) Color(0xFF87CEEB) else Color(0xFF1565C0)
                     } else {
                         if (isDarkMode) Color.White.copy(alpha = 0.3f) else Color.Black.copy(alpha = 0.3f)
                     },
-                    shape = RoundedCornerShape(16.dp)
+                    shape = RoundedCornerShape(12.dp)
                 )
                 .background(if (isDarkMode) Color(0xFF2C2C2E) else Color.White),
             contentAlignment = Alignment.Center
         ) {
-            // Show filter icon/emoji based on category
-            Text(
-                text = when (filter.category) {
-                    CloudinaryFilter.Category.BASIC -> "⚡"
-                    CloudinaryFilter.Category.COLOR -> "🎨"
-                    CloudinaryFilter.Category.ARTISTIC -> "🎭"
-                    CloudinaryFilter.Category.EFFECTS -> "✨"
-                    CloudinaryFilter.Category.FUN -> "🎪"
-                    CloudinaryFilter.Category.STYLE -> "📷"
-                },
-                fontSize = 28.sp
+            // Show actual filtered image preview using Cloudinary URL
+            val cloudinaryUrl = remember(flick.imageUrl, filter.transformation, cloudName) {
+                if (cloudName.isNotEmpty()) {
+                    buildCloudinaryUrl(flick.imageUrl, filter.transformation, cloudName)
+                } else {
+                    flick.imageUrl
+                }
+            }
+            AsyncImage(
+                model = cloudinaryUrl,
+                contentDescription = filter.displayName,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clip(RoundedCornerShape(12.dp)),
+                contentScale = ContentScale.Crop
             )
         }
         
@@ -629,8 +513,9 @@ private fun CloudinaryFilterIcon(
             } else {
                 if (isDarkMode) Color.White.copy(alpha = 0.7f) else Color.Black.copy(alpha = 0.7f)
             },
-            fontSize = 12.sp,
-            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+            fontSize = 10.sp,
+            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+            maxLines = 1
         )
     }
 }
