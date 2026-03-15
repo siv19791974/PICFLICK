@@ -264,26 +264,44 @@ fun AuthenticatedContent(
             _currentUser = userProfile,
             _cloudName = "", // TODO: Get from BuildConfig or settings
             onBack = { onScreenChange(Screen.Home) },
-            onSave = { flick, filterType, description ->
+            onSave = { flick, filterType, description, filteredBitmap ->
                 scope.launch {
-                    val result = repository.updateFlickFilterAndDescription(
-                        flickId = flick.id,
-                        description = description,
-                        filterType = filterType
-                    )
-                    when (result) {
+                    val stream = java.io.ByteArrayOutputStream()
+                    filteredBitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG, 92, stream)
+                    val bytes = stream.toByteArray()
+
+                    val uploadResult = repository.uploadFlickImage(flick.userId, bytes)
+                    when (uploadResult) {
                         is com.picflick.app.data.Result.Success -> {
-                            android.widget.Toast.makeText(
-                                context,
-                                "Photo updated!",
-                                android.widget.Toast.LENGTH_SHORT
-                            ).show()
-                            onScreenChange(Screen.Home)
+                            val result = repository.updateFlickWithFilter(
+                                flickId = flick.id,
+                                description = description,
+                                filterType = filterType,
+                                newImageUrl = uploadResult.data
+                            )
+                            when (result) {
+                                is com.picflick.app.data.Result.Success -> {
+                                    android.widget.Toast.makeText(
+                                        context,
+                                        "Photo updated!",
+                                        android.widget.Toast.LENGTH_SHORT
+                                    ).show()
+                                    onScreenChange(Screen.Home)
+                                }
+                                is com.picflick.app.data.Result.Error -> {
+                                    android.widget.Toast.makeText(
+                                        context,
+                                        "Failed to update: ${result.message}",
+                                        android.widget.Toast.LENGTH_SHORT
+                                    ).show()
+                                }
+                                else -> {}
+                            }
                         }
                         is com.picflick.app.data.Result.Error -> {
                             android.widget.Toast.makeText(
                                 context,
-                                "Failed to update: ${result.message}",
+                                "Image upload failed: ${uploadResult.message}",
                                 android.widget.Toast.LENGTH_SHORT
                             ).show()
                         }
