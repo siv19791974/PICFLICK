@@ -113,11 +113,12 @@ fun FilterScreen(
         PhotoFilter.ORIGINAL,
         PhotoFilter.BLACK_AND_WHITE,
         PhotoFilter.SEPIA,
+        PhotoFilter.NEGATIVE,
         PhotoFilter.HIGH_CONTRAST,
         PhotoFilter.WARM,
         PhotoFilter.COOL,
         PhotoFilter.VINTAGE,
-        // NEW FILTERS
+        PhotoFilter.POLAROID,
         PhotoFilter.RETRO,
         PhotoFilter.NOIR,
         PhotoFilter.FADE,
