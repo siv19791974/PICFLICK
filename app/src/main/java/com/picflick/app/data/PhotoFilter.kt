@@ -14,6 +14,8 @@ enum class PhotoFilter(val displayName: String, val icon: String) {
     VINTAGE("Vintage", "📻"),
     RETRO("Retro", "🎞️"),
     POLAROID("Polaroid", "📸"),
+    LOMO("Lomo", "📷"),
+    _1977("1977", "📅"),
     NOIR("Noir", "🎬"),
     FADE("Fade", "🌫️"),
     VIVID("Vivid", "🌈")
