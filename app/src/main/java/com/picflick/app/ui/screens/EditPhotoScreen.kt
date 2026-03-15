@@ -21,11 +21,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.graphics.createBitmap
@@ -281,12 +281,11 @@ fun EditPhotoScreen(
                         }
 
                         // Bottom Panel with filter thumbnails
-                        // Calculate height for 2 rows of filter thumbnails
-                        // Each row: 96.dp (image) + 4.dp (spacer) + ~20.dp (text) + padding
+                        // Force enough room so both rows show full-size thumbs + labels
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(260.dp) // Fixed height for 2 rows of filters
+                                .height(290.dp)
                                 .background(if (isDarkMode) Color(0xFF1C1C1E) else PicFlickLightBackground)
                                 .padding(vertical = 8.dp)
                                 .windowInsetsPadding(WindowInsets.navigationBars)
@@ -300,8 +299,8 @@ fun EditPhotoScreen(
                                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                                 contentPadding = PaddingValues(horizontal = 16.dp),
                                 modifier = Modifier
-                                    .height(120.dp)
-                                    .padding(bottom = 4.dp)
+                                    .height(132.dp)
+                                    .padding(bottom = 6.dp)
                             ) {
                                 items(row1Filters) { filter ->
                                     EditFilterIcon(
@@ -322,8 +321,8 @@ fun EditPhotoScreen(
                                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                                     contentPadding = PaddingValues(horizontal = 16.dp),
                                     modifier = Modifier
-                                        .height(120.dp)
-                                        .padding(bottom = 4.dp)
+                                        .height(132.dp)
+                                    .padding(bottom = 6.dp)
                                 ) {
                                     items(row2Filters) { filter ->
                                         EditFilterIcon(
@@ -356,7 +355,10 @@ private fun EditFilterIcon(
 ) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier.clickable(onClick = onClick)
+        modifier = Modifier
+            .width(96.dp)
+            .height(126.dp)
+            .clickable(onClick = onClick)
     ) {
         Box(
             modifier = Modifier
@@ -404,7 +406,9 @@ private fun EditFilterIcon(
                 if (isDarkMode) Color.White.copy(alpha = 0.7f) else Color.Black.copy(alpha = 0.7f)
             },
             fontSize = 12.sp,
-            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
         )
     }
 }
