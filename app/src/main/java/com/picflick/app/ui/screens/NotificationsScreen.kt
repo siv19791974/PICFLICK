@@ -2,7 +2,6 @@ package com.picflick.app.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -36,14 +35,11 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.compose.ui.res.painterResource
 import coil3.compose.AsyncImage
-import com.picflick.app.R
 import com.picflick.app.data.Notification
 import com.picflick.app.data.NotificationType
 import com.picflick.app.data.UserProfile
 import com.picflick.app.ui.theme.isDarkModeBackground
-import com.picflick.app.ui.theme.PicFlickBannerBackground
 import com.picflick.app.ui.theme.ThemeManager
 import com.picflick.app.viewmodel.NotificationViewModel
 import java.text.SimpleDateFormat
@@ -85,56 +81,39 @@ fun NotificationsScreen(
             .fillMaxSize()
             .background(isDarkModeBackground(isDarkMode))
     ) {
-        // Header - PicFlick black banner with logo
-        Box(
+        // Minimal top action row (remove duplicate title/header)
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(56.dp)
-                .background(PicFlickBannerBackground)
-                .padding(horizontal = 16.dp),
-            contentAlignment = Alignment.CenterStart
+                .padding(horizontal = 8.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+            IconButton(
+                onClick = onBack,
+                modifier = Modifier.size(40.dp)
             ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    IconButton(
-                        onClick = onBack,
-                        modifier = Modifier.size(40.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back",
-                            tint = Color.White
-                        )
-                    }
-                    Spacer(modifier = Modifier.width(8.dp))
-                    // PicFlick Logo
-                    Image(
-                        painter = painterResource(id = R.drawable.logo),
-                        contentDescription = "PicFlick",
-                        modifier = Modifier.height(32.dp),
-                        contentScale = ContentScale.Fit
-                    )
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                    contentDescription = "Back",
+                    tint = if (isDarkMode) Color.White else Color.Black
+                )
+            }
+
+            if (unreadCount > 0) {
+                TextButton(onClick = { viewModel.markAllAsRead(userProfile.uid) }) {
+                    Text("Mark all read", color = if (isDarkMode) Color.White else Color.Black)
                 }
-                
-                // Mark all read button
-                if (unreadCount > 0) {
-                    TextButton(onClick = { viewModel.markAllAsRead(userProfile.uid) }) {
-                        Text("Mark all read", color = Color.White)
-                    }
-                }
+            } else {
+                Spacer(modifier = Modifier.width(40.dp))
             }
         }
 
-        // Modern PullRefresh content
+        // PullRefresh content (edge-to-edge like FriendsScreen)
         Box(
             modifier = Modifier
-                .fillMaxSize()
+                .fillMaxWidth()
+                .weight(1f)
                 .pullRefresh(pullRefreshState)
         ) {
             when {
@@ -179,8 +158,7 @@ fun NotificationsScreen(
                 else -> {
                     LazyColumn(
                         modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                        contentPadding = PaddingValues(vertical = 8.dp)
                     ) {
                         items(notifications, key = { it.id }) { notification ->
                             SwipeableNotificationItem(
@@ -328,33 +306,23 @@ private fun NotificationItem(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = notification.title,
-                    fontSize = 16.sp,
-                    fontWeight = if (notification.isRead) FontWeight.Normal else FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface,
+                    text = notification.message,
+                    fontSize = 14.sp,
+                    fontWeight = if (notification.isRead) FontWeight.Normal else FontWeight.Medium,
+                    color = if (isDarkMode) Color.White.copy(alpha = 0.9f) else Color.Black.copy(alpha = 0.85f),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f)
                 )
-                
+
+                Spacer(modifier = Modifier.width(8.dp))
+
                 Text(
                     text = formatTimestamp(notification.timestamp),
                     fontSize = 12.sp,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                    color = if (isDarkMode) Color.White.copy(alpha = 0.55f) else Color.Black.copy(alpha = 0.55f)
                 )
             }
-
-            Spacer(modifier = Modifier.height(4.dp))
-
-            // Message row (like last message in ChatListItem)
-            Text(
-                text = notification.message,
-                fontSize = 14.sp,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.fillMaxWidth()
-            )
         }
 
         // Action area - Accept/Decline buttons for FRIEND_REQUEST only
@@ -441,7 +409,7 @@ private fun SwipeableNotificationItem(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(color, RoundedCornerShape(12.dp))
+                    .background(color)
                     .padding(horizontal = 20.dp),
                 contentAlignment = Alignment.CenterStart  // Icon on LEFT for right swipe
             ) {
