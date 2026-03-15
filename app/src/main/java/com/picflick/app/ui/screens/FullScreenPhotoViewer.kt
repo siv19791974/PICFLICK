@@ -60,6 +60,7 @@ import com.picflick.app.data.toEmoji
 import com.picflick.app.repository.FlickRepository
 import com.picflick.app.ui.components.AnimatedReactionPicker
 import com.picflick.app.ui.components.ReactionPicker
+import com.picflick.app.util.withCacheBust
 import android.app.Activity
 import android.content.ContentValues
 import android.content.Context
@@ -723,7 +724,7 @@ fun FullScreenPhotoViewer(
                         ) {
                             AsyncImage(
                                 model = ImageRequest.Builder(LocalContext.current)
-                                    .data(photo.imageUrl)
+                                    .data(withCacheBust(photo.imageUrl, photo.timestamp))
                                     .memoryCachePolicy(coil3.request.CachePolicy.ENABLED)
                                     .diskCachePolicy(coil3.request.CachePolicy.ENABLED)
                                     .build(),
@@ -2370,7 +2371,7 @@ private fun ShareFriendsDialog(
                         .background(Color.Black)
                 ) {
                     AsyncImage(
-                        model = flick.imageUrl,
+                        model = withCacheBust(flick.imageUrl, flick.timestamp),
                         contentDescription = null,
                         modifier = Modifier.fillMaxSize(),
                         contentScale = ContentScale.Crop
@@ -2629,7 +2630,7 @@ private fun TagFriendsDialog(
                         .background(Color.Black)
                 ) {
                     AsyncImage(
-                        model = flick.imageUrl,
+                        model = withCacheBust(flick.imageUrl, flick.timestamp),
                         contentDescription = null,
                         modifier = Modifier.fillMaxSize(),
                         contentScale = ContentScale.Crop
