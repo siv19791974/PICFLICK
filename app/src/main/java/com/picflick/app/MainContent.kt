@@ -122,7 +122,10 @@ fun AuthenticatedContent(
             viewModel = profileViewModel,
             userId = userProfile.uid,
             currentUser = userProfile,
-            onBack = { onScreenChange(Screen.Home) }
+            onBack = { onScreenChange(Screen.Home) },
+            onEditPhotoClick = { flick ->
+                onScreenChange(Screen.EditPhoto(flick))
+            }
         )
 
         is Screen.Friends -> FriendsScreenContent(
