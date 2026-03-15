@@ -55,7 +55,7 @@ fun EditPhotoScreen(
     _currentUser: UserProfile,
     _cloudName: String = "",
     onBack: () -> Unit,
-    onSave: (Flick, String, String) -> Unit
+    onSave: (Flick, String, String, Bitmap) -> Unit
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -111,7 +111,8 @@ fun EditPhotoScreen(
             scope.launch {
                 try {
                     val filterTransformation = selectedFilter.name
-                    onSave(flick, filterTransformation, flick.description)
+                    val finalBitmap = applyFilterToBitmap(bitmap!!, selectedFilter, thumbnailSize = 0)
+                    onSave(flick, filterTransformation, flick.description, finalBitmap)
                     withContext(Dispatchers.Main) {
                         android.widget.Toast.makeText(
                             context, 
