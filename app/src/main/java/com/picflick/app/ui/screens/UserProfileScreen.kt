@@ -204,13 +204,15 @@ fun UserProfileScreen(
                             .padding(horizontal = 16.dp, vertical = 8.dp)
                     )
 
-                    BoxWithConstraints(
+                    val screenHeight = androidx.compose.ui.platform.LocalConfiguration.current.screenHeightDp.dp
+                    val homeLikeRowHeight = screenHeight / 4.1f
+                    val gridHeight = (homeLikeRowHeight * 4) + 12.dp
+
+                    Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(520.dp)
+                            .height(gridHeight)
                     ) {
-                        val rowHeight = this.maxHeight / 4.1f
-
                         LazyVerticalGrid(
                             columns = GridCells.Fixed(3),
                             modifier = Modifier.fillMaxSize(),
@@ -224,7 +226,7 @@ fun UserProfileScreen(
                             items(photos) { photo ->
                                 ProfilePhotoCard(
                                     flick = photo,
-                                rowHeight = rowHeight,
+                                    rowHeight = homeLikeRowHeight,
                                     onPhotoClick = {
                                         onPhotoClick(photo, photos.indexOf(photo))
                                     },
