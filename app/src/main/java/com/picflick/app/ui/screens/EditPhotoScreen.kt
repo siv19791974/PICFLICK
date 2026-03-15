@@ -21,6 +21,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -86,19 +87,28 @@ fun EditPhotoScreen(
         }
     }
 
-    // Local filters list
+    // Local filters list - all 19 filters
     val localFilters = listOf(
         PhotoFilter.ORIGINAL,
         PhotoFilter.BLACK_AND_WHITE,
         PhotoFilter.SEPIA,
+        PhotoFilter.NEGATIVE,
         PhotoFilter.HIGH_CONTRAST,
         PhotoFilter.WARM,
         PhotoFilter.COOL,
         PhotoFilter.VINTAGE,
         PhotoFilter.RETRO,
+        PhotoFilter.POLAROID,
+        PhotoFilter.LOMO,
+        PhotoFilter._1977,
         PhotoFilter.NOIR,
         PhotoFilter.FADE,
-        PhotoFilter.VIVID
+        PhotoFilter.VIVID,
+        // RenderEffect filters (Android 12+)
+        PhotoFilter.BLUR_LIGHT,
+        PhotoFilter.BLUR_MEDIUM,
+        PhotoFilter.BLUR_HEAVY,
+        PhotoFilter.COLOR_INVERT
     )
     
     // Save function
@@ -264,6 +274,7 @@ fun EditPhotoScreen(
                             val previewBitmap = remember(bmp, selectedFilter) {
                                 applyFilterToBitmap(bmp, selectedFilter, thumbnailSize = 0)
                             }
+                            
                             Image(
                                 painter = BitmapPainter(previewBitmap.asImageBitmap()),
                                 contentDescription = selectedFilter.displayName,
@@ -677,6 +688,20 @@ private fun applyFilterToBitmap(bitmap: Bitmap, filter: PhotoFilter, thumbnailSi
                     )
                 )
             })
+        }
+        // RenderEffect filters - blur is GPU-based, return original for bitmap processing
+        // (blur preview uses RenderEffect, saving would need GPU processing)
+        PhotoFilter.BLUR_LIGHT, PhotoFilter.BLUR_MEDIUM, PhotoFilter.BLUR_HEAVY -> ColorMatrix()
+        PhotoFilter.COLOR_INVERT -> ColorMatrix().apply {
+            // Different from NEGATIVE - this swaps RGB values
+            set(
+                floatArrayOf(
+                    0f, 0f, 1f, 0f, 0f,
+                    0f, 1f, 0f, 0f, 0f,
+                    1f, 0f, 0f, 0f, 0f,
+                    0f, 0f, 0f, 1f, 0f
+                )
+            )
         }
     }
 
