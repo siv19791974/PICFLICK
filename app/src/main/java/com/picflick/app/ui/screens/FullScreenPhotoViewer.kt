@@ -78,6 +78,8 @@ import java.net.URL
 import java.net.HttpURLConnection
 
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
+import kotlinx.coroutines.tasks.await
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -185,6 +187,29 @@ fun FullScreenPhotoViewer(
     var showLikeAnimation by remember { mutableStateOf(false) }
     var isUnlikeAnimation by remember { mutableStateOf(false) }
     val isLiked = userReaction != null
+    
+    // Fetch User B's profile photo if not in friendProfiles
+    var fetchedUserPhotoUrl by remember(currentFlick.userId) { mutableStateOf<String?>(null) }
+    
+    LaunchedEffect(currentFlick.userId) {
+        // Only fetch if it's not the current user and not already in friendProfiles
+        if (currentFlick.userId != currentUser.uid && !friendProfiles.containsKey(currentFlick.userId)) {
+            try {
+                val userDoc = com.google.firebase.firestore.FirebaseFirestore.getInstance()
+                    .collection("users")
+                    .document(currentFlick.userId)
+                    .get()
+                    .await()
+                
+                val photoUrl = userDoc.getString("photoUrl")
+                if (!photoUrl.isNullOrBlank()) {
+                    fetchedUserPhotoUrl = photoUrl
+                }
+            } catch (e: Exception) {
+                // Silently fail - will use initials fallback
+            }
+        }
+    }
     
     // Show share dialog state
     var showShareDialog by remember { mutableStateOf(false) }
@@ -1560,9 +1585,10 @@ fun FullScreenPhotoViewer(
                                         val profilePhotoUrl = if (currentFlick.userId == currentUser.uid) {
                                             currentUser.photoUrl // Use current/up-to-date photo for own photos
                                         } else {
-                                            // Try stored photo first, then fall back to friendProfiles map
+                                            // Try stored photo first, then friendProfiles, then fetched from Firestore
                                             currentFlick.userPhotoUrl.takeIf { it.isNotBlank() }
                                                 ?: friendProfiles[currentFlick.userId]?.photoUrl // Fallback to friend profile
+                                                ?: fetchedUserPhotoUrl // Fetched from Firestore if not in friends list
                                                 ?: "" // Empty will trigger initials fallback
                                         }
                                         
