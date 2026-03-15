@@ -3,7 +3,6 @@ package com.picflick.app.ui.screens
 import android.graphics.Bitmap
 import android.graphics.ColorMatrix
 import android.graphics.ColorMatrixColorFilter
-import androidx.compose.animation.*
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -30,11 +29,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.graphics.createBitmap
 import coil3.ImageLoader
-import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.allowHardware
 import coil3.toBitmap
-import com.picflick.app.data.CloudinaryFilter
 import com.picflick.app.data.Flick
 import com.picflick.app.data.PhotoFilter
 import com.picflick.app.data.UserProfile
@@ -54,8 +51,8 @@ import kotlinx.coroutines.withContext
 @Composable
 fun EditPhotoScreen(
     flick: Flick,
-    currentUser: UserProfile,
-    cloudName: String = "",
+    _currentUser: UserProfile,
+    _cloudName: String = "",
     onBack: () -> Unit,
     onSave: (Flick, String, String) -> Unit
 ) {
@@ -65,8 +62,6 @@ fun EditPhotoScreen(
     
     // Photo editing state
     var selectedFilter by remember { mutableStateOf(PhotoFilter.ORIGINAL) }
-    var selectedCloudFilter by remember { mutableStateOf(CloudinaryFilter.ORIGINAL) }
-    var useCloudFilter by remember { mutableStateOf(false) }
     var bitmap by remember { mutableStateOf<Bitmap?>(null) }
     var isLoading by remember { mutableStateOf(true) }
     var isSaving by remember { mutableStateOf(false) }
@@ -106,22 +101,13 @@ fun EditPhotoScreen(
         PhotoFilter.VIVID
     )
     
-    // Cloudinary filters (flattened, excluding ORIGINAL since local filters have it)
-    val cloudFilters = remember {
-        CloudinaryFilter.values().filter { it != CloudinaryFilter.ORIGINAL }
-    }
-    
     // Save function
     fun triggerSave() {
         if (!isSaving && bitmap != null) {
             isSaving = true
             scope.launch {
                 try {
-                    val filterTransformation = if (useCloudFilter) {
-                        selectedCloudFilter.transformation
-                    } else {
-                        selectedFilter.name
-                    }
+                    val filterTransformation = selectedFilter.name
                     onSave(flick, filterTransformation, description.trim())
                     withContext(Dispatchers.Main) {
                         android.widget.Toast.makeText(
@@ -275,41 +261,19 @@ fun EditPhotoScreen(
                                 .padding(horizontal = 24.dp, vertical = 16.dp),
                             contentAlignment = Alignment.Center
                         ) {
-                            if (!useCloudFilter) {
-                                // Local filter preview
-                                val previewBitmap = remember(bmp, selectedFilter) {
-                                    applyFilterToBitmap(bmp, selectedFilter, thumbnailSize = 0)
-                                }
-                                Image(
-                                    painter = BitmapPainter(previewBitmap.asImageBitmap()),
-                                    contentDescription = selectedFilter.displayName,
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .clip(RoundedCornerShape(8.dp))
-                                        .border(3.dp, if (isDarkMode) Color.White.copy(alpha = 0.9f) else Color.Black.copy(alpha = 0.9f), RoundedCornerShape(8.dp))
-                                        .padding(3.dp),
-                                    contentScale = ContentScale.Crop
-                                )
-                            } else {
-                                // Cloudinary filter preview
-                                val cloudinaryUrl = remember(flick.imageUrl, selectedCloudFilter, cloudName) {
-                                    if (cloudName.isNotEmpty()) {
-                                        buildCloudinaryUrl(flick.imageUrl, selectedCloudFilter.transformation, cloudName)
-                                    } else {
-                                        flick.imageUrl
-                                    }
-                                }
-                                AsyncImage(
-                                    model = cloudinaryUrl,
-                                    contentDescription = selectedCloudFilter.displayName,
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .clip(RoundedCornerShape(8.dp))
-                                        .border(3.dp, if (isDarkMode) Color.White.copy(alpha = 0.9f) else Color.Black.copy(alpha = 0.9f), RoundedCornerShape(8.dp))
-                                        .padding(3.dp),
-                                    contentScale = ContentScale.Crop
-                                )
+                            val previewBitmap = remember(bmp, selectedFilter) {
+                                applyFilterToBitmap(bmp, selectedFilter, thumbnailSize = 0)
                             }
+                            Image(
+                                painter = BitmapPainter(previewBitmap.asImageBitmap()),
+                                contentDescription = selectedFilter.displayName,
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .border(3.dp, if (isDarkMode) Color.White.copy(alpha = 0.9f) else Color.Black.copy(alpha = 0.9f), RoundedCornerShape(8.dp))
+                                    .padding(3.dp),
+                                contentScale = ContentScale.Crop
+                            )
                         }
 
                         // Bottom Panel with filter thumbnails and caption
@@ -321,36 +285,21 @@ fun EditPhotoScreen(
                                 .padding(vertical = 8.dp)
                                 .windowInsetsPadding(WindowInsets.navigationBars)
                         ) {
-                            // All Filters - Local and Cloud in one row
+                            // All Filters - Local filters only (Cloud removed for now)
                             LazyRow(
                                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                                 contentPadding = PaddingValues(horizontal = 16.dp),
                                 modifier = Modifier.padding(bottom = 8.dp)
                             ) {
-                                // Local filters first
+                                // Local filters only
                                 items(localFilters) { filter ->
                                     EditFilterIcon(
                                         filter = filter,
-                                        isSelected = selectedFilter == filter && !useCloudFilter,
+                                        isSelected = selectedFilter == filter,
                                         onClick = { 
                                             selectedFilter = filter
-                                            useCloudFilter = false
                                         },
                                         bitmap = bmp,
-                                        isDarkMode = isDarkMode
-                                    )
-                                }
-                                // Cloud filters (excluding ORIGINAL to avoid duplication)
-                                items(cloudFilters) { filter ->
-                                    CloudinaryFilterIcon(
-                                        filter = filter,
-                                        flick = flick,
-                                        cloudName = cloudName,
-                                        isSelected = selectedCloudFilter == filter && useCloudFilter,
-                                        onClick = { 
-                                            selectedCloudFilter = filter
-                                            useCloudFilter = true
-                                        },
                                         isDarkMode = isDarkMode
                                     )
                                 }
@@ -453,101 +402,6 @@ private fun EditFilterIcon(
             fontSize = 12.sp,
             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
         )
-    }
-}
-
-@Composable
-private fun CloudinaryFilterIcon(
-    filter: CloudinaryFilter,
-    flick: Flick,
-    cloudName: String,
-    isSelected: Boolean,
-    onClick: () -> Unit,
-    isDarkMode: Boolean
-) {
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier.clickable(onClick = onClick)
-    ) {
-        Box(
-            modifier = Modifier
-                .size(96.dp)
-                .clip(RoundedCornerShape(16.dp))
-                .border(
-                    width = if (isSelected) 4.dp else 2.dp,
-                    color = if (isSelected) {
-                        if (isDarkMode) Color(0xFF87CEEB) else Color(0xFF1565C0)
-                    } else {
-                        if (isDarkMode) Color.White.copy(alpha = 0.3f) else Color.Black.copy(alpha = 0.3f)
-                    },
-                    shape = RoundedCornerShape(16.dp)
-                )
-                .background(if (isDarkMode) Color(0xFF2C2C2E) else Color.White),
-            contentAlignment = Alignment.Center
-        ) {
-            // Show actual filtered image preview using Cloudinary URL
-            val cloudinaryUrl = remember(flick.imageUrl, filter.transformation, cloudName) {
-                if (cloudName.isNotEmpty()) {
-                    buildCloudinaryUrl(flick.imageUrl, filter.transformation, cloudName)
-                } else {
-                    flick.imageUrl
-                }
-            }
-            AsyncImage(
-                model = cloudinaryUrl,
-                contentDescription = filter.displayName,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .clip(RoundedCornerShape(16.dp)),
-                contentScale = ContentScale.Crop
-            )
-        }
-        
-        Spacer(modifier = Modifier.height(4.dp))
-        
-        // Filter name
-        Text(
-            text = filter.displayName,
-            color = if (isSelected) {
-                if (isDarkMode) Color(0xFF87CEEB) else Color(0xFF1565C0)
-            } else {
-                if (isDarkMode) Color.White.copy(alpha = 0.7f) else Color.Black.copy(alpha = 0.7f)
-            },
-            fontSize = 12.sp,
-            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-            maxLines = 1
-        )
-    }
-}
-
-/**
- * Build Cloudinary URL with transformation
- */
-private fun buildCloudinaryUrl(originalUrl: String, transformation: String, cloudName: String): String {
-    // If transformation is empty or "original", return original URL
-    if (transformation.isEmpty() || transformation == "original") {
-        return originalUrl
-    }
-    
-    // Check if the URL is already a Cloudinary URL
-    if (!originalUrl.contains("cloudinary.com")) {
-        return originalUrl
-    }
-    
-    // Parse the Cloudinary URL and insert transformation
-    // Format: https://res.cloudinary.com/{cloud_name}/{asset_type}/{delivery_type}/{transformations}/{public_id}
-    return try {
-        val urlPattern = "https://res.cloudinary.com/([^/]+)/([^/]+)/([^/]+)/(.+)".toRegex()
-        val matchResult = urlPattern.find(originalUrl)
-        
-        if (matchResult != null) {
-            val (cloud, assetType, deliveryType, path) = matchResult.destructured
-            "https://res.cloudinary.com/$cloud/$assetType/$deliveryType/$transformation/$path"
-        } else {
-            originalUrl
-        }
-    } catch (e: Exception) {
-        originalUrl
     }
 }
 
