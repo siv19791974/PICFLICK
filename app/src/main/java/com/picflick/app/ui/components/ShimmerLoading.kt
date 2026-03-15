@@ -17,10 +17,11 @@ import androidx.compose.ui.unit.dp
 /**
  * Shimmer loading effect for photo grid items
  * Matches the actual FlickGrid size (screen height / 4.1 per row)
+ * Shows 3x4 grid (12 items) matching HomeScreen layout
  */
 @Composable
 fun PhotoGridShimmer(
-    itemCount: Int = 9,
+    itemCount: Int = 12, // 3x4 grid to match actual photo grid
     modifier: Modifier = Modifier
 ) {
     // More noticeable shimmer with higher contrast
