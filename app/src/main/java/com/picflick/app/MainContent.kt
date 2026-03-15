@@ -261,8 +261,8 @@ fun AuthenticatedContent(
 
         is Screen.EditPhoto -> EditPhotoScreen(
             flick = currentScreen.flick,
-            currentUser = userProfile,
-            cloudName = "", // TODO: Get from BuildConfig or settings
+            _currentUser = userProfile,
+            _cloudName = "", // TODO: Get from BuildConfig or settings
             onBack = { onScreenChange(Screen.Home) },
             onSave = { flick, filterType, description ->
                 scope.launch {
