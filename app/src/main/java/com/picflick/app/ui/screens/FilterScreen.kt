@@ -1067,6 +1067,19 @@ private fun applyFilterToBitmap(bitmap: Bitmap, filter: PhotoFilter, thumbnailSi
                 )
             })
         }
+        // New filters - for now just use original matrix (blur requires GPU processing)
+        PhotoFilter.BLUR_LIGHT, PhotoFilter.BLUR_MEDIUM, PhotoFilter.BLUR_HEAVY -> ColorMatrix()
+        PhotoFilter.COLOR_INVERT -> ColorMatrix().apply {
+            // Swap RGB values - different from NEGATIVE
+            set(
+                floatArrayOf(
+                    0f, 0f, 1f, 0f, 0f,
+                    0f, 1f, 0f, 0f, 0f,
+                    1f, 0f, 0f, 0f, 0f,
+                    0f, 0f, 0f, 1f, 0f
+                )
+            )
+        }
     }
 
     // Resize if thumbnail (use high quality filtering)
