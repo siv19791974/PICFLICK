@@ -87,7 +87,7 @@ fun EditPhotoScreen(
         }
     }
 
-    // Local filters list - all 19 filters
+    // Local filters list - all 16 filters (removed non-working blur filters)
     val localFilters = listOf(
         PhotoFilter.ORIGINAL,
         PhotoFilter.BLACK_AND_WHITE,
@@ -104,10 +104,6 @@ fun EditPhotoScreen(
         PhotoFilter.NOIR,
         PhotoFilter.FADE,
         PhotoFilter.VIVID,
-        // RenderEffect filters (Android 12+)
-        PhotoFilter.BLUR_LIGHT,
-        PhotoFilter.BLUR_MEDIUM,
-        PhotoFilter.BLUR_HEAVY,
         PhotoFilter.COLOR_INVERT
     )
     
@@ -689,9 +685,6 @@ private fun applyFilterToBitmap(bitmap: Bitmap, filter: PhotoFilter, thumbnailSi
                 )
             })
         }
-        // RenderEffect filters - blur is GPU-based, return original for bitmap processing
-        // (blur preview uses RenderEffect, saving would need GPU processing)
-        PhotoFilter.BLUR_LIGHT, PhotoFilter.BLUR_MEDIUM, PhotoFilter.BLUR_HEAVY -> ColorMatrix()
         PhotoFilter.COLOR_INVERT -> ColorMatrix().apply {
             // Different from NEGATIVE - this swaps RGB values
             set(

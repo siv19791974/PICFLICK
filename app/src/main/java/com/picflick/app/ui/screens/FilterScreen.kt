@@ -130,10 +130,6 @@ fun FilterScreen(
         PhotoFilter.NOIR,
         PhotoFilter.FADE,
         PhotoFilter.VIVID,
-        // New RenderEffect filters
-        PhotoFilter.BLUR_LIGHT,
-        PhotoFilter.BLUR_MEDIUM,
-        PhotoFilter.BLUR_HEAVY,
         PhotoFilter.COLOR_INVERT
     )
     
@@ -1072,8 +1068,7 @@ private fun applyFilterToBitmap(bitmap: Bitmap, filter: PhotoFilter, thumbnailSi
                 )
             })
         }
-        // New filters - for now just use original matrix (blur requires GPU processing)
-        PhotoFilter.BLUR_LIGHT, PhotoFilter.BLUR_MEDIUM, PhotoFilter.BLUR_HEAVY -> ColorMatrix()
+        // New filter - Color Invert (swaps RGB values)
         PhotoFilter.COLOR_INVERT -> ColorMatrix().apply {
             // Swap RGB values - different from NEGATIVE
             set(
