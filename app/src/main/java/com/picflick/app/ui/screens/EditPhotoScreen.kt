@@ -280,11 +280,13 @@ fun EditPhotoScreen(
                             )
                         }
 
-                        // Bottom Panel with filter thumbnails and caption
+                        // Bottom Panel with filter thumbnails
+                        // Calculate height for 2 rows of filter thumbnails
+                        // Each row: 96.dp (image) + 4.dp (spacer) + ~20.dp (text) + padding
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .weight(1f)
+                                .height(260.dp) // Fixed height for 2 rows of filters
                                 .background(if (isDarkMode) Color(0xFF1C1C1E) else PicFlickLightBackground)
                                 .padding(vertical = 8.dp)
                                 .windowInsetsPadding(WindowInsets.navigationBars)
@@ -293,18 +295,37 @@ fun EditPhotoScreen(
                             val row1Filters = localFilters.take(8)
                             val row2Filters = localFilters.drop(8)
                             
-                            Column(
+                            // Row 1
+                            LazyRow(
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                contentPadding = PaddingValues(horizontal = 16.dp),
                                 modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 4.dp)
+                                    .height(120.dp)
+                                    .padding(bottom = 4.dp)
                             ) {
-                                // First row - first 8 filters
+                                items(row1Filters) { filter ->
+                                    EditFilterIcon(
+                                        filter = filter,
+                                        isSelected = selectedFilter == filter,
+                                        onClick = { 
+                                            selectedFilter = filter
+                                        },
+                                        bitmap = bmp,
+                                        isDarkMode = isDarkMode
+                                    )
+                                }
+                            }
+                            
+                            // Row 2
+                            if (row2Filters.isNotEmpty()) {
                                 LazyRow(
                                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                                     contentPadding = PaddingValues(horizontal = 16.dp),
-                                    modifier = Modifier.padding(bottom = 8.dp)
+                                    modifier = Modifier
+                                        .height(120.dp)
+                                        .padding(bottom = 4.dp)
                                 ) {
-                                    items(row1Filters) { filter ->
+                                    items(row2Filters) { filter ->
                                         EditFilterIcon(
                                             filter = filter,
                                             isSelected = selectedFilter == filter,
@@ -314,27 +335,6 @@ fun EditPhotoScreen(
                                             bitmap = bmp,
                                             isDarkMode = isDarkMode
                                         )
-                                    }
-                                }
-                                
-                                // Second row - remaining filters (scrollable)
-                                if (row2Filters.isNotEmpty()) {
-                                    LazyRow(
-                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                        contentPadding = PaddingValues(horizontal = 16.dp),
-                                        modifier = Modifier.padding(bottom = 8.dp)
-                                    ) {
-                                        items(row2Filters) { filter ->
-                                            EditFilterIcon(
-                                                filter = filter,
-                                                isSelected = selectedFilter == filter,
-                                                onClick = { 
-                                                    selectedFilter = filter
-                                                },
-                                                bitmap = bmp,
-                                                isDarkMode = isDarkMode
-                                            )
-                                        }
                                     }
                                 }
                             }
