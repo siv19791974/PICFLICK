@@ -104,9 +104,6 @@ firebase-analytics = { group = "com.google.firebase", name = "firebase-analytics
 mockk = { group = "io.mockk", name = "mockk", version.ref = "mockk" }
 kotlinx-coroutines-test = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-test", version.ref = "coroutinesTest" }
 
-# Cloudinary Core (lightweight, just for URL generation)
-cloudinary-core = { group = "com.cloudinary", name = "cloudinary-core", version.ref = "cloudinary" }
-
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
