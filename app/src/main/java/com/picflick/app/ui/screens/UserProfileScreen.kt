@@ -11,7 +11,7 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
+
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.material.icons.Icons
@@ -21,7 +21,7 @@ import androidx.compose.material.pullrefresh.PullRefreshIndicator
 import androidx.compose.material.pullrefresh.pullRefresh
 import androidx.compose.material.pullrefresh.rememberPullRefreshState
 import androidx.compose.material.icons.filled.Block
-import androidx.compose.material.icons.filled.Clear
+
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -42,6 +42,7 @@ import com.picflick.app.data.ReactionType
 import com.picflick.app.data.UserProfile
 import com.picflick.app.ui.components.AnimatedReactionPicker
 import com.picflick.app.ui.theme.isDarkModeBackground
+import com.picflick.app.data.getColor
 
 /**
  * Screen for viewing another user's profile
@@ -80,6 +81,9 @@ fun UserProfileScreen(
     
     // Dark mode state
     val isDarkMode = com.picflick.app.ui.theme.ThemeManager.isDarkMode.value
+    val primaryTextColor = if (isDarkMode) Color.White else Color.Black
+    val secondaryTextColor = if (isDarkMode) Color.Gray else Color.Black.copy(alpha = 0.7f)
+    val tierRingColor = userProfile.subscriptionTier.getColor()
 
     Box(
         modifier = Modifier
@@ -104,7 +108,7 @@ fun UserProfileScreen(
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                         contentDescription = "Back",
-                        tint = Color.White
+                        tint = primaryTextColor
                     )
                 }
             }
@@ -115,7 +119,7 @@ fun UserProfileScreen(
                     .size(150.dp)
                     .clip(CircleShape)
                     .background(Color.DarkGray.copy(alpha = 0.3f))
-                    .border(3.dp, Color.White.copy(alpha = 0.8f), CircleShape)
+                    .border(4.dp, tierRingColor, CircleShape)
                     .clickable { onProfilePhotoClick() },
                 contentAlignment = Alignment.Center
             ) {
@@ -144,14 +148,14 @@ fun UserProfileScreen(
                 text = userProfile.displayName,
                 fontSize = 24.sp,
                 fontWeight = FontWeight.Bold,
-                color = Color.White
+                color = primaryTextColor
             )
 
             // Username handle (use displayName as handle)
             Text(
                 text = "@${userProfile.displayName.lowercase().replace(" ", "_")}",
                 fontSize = 16.sp,
-                color = Color.Gray
+                color = secondaryTextColor
             )
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -161,9 +165,9 @@ fun UserProfileScreen(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceEvenly
             ) {
-                StatItem(photos.size.toString(), "Photos")
-                StatItem(userProfile.followers.size.toString(), "Followers")
-                StatItem(userProfile.following.size.toString(), "Following")
+                StatItem(photos.size.toString(), "Photos", primaryTextColor, secondaryTextColor)
+                StatItem(userProfile.followers.size.toString(), "Followers", primaryTextColor, secondaryTextColor)
+                StatItem(userProfile.following.size.toString(), "Following", primaryTextColor, secondaryTextColor)
             }
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -173,7 +177,7 @@ fun UserProfileScreen(
                 Text(
                     text = userProfile.bio,
                     fontSize = 14.sp,
-                    color = Color.White.copy(alpha = 0.8f),
+                    color = secondaryTextColor,
                     modifier = Modifier.padding(horizontal = 32.dp)
                 )
                 Spacer(modifier = Modifier.height(16.dp))
@@ -186,7 +190,7 @@ fun UserProfileScreen(
                 if (photos.isEmpty()) {
                     Text(
                         text = "No photos yet",
-                        color = Color.Gray,
+                        color = secondaryTextColor,
                         fontSize = 16.sp
                     )
                 } else {
@@ -194,36 +198,45 @@ fun UserProfileScreen(
                         text = "Photos",
                         fontSize = 20.sp,
                         fontWeight = FontWeight.Bold,
-                        color = Color.White,
+                        color = primaryTextColor,
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(horizontal = 16.dp, vertical = 8.dp)
                     )
 
-                    LazyVerticalGrid(
-                        columns = GridCells.Fixed(3),
+                    BoxWithConstraints(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .heightIn(max = 800.dp) // Increased from 600dp
-                            .padding(horizontal = 1.dp), // Match HomeScreen padding
-                        horizontalArrangement = Arrangement.spacedBy(1.dp), // Match HomeScreen
-                        verticalArrangement = Arrangement.spacedBy(1.dp) // Match HomeScreen
+                            .height(520.dp)
                     ) {
-                        items(photos) { photo ->
-                            ProfilePhotoCard(
-                                flick = photo,
-                                currentUser = currentUser,
-                                onPhotoClick = {
-                                    onPhotoClick(photo, photos.indexOf(photo))
-                                },
-                                onLongPress = {
-                                    // Only allow reacting to OTHER people's photos
-                                    if (photo.userId != currentUser.uid) {
-                                        flickForReaction = photo
-                                        showReactionPicker = true
-                                    }
-                                }
+                        val rowHeight = this.maxHeight / 4.1f
+
+                        LazyVerticalGrid(
+                            columns = GridCells.Fixed(3),
+                            modifier = Modifier.fillMaxSize(),
+                            contentPadding = PaddingValues(
+                                start = 1.dp,
+                                end = 1.dp,
+                                top = 4.dp,
+                                bottom = 8.dp
                             )
+                        ) {
+                            items(photos) { photo ->
+                                ProfilePhotoCard(
+                                    flick = photo,
+                                rowHeight = rowHeight,
+                                    onPhotoClick = {
+                                        onPhotoClick(photo, photos.indexOf(photo))
+                                    },
+                                    onLongPress = {
+                                        // Only allow reacting to OTHER people's photos
+                                        if (photo.userId != currentUser.uid) {
+                                            flickForReaction = photo
+                                            showReactionPicker = true
+                                        }
+                                    }
+                                )
+                            }
                         }
                     }
                 }
@@ -259,7 +272,7 @@ fun UserProfileScreen(
                 Text(
                     text = "${userProfile.displayName} wants to be friends",
                     fontSize = 16.sp,
-                    color = Color.White,
+                    color = primaryTextColor,
                     modifier = Modifier.padding(horizontal = 32.dp)
                 )
                 Spacer(modifier = Modifier.height(16.dp))
@@ -276,7 +289,7 @@ fun UserProfileScreen(
                 Text(
                     text = "Friend request sent",
                     fontSize = 16.sp,
-                    color = Color.Gray,
+                    color = secondaryTextColor,
                     modifier = Modifier.padding(horizontal = 32.dp)
                 )
             } else {
@@ -343,7 +356,12 @@ fun UserProfileScreen(
 }
 
 @Composable
-private fun StatItem(value: String, label: String) {
+private fun StatItem(
+    value: String,
+    label: String,
+    valueColor: Color,
+    labelColor: Color
+) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
@@ -351,12 +369,12 @@ private fun StatItem(value: String, label: String) {
             text = value,
             fontSize = 24.sp,
             fontWeight = FontWeight.Bold,
-            color = Color.White
+            color = valueColor
         )
         Text(
             text = label,
             fontSize = 14.sp,
-            color = Color.Gray
+            color = labelColor
         )
     }
 }
@@ -368,7 +386,7 @@ private fun StatItem(value: String, label: String) {
 @Composable
 private fun ProfilePhotoCard(
     flick: Flick,
-    currentUser: UserProfile,
+    rowHeight: androidx.compose.ui.unit.Dp,
     onPhotoClick: () -> Unit,
     onLongPress: () -> Unit
 ) {
@@ -380,7 +398,7 @@ private fun ProfilePhotoCard(
     Card(
         modifier = Modifier
             .padding(1.dp)
-            .aspectRatio(1f)
+            .height(rowHeight)
             .combinedClickable(
                 onClick = { onPhotoClick() },
                 onLongClick = { onLongPress() }
