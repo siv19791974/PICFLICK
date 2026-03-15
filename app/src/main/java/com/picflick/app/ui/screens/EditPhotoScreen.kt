@@ -605,6 +605,73 @@ private fun applyFilterToBitmap(bitmap: Bitmap, filter: PhotoFilter, thumbnailSi
                 )
             })
         }
+        PhotoFilter.NEGATIVE -> ColorMatrix().apply {
+            set(
+                floatArrayOf(
+                    -1f, 0f, 0f, 0f, 255f,
+                    0f, -1f, 0f, 0f, 255f,
+                    0f, 0f, -1f, 0f, 255f,
+                    0f, 0f, 0f, 1f, 0f
+                )
+            )
+        }
+        PhotoFilter.POLAROID -> ColorMatrix().apply {
+            set(
+                floatArrayOf(
+                    1.2f, 0.1f, 0f, 0f, 20f,
+                    0.05f, 1.15f, 0.05f, 0f, 10f,
+                    0f, 0.1f, 1.1f, 0f, 5f,
+                    0f, 0f, 0f, 1f, 0f
+                )
+            )
+            postConcat(ColorMatrix().apply { setSaturation(0.85f) })
+            postConcat(ColorMatrix().apply {
+                set(
+                    floatArrayOf(
+                        0.9f, 0f, 0f, 0f, 15f,
+                        0f, 0.9f, 0f, 0f, 15f,
+                        0f, 0f, 0.9f, 0f, 15f,
+                        0f, 0f, 0f, 1f, 0f
+                    )
+                )
+            })
+        }
+        PhotoFilter.LOMO -> ColorMatrix().apply {
+            setSaturation(1.3f)
+            postConcat(ColorMatrix().apply {
+                set(
+                    floatArrayOf(
+                        1.2f, 0f, 0f, 0f, -20f,
+                        0f, 1.2f, 0f, 0f, -20f,
+                        0f, 0f, 1.2f, 0f, -20f,
+                        0f, 0f, 0f, 1f, 0f
+                    )
+                )
+            })
+        }
+        PhotoFilter._1977 -> ColorMatrix().apply {
+            setSaturation(0.7f)
+            postConcat(ColorMatrix().apply {
+                set(
+                    floatArrayOf(
+                        1.1f, 0.05f, 0.05f, 0f, 15f,
+                        0.05f, 1.0f, 0.05f, 0f, 10f,
+                        0.05f, 0.05f, 0.9f, 0f, 5f,
+                        0f, 0f, 0f, 1f, 0f
+                    )
+                )
+            })
+            postConcat(ColorMatrix().apply {
+                set(
+                    floatArrayOf(
+                        0.9f, 0f, 0f, 0f, 20f,
+                        0f, 0.85f, 0f, 0f, 15f,
+                        0f, 0f, 0.8f, 0f, 10f,
+                        0f, 0f, 0f, 1f, 0f
+                    )
+                )
+            })
+        }
     }
 
     val targetBitmap = if (thumbnailSize > 0) {
