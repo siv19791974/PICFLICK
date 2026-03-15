@@ -40,6 +40,7 @@ import com.picflick.app.data.PhotoFilter
 import com.picflick.app.data.UserProfile
 import com.picflick.app.ui.theme.ThemeManager
 import com.picflick.app.ui.theme.isDarkModeBackground
+import com.picflick.app.ui.theme.PicFlickLightBackground
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -247,7 +248,7 @@ fun EditPhotoScreen(
                             Box(
                                 modifier = Modifier
                                     .fillMaxSize()
-                                    .background(if (isDarkMode) Color.Black.copy(alpha = 0.7f) else Color.White.copy(alpha = 0.7f)),
+                                    .background(if (isDarkMode) Color.Black.copy(alpha = 0.7f) else PicFlickLightBackground.copy(alpha = 0.7f)),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Column(
@@ -319,7 +320,7 @@ fun EditPhotoScreen(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .weight(1f)
-                                .background(if (isDarkMode) Color(0xFF1C1C1E) else Color.White)
+                                .background(if (isDarkMode) Color(0xFF1C1C1E) else PicFlickLightBackground)
                                 .padding(vertical = 8.dp)
                                 .windowInsetsPadding(WindowInsets.navigationBars)
                         ) {
