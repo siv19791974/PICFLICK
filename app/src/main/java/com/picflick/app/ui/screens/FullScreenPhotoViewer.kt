@@ -192,18 +192,11 @@ fun FullScreenPhotoViewer(
     var fetchedUserPhotoUrl by remember(currentFlick.userId) { mutableStateOf<String?>(null) }
 
     LaunchedEffect(currentFlick.userId) {
-        // Check if we need to fetch: either not in friendProfiles, or in friendProfiles but with empty photo
+        // Fetch latest user photo unless we already have a valid current profile photo for this user
         val friendProfile = friendProfiles[currentFlick.userId]
-        val needsFetch = if (currentFlick.userId == currentUser.uid) {
-            false // Don't fetch for current user - use currentUser.photoUrl
-        } else if (currentFlick.userPhotoUrl.isNotBlank()) {
-            false // Already have photo stored in flick
-        } else if (friendProfile != null && !friendProfile.photoUrl.isNullOrBlank()) {
-            false // Have photo from friendProfiles
-        } else {
-            true // Need to fetch from Firestore
-        }
-        
+        val hasCurrentProfilePhoto = friendProfile?.photoUrl?.isNotBlank() == true
+        val needsFetch = currentFlick.userId != currentUser.uid && !hasCurrentProfilePhoto
+
         if (needsFetch) {
             try {
                 val userDoc = com.google.firebase.firestore.FirebaseFirestore.getInstance()
@@ -1596,10 +1589,10 @@ fun FullScreenPhotoViewer(
                                         val profilePhotoUrl = if (currentFlick.userId == currentUser.uid) {
                                             currentUser.photoUrl // Use current/up-to-date photo for own photos
                                         } else {
-                                            // Try stored photo first, then friendProfiles, then fetched from Firestore
-                                            currentFlick.userPhotoUrl.takeIf { it.isNotBlank() }
-                                                ?: friendProfiles[currentFlick.userId]?.photoUrl // Fallback to friend profile
-                                                ?: fetchedUserPhotoUrl // Fetched from Firestore if not in friends list
+                                            // Prefer current profile photo sources, then fall back to old photo-stored URL
+                                            friendProfiles[currentFlick.userId]?.photoUrl?.takeIf { it.isNotBlank() }
+                                                ?: fetchedUserPhotoUrl?.takeIf { it.isNotBlank() }
+                                                ?: currentFlick.userPhotoUrl.takeIf { it.isNotBlank() }
                                                 ?: "" // Empty will trigger initials fallback
                                         }
                                         
