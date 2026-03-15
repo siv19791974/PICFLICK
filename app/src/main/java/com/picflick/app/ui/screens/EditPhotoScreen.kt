@@ -292,55 +292,80 @@ fun EditPhotoScreen(
                                 .padding(vertical = 8.dp)
                                 .windowInsetsPadding(WindowInsets.navigationBars)
                         ) {
-                            // All Filters - Local filters only (Cloud removed for now)
-                            LazyRow(
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                contentPadding = PaddingValues(horizontal = 16.dp),
-                                modifier = Modifier.padding(bottom = 8.dp)
+                            // Filter thumbnails - 2 rows with horizontal scrolling
+                            val row1Filters = localFilters.take(8)
+                            val row2Filters = localFilters.drop(8)
+                            
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 4.dp)
                             ) {
-                                // Local filters only
-                                items(localFilters) { filter ->
-                                    EditFilterIcon(
-                                        filter = filter,
-                                        isSelected = selectedFilter == filter,
-                                        onClick = { 
-                                            selectedFilter = filter
-                                        },
-                                        bitmap = bmp,
-                                        isDarkMode = isDarkMode
-                                    )
+                                // First row - first 8 filters
+                                LazyRow(
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    contentPadding = PaddingValues(horizontal = 16.dp),
+                                    modifier = Modifier.padding(bottom = 8.dp)
+                                ) {
+                                    items(row1Filters) { filter ->
+                                        EditFilterIcon(
+                                            filter = filter,
+                                            isSelected = selectedFilter == filter,
+                                            onClick = { 
+                                                selectedFilter = filter
+                                            },
+                                            bitmap = bmp,
+                                            isDarkMode = isDarkMode
+                                        )
+                                    }
+                                }
+                                
+                                // Second row - remaining filters (scrollable)
+                                if (row2Filters.isNotEmpty()) {
+                                    LazyRow(
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                        contentPadding = PaddingValues(horizontal = 16.dp),
+                                        modifier = Modifier.padding(bottom = 8.dp)
+                                    ) {
+                                        items(row2Filters) { filter ->
+                                            EditFilterIcon(
+                                                filter = filter,
+                                                isSelected = selectedFilter == filter,
+                                                onClick = { 
+                                                    selectedFilter = filter
+                                                },
+                                                bitmap = bmp,
+                                                isDarkMode = isDarkMode
+                                            )
+                                        }
+                                    }
                                 }
                             }
                             
                             // Description/Caption Input Field
-                            Surface(
-                                modifier = Modifier.fillMaxWidth(),
-                                color = if (isDarkMode) Color(0xFF1C1C1E) else PicFlickLightBackground
-                            ) {
-                                OutlinedTextField(
-                                    value = description,
-                                    onValueChange = { description = it },
-                                    placeholder = { 
-                                        Text(
-                                            "Add a caption...", 
-                                            color = if (isDarkMode) Color.White.copy(alpha = 0.5f) else Color.Black.copy(alpha = 0.5f)
-                                        ) 
-                                    },
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(horizontal = 16.dp, vertical = 8.dp),
-                                    colors = OutlinedTextFieldDefaults.colors(
-                                        focusedTextColor = if (isDarkMode) Color.White else Color.Black,
-                                        unfocusedTextColor = if (isDarkMode) Color.White else Color.Black,
-                                        focusedBorderColor = if (isDarkMode) Color(0xFF87CEEB) else Color(0xFF1565C0),
-                                        unfocusedBorderColor = if (isDarkMode) Color.White.copy(alpha = 0.3f) else Color.Black.copy(alpha = 0.3f),
-                                        focusedContainerColor = if (isDarkMode) Color(0xFF2C2C2E) else PicFlickLightBackground,
-                                        unfocusedContainerColor = if (isDarkMode) Color(0xFF2C2C2E) else PicFlickLightBackground
-                                    ),
-                                    maxLines = 3,
-                                    singleLine = false
-                                )
-                            }
+                            OutlinedTextField(
+                                value = description,
+                                onValueChange = { description = it },
+                                placeholder = { 
+                                    Text(
+                                        "Add a caption...", 
+                                        color = if (isDarkMode) Color.White.copy(alpha = 0.5f) else Color.Black.copy(alpha = 0.5f)
+                                    ) 
+                                },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedTextColor = if (isDarkMode) Color.White else Color.Black,
+                                    unfocusedTextColor = if (isDarkMode) Color.White else Color.Black,
+                                    focusedBorderColor = if (isDarkMode) Color(0xFF87CEEB) else Color(0xFF1565C0),
+                                    unfocusedBorderColor = if (isDarkMode) Color.White.copy(alpha = 0.3f) else Color.Black.copy(alpha = 0.3f),
+                                    focusedContainerColor = Color.Transparent,
+                                    unfocusedContainerColor = Color.Transparent
+                                ),
+                                maxLines = 3,
+                                singleLine = false
+                            )
                         }
                     }
                 }
