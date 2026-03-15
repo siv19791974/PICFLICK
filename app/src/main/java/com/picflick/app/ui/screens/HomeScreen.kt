@@ -51,6 +51,7 @@ import com.picflick.app.ui.components.ErrorMessage
 import com.picflick.app.ui.components.PhotoGridShimmer
 import com.picflick.app.ui.theme.isDarkModeBackground
 import com.picflick.app.ui.theme.ThemeManager
+import com.picflick.app.util.withCacheBust
 import com.picflick.app.viewmodel.HomeViewModel
 import java.io.File
 import kotlinx.coroutines.delay
@@ -568,7 +569,7 @@ private fun FlickCard(
         ) {
             // Photo
             AsyncImage(
-                model = flick.imageUrl,
+                model = withCacheBust(flick.imageUrl, flick.timestamp),
                 contentDescription = null,
                 modifier = Modifier.fillMaxSize(), // Fill the exact height
                 contentScale = ContentScale.Crop

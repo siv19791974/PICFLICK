@@ -43,6 +43,7 @@ import com.picflick.app.data.UserProfile
 import com.picflick.app.ui.components.AnimatedReactionPicker
 import com.picflick.app.ui.theme.isDarkModeBackground
 import com.picflick.app.data.getColor
+import com.picflick.app.util.withCacheBust
 
 /**
  * Screen for viewing another user's profile
@@ -125,7 +126,7 @@ fun UserProfileScreen(
             ) {
                 if (userProfile.photoUrl.isNotEmpty()) {
                     AsyncImage(
-                        model = userProfile.photoUrl,
+                        model = withCacheBust(userProfile.photoUrl, userProfile.uid),
                         contentDescription = "Profile photo",
                         modifier = Modifier.fillMaxSize(),
                         error = painterResource(id = android.R.drawable.ic_menu_myplaces),
@@ -418,7 +419,7 @@ private fun ProfilePhotoCard(
         ) {
             // Photo
             AsyncImage(
-                model = flick.imageUrl,
+                model = withCacheBust(flick.imageUrl, flick.timestamp),
                 contentDescription = null,
                 modifier = Modifier.fillMaxSize(),
                 contentScale = ContentScale.Crop
