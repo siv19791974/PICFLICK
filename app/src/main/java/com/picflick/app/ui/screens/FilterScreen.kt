@@ -782,6 +782,17 @@ private fun applyFilterToBitmap(bitmap: Bitmap, filter: PhotoFilter, thumbnailSi
                 )
             )
         }
+        PhotoFilter.NEGATIVE -> ColorMatrix().apply {
+            // Invert/negative effect
+            set(
+                floatArrayOf(
+                    -1f, 0f, 0f, 0f, 255f,
+                    0f, -1f, 0f, 0f, 255f,
+                    0f, 0f, -1f, 0f, 255f,
+                    0f, 0f, 0f, 1f, 0f
+                )
+            )
+        }
         PhotoFilter.HIGH_CONTRAST -> ColorMatrix().apply {
             set(
                 floatArrayOf(
@@ -875,6 +886,30 @@ private fun applyFilterToBitmap(bitmap: Bitmap, filter: PhotoFilter, thumbnailSi
                         0.9f, 0f, 0f, 0f, 25f,
                         0f, 0.9f, 0f, 0f, 25f,
                         0f, 0f, 0.9f, 0f, 25f,
+                        0f, 0f, 0f, 1f, 0f
+                    )
+                )
+            })
+        }
+        PhotoFilter.POLAROID -> ColorMatrix().apply {
+            // Polaroid effect - bright, slightly washed out, warm
+            set(
+                floatArrayOf(
+                    1.2f, 0.1f, 0f, 0f, 20f,
+                    0.05f, 1.15f, 0.05f, 0f, 10f,
+                    0f, 0.1f, 1.1f, 0f, 5f,
+                    0f, 0f, 0f, 1f, 0f
+                )
+            )
+            // Reduce saturation slightly
+            postConcat(ColorMatrix().apply { setSaturation(0.85f) })
+            // Slight contrast reduction
+            postConcat(ColorMatrix().apply {
+                set(
+                    floatArrayOf(
+                        0.9f, 0f, 0f, 0f, 15f,
+                        0f, 0.9f, 0f, 0f, 15f,
+                        0f, 0f, 0.9f, 0f, 15f,
                         0f, 0f, 0f, 1f, 0f
                     )
                 )
