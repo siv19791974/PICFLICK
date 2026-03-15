@@ -334,8 +334,8 @@ fun EditPhotoScreen(
                                         unfocusedTextColor = if (isDarkMode) Color.White else Color.Black,
                                         focusedBorderColor = if (isDarkMode) Color(0xFF87CEEB) else Color(0xFF1565C0),
                                         unfocusedBorderColor = if (isDarkMode) Color.White.copy(alpha = 0.3f) else Color.Black.copy(alpha = 0.3f),
-                                        focusedContainerColor = if (isDarkMode) Color(0xFF2C2C2E) else Color.White,
-                                        unfocusedContainerColor = if (isDarkMode) Color(0xFF2C2C2E) else Color.White
+                                        focusedContainerColor = if (isDarkMode) Color(0xFF2C2C2E) else PicFlickLightBackground,
+                                        unfocusedContainerColor = if (isDarkMode) Color(0xFF2C2C2E) else PicFlickLightBackground
                                     ),
                                     maxLines = 3,
                                     singleLine = false
@@ -374,7 +374,7 @@ private fun EditFilterIcon(
                     },
                     shape = RoundedCornerShape(16.dp)
                 )
-                .background(if (isDarkMode) Color(0xFF2C2C2E) else Color.White),
+                .background(if (isDarkMode) Color(0xFF2C2C2E) else PicFlickLightBackground),
             contentAlignment = Alignment.Center
         ) {
             if (bitmap != null) {
