@@ -281,14 +281,12 @@ fun EditPhotoScreen(
                         }
 
                         // Bottom Panel with filter thumbnails
-                        // Force enough room so both rows show full-size thumbs + labels
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(290.dp)
+                                .height(260.dp)
                                 .background(if (isDarkMode) Color(0xFF1C1C1E) else PicFlickLightBackground)
                                 .padding(vertical = 8.dp)
-                                .windowInsetsPadding(WindowInsets.navigationBars)
                         ) {
                             // Filter thumbnails - 2 rows with horizontal scrolling
                             val row1Filters = localFilters.take(8)
@@ -299,8 +297,8 @@ fun EditPhotoScreen(
                                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                                 contentPadding = PaddingValues(horizontal = 16.dp),
                                 modifier = Modifier
-                                    .height(132.dp)
-                                    .padding(bottom = 6.dp)
+                                    .height(118.dp)
+                                    .padding(bottom = 4.dp)
                             ) {
                                 items(row1Filters) { filter ->
                                     EditFilterIcon(
@@ -321,8 +319,8 @@ fun EditPhotoScreen(
                                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                                     contentPadding = PaddingValues(horizontal = 16.dp),
                                     modifier = Modifier
-                                        .height(132.dp)
-                                    .padding(bottom = 6.dp)
+                                        .height(118.dp)
+                                    .padding(bottom = 4.dp)
                                 ) {
                                     items(row2Filters) { filter ->
                                         EditFilterIcon(
@@ -356,13 +354,13 @@ private fun EditFilterIcon(
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier
-            .width(96.dp)
-            .height(126.dp)
+            .width(88.dp)
+            .height(112.dp)
             .clickable(onClick = onClick)
     ) {
         Box(
             modifier = Modifier
-                .size(96.dp)
+                .size(88.dp)
                 .clip(RoundedCornerShape(16.dp))
                 .border(
                     width = if (isSelected) 4.dp else 2.dp,
