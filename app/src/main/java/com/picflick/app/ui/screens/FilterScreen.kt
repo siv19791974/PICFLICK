@@ -44,7 +44,6 @@ import com.picflick.app.R
 import com.picflick.app.data.PhotoFilter
 import com.picflick.app.data.UserProfile
 import com.picflick.app.data.getDailyUploadLimit
-import com.picflick.app.data.CloudinaryFilters
 import com.picflick.app.ui.theme.ThemeManager
 import com.picflick.app.ui.theme.isDarkModeBackground
 import kotlinx.coroutines.Dispatchers
@@ -104,11 +103,6 @@ fun FilterScreen(
         }
     }
 
-    // Cloudinary integration state
-    var useCloudinaryFilters by remember { mutableStateOf(false) }
-    var selectedCloudFilter by remember { mutableStateOf(CloudinaryFilters.Filter.ORIGINAL) }
-    var cloudName by remember { mutableStateOf("your-cloud-name") } // Set this from BuildConfig
-
     val filters = listOf(
         PhotoFilter.ORIGINAL,
         PhotoFilter.BLACK_AND_WHITE,
@@ -120,18 +114,12 @@ fun FilterScreen(
         PhotoFilter.VINTAGE,
         PhotoFilter.POLAROID,
         PhotoFilter.RETRO,
+        PhotoFilter.LOMO,
+        PhotoFilter._1977,
         PhotoFilter.NOIR,
         PhotoFilter.FADE,
         PhotoFilter.VIVID
     )
-    
-    // Cloudinary filters grouped by category
-    val cloudFilters = remember {
-        CloudinaryFilters.Filter.Category.values().associateWith { category ->
-            CloudinaryFilters.Filter.byCategory(category)
-        }
-    }
-    var selectedCloudCategory by remember { mutableStateOf(CloudinaryFilters.Filter.Category.BASIC) }
     
     // Calculate remaining uploads
     val remainingUploads = maxDailyUploads - dailyUploadCount
@@ -911,6 +899,44 @@ private fun applyFilterToBitmap(bitmap: Bitmap, filter: PhotoFilter, thumbnailSi
                         0.9f, 0f, 0f, 0f, 15f,
                         0f, 0.9f, 0f, 0f, 15f,
                         0f, 0f, 0.9f, 0f, 15f,
+                        0f, 0f, 0f, 1f, 0f
+                    )
+                )
+            })
+        }
+        PhotoFilter.LOMO -> ColorMatrix().apply {
+            // LOMO filter - high contrast, saturated, dark vignette effect
+            setSaturation(1.3f)
+            postConcat(ColorMatrix().apply {
+                set(
+                    floatArrayOf(
+                        1.2f, 0f, 0f, 0f, -20f,
+                        0f, 1.2f, 0f, 0f, -20f,
+                        0f, 0f, 1.2f, 0f, -20f,
+                        0f, 0f, 0f, 1f, 0f
+                    )
+                )
+            })
+        }
+        PhotoFilter._1977 -> ColorMatrix().apply {
+            // 1977 filter - vintage pink tint, desaturated, warm
+            setSaturation(0.7f)
+            postConcat(ColorMatrix().apply {
+                set(
+                    floatArrayOf(
+                        1.1f, 0.05f, 0.05f, 0f, 15f,
+                        0.05f, 1.0f, 0.05f, 0f, 10f,
+                        0.05f, 0.05f, 0.9f, 0f, 5f,
+                        0f, 0f, 0f, 1f, 0f
+                    )
+                )
+            })
+            postConcat(ColorMatrix().apply {
+                set(
+                    floatArrayOf(
+                        0.9f, 0f, 0f, 0f, 20f,
+                        0f, 0.85f, 0f, 0f, 15f,
+                        0f, 0f, 0.8f, 0f, 10f,
                         0f, 0f, 0f, 1f, 0f
                     )
                 )
