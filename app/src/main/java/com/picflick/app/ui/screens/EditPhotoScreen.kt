@@ -66,10 +66,7 @@ fun EditPhotoScreen(
     var bitmap by remember { mutableStateOf<Bitmap?>(null) }
     var isLoading by remember { mutableStateOf(true) }
     var isSaving by remember { mutableStateOf(false) }
-    
-    // Caption/description state - start with existing description
-    var description by remember { mutableStateOf(flick.description) }
-    
+
     // Load the existing photo from URL
     LaunchedEffect(flick.imageUrl) {
         scope.launch(Dispatchers.IO) {
@@ -114,7 +111,7 @@ fun EditPhotoScreen(
             scope.launch {
                 try {
                     val filterTransformation = selectedFilter.name
-                    onSave(flick, filterTransformation, description.trim())
+                    onSave(flick, filterTransformation, flick.description)
                     withContext(Dispatchers.Main) {
                         android.widget.Toast.makeText(
                             context, 
@@ -341,31 +338,6 @@ fun EditPhotoScreen(
                                     }
                                 }
                             }
-                            
-                            // Description/Caption Input Field
-                            OutlinedTextField(
-                                value = description,
-                                onValueChange = { description = it },
-                                placeholder = { 
-                                    Text(
-                                        "Add a caption...", 
-                                        color = if (isDarkMode) Color.White.copy(alpha = 0.5f) else Color.Black.copy(alpha = 0.5f)
-                                    ) 
-                                },
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                                colors = OutlinedTextFieldDefaults.colors(
-                                    focusedTextColor = if (isDarkMode) Color.White else Color.Black,
-                                    unfocusedTextColor = if (isDarkMode) Color.White else Color.Black,
-                                    focusedBorderColor = if (isDarkMode) Color(0xFF87CEEB) else Color(0xFF1565C0),
-                                    unfocusedBorderColor = if (isDarkMode) Color.White.copy(alpha = 0.3f) else Color.Black.copy(alpha = 0.3f),
-                                    focusedContainerColor = Color.Transparent,
-                                    unfocusedContainerColor = Color.Transparent
-                                ),
-                                maxLines = 3,
-                                singleLine = false
-                            )
                         }
                     }
                 }
