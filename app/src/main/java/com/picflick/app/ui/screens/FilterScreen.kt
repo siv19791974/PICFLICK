@@ -46,6 +46,7 @@ import com.picflick.app.data.UserProfile
 import com.picflick.app.data.getDailyUploadLimit
 import com.picflick.app.ui.theme.ThemeManager
 import com.picflick.app.ui.theme.isDarkModeBackground
+import com.picflick.app.ui.theme.PicFlickLightBackground
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -86,7 +87,17 @@ fun FilterScreen(
     // Upload loading state
     var isUploading by remember { mutableStateOf(false) }
     
-    // Load the bitmap
+    // Optimistic daily upload counter - updates instantly on click
+    var optimisticDailyCount by remember { mutableIntStateOf(dailyUploadCount) }
+    
+    // Sync optimistic count when prop changes (e.g., after successful upload)
+    LaunchedEffect(dailyUploadCount) {
+        optimisticDailyCount = dailyUploadCount
+    }
+    
+    // Calculate remaining uploads using optimistic count
+    val remainingUploads = maxDailyUploads - optimisticDailyCount
+    val canUpload = remainingUploads > 0
     LaunchedEffect(photoUri) {
         scope.launch(Dispatchers.IO) {
             try {
@@ -121,16 +132,14 @@ fun FilterScreen(
         PhotoFilter.VIVID
     )
     
-    // Calculate remaining uploads
-    val remainingUploads = maxDailyUploads - dailyUploadCount
-    val canUpload = remainingUploads > 0
-    
     // Animation state for countdown - now triggered immediately on upload click
     var showCountdownAnimation by remember { mutableStateOf(false) }
 
     // Upload function with loading state
     fun triggerUpload() {
         if (canUpload && !isUploading && bitmap != null) {
+            // OPTIMISTIC UPDATE: Increment counter immediately on click
+            optimisticDailyCount += 1
             // Trigger countdown animation immediately when clicking tick
             showCountdownAnimation = true
             isUploading = true
@@ -143,6 +152,8 @@ fun FilterScreen(
                         android.widget.Toast.makeText(context, context.getString(R.string.upload_complete), android.widget.Toast.LENGTH_SHORT).show()
                     }
                 } catch (e: Exception) {
+                    // On failure, revert the optimistic counter
+                    optimisticDailyCount -= 1
                     withContext(Dispatchers.Main) {
                         android.widget.Toast.makeText(context, context.getString(R.string.upload_failed), android.widget.Toast.LENGTH_SHORT).show()
                     }
@@ -186,7 +197,6 @@ fun FilterScreen(
                     }
                     
                     // Centered countdown box with upload complete animation
-                    val remainingUploads = maxDailyUploads - dailyUploadCount
                     val isLimitReached = remainingUploads <= 0
                     
                     Box(
@@ -231,27 +241,26 @@ fun FilterScreen(
                         ) {
                             // Animated content for the number
                             androidx.compose.animation.AnimatedContent(
-                                targetState = if (showCountdownAnimation) remainingUploads + 1 else remainingUploads,
+                                targetState = showCountdownAnimation,
                                 transitionSpec = {
                                     // Slide up animation
                                     (slideInVertically { height -> height } + fadeIn()) togetherWith
                                     (slideOutVertically { height -> -height } + fadeOut())
                                 },
                                 label = "countdownAnimation"
-                            ) { targetCount ->
+                            ) { isAnimating ->
                                 Text(
                                     text = if (isLimitReached) {
                                         "SEE YOU TOMORROW!"
                                     } else {
-                                        val count = if (showCountdownAnimation && targetCount > remainingUploads) remainingUploads else targetCount
-                                        if (showCountdownAnimation) {
-                                            "✓ $count PHOTOS LEFT"
+                                        if (isAnimating) {
+                                            "✓ $remainingUploads PHOTOS LEFT"
                                         } else {
-                                            "$count PHOTOS LEFT"
+                                            "$remainingUploads PHOTOS LEFT"
                                         }
                                     },
                                     color = textColor,
-                                    fontSize = 11.sp,
+                                  fontSize = 11.sp,
                                     fontWeight = FontWeight.Bold
                                 )
                             }
@@ -442,7 +451,7 @@ fun FilterScreen(
                             // Description/Caption Input Field - Wrapped in surface to cover background
                             Surface(
                                 modifier = Modifier.fillMaxWidth(),
-                                color = if (isDarkMode) Color(0xFF1C1C1E) else Color.White
+                                color = if (isDarkMode) Color(0xFF1C1C1E) else PicFlickLightBackground
                             ) {
                                 OutlinedTextField(
                                     value = description,
