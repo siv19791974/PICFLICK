@@ -19,10 +19,6 @@ enum class PhotoFilter(val displayName: String, val icon: String) {
     NOIR("Noir", "🎬"),
     FADE("Fade", "🌫️"),
     VIVID("Vivid", "🌈"),
-    // Android 12+ RenderEffect filters
-    BLUR_LIGHT("Blur Light", "💫"),
-    BLUR_MEDIUM("Blur Medium", "🔮"),
-    BLUR_HEAVY("Blur Heavy", "🌫️"),
     COLOR_INVERT("Color Invert", "🎨")
 }
 
