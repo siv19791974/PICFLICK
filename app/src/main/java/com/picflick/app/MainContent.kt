@@ -264,6 +264,7 @@ fun AuthenticatedContent(
                 currentUser = userProfile,
                 allPhotos = listOf(flick), // Single photo list for navigation context
                 currentIndex = 0,
+                friendProfiles = friendsViewModel.followingUsers.associateBy { it.uid },
                 onDismiss = { onPushPhotoConsumed() },
                 onNavigateToPhoto = { },
                 onNavigateToFindFriends = {
@@ -326,7 +327,8 @@ private fun HomeScreenContent(
             } else {
                 onScreenChange(Screen.UserProfile(userId))
             }
-        }
+        },
+        friends = friendsViewModel.followingUsers // Pass friends for profile picture lookup
     )
 }
 
@@ -1064,7 +1066,8 @@ private fun PhotoViewerWrapper(
     onShareClick: (Flick) -> Unit,
     onDeleteClick: (Flick) -> Unit,
     canDelete: Boolean,
-    onCaptionUpdated: (Flick, String) -> Unit
+    onCaptionUpdated: (Flick, String) -> Unit,
+    friendProfiles: Map<String, UserProfile> = emptyMap() // Map of userId -> UserProfile for looking up profile pics
 ) {
     selectedPhoto?.let { flick ->
         val isProfilePhoto = flick.id.startsWith("profile_")
@@ -1092,7 +1095,8 @@ private fun PhotoViewerWrapper(
                 if (!isProfilePhoto) onNavigateToPhoto(index)
             },
             onNavigateToFindFriends = onNavigateToFindFriends,
-            onUserProfileClick = onUserProfileClick
+            onUserProfileClick = onUserProfileClick,
+            friendProfiles = friendProfiles // Pass friend profiles for User B profile pics
         )
     }
 }
