@@ -1593,118 +1593,127 @@ fun FullScreenPhotoViewer(
                                             }
                                         }
                                         
-                                        // Name + Description + Time in one column
+                                        // Name + Description/Time + Reactions row
                                         Column(
                                             modifier = Modifier.clickable { onUserProfileClick(currentFlick.userId) }
                                         ) {
-                                            // Username
-                                            Text(
-                                                text = currentFlick.userName,
-                                                color = Color.White,
-                                                fontSize = 16.sp,
-                                                fontWeight = FontWeight.Bold
-                                            )
-                                            
-                                            // Description and timestamp in ONE LINE
+                                            // TOP ROW: Username + "is with" + tagged friends
                                             Row(
                                                 verticalAlignment = Alignment.CenterVertically,
-                                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                                horizontalArrangement = Arrangement.spacedBy(8.dp)
                                             ) {
-                                                // Description - clickable to edit if owner
-                                                val descriptionText = currentDescription.ifEmpty { "Add a caption..." }
-                                                val descriptionColor = if (currentDescription.isEmpty()) Color.White.copy(alpha = 0.5f) else Color.White.copy(alpha = 0.85f)
-                                                
+                                                // Username
                                                 Text(
-                                                    text = descriptionText,
-                                                    color = descriptionColor,
-                                                    fontSize = 13.sp,
-                                                    maxLines = 1,
-                                                    modifier = if (canDeleteCurrent) {
-                                                        Modifier.clickable { showEditCaption = true }
-                                                    } else Modifier
+                                                    text = currentFlick.userName,
+                                                    color = Color.White,
+                                                    fontSize = 16.sp,
+                                                    fontWeight = FontWeight.Bold
                                                 )
                                                 
-                                                // Dot separator
-                                                Box(
-                                                    modifier = Modifier
-                                                        .size(3.dp)
-                                                        .background(Color.White.copy(alpha = 0.4f), CircleShape)
-                                                )
-                                                
-                                                // Timestamp
-                                                Text(
-                                                    text = formatTimestamp(currentFlick.timestamp),
-                                                    color = Color.White.copy(alpha = 0.6f),
-                                                    fontSize = 12.sp
-                                                )
-                                            }
-                                        }
-                                    }
-                                    
-                                    // RIGHT: Reactions with counts + Tagged friends below
-                                    Column(
-                                        horizontalAlignment = Alignment.End,
-                                        verticalArrangement = Arrangement.spacedBy(4.dp)
-                                    ) {
-                                        ReactionCountersRow(
-                                            flick = currentFlick,
-                                            canReact = !canDeleteCurrent, // Can't react to own photos
-                                            onReactionClick = { 
-                                                // Only open picker for other people's photos
-                                                if (!canDeleteCurrent) {
-                                                    showReactionPicker = !showReactionPicker // TOGGLE: click to open, click again to close 
-                                                }
-                                            }
-                                        )
-                                        
-                                        // TAGGED FRIENDS (if any) - Profile pics only, shown below reactions on right
-                                        if (taggedFriendsProfiles.isNotEmpty()) {
-                                            Row(
-                                                horizontalArrangement = Arrangement.End,
-                                                verticalAlignment = Alignment.CenterVertically
-                                            ) {
-                                                // Profile pics of tagged friends - side by side with small gap
-                                                Row(
-                                                    horizontalArrangement = Arrangement.spacedBy(4.dp),
-                                                    verticalAlignment = Alignment.CenterVertically
-                                                ) {
-                                                    taggedFriendsProfiles.take(5).forEach { friend ->
-                                                        Box(
-                                                            modifier = Modifier
-                                                                .size(24.dp)
-                                                                .clip(CircleShape)
-                                                                .border(1.5.dp, Color.White.copy(alpha = 0.8f), CircleShape)
-                                                                .clickable { onUserProfileClick(friend.uid) },
-                                                            contentAlignment = Alignment.Center
-                                                        ) {
-                                                            AsyncImage(
-                                                                model = friend.photoUrl,
-                                                                contentDescription = friend.displayName,
-                                                                modifier = Modifier.fillMaxSize(),
-                                                                contentScale = ContentScale.Crop
-                                                            )
-                                                        }
-                                                    }
+                                                // "is with" + tagged friends (if any)
+                                                if (taggedFriendsProfiles.isNotEmpty()) {
+                                                    // "is with" text
+                                                    Text(
+                                                        text = "is with",
+                                                        color = Color.White.copy(alpha = 0.7f),
+                                                        fontSize = 14.sp
+                                                    )
                                                     
-                                                    // Show "+X more" if more than 5 tagged
-                                                    if (taggedFriendsProfiles.size > 5) {
-                                                        Box(
-                                                            modifier = Modifier
-                                                                .size(24.dp)
-                                                                .clip(CircleShape)
-                                                                .background(Color.Black.copy(alpha = 0.6f))
-                                                                .border(1.5.dp, Color.White.copy(alpha = 0.8f), CircleShape),
-                                                            contentAlignment = Alignment.Center
-                                                        ) {
-                                                            Text(
-                                                                text = "+${taggedFriendsProfiles.size - 5}",
-                                                                color = Color.White,
-                                                                fontSize = 10.sp,
-                                                                fontWeight = FontWeight.Bold
-                                                            )
+                                                    // Profile pics of tagged friends
+                                                    Row(
+                                                        horizontalArrangement = Arrangement.spacedBy((-4).dp), // Overlap slightly
+                                                        verticalAlignment = Alignment.CenterVertically
+                                                    ) {
+                                                        taggedFriendsProfiles.take(3).forEach { friend ->
+                                                            Box(
+                                                                modifier = Modifier
+                                                                    .size(24.dp)
+                                                                    .clip(CircleShape)
+                                                                    .border(1.5.dp, Color.White.copy(alpha = 0.8f), CircleShape)
+                                                                    .clickable { onUserProfileClick(friend.uid) },
+                                                                contentAlignment = Alignment.Center
+                                                            ) {
+                                                                AsyncImage(
+                                                                    model = friend.photoUrl,
+                                                                    contentDescription = friend.displayName,
+                                                                    modifier = Modifier.fillMaxSize(),
+                                                                    contentScale = ContentScale.Crop
+                                                                )
+                                                            }
+                                                        }
+                                                        
+                                                        // Show "+X" if more than 3 tagged
+                                                        if (taggedFriendsProfiles.size > 3) {
+                                                            Box(
+                                                                modifier = Modifier
+                                                                    .size(24.dp)
+                                                                    .clip(CircleShape)
+                                                                    .background(Color.Black.copy(alpha = 0.6f))
+                                                                    .border(1.5.dp, Color.White.copy(alpha = 0.8f), CircleShape),
+                                                                contentAlignment = Alignment.Center
+                                                            ) {
+                                                                Text(
+                                                                    text = "+${taggedFriendsProfiles.size - 3}",
+                                                                    color = Color.White,
+                                                                    fontSize = 10.sp,
+                                                                    fontWeight = FontWeight.Bold
+                                                                )
+                                                            }
                                                         }
                                                     }
                                                 }
+                                            }
+                                            
+                                            // BOTTOM ROW: Description • Timestamp (left) and Reactions (right)
+                                            Row(
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                horizontalArrangement = Arrangement.SpaceBetween,
+                                                modifier = Modifier.fillMaxWidth()
+                                            ) {
+                                                // LEFT: Description and timestamp
+                                                Row(
+                                                    verticalAlignment = Alignment.CenterVertically,
+                                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                                ) {
+                                                    // Description - clickable to edit if owner
+                                                    val descriptionText = currentDescription.ifEmpty { "Add a caption..." }
+                                                    val descriptionColor = if (currentDescription.isEmpty()) Color.White.copy(alpha = 0.5f) else Color.White.copy(alpha = 0.85f)
+                                                    
+                                                    Text(
+                                                        text = descriptionText,
+                                                        color = descriptionColor,
+                                                        fontSize = 13.sp,
+                                                        maxLines = 1,
+                                                        modifier = if (canDeleteCurrent) {
+                                                            Modifier.clickable { showEditCaption = true }
+                                                        } else Modifier
+                                                    )
+                                                    
+                                                    // Dot separator
+                                                    Box(
+                                                        modifier = Modifier
+                                                            .size(3.dp)
+                                                            .background(Color.White.copy(alpha = 0.4f), CircleShape)
+                                                    )
+                                                    
+                                                    // Timestamp
+                                                    Text(
+                                                        text = formatTimestamp(currentFlick.timestamp),
+                                                        color = Color.White.copy(alpha = 0.6f),
+                                                        fontSize = 12.sp
+                                                    )
+                                                }
+                                                
+                                                // RIGHT: Reactions aligned with timestamp
+                                                ReactionCountersRow(
+                                                    flick = currentFlick,
+                                                    canReact = !canDeleteCurrent,
+                                                    onReactionClick = { 
+                                                        if (!canDeleteCurrent) {
+                                                            showReactionPicker = !showReactionPicker
+                                                        }
+                                                    }
+                                                )
                                             }
                                         }
                                     }
