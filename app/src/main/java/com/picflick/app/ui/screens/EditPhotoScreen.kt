@@ -359,7 +359,7 @@ fun EditPhotoScreen(
                             // Description/Caption Input Field
                             Surface(
                                 modifier = Modifier.fillMaxWidth(),
-                                color = if (isDarkMode) Color(0xFF1C1C1E) else Color.White
+                                color = if (isDarkMode) Color(0xFF1C1C1E) else PicFlickLightBackground
                             ) {
                                 OutlinedTextField(
                                     value = description,
@@ -471,16 +471,16 @@ private fun CloudinaryFilterIcon(
     ) {
         Box(
             modifier = Modifier
-                .size(64.dp)
-                .clip(RoundedCornerShape(12.dp))
+                .size(96.dp)
+                .clip(RoundedCornerShape(16.dp))
                 .border(
-                    width = if (isSelected) 3.dp else 1.dp,
+                    width = if (isSelected) 4.dp else 2.dp,
                     color = if (isSelected) {
                         if (isDarkMode) Color(0xFF87CEEB) else Color(0xFF1565C0)
                     } else {
                         if (isDarkMode) Color.White.copy(alpha = 0.3f) else Color.Black.copy(alpha = 0.3f)
                     },
-                    shape = RoundedCornerShape(12.dp)
+                    shape = RoundedCornerShape(16.dp)
                 )
                 .background(if (isDarkMode) Color(0xFF2C2C2E) else Color.White),
             contentAlignment = Alignment.Center
@@ -498,7 +498,7 @@ private fun CloudinaryFilterIcon(
                 contentDescription = filter.displayName,
                 modifier = Modifier
                     .fillMaxSize()
-                    .clip(RoundedCornerShape(12.dp)),
+                    .clip(RoundedCornerShape(16.dp)),
                 contentScale = ContentScale.Crop
             )
         }
@@ -513,7 +513,7 @@ private fun CloudinaryFilterIcon(
             } else {
                 if (isDarkMode) Color.White.copy(alpha = 0.7f) else Color.Black.copy(alpha = 0.7f)
             },
-            fontSize = 10.sp,
+            fontSize = 12.sp,
             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
             maxLines = 1
         )
