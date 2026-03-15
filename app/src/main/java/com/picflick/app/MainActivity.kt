@@ -586,8 +586,9 @@ fun MainScreen(
         contentColor = MaterialTheme.colorScheme.onBackground,
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
-            // SHARED logo banner - never moves when switching screens
-            if (currentUser != null && userProfile != null) {
+            // Keep header height stable even while userProfile is still loading
+            if (currentUser != null) {
+                val profileReady = userProfile != null
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -596,7 +597,8 @@ fun MainScreen(
                 ) {
                     // Settings wheel on LEFT
                     IconButton(
-                        onClick = { currentScreen = Screen.Settings },
+                        onClick = { if (profileReady) currentScreen = Screen.Settings },
+                        enabled = profileReady,
                         modifier = Modifier
                             .align(Alignment.CenterStart)
                             .padding(top = 4.dp)
@@ -604,13 +606,14 @@ fun MainScreen(
                         Icon(
                             imageVector = Icons.Outlined.Settings,
                             contentDescription = "Settings",
-                            tint = Color.LightGray
+                            tint = if (profileReady) Color.LightGray else Color.DarkGray
                         )
                     }
 
                     // Notifications bell on right - RED when unread, clickable
                     IconButton(
-                        onClick = { currentScreen = Screen.Notifications },
+                        onClick = { if (profileReady) currentScreen = Screen.Notifications },
+                        enabled = profileReady,
                         modifier = Modifier
                             .align(Alignment.CenterEnd)
                             .padding(top = 4.dp)
@@ -619,10 +622,14 @@ fun MainScreen(
                             Icon(
                                 imageVector = Icons.Outlined.Notifications,
                                 contentDescription = "Notifications",
-                                tint = if (unreadCount > 0) Color.Red else Color.LightGray
+                                tint = when {
+                                    !profileReady -> Color.DarkGray
+                                    unreadCount > 0 -> Color.Red
+                                    else -> Color.LightGray
+                                }
                             )
                             // Red badge for unread notifications
-                            if (unreadCount > 0) {
+                            if (profileReady && unreadCount > 0) {
                                 Badge(
                                     modifier = Modifier.align(Alignment.TopEnd),
                                     containerColor = Color.Red,
@@ -647,8 +654,9 @@ fun MainScreen(
             }
         },
         bottomBar = {
-            // Show bottom nav when authenticated (including in chat)
-            if (currentUser != null && userProfile != null) {
+            // Keep bottom bar stable while profile is loading (prevents layout jump)
+            if (currentUser != null) {
+                val profileReady = userProfile != null
                 BottomNavBar(
                     currentRoute = when (currentScreen) {
                         is Screen.Home -> "home"
@@ -658,15 +666,17 @@ fun MainScreen(
                         else -> "home"
                     },
                     onNavigate = { route ->
-                        when (route) {
-                            "home" -> currentScreen = Screen.Home
-                            "chats" -> currentScreen = Screen.Chats
-                            "upload" -> showUploadSourceDialog = true
-                            "friends" -> currentScreen = Screen.Friends
-                            "profile" -> currentScreen = Screen.Profile
+                        if (profileReady) {
+                            when (route) {
+                                "home" -> currentScreen = Screen.Home
+                                "chats" -> currentScreen = Screen.Chats
+                                "upload" -> showUploadSourceDialog = true
+                                "friends" -> currentScreen = Screen.Friends
+                                "profile" -> currentScreen = Screen.Profile
+                            }
                         }
                     },
-                    unreadMessages = chatViewModel.unreadCount
+                    unreadMessages = if (profileReady) chatViewModel.unreadCount else 0
                 )
             }
         }

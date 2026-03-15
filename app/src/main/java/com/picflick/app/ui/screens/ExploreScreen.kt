@@ -27,6 +27,7 @@ import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import com.picflick.app.data.Flick
 import com.picflick.app.data.UserProfile
+import com.picflick.app.util.withCacheBust
 import com.picflick.app.viewmodel.HomeViewModel
 
 /**
@@ -356,7 +357,7 @@ private fun FeaturedPhotoCard(
         Column {
             // Photo
             AsyncImage(
-                model = flick.imageUrl,
+                model = withCacheBust(flick.imageUrl, flick.timestamp),
                 contentDescription = null,
                 modifier = Modifier
                     .fillMaxWidth()
@@ -434,7 +435,7 @@ private fun ExplorePhotoCard(
     ) {
         Box {
             AsyncImage(
-                model = flick.imageUrl,
+                model = withCacheBust(flick.imageUrl, flick.timestamp),
                 contentDescription = null,
                 modifier = Modifier.fillMaxSize(),
                 contentScale = ContentScale.Crop
@@ -492,7 +493,7 @@ private fun PopularPhotoRow(
 
         // Thumbnail
         AsyncImage(
-            model = flick.imageUrl,
+            model = withCacheBust(flick.imageUrl, flick.timestamp),
             contentDescription = null,
             modifier = Modifier
                 .size(80.dp)
@@ -551,7 +552,7 @@ private fun NewPhotoCard(
         ) {
             // Thumbnail
             AsyncImage(
-                model = flick.imageUrl,
+                model = withCacheBust(flick.imageUrl, flick.timestamp),
                 contentDescription = null,
                 modifier = Modifier
                     .size(80.dp)

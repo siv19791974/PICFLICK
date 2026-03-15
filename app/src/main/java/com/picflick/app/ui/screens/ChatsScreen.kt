@@ -67,7 +67,8 @@ fun ChatsScreen(
     onNavigateHome: () -> Unit = onBack,
     onChatClick: (ChatSession, String) -> Unit,
     onStartNewChat: ((String, String, String) -> Unit)? = null,
-    onUserProfileClick: (String) -> Unit = {}
+    onUserProfileClick: (String) -> Unit = {},
+    onBottomNavNavigate: (String) -> Unit = {}
 ) {
     LaunchedEffect(userProfile.uid) {
         viewModel.loadChatSessions(userProfile.uid)
@@ -266,7 +267,15 @@ fun ChatsScreen(
                 showNewChatDialog = false
                 onStartNewChat?.invoke(friendId, friendName, friendPhoto)
             },
-            onUserProfileClick = onUserProfileClick
+            onUserProfileClick = onUserProfileClick,
+            onBottomNavNavigate = { route ->
+                showNewChatDialog = false
+                when (route) {
+                    "home" -> onNavigateHome()
+                    "chats" -> Unit
+                    else -> onBottomNavNavigate(route)
+                }
+            }
         )
     }
 }
@@ -487,30 +496,28 @@ private fun NewChatDialog(
     isDarkMode: Boolean,
     onDismiss: () -> Unit,
     onFriendSelected: (String, String, String) -> Unit,
-    onUserProfileClick: (String) -> Unit
+    onUserProfileClick: (String) -> Unit,
+    onBottomNavNavigate: (String) -> Unit
 ) {
     val backgroundColor = if (isDarkMode) Color.Black else PicFlickLightBackground
     
     Dialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(
-            usePlatformDefaultWidth = false,
-            decorFitsSystemWindows = false
+            usePlatformDefaultWidth = false
         )
     ) {
-        Surface(
+        Scaffold(
             modifier = Modifier.fillMaxSize(),
-            color = backgroundColor
-        ) {
-            Column(
-                modifier = Modifier.fillMaxSize()
-            ) {
-                // MAIN HEADER - Match app standard logo sizing/position
+            containerColor = backgroundColor,
+            contentWindowInsets = WindowInsets(0, 0, 0, 0),
+            topBar = {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(56.dp)
                         .background(Color.Black)
+                        .statusBarsPadding()
+                        .height(56.dp)
                         .padding(horizontal = 8.dp),
                     contentAlignment = Alignment.Center
                 ) {
@@ -538,7 +545,6 @@ private fun NewChatDialog(
                             LogoImage(modifier = Modifier.height(40.dp))
                         }
 
-                        // Keep only search on right (remove compose icon)
                         IconButton(onClick = { /* Search */ }, modifier = Modifier.size(40.dp)) {
                             Icon(
                                 imageVector = Icons.Default.Search,
@@ -548,71 +554,70 @@ private fun NewChatDialog(
                         }
                     }
                 }
-                
-                // Contacts list
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f)
-                ) {
-                    when {
-                        isLoading -> {
-                            Box(
-                                modifier = Modifier.fillMaxSize(),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                CircularProgressIndicator(color = if (isDarkMode) Color.White else Color.Black)
-                            }
+            },
+            bottomBar = {
+                Box(modifier = Modifier.navigationBarsPadding()) {
+                    BottomNavBar(
+                        currentRoute = "chats",
+                        onNavigate = onBottomNavNavigate
+                    )
+                }
+            }
+        ) { paddingValues ->
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+            ) {
+                when {
+                    isLoading -> {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator(color = if (isDarkMode) Color.White else Color.Black)
                         }
-                        friends.isEmpty() -> {
-                            Column(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(32.dp),
-                                horizontalAlignment = Alignment.CenterHorizontally
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Person,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(64.dp),
-                                    tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
-                                )
-                                Spacer(modifier = Modifier.height(16.dp))
-                                Text(
-                                    text = "No friends yet",
-                                    fontSize = 18.sp,
-                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-                                )
-                                Spacer(modifier = Modifier.height(8.dp))
-                                Text(
-                                    text = "Follow some friends to start chatting!",
-                                    fontSize = 14.sp,
-                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
-                                )
-                            }
+                    }
+                    friends.isEmpty() -> {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(32.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Person,
+                                contentDescription = null,
+                                modifier = Modifier.size(64.dp),
+                                tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
+                            )
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Text(
+                                text = "No friends yet",
+                                fontSize = 18.sp,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = "Follow some friends to start chatting!",
+                                fontSize = 14.sp,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
+                            )
                         }
-                        else -> {
-                            LazyColumn(
-                                modifier = Modifier.fillMaxSize()
-                            ) {
-                                items(friends) { friend ->
-                                    FullScreenFriendItem(
-                                        friend = friend,
-                                        isDarkMode = isDarkMode,
-                                        onClick = { onFriendSelected(friend.uid, friend.displayName, friend.photoUrl) },
-                                        onProfilePhotoClick = { onUserProfileClick(friend.uid) }
-                                    )
-                                }
+                    }
+                    else -> {
+                        LazyColumn(modifier = Modifier.fillMaxSize()) {
+                            items(friends) { friend ->
+                                FullScreenFriendItem(
+                                    friend = friend,
+                                    isDarkMode = isDarkMode,
+                                    onClick = { onFriendSelected(friend.uid, friend.displayName, friend.photoUrl) },
+                                    onProfilePhotoClick = { onUserProfileClick(friend.uid) }
+                                )
                             }
                         }
                     }
                 }
-                
-                // BOTTOM 5-WAY NAVIGATION BAR - use the app's standard component
-                BottomNavBar(
-                    currentRoute = "chats",
-                    onNavigate = { /* Keep dialog context; no navigation from modal */ }
-                )
             }
         }
     }

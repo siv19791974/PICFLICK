@@ -47,6 +47,7 @@ import com.picflick.app.data.getDarkColor
 import com.picflick.app.data.getLightColor
 import com.picflick.app.ui.components.AnimatedReactionPicker
 import com.picflick.app.ui.theme.ThemeManager
+import com.picflick.app.util.withCacheBust
 import com.picflick.app.ui.theme.isDarkModeBackground
 
 /**
@@ -219,7 +220,7 @@ fun ProfileScreen(
                 ) {
                     AsyncImage(
                         model = ImageRequest.Builder(LocalContext.current)
-                            .data(displayPhotoUrl)
+                            .data(withCacheBust(displayPhotoUrl, userProfile.uid))
                             .memoryCachePolicy(CachePolicy.ENABLED)
                             .diskCachePolicy(CachePolicy.ENABLED)
                             .build(),
@@ -528,7 +529,7 @@ private fun DynamicPhotoGrid(
             ) {
                 Box(modifier = Modifier.fillMaxSize()) {
                     AsyncImage(
-                        model = flick.imageUrl,
+                        model = withCacheBust(flick.imageUrl, flick.timestamp),
                         contentDescription = null,
                         modifier = Modifier.fillMaxSize(),
                         contentScale = ContentScale.Crop
@@ -743,7 +744,7 @@ private fun PhotoGridItem(
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
             AsyncImage(
-                model = flick.imageUrl,
+                model = withCacheBust(flick.imageUrl, flick.timestamp),
                 contentDescription = null,
                 modifier = Modifier.fillMaxSize(),
                 contentScale = ContentScale.Crop
@@ -771,7 +772,7 @@ private fun ProfilePhotoGridItem(
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
             AsyncImage(
-                model = flick.imageUrl,
+                model = withCacheBust(flick.imageUrl, flick.timestamp),
                 contentDescription = null,
                 modifier = Modifier.fillMaxSize(),
                 contentScale = ContentScale.Crop
@@ -1025,7 +1026,7 @@ private fun MyPhotoCard(
         Box(modifier = Modifier.fillMaxSize()) {
             // Photo
             AsyncImage(
-                model = flick.imageUrl,
+                model = withCacheBust(flick.imageUrl, flick.timestamp),
                 contentDescription = null,
                 modifier = Modifier.fillMaxSize(),
                 contentScale = ContentScale.Crop
