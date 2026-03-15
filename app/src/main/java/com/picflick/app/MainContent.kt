@@ -561,6 +561,15 @@ private fun ChatsScreenContent(
         },
         onUserProfileClick = { userId ->
             onScreenChange(Screen.UserProfile(userId))
+        },
+        onBottomNavNavigate = { route ->
+            when (route) {
+                "home" -> onScreenChange(Screen.Home)
+                "chats" -> onScreenChange(Screen.Chats)
+                "friends" -> onScreenChange(Screen.Friends)
+                "profile" -> onScreenChange(Screen.Profile)
+                "upload" -> onScreenChange(Screen.Home)
+            }
         }
     )
 }
