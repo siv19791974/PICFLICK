@@ -23,7 +23,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.AddCircle
+import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.*
@@ -174,6 +174,32 @@ fun ChatsScreen(
                             onDismissRequest = { showHeaderMenu = false }
                         ) {
                             DropdownMenuItem(
+                                text = { Text("Mark selected as read") },
+                                onClick = {
+                                    selectedChatIds.toList().forEach { chatId ->
+                                        viewModel.markAsRead(chatId, userProfile.uid)
+                                    }
+                                    selectedChatIds.clear()
+                                    showHeaderMenu = false
+                                },
+                                enabled = selectedChatIds.isNotEmpty()
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Clear selection") },
+                                onClick = {
+                                    selectedChatIds.clear()
+                                    showHeaderMenu = false
+                                },
+                                enabled = selectedChatIds.isNotEmpty()
+                            )
+
+                            HorizontalDivider(
+                                modifier = Modifier.padding(vertical = 4.dp),
+                                thickness = 0.5.dp,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f)
+                            )
+
+                            DropdownMenuItem(
                                 text = {
                                     Text(
                                         if (selectedChatIds.size <= 1) "Delete selected" else "Delete selected (${selectedChatIds.size})",
@@ -187,31 +213,12 @@ fun ChatsScreen(
                                 enabled = selectedChatIds.isNotEmpty()
                             )
                             DropdownMenuItem(
-                                text = { Text("Mark selected as read") },
-                                onClick = {
-                                    selectedChatIds.toList().forEach { chatId ->
-                                        viewModel.markAsRead(chatId, userProfile.uid)
-                                    }
-                                    selectedChatIds.clear()
-                                    showHeaderMenu = false
-                                },
-                                enabled = selectedChatIds.isNotEmpty()
-                            )
-                            DropdownMenuItem(
                                 text = { Text("Block user", color = Color.Red) },
                                 onClick = {
                                     showHeaderMenu = false
                                     showBlockConfirm = true
                                 },
                                 enabled = selectedChatIds.size == 1 && !selectedOtherUserId.isNullOrBlank()
-                            )
-                            DropdownMenuItem(
-                                text = { Text("Clear selection") },
-                                onClick = {
-                                    selectedChatIds.clear()
-                                    showHeaderMenu = false
-                                },
-                                enabled = selectedChatIds.isNotEmpty()
                             )
                         }
                     }
@@ -917,6 +924,14 @@ private fun FullScreenFriendItem(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.fillMaxWidth()
+            )
+        }
+
+        IconButton(onClick = onClick) {
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.Send,
+                contentDescription = "Start chat with ${friend.displayName}",
+                tint = if (isDarkMode) Color.White else Color.Black
             )
         }
     }

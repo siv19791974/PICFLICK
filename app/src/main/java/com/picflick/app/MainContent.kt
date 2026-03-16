@@ -262,7 +262,7 @@ fun AuthenticatedContent(
             _currentUser = userProfile,
             _cloudName = "", // TODO: Get from BuildConfig or settings
             onBack = { onScreenChange(Screen.Home) },
-            onSave = { flick, filterType, description, filteredBitmap ->
+            onSave = { flick, filterType, description, taggedFriends, filteredBitmap ->
                 scope.launch {
                     val stream = java.io.ByteArrayOutputStream()
                     filteredBitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG, 92, stream)
@@ -275,7 +275,8 @@ fun AuthenticatedContent(
                                 flickId = flick.id,
                                 description = description,
                                 filterType = filterType,
-                                newImageUrl = uploadResult.data
+                                newImageUrl = uploadResult.data,
+                                taggedFriends = taggedFriends
                             )
                             when (result) {
                                 is com.picflick.app.data.Result.Success -> {
