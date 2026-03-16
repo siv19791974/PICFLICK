@@ -249,6 +249,17 @@ private fun NotificationItem(
     onAcceptTag: (String, String) -> Unit = { _, _ -> }, // flickId, notificationId
     onDeclineTag: (String, String) -> Unit = { _, _ -> } // flickId, notificationId
 ) {
+    val displayMessage = if (isDarkMode) {
+        val sender = notification.senderName.trim()
+        if (sender.isNotEmpty() && notification.message.startsWith(sender)) {
+            notification.message.removePrefix(sender).trimStart().ifEmpty { "Notification" }
+        } else {
+            notification.message
+        }
+    } else {
+        notification.message
+    }
+
     // Use Row like ChatListItem - no card
     Row(
         modifier = Modifier
@@ -258,27 +269,31 @@ private fun NotificationItem(
             .padding(horizontal = 12.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Sender avatar with notification icon overlay - 56dp like ChatListItem
+        // In dark mode, remove sender picture/name dependence; show only notification type marker
         Box(
             modifier = Modifier
                 .size(56.dp)
-                .clickable { onUserProfileClick(notification.senderId) }
+                .let { base ->
+                    if (isDarkMode) base else base.clickable { onUserProfileClick(notification.senderId) }
+                },
+            contentAlignment = Alignment.Center
         ) {
-            AsyncImage(
-                model = notification.senderPhotoUrl,
-                contentDescription = notification.senderName,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .clip(CircleShape)
-                    .background(if (isDarkMode) Color.Gray else Color.LightGray),
-                contentScale = ContentScale.Crop
-            )
+            if (!isDarkMode) {
+                AsyncImage(
+                    model = notification.senderPhotoUrl,
+                    contentDescription = notification.senderName,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .clip(CircleShape)
+                        .background(Color.LightGray),
+                    contentScale = ContentScale.Crop
+                )
+            }
 
-            // Notification type icon (small overlay)
             Box(
                 modifier = Modifier
-                    .size(20.dp)
-                    .align(Alignment.BottomEnd)
+                    .size(if (isDarkMode) 28.dp else 20.dp)
+                    .align(if (isDarkMode) Alignment.Center else Alignment.BottomEnd)
                     .background(
                         color = getNotificationColor(notification.type),
                         shape = CircleShape
@@ -288,7 +303,7 @@ private fun NotificationItem(
                 Icon(
                     imageVector = getNotificationIcon(notification.type),
                     contentDescription = null,
-                    modifier = Modifier.size(12.dp),
+                    modifier = Modifier.size(if (isDarkMode) 16.dp else 12.dp),
                     tint = if (isDarkMode) Color.White else Color.Black
                 )
             }
@@ -307,7 +322,7 @@ private fun NotificationItem(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = notification.message,
+                    text = displayMessage,
                     fontSize = 14.sp,
                     fontWeight = if (notification.isRead) FontWeight.Normal else FontWeight.Medium,
                     color = if (isDarkMode) Color.White.copy(alpha = 0.9f) else Color.Black.copy(alpha = 0.85f),
