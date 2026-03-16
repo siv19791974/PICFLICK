@@ -1,5 +1,6 @@
 package com.picflick.app.ui.screens
 
+import android.content.res.Configuration
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -31,6 +32,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -42,6 +44,7 @@ import coil3.request.CachePolicy
 import com.picflick.app.data.Flick
 import com.picflick.app.data.ReactionType
 import com.picflick.app.data.UserProfile
+import com.picflick.app.data.toEmoji
 import com.picflick.app.data.getColor
 import com.picflick.app.data.getDarkColor
 import com.picflick.app.data.getLightColor
@@ -73,8 +76,10 @@ fun ProfileScreen(
     isLoading: Boolean = false
 ) {
     val isDarkMode = ThemeManager.isDarkMode.value
+    val configuration = LocalConfiguration.current
+    val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
     
-    // Reaction picker state
+// Reaction picker state
     var showReactionPicker by remember { mutableStateOf(false) }
     var flickForReaction by remember { mutableStateOf<Flick?>(null) }
     
@@ -180,23 +185,24 @@ fun ProfileScreen(
         ) {
             // NO BANNER - banner is now in MainActivity's Scaffold topBar!
 
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(if (isLandscape) 12.dp else 24.dp))
 
         // Profile Photo with Tier Color Ring
         val tier = userProfile.subscriptionTier
         val tierColor = tier.getColor()
         
+        val profileImageSize = if (isLandscape) 124.dp else 156.dp
         Box(
             modifier = Modifier
-                .size(156.dp), // Slightly larger to fit 6.dp ring
+                .size(profileImageSize),
             contentAlignment = Alignment.Center
         ) {
-            // Outer ring with tier color - DOUBLE THICKNESS (6.dp)
+// Outer ring with tier color - DOUBLE THICKNESS (6.dp)
             Box(
                 modifier = Modifier
-                    .size(156.dp)
+                    .size(profileImageSize)
                     .clip(CircleShape)
-                    .background(
+.background(
                         brush = Brush.sweepGradient(
                             colors = listOf(
                                 tierColor,
@@ -1015,6 +1021,11 @@ private fun MyPhotoCard(
     onLongPress: () -> Unit = {},
     rowHeight: androidx.compose.ui.unit.Dp
 ) {
+    val reactionCounts = flick.getReactionCounts()
+    val topReaction = reactionCounts.maxByOrNull { it.value }
+    val topReactionCount = topReaction?.value ?: 0
+    val topReactionEmoji = topReaction?.key?.toEmoji() ?: "❤️"
+
     Card(
         modifier = Modifier
             .padding(1.dp)
@@ -1035,6 +1046,47 @@ private fun MyPhotoCard(
                 modifier = Modifier.fillMaxSize(),
                 contentScale = ContentScale.Crop
             )
+
+            // Fixed mini info banner (same style as Home)
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .fillMaxWidth()
+                    .height(20.dp)
+                    .background(color = Color.Black.copy(alpha = 0.5f))
+                    .padding(horizontal = 4.dp, vertical = 1.dp),
+                contentAlignment = Alignment.CenterStart
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = flick.userName,
+                        color = Color.White,
+                        fontSize = 10.sp,
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            fontWeight = FontWeight.SemiBold
+                        ),
+                        maxLines = 1,
+                        modifier = Modifier.weight(1f)
+                    )
+
+                    Box(
+                        modifier = Modifier.width(36.dp),
+                        contentAlignment = Alignment.CenterEnd
+                    ) {
+                        if (topReactionCount > 0) {
+                            Text(
+                                text = "$topReactionEmoji $topReactionCount",
+                                fontSize = 10.sp,
+                                color = Color.White
+                            )
+                        }
+                    }
+                }
+            }
         }
     }
 }

@@ -221,7 +221,7 @@ class FriendsViewModel : ViewModel() {
     /**
      * Unfollow a user
      */
-    fun unfollowUser(currentUserId: String, targetUserId: String) {
+    fun unfollowUser(currentUserId: String, targetUserId: String, onComplete: ((Boolean) -> Unit)? = null) {
         addProcessingUser(targetUserId)
         socialRepository.unfollowUser(currentUserId, targetUserId) { result ->
             removeProcessingUser(targetUserId)
@@ -230,8 +230,11 @@ class FriendsViewModel : ViewModel() {
                 followingUsers.removeAll { it.uid == targetUserId }
                 android.util.Log.d("FriendsViewModel", "Removed user $targetUserId from following list")
                 Analytics.trackUnfollow()
+                onComplete?.invoke(true)
             } else {
                 android.util.Log.e("FriendsViewModel", "Failed to unfollow user $targetUserId")
+                errorMessage = "Failed to delete friend. Please try again."
+                onComplete?.invoke(false)
             }
         }
     }

@@ -532,7 +532,14 @@ private fun ChatListItem(
     onProfilePhotoClick: () -> Unit = {}
 ) {
     val isLastMessageFromMe = session.lastSenderId == currentUserId
-    val hasUnread = session.unreadCount > 0
+    val unreadDisplayCount = if (session.unreadCount > 0) {
+        session.unreadCount
+    } else if (!isLastMessageFromMe && !session.lastMessageRead) {
+        1
+    } else {
+        0
+    }
+    val hasUnread = unreadDisplayCount > 0
 
     Row(
         modifier = Modifier
@@ -659,16 +666,19 @@ private fun ChatListItem(
                     Spacer(modifier = Modifier.width(8.dp))
                     Box(
                         modifier = Modifier
-                            .size(18.dp)
+                            .size(20.dp)
                             .clip(CircleShape)
                             .background(Color(0xFF1565C0)),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = if (session.unreadCount > 99) "99+" else session.unreadCount.toString(),
+                            text = if (unreadDisplayCount > 99) "99+" else unreadDisplayCount.toString(),
                             fontSize = 10.sp,
                             color = Color.White,
-                            fontWeight = FontWeight.Bold
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1,
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                            modifier = Modifier.fillMaxWidth()
                         )
                     }
                 }

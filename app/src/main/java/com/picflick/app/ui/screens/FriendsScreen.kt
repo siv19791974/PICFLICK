@@ -22,7 +22,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -47,6 +46,8 @@ fun FriendsScreen(
     onFindFriendsClick: () -> Unit = {},
     onProfilePhotoClick: (UserProfile) -> Unit = {}
 ) {
+    var pendingDeleteFriendId by remember { mutableStateOf<String?>(null) }
+    val optimisticallyRemovedFriendIds = remember { mutableStateListOf<String>() }
 
     // Load following users
     LaunchedEffect(userProfile.following) {
@@ -60,9 +61,12 @@ fun FriendsScreen(
     )
 
     val isDarkMode = ThemeManager.isDarkMode.value
+    val visibleFollowingUsers = remember(viewModel.followingUsers, optimisticallyRemovedFriendIds) {
+        viewModel.followingUsers.filterNot { it.uid in optimisticallyRemovedFriendIds }
+    }
 
     Column(
-        modifier = Modifier
+modifier = Modifier
             .fillMaxSize()
             .background(isDarkModeBackground(isDarkMode))
     ) {
@@ -85,8 +89,8 @@ fun FriendsScreen(
                     )
                 }
                 Text(
-                    text = "My Friends (${viewModel.followingUsers.size})",
-                    modifier = Modifier.weight(1f),
+                    text = "My Friends (${visibleFollowingUsers.size})",
+modifier = Modifier.weight(1f),
                     color = Color.White,
                     fontSize = 15.sp,
                     fontWeight = FontWeight.Bold,
@@ -112,23 +116,34 @@ fun FriendsScreen(
                         }
                     }
                 }
-                viewModel.followingUsers.isEmpty() -> EmptyFriendsState()
+                visibleFollowingUsers.isEmpty() -> EmptyFriendsState()
                 else -> {
                     LazyColumn(
                         contentPadding = PaddingValues(vertical = 8.dp)
                     ) {
-                        items(viewModel.followingUsers) { friend ->
+                        items(visibleFollowingUsers) { friend ->
                             FriendListItem(
                                 friend = friend,
                                 onProfilePhotoClick = { onProfilePhotoClick(friend) },
+                                isPendingDelete = pendingDeleteFriendId == friend.uid,
                                 onDeleteFriend = {
-                                    viewModel.unfollowUser(userProfile.uid, friend.uid)
+                                    if (pendingDeleteFriendId == friend.uid) {
+                                        optimisticallyRemovedFriendIds.add(friend.uid)
+                                        pendingDeleteFriendId = null
+                                        viewModel.unfollowUser(userProfile.uid, friend.uid) { success ->
+                                            if (!success) {
+                                                optimisticallyRemovedFriendIds.remove(friend.uid)
+                                            }
+                                        }
+                                    } else {
+                                        pendingDeleteFriendId = friend.uid
+                                    }
                                 }
                             )
                         }
                     }
                 }
-            }
+}
 
             // Modern PullRefreshIndicator
             PullRefreshIndicator(
@@ -163,12 +178,11 @@ fun FriendsScreen(
 private fun FriendListItem(
     friend: UserProfile,
     onProfilePhotoClick: () -> Unit = {},
+    isPendingDelete: Boolean = false,
     onDeleteFriend: () -> Unit = {}
 ) {
-    val isDarkMode = ThemeManager.isDarkMode.value
-    
     // Use Row like ChatListItem - no card
-    Row(
+Row(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 12.dp),
@@ -247,9 +261,9 @@ private fun FriendListItem(
                 contentColor = Color(0xFFFF4444) // Red
             )
         ) {
-            Text("Delete", fontSize = 12.sp)
+            Text(if (isPendingDelete) "Confirm" else "Delete", fontSize = 12.sp)
         }
-    }
+}
 }
 
 @Composable

@@ -102,10 +102,9 @@ val listState = rememberLazyListState()
     var upwardPullDistance by remember { mutableStateOf(0f) }
     var isRefreshingByPullUp by remember { mutableStateOf(false) }
 
-    // Dynamic keyboard/navigation spacing for modal composer
+    // Composer positioning: sit on nav bar when closed, move with keyboard when open
     val density = LocalDensity.current
-    val composerBottomPadding = 12.dp
-val pullUpRefreshThreshold = with(density) { 96.dp.toPx() }
+    val pullUpRefreshThreshold = with(density) { 96.dp.toPx() }
 
     fun triggerPullUpRefresh() {
         if (isRefreshingByPullUp) return
@@ -484,27 +483,12 @@ Column(modifier = Modifier.fillMaxSize()) {
                 }
             }
 
-            Spacer(modifier = Modifier.height(72.dp))
-}
-    }
+        }
 
-    val composerSheetState = rememberModalBottomSheetState(
-        skipPartiallyExpanded = true,
-        confirmValueChange = { it != SheetValue.Hidden }
-    )
-
-    ModalBottomSheet(
-        onDismissRequest = { },
-        sheetState = composerSheetState,
-        containerColor = Color.Black,
-        contentColor = Color.White,
-        scrimColor = Color.Transparent,
-        dragHandle = null
-    ) {
         Surface(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = composerBottomPadding),
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth(),
             color = Color.Black,
             tonalElevation = 0.dp
         ) {

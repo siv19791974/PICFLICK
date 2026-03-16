@@ -2380,7 +2380,9 @@ class FlickRepository private constructor() {
         deviceInfo: String = ""
     ): Result<String> {
         return try {
+            val docRef = db.collection("feedback").document()
             val feedback = hashMapOf(
+                "id" to docRef.id,
                 "userId" to userId,
                 "userName" to userName,
                 "userEmail" to userEmail,
@@ -2393,14 +2395,11 @@ class FlickRepository private constructor() {
                 "deviceInfo" to deviceInfo
             )
 
-            val docRef = db.collection("feedback").add(feedback).await()
-            
-            // Update with the generated ID
-            docRef.update("id", docRef.id).await()
+            docRef.set(feedback).await()
 
             Result.Success(docRef.id)
         } catch (e: Exception) {
-            android.util.Log.e("FlickRepository", "Failed to submit feedback", e)
+android.util.Log.e("FlickRepository", "Failed to submit feedback", e)
             Result.Error(e, "Failed to submit feedback. Please try again.")
         }
     }

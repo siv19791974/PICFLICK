@@ -330,6 +330,25 @@ class ChatViewModel : ViewModel() {
     }
 
     /**
+     * Delete selected messages in currently open chat.
+     */
+    fun deleteSelectedMessages(chatId: String, messageIds: Set<String>, onComplete: (Boolean) -> Unit = {}) {
+        viewModelScope.launch {
+            when (val result = repository.deleteMessages(chatId, messageIds.toList())) {
+                is Result.Success -> {
+                    messages = messages.filterNot { it.id in messageIds }
+                    onComplete(true)
+                }
+                is Result.Error -> {
+                    errorMessage = "Failed to delete messages: ${result.message}"
+                    onComplete(false)
+                }
+                is Result.Loading -> Unit
+            }
+        }
+    }
+
+    /**
      * Delete one chat session.
      */
     fun deleteChat(chatId: String) {

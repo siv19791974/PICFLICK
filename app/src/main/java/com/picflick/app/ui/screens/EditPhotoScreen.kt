@@ -10,10 +10,14 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -30,6 +34,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.graphics.createBitmap
 import coil3.ImageLoader
+import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.allowHardware
 import coil3.toBitmap
@@ -82,8 +87,8 @@ fun EditPhotoScreen(
                     bitmap = loadedBitmap
                     isLoading = false
                 }
-            } catch (e: Exception) {
-                withContext(Dispatchers.Main) {
+            } catch (_: Exception) {
+withContext(Dispatchers.Main) {
                     isLoading = false
                 }
             }
@@ -114,8 +119,12 @@ fun EditPhotoScreen(
         }
     }
 
+    val taggedFriends = remember(taggedFriendIds, followingUsers) {
+        followingUsers.filter { it.uid in taggedFriendIds }
+    }
+
     // Local filters list - all 16 filters (removed non-working blur filters)
-    val localFilters = listOf(
+val localFilters = listOf(
         PhotoFilter.ORIGINAL,
         PhotoFilter.BLACK_AND_WHITE,
         PhotoFilter.SEPIA,
@@ -150,8 +159,8 @@ fun EditPhotoScreen(
                             android.widget.Toast.LENGTH_SHORT
                         ).show()
                     }
-                } catch (e: Exception) {
-                    withContext(Dispatchers.Main) {
+                } catch (_: Exception) {
+withContext(Dispatchers.Main) {
                         android.widget.Toast.makeText(
                             context, 
                             "Failed to update photo", 
@@ -338,18 +347,43 @@ fun EditPhotoScreen(
                                 }
                             }
 
-                            OutlinedButton(
+                            if (taggedFriends.isNotEmpty()) {
+                                LazyRow(
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    contentPadding = PaddingValues(horizontal = 16.dp),
+                                    modifier = Modifier.padding(bottom = 8.dp)
+                                ) {
+                                    items(taggedFriends) { friend ->
+                                        EditTaggedFriendChip(
+                                            friend = friend,
+                                            isDarkMode = isDarkMode,
+                                            onRemove = {
+                                                taggedFriendIds = taggedFriendIds - friend.uid
+                                            }
+                                        )
+                                    }
+                                }
+                            }
+
+                            TextButton(
                                 onClick = { showTagDialog = true },
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .padding(horizontal = 16.dp)
                             ) {
+                                Icon(
+                                    imageVector = Icons.Default.PersonAdd,
+                                    contentDescription = null,
+                                    tint = if (isDarkMode) Color(0xFF87CEEB) else Color(0xFF1565C0)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
                                 Text(
                                     text = if (followingUsers.isEmpty()) {
-                                        "Find Friends to Tag"
+                                        "No friends to tag"
                                     } else {
                                         "Tag Friends (${taggedFriendIds.size})"
-                                    }
+                                    },
+                                    color = if (isDarkMode) Color(0xFF87CEEB) else Color(0xFF1565C0)
                                 )
                             }
 
@@ -374,47 +408,142 @@ fun EditPhotoScreen(
     }
 
     if (showTagDialog) {
-        AlertDialog(
+        ModalBottomSheet(
             onDismissRequest = { showTagDialog = false },
-            title = { Text("Tag Friends") },
-            text = {
+            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+            containerColor = Color(0xFF1C1C1E),
+            contentColor = Color.White
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 20.dp)
+            ) {
+                Text(
+                    text = "Tag Friends",
+                    color = Color.White,
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(bottom = 16.dp)
+                )
+
                 if (followingUsers.isEmpty()) {
-                    Text("No friends available to tag yet.")
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 32.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text("No friends available to tag yet.", color = Color.Gray)
+                    }
                 } else {
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        followingUsers.forEach { friend ->
-                            val isTagged = taggedFriendIds.contains(friend.uid)
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clickable {
-                                        taggedFriendIds = if (isTagged) taggedFriendIds - friend.uid else taggedFriendIds + friend.uid
-                                    }
-                                    .padding(vertical = 4.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Checkbox(
-                                    checked = isTagged,
-                                    onCheckedChange = { checked ->
-                                        taggedFriendIds = if (checked) taggedFriendIds + friend.uid else taggedFriendIds - friend.uid
-                                    }
-                                )
-                                Text(friend.displayName)
+                    followingUsers.forEach { friend ->
+                        val isTagged = taggedFriendIds.contains(friend.uid)
+                        EditFriendPickerItem(
+                            friend = friend,
+                            isTagged = isTagged,
+                            onClick = {
+                                taggedFriendIds = if (isTagged) taggedFriendIds - friend.uid else taggedFriendIds + friend.uid
                             }
-                        }
+                        )
                     }
                 }
-            },
-            confirmButton = {
-                TextButton(onClick = { showTagDialog = false }) { Text("Done") }
             }
+        }
+    }
+}
+
+@Composable
+private fun EditTaggedFriendChip(
+    friend: UserProfile,
+    isDarkMode: Boolean,
+    onRemove: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(16.dp))
+            .background(if (isDarkMode) Color(0xFF87CEEB) else Color(0xFF1565C0))
+            .padding(start = 12.dp, end = 4.dp, top = 4.dp, bottom = 4.dp)
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = friend.displayName.take(15),
+                color = if (isDarkMode) Color.Black else Color.White,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Medium
+            )
+            IconButton(onClick = onRemove, modifier = Modifier.size(20.dp)) {
+                Icon(
+                    imageVector = Icons.Default.Close,
+                    contentDescription = "Remove",
+                    tint = if (isDarkMode) Color.Black else Color.White,
+                    modifier = Modifier.size(14.dp)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun EditFriendPickerItem(
+    friend: UserProfile,
+    isTagged: Boolean,
+    onClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier
+                .size(44.dp)
+                .clip(CircleShape)
+                .background(Color.Gray.copy(alpha = 0.3f)),
+            contentAlignment = Alignment.Center
+        ) {
+            if (friend.photoUrl.isNotBlank()) {
+                AsyncImage(
+                    model = friend.photoUrl,
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
+                )
+            } else {
+                Icon(
+                    imageVector = Icons.Default.Person,
+                    contentDescription = null,
+                    tint = Color.White
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.width(12.dp))
+
+        Text(
+            text = friend.displayName,
+            color = Color.White,
+            fontSize = 16.sp,
+            modifier = Modifier.weight(1f),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
         )
+
+        if (isTagged) {
+            Icon(
+                imageVector = Icons.Default.Check,
+                contentDescription = null,
+                tint = Color(0xFF87CEEB)
+            )
+        }
     }
 }
 
 @Composable
 private fun EditFilterIcon(
-    filter: PhotoFilter,
+filter: PhotoFilter,
     isSelected: Boolean,
     onClick: () -> Unit,
     bitmap: Bitmap? = null,
