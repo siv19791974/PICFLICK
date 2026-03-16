@@ -235,8 +235,6 @@ fun AuthenticatedContent(
             onBack = { onScreenChange(Screen.Settings) },
             onSavePreferences = { newPreferences ->
                 authViewModel.updateNotificationPreferences(newPreferences)
-                Toast.makeText(context, "Notification settings saved!", Toast.LENGTH_SHORT).show()
-                onScreenChange(Screen.Settings)
             }
         )
 
@@ -446,6 +444,7 @@ private fun ProfileScreenContent(
             authViewModel.reloadUserProfile()
         },
         onPlanOptions = { onScreenChange(Screen.PlanOptions) },
+        onFriendsClick = { onScreenChange(Screen.Friends) },
         onReaction = { flick, reactionType ->
             reactionType?.let {
                 homeViewModel.toggleReaction(
@@ -641,20 +640,31 @@ private fun NotificationsScreenContent(
             )
         },
         onPhotoClick = { flickId, imageUrl, userId ->
-            selectedNotificationPhoto = Flick(
-                id = flickId,
-                userId = userId,
-                userName = "",
-                userPhotoUrl = "",
-                imageUrl = imageUrl ?: "",
-                description = "",
-                timestamp = System.currentTimeMillis(),
-                reactions = emptyMap(),
-                commentCount = 0,
-                privacy = "friends",
-                taggedFriends = emptyList(),
-                reportCount = 0
-            )
+            if (!imageUrl.isNullOrBlank()) {
+                selectedNotificationPhoto = Flick(
+                    id = flickId,
+                    userId = userId,
+                    userName = "",
+                    userPhotoUrl = "",
+                    imageUrl = imageUrl,
+                    description = "",
+                    timestamp = System.currentTimeMillis(),
+                    reactions = emptyMap(),
+                    commentCount = 0,
+                    privacy = "friends",
+                    taggedFriends = emptyList(),
+                    reportCount = 0
+                )
+            }
+
+            com.picflick.app.repository.FlickRepository.getInstance().getFlickById(flickId) { result ->
+                when (result) {
+                    is com.picflick.app.data.Result.Success -> {
+                        selectedNotificationPhoto = result.data
+                    }
+                    else -> Unit
+                }
+            }
         },
         onChatClick = { _, _, _, _ ->
             onScreenChange(Screen.Chats)
@@ -1148,6 +1158,8 @@ private fun PhotoViewerWrapper(
 
         BackHandler { onDismiss() }
 
+        val useSinglePhotoMode = isProfilePhoto || allPhotos.isEmpty()
+
         FullScreenPhotoViewer(
             flick = flick,
             currentUser = currentUser,
@@ -1163,10 +1175,10 @@ private fun PhotoViewerWrapper(
             onCaptionUpdated = { newCaption ->
                 if (!isProfilePhoto) onCaptionUpdated(flick, newCaption)
             },
-            allPhotos = if (isProfilePhoto) listOf(flick) else allPhotos,
-            currentIndex = if (isProfilePhoto) 0 else currentIndex,
+            allPhotos = if (useSinglePhotoMode) listOf(flick) else allPhotos,
+            currentIndex = if (useSinglePhotoMode) 0 else currentIndex,
             onNavigateToPhoto = { index ->
-                if (!isProfilePhoto) onNavigateToPhoto(index)
+                if (!useSinglePhotoMode) onNavigateToPhoto(index)
             },
             onNavigateToFindFriends = onNavigateToFindFriends,
             onUserProfileClick = onUserProfileClick,

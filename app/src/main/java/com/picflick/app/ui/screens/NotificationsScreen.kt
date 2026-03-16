@@ -25,6 +25,10 @@ import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -36,6 +40,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
+import com.google.firebase.firestore.FirebaseFirestore
 import com.picflick.app.data.Notification
 import com.picflick.app.data.NotificationType
 import com.picflick.app.data.UserProfile
@@ -45,6 +50,7 @@ import com.picflick.app.viewmodel.NotificationViewModel
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import kotlinx.coroutines.tasks.await
 
 /**
  * Notifications screen - displays all notifications in a list
@@ -62,8 +68,13 @@ fun NotificationsScreen(
     val notifications = viewModel.notifications
     val unreadCount = viewModel.unreadCount
     val isLoading = viewModel.isLoading
-    val errorMessage = viewModel.errorMessage
     val isDarkMode = ThemeManager.isDarkMode.value
+    var showHeaderMenu by remember { mutableStateOf(false) }
+
+    val now = System.currentTimeMillis()
+    val oneDayMs = 24L * 60L * 60L * 1000L
+    val newNotifications = notifications.filter { now - it.timestamp < oneDayMs }
+    val yesterdayNotifications = notifications.filter { now - it.timestamp >= oneDayMs }
 
     // Load notifications
     LaunchedEffect(userProfile.uid) {
@@ -81,31 +92,64 @@ fun NotificationsScreen(
             .fillMaxSize()
             .background(isDarkModeBackground(isDarkMode))
     ) {
-        // Minimal top action row (remove duplicate title/header)
-        Row(
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 8.dp, vertical = 8.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+                .height(48.dp)
+                .background(Color.Black),
+            contentAlignment = Alignment.CenterStart
         ) {
-            IconButton(
-                onClick = onBack,
-                modifier = Modifier.size(40.dp)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = "Back",
-                    tint = if (isDarkMode) Color.White else Color.Black
-                )
-            }
-
-            if (unreadCount > 0) {
-                TextButton(onClick = { viewModel.markAllAsRead(userProfile.uid) }) {
-                    Text("Mark all read", color = if (isDarkMode) Color.White else Color.Black)
+                IconButton(onClick = onBack, modifier = Modifier.size(48.dp)) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = "Back",
+                        tint = Color.White
+                    )
                 }
-            } else {
-                Spacer(modifier = Modifier.width(40.dp))
+
+                Text(
+                    text = "Notifications",
+                    modifier = Modifier.weight(1f),
+                    color = Color.White,
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.Bold,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                )
+
+                Box {
+                    IconButton(onClick = { showHeaderMenu = true }, modifier = Modifier.size(48.dp)) {
+                        Text(
+                            text = "⋮",
+                            color = Color.White,
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                    DropdownMenu(
+                        expanded = showHeaderMenu,
+                        onDismissRequest = { showHeaderMenu = false }
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text("Mark all read") },
+                            onClick = {
+                                viewModel.markAllAsRead(userProfile.uid)
+                                showHeaderMenu = false
+                            },
+                            enabled = unreadCount > 0
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Delete all") },
+                            onClick = {
+                                viewModel.deleteAllNotifications(userProfile.uid)
+                                showHeaderMenu = false
+                            }
+                        )
+                    }
+                }
             }
         }
 
@@ -158,68 +202,91 @@ fun NotificationsScreen(
                 else -> {
                     LazyColumn(
                         modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(0.dp)
+                        contentPadding = PaddingValues(bottom = 8.dp)
                     ) {
-                        items(notifications, key = { it.id }) { notification ->
-                            SwipeableNotificationItem(
-                                notification = notification,
-                                isDarkMode = isDarkMode,
-                                onClick = {
-                                    if (!notification.isRead) {
-                                        viewModel.markAsRead(notification.id)
-                                    }
-                                    // Navigate based on notification type
-                                    when (notification.type) {
-                                        NotificationType.LIKE,
-                                        NotificationType.REACTION,
-                                        NotificationType.COMMENT,
-                                        NotificationType.MENTION,
-                                        NotificationType.PHOTO_ADDED -> {
-                                            // Navigate to photo
-                                            notification.flickId?.let { flickId ->
-                                                onPhotoClick(flickId, notification.flickImageUrl, notification.senderId)
+
+                        if (newNotifications.isNotEmpty()) {
+                            item { SectionLabel("NEW", isDarkMode) }
+                            items(newNotifications, key = { it.id }) { notification ->
+                                SwipeableNotificationItem(
+                                    notification = notification,
+                                    isDarkMode = isDarkMode,
+                                    onClick = {
+                                        if (!notification.isRead) viewModel.markAsRead(notification.id)
+                                        when (notification.type) {
+                                            NotificationType.LIKE,
+                                            NotificationType.REACTION,
+                                            NotificationType.COMMENT,
+                                            NotificationType.MENTION,
+                                            NotificationType.PHOTO_ADDED -> {
+                                                val fallbackId = notification.flickId ?: notification.id
+                                                if (!notification.flickImageUrl.isNullOrBlank()) {
+                                                    onPhotoClick(fallbackId, notification.flickImageUrl, notification.senderId)
+                                                }
                                             }
+                                            NotificationType.FOLLOW -> onUserProfileClick(notification.senderId)
+                                            NotificationType.MESSAGE -> onChatClick("", notification.senderId, notification.senderName, notification.senderPhotoUrl)
+                                            else -> Unit
                                         }
-                                        NotificationType.FOLLOW -> {
-                                            // Navigate to follower's profile
-                                            onUserProfileClick(notification.senderId)
+                                    },
+                                    onDelete = { viewModel.deleteNotification(notification) },
+                                    onUserProfileClick = onUserProfileClick,
+                                    onPhotoClick = {
+                                        val fallbackId = notification.flickId ?: notification.id
+                                        if (!notification.flickImageUrl.isNullOrBlank()) {
+                                            onPhotoClick(fallbackId, notification.flickImageUrl, notification.senderId)
                                         }
-                                        NotificationType.FRIEND_REQUEST -> {
-                                            // Don't navigate, buttons handle the action
-                                        }
-                                        NotificationType.MESSAGE -> {
-                                            // Navigate to chat - need to get chat session
-                                            // For now, just show the chat list
-                                            onChatClick("", notification.senderId, notification.senderName, notification.senderPhotoUrl)
-                                        }
-                                        else -> {
-                                            // Default: just mark as read
-                                        }
+                                    },
+                                    onAcceptFriendRequest = { senderId ->
+                                        viewModel.acceptFollowRequest(userProfile.uid, senderId, notification.id)
+                                    },
+                                    onDeclineFriendRequest = { senderId ->
+                                        viewModel.declineFollowRequest(userProfile.uid, senderId, notification.id)
                                     }
-                                },
-                                onDelete = {
-                                    viewModel.deleteNotification(notification.id)
-                                },
-                                onUserProfileClick = { senderId: String ->
-                                    onUserProfileClick(senderId)
-                                },
-                                onAcceptFriendRequest = { senderId: String ->
-                                    // Accept the friend request and delete notification
-                                    viewModel.acceptFollowRequest(userProfile.uid, senderId, notification.id)
-                                },
-                                onDeclineFriendRequest = { senderId: String ->
-                                    // Decline the friend request and delete notification
-                                    viewModel.declineFollowRequest(userProfile.uid, senderId, notification.id)
-                                },
-                                onAcceptTag = { flickId: String, notificationId: String ->
-                                    // Accept being tagged in photo
-                                    viewModel.acceptTag(flickId, notificationId)
-                                },
-                                onDeclineTag = { flickId: String, notificationId: String ->
-                                    // Decline being tagged in photo
-                                    viewModel.declineTag(flickId, notificationId)
-                                }
-                            )
+                                )
+                            }
+                        }
+
+                        if (yesterdayNotifications.isNotEmpty()) {
+                            item { SectionLabel("YESTERDAY", isDarkMode) }
+                            items(yesterdayNotifications, key = { it.id }) { notification ->
+                                SwipeableNotificationItem(
+                                    notification = notification,
+                                    isDarkMode = isDarkMode,
+                                    onClick = {
+                                        if (!notification.isRead) viewModel.markAsRead(notification.id)
+                                        when (notification.type) {
+                                            NotificationType.LIKE,
+                                            NotificationType.REACTION,
+                                            NotificationType.COMMENT,
+                                            NotificationType.MENTION,
+                                            NotificationType.PHOTO_ADDED -> {
+                                                val fallbackId = notification.flickId ?: notification.id
+                                                if (!notification.flickImageUrl.isNullOrBlank()) {
+                                                    onPhotoClick(fallbackId, notification.flickImageUrl, notification.senderId)
+                                                }
+                                            }
+                                            NotificationType.FOLLOW -> onUserProfileClick(notification.senderId)
+                                            NotificationType.MESSAGE -> onChatClick("", notification.senderId, notification.senderName, notification.senderPhotoUrl)
+                                            else -> Unit
+                                        }
+                                    },
+                                    onDelete = { viewModel.deleteNotification(notification) },
+                                    onUserProfileClick = onUserProfileClick,
+                                    onPhotoClick = {
+                                        val fallbackId = notification.flickId ?: notification.id
+                                        if (!notification.flickImageUrl.isNullOrBlank()) {
+                                            onPhotoClick(fallbackId, notification.flickImageUrl, notification.senderId)
+                                        }
+                                    },
+                                    onAcceptFriendRequest = { senderId ->
+                                        viewModel.acceptFollowRequest(userProfile.uid, senderId, notification.id)
+                                    },
+                                    onDeclineFriendRequest = { senderId ->
+                                        viewModel.declineFollowRequest(userProfile.uid, senderId, notification.id)
+                                    }
+                                )
+                            }
                         }
                     }
                 }
@@ -242,58 +309,130 @@ private fun NotificationItem(
     notification: Notification,
     isDarkMode: Boolean,
     onClick: () -> Unit,
-    onDelete: () -> Unit,
     onUserProfileClick: (String) -> Unit = {},
+    onPhotoClick: () -> Unit = {},
     onAcceptFriendRequest: (String) -> Unit = {},
-    onDeclineFriendRequest: (String) -> Unit = {},
-    onAcceptTag: (String, String) -> Unit = { _, _ -> }, // flickId, notificationId
-    onDeclineTag: (String, String) -> Unit = { _, _ -> } // flickId, notificationId
+    onDeclineFriendRequest: (String) -> Unit = {}
 ) {
-    val displayMessage = if (isDarkMode) {
-        val sender = notification.senderName.trim()
-        if (sender.isNotEmpty() && notification.message.startsWith(sender)) {
-            notification.message.removePrefix(sender).trimStart().ifEmpty { "Notification" }
-        } else {
-            notification.message
-        }
-    } else {
-        notification.message
+    var senderName by remember(notification.id, notification.senderName) {
+        mutableStateOf(notification.senderName.ifBlank { "Someone" })
+    }
+    var senderPhotoUrl by remember(notification.id, notification.senderPhotoUrl) {
+        mutableStateOf(normalizePhotoUrl(notification.senderPhotoUrl))
     }
 
-    // Use Row like ChatListItem - no card
+    LaunchedEffect(notification.id, notification.senderId, notification.chatId) {
+        if (notification.senderId.isBlank()) return@LaunchedEffect
+        if (senderName != "Someone" && senderPhotoUrl.isNotBlank()) return@LaunchedEffect
+
+        try {
+            // For message notifications, first try chat session participant data
+            if (notification.type == NotificationType.MESSAGE && !notification.chatId.isNullOrBlank()) {
+                val chatDoc = FirebaseFirestore.getInstance()
+                    .collection("chatSessions")
+                    .document(notification.chatId)
+                    .get()
+                    .await()
+
+                val participantNames = chatDoc.get("participantNames") as? Map<*, *>
+                val participantPhotos = chatDoc.get("participantPhotos") as? Map<*, *>
+
+                val chatName = participantNames?.get(notification.senderId) as? String
+                val chatPhoto = participantPhotos?.get(notification.senderId) as? String
+
+                if (!chatName.isNullOrBlank()) senderName = chatName
+                normalizePhotoUrl(chatPhoto).takeIf { it.isNotBlank() }?.let {
+                    senderPhotoUrl = it
+                }
+            }
+
+            // Fallback to users collection
+            if (senderName == "Someone" || senderPhotoUrl.isBlank()) {
+                val userDoc = FirebaseFirestore.getInstance()
+                    .collection("users")
+                    .document(notification.senderId)
+                    .get()
+                    .await()
+
+                val fetchedName = userDoc.getString("displayName")
+                    .orEmpty()
+                    .ifBlank { userDoc.getString("username").orEmpty() }
+                    .ifBlank { userDoc.getString("name").orEmpty() }
+                    .ifBlank { senderName }
+
+                val fetchedPhoto = normalizePhotoUrl(
+                    userDoc.getString("photoUrl")
+                        .orEmpty()
+                        .ifBlank { userDoc.getString("photoURL").orEmpty() }
+                        .ifBlank { userDoc.getString("profileImageUrl").orEmpty() }
+                        .ifBlank { userDoc.getString("avatarUrl").orEmpty() }
+                )
+
+                senderName = fetchedName
+                if (fetchedPhoto.isNotBlank()) {
+                    senderPhotoUrl = fetchedPhoto
+                }
+            }
+        } catch (_: Exception) {
+            // Keep existing fallback values
+        }
+    }
+
+    val displayMessage = when (notification.type) {
+        NotificationType.MESSAGE -> {
+            val body = notification.message.ifBlank { "New message" }
+            "New message: $body"
+        }
+        NotificationType.PHOTO_ADDED -> "New flick uploaded"
+        NotificationType.MENTION -> "You're tagged in a photo"
+        NotificationType.FRIEND_REQUEST -> "$senderName has requested to be your friend"
+        else -> notification.message.ifBlank { notification.title.ifBlank { "Notification" } }
+    }
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .background(if (isDarkMode) isDarkModeBackground(true) else isDarkModeBackground(false))
             .clickable { onClick() }
-            .padding(horizontal = 12.dp, vertical = 10.dp),
+            .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // In dark mode, remove sender picture/name dependence; show only notification type marker
         Box(
             modifier = Modifier
-                .size(56.dp)
-                .let { base ->
-                    if (isDarkMode) base else base.clickable { onUserProfileClick(notification.senderId) }
-                },
-            contentAlignment = Alignment.Center
+                .size(52.dp)
+                .clickable { onUserProfileClick(notification.senderId) }
         ) {
-            if (!isDarkMode) {
+            if (senderPhotoUrl.isNotBlank()) {
                 AsyncImage(
-                    model = notification.senderPhotoUrl,
-                    contentDescription = notification.senderName,
+                    model = normalizePhotoUrl(senderPhotoUrl),
+                    contentDescription = senderName,
                     modifier = Modifier
                         .fillMaxSize()
                         .clip(CircleShape)
-                        .background(Color.LightGray),
+                        .background(if (isDarkMode) Color.Gray else Color.LightGray),
                     contentScale = ContentScale.Crop
                 )
+            } else {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .clip(CircleShape)
+                        .background(if (isDarkMode) Color(0xFF7A665C) else Color(0xFFB39B8F)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = senderName.firstOrNull()?.uppercase() ?: "?",
+                        color = Color.White,
+                        fontSize = 24.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
             }
 
             Box(
                 modifier = Modifier
-                    .size(if (isDarkMode) 28.dp else 20.dp)
-                    .align(if (isDarkMode) Alignment.Center else Alignment.BottomEnd)
+                    .size(20.dp)
+                    .align(Alignment.BottomEnd)
                     .background(
                         color = getNotificationColor(notification.type),
                         shape = CircleShape
@@ -303,99 +442,85 @@ private fun NotificationItem(
                 Icon(
                     imageVector = getNotificationIcon(notification.type),
                     contentDescription = null,
-                    modifier = Modifier.size(if (isDarkMode) 16.dp else 12.dp),
+                    modifier = Modifier.size(12.dp),
                     tint = if (isDarkMode) Color.White else Color.Black
                 )
             }
         }
 
-        Spacer(modifier = Modifier.width(16.dp))
+        Spacer(modifier = Modifier.width(12.dp))
 
-        // Notification content - same structure as ChatListItem
-        Column(
-            modifier = Modifier.weight(1f)
-        ) {
-            // Title and time row (like name/time in ChatListItem)
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    text = displayMessage,
-                    fontSize = 14.sp,
-                    fontWeight = if (notification.isRead) FontWeight.Normal else FontWeight.Medium,
-                    color = if (isDarkMode) Color.White.copy(alpha = 0.9f) else Color.Black.copy(alpha = 0.85f),
+                    text = senderName,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = if (isDarkMode) Color.White else Color.Black,
                     maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f)
+                    overflow = TextOverflow.Ellipsis
                 )
-
                 Spacer(modifier = Modifier.width(8.dp))
-
                 Text(
-                    text = formatTimestamp(notification.timestamp),
+                    text = "• ${formatTimestamp(notification.timestamp)}",
                     fontSize = 12.sp,
-                    color = if (isDarkMode) Color.White.copy(alpha = 0.55f) else Color.Black.copy(alpha = 0.55f)
+                    color = if (isDarkMode) Color.White.copy(alpha = 0.6f) else Color.Black.copy(alpha = 0.6f),
+                    maxLines = 1
                 )
             }
+
+            Spacer(modifier = Modifier.height(2.dp))
+
+            Text(
+                text = displayMessage,
+                fontSize = 14.sp,
+                fontWeight = if (notification.isRead) FontWeight.Normal else FontWeight.Medium,
+                color = if (isDarkMode) Color.White.copy(alpha = 0.82f) else Color.Black.copy(alpha = 0.75f),
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
         }
 
-        // Action area - quick actions by notification type
-        if (notification.type == NotificationType.FRIEND_REQUEST && !notification.isRead) {
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                OutlinedButton(
-                    onClick = { onUserProfileClick(notification.senderId) },
-                    shape = RoundedCornerShape(16.dp),
-                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
-                    colors = ButtonDefaults.outlinedButtonColors(
-                        contentColor = if (isDarkMode) Color.White else Color.Black
-                    )
-                ) {
-                    Text("View", fontSize = 11.sp)
-                }
-                Button(
-                    onClick = { onAcceptFriendRequest(notification.senderId) },
-                    shape = RoundedCornerShape(16.dp),
-                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50))
-                ) {
-                    Text("Accept", fontSize = 11.sp, color = Color.White)
-                }
-                OutlinedButton(
-                    onClick = { onDeclineFriendRequest(notification.senderId) },
-                    shape = RoundedCornerShape(16.dp),
-                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFFF4444))
-                ) {
-                    Text("Decline", fontSize = 11.sp)
-                }
-            }
-        } else {
-            val actionLabel = when (notification.type) {
-                NotificationType.FOLLOW -> "Profile"
-                NotificationType.MESSAGE -> "Open"
-                else -> "View"
-            }
-
-            OutlinedButton(
-                onClick = {
-                    when (notification.type) {
-                        NotificationType.FOLLOW -> onUserProfileClick(notification.senderId)
-                        else -> onClick()
+        when {
+            notification.type == NotificationType.FRIEND_REQUEST -> {
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Button(
+                        onClick = { onAcceptFriendRequest(notification.senderId) },
+                        shape = RoundedCornerShape(20.dp),
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                    ) {
+                        Text("Accept", fontSize = 12.sp)
                     }
-                },
-                shape = RoundedCornerShape(16.dp),
-                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
-                colors = ButtonDefaults.outlinedButtonColors(
-                    contentColor = if (isDarkMode) Color.White.copy(alpha = 0.9f) else Color.Black
-                )
-            ) {
-                Text(actionLabel, fontSize = 11.sp)
+                    OutlinedButton(
+                        onClick = { onDeclineFriendRequest(notification.senderId) },
+                        shape = RoundedCornerShape(20.dp),
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                    ) {
+                        Text("Deny", fontSize = 12.sp)
+                    }
+                }
             }
+            notification.type == NotificationType.FOLLOW -> {
+                Button(
+                    onClick = { onUserProfileClick(notification.senderId) },
+                    shape = RoundedCornerShape(20.dp),
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 6.dp)
+                ) {
+                    Text("Profile", fontSize = 13.sp)
+                }
+            }
+            !notification.flickImageUrl.isNullOrBlank() -> {
+                AsyncImage(
+                    model = notification.flickImageUrl,
+                    contentDescription = "Related photo",
+                    modifier = Modifier
+                        .size(width = 64.dp, height = 64.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .clickable { onPhotoClick() },
+                    contentScale = ContentScale.Crop
+                )
+            }
+            else -> Unit
         }
     }
 }
@@ -407,10 +532,9 @@ private fun SwipeableNotificationItem(
     onClick: () -> Unit,
     onDelete: () -> Unit,
     onUserProfileClick: (String) -> Unit = {},
+    onPhotoClick: () -> Unit = {},
     onAcceptFriendRequest: (String) -> Unit = {},
-    onDeclineFriendRequest: (String) -> Unit = {},
-    onAcceptTag: (String, String) -> Unit = { _, _ -> },
-    onDeclineTag: (String, String) -> Unit = { _, _ -> }
+    onDeclineFriendRequest: (String) -> Unit = {}
 ) {
     val dismissState = rememberSwipeToDismissBoxState(
         confirmValueChange = { value ->
@@ -454,12 +578,10 @@ private fun SwipeableNotificationItem(
                 notification = notification,
                 isDarkMode = isDarkMode,
                 onClick = onClick,
-                onDelete = onDelete,
                 onUserProfileClick = onUserProfileClick,
+                onPhotoClick = onPhotoClick,
                 onAcceptFriendRequest = onAcceptFriendRequest,
-                onDeclineFriendRequest = onDeclineFriendRequest,
-                onAcceptTag = onAcceptTag,
-                onDeclineTag = onDeclineTag
+                onDeclineFriendRequest = onDeclineFriendRequest
             )
         }
     )
@@ -493,6 +615,25 @@ private fun getNotificationColor(type: NotificationType) = when (type) {
     NotificationType.STREAK_REMINDER -> Color(0xFFFFD700) // Gold
     NotificationType.ACHIEVEMENT -> Color(0xFFFFD700) // Gold
     NotificationType.SYSTEM -> Color(0xFF607D8B) // Blue Grey
+}
+
+@Composable
+private fun SectionLabel(title: String, isDarkMode: Boolean) {
+    Text(
+        text = title,
+        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+        fontSize = 13.sp,
+        fontWeight = FontWeight.SemiBold,
+        color = if (isDarkMode) Color.Gray else Color.DarkGray
+    )
+}
+
+private fun normalizePhotoUrl(url: String?): String {
+    val cleaned = url?.trim().orEmpty()
+    if (cleaned.isBlank()) return ""
+    if (cleaned.equals("null", ignoreCase = true)) return ""
+    if (cleaned.equals("undefined", ignoreCase = true)) return ""
+    return cleaned
 }
 
 internal fun formatTimestamp(timestamp: Long): String {

@@ -763,12 +763,6 @@ private fun ProfileHeaderWithStorage(
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Bold
                 )
-                Text(
-                    text = userProfile.email,
-                    color = if (isDarkMode) Color.Gray else Color.DarkGray,
-                    fontSize = 14.sp
-                )
-                
                 Spacer(modifier = Modifier.height(4.dp))
                 
                 // Tier Badge Row

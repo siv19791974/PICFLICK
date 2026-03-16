@@ -464,12 +464,12 @@ private fun ChatBubble(
                             .padding(horizontal = 10.dp, vertical = 6.dp),
                         contentAlignment = Alignment.TopStart
                     ) {
-                        Row(
-                            modifier = Modifier.wrapContentHeight(),
-                            verticalAlignment = Alignment.Top
+                        Box(
+                            modifier = Modifier.wrapContentSize()
                         ) {
                             Column(
-                                modifier = Modifier.weight(1f, fill = false),
+                                modifier = Modifier
+                                    .padding(end = 44.dp, bottom = 2.dp),
                                 verticalArrangement = Arrangement.Top
                             ) {
                                 if (message.isReply()) {
@@ -480,38 +480,89 @@ private fun ChatBubble(
                                     )
                                     Spacer(modifier = Modifier.height(2.dp))
                                 }
-                                Text(
-                                    text = message.text,
-                                    fontSize = 15.sp,
-                                    color = Color.Black,
-                                    fontWeight = FontWeight.Medium,
-                                    modifier = Modifier.wrapContentWidth(),
-                                    softWrap = true
-                                )
+                                if (message.imageUrl.isNotBlank()) {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .heightIn(min = 120.dp, max = 260.dp)
+                                    ) {
+                                        AsyncImage(
+                                            model = message.imageUrl,
+                                            contentDescription = "Sent photo",
+                                            modifier = Modifier
+                                                .matchParentSize()
+                                                .clip(RoundedCornerShape(12.dp)),
+                                            contentScale = ContentScale.Crop
+                                        )
+
+                                        Row(
+                                            modifier = Modifier
+                                                .align(Alignment.BottomEnd)
+                                                .padding(8.dp)
+                                                .background(
+                                                    Color.Black.copy(alpha = 0.35f),
+                                                    RoundedCornerShape(10.dp)
+                                                )
+                                                .padding(horizontal = 6.dp, vertical = 2.dp),
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.End
+                                        ) {
+                                            Text(
+                                                text = formatMessageTime(message.timestamp),
+                                                fontSize = 10.sp,
+                                                color = Color.White
+                                            )
+                                            Spacer(modifier = Modifier.width(4.dp))
+                                            val dotColor = if (message.read) Color(0xFF25D366) else Color.Red
+                                            Box(
+                                                modifier = Modifier
+                                                    .size(6.dp)
+                                                    .clip(CircleShape)
+                                                    .background(dotColor)
+                                            )
+                                        }
+                                    }
+                                    if (message.text.isNotBlank()) {
+                                        Spacer(modifier = Modifier.height(6.dp))
+                                    }
+                                }
+
+                                if (message.text.isNotBlank()) {
+                                    Text(
+                                        text = message.text,
+                                        fontSize = 15.sp,
+                                        color = Color.Black,
+                                        fontWeight = FontWeight.Medium,
+                                        modifier = Modifier.wrapContentWidth(),
+                                        softWrap = true
+                                    )
+                                }
                             }
-                            
-                            Row(
-                                modifier = Modifier
-                                    .wrapContentHeight()
-                                    .padding(start = 8.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.End
-                            ) {
-                                Text(
-                                    text = formatMessageTime(message.timestamp),
-                                    fontSize = 10.sp,
-                                    color = Color.Black.copy(alpha = 0.5f)
-                                )
-                                Spacer(modifier = Modifier.width(4.dp))
-                                val dotColor = if (message.read) Color(0xFF25D366) else Color.Red
-                                Box(
+
+                            if (message.imageUrl.isBlank()) {
+                                Row(
                                     modifier = Modifier
-                                        .size(6.dp)
-                                        .clip(CircleShape)
-                                        .background(dotColor)
-                                )
+                                        .align(Alignment.BottomEnd)
+                                        .padding(start = 8.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.End
+                                ) {
+                                    Text(
+                                        text = formatMessageTime(message.timestamp),
+                                        fontSize = 10.sp,
+                                        color = Color.Black.copy(alpha = 0.5f)
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    val dotColor = if (message.read) Color(0xFF25D366) else Color.Red
+                                    Box(
+                                        modifier = Modifier
+                                            .size(6.dp)
+                                            .clip(CircleShape)
+                                            .background(dotColor)
+                                    )
+                                }
                             }
-                        }
+}
                     }
                     
                     if (showEmojiPicker) {
@@ -557,26 +608,12 @@ private fun ChatBubble(
                             .padding(horizontal = 10.dp, vertical = 6.dp),
                         contentAlignment = Alignment.TopStart
                     ) {
-                        Row(
-                            modifier = Modifier.wrapContentHeight(),
-                            verticalAlignment = Alignment.Top
+                        Box(
+                            modifier = Modifier.wrapContentSize()
                         ) {
-                            Row(
-                                modifier = Modifier
-                                    .wrapContentHeight()
-                                    .padding(end = 8.dp),
-                                verticalAlignment = Alignment.Top,
-                                horizontalArrangement = Arrangement.Start
-                            ) {
-                                Text(
-                                    text = formatMessageTime(message.timestamp),
-                                    fontSize = 10.sp,
-                                    color = Color.Gray.copy(alpha = 0.7f)
-                                )
-                            }
-                            
                             Column(
-                                modifier = Modifier.weight(1f, fill = false),
+                                modifier = Modifier
+                                    .padding(end = 36.dp, bottom = 2.dp),
                                 verticalArrangement = Arrangement.Top
                             ) {
                                 if (message.isReply()) {
@@ -587,16 +624,61 @@ private fun ChatBubble(
                                     )
                                     Spacer(modifier = Modifier.height(2.dp))
                                 }
+                                if (message.imageUrl.isNotBlank()) {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .heightIn(min = 120.dp, max = 260.dp)
+                                    ) {
+                                        AsyncImage(
+                                            model = message.imageUrl,
+                                            contentDescription = "Sent photo",
+                                            modifier = Modifier
+                                                .matchParentSize()
+                                                .clip(RoundedCornerShape(12.dp)),
+                                            contentScale = ContentScale.Crop
+                                        )
+
+                                        Text(
+                                            text = formatMessageTime(message.timestamp),
+                                            fontSize = 10.sp,
+                                            color = Color.White,
+                                            modifier = Modifier
+                                                .align(Alignment.BottomEnd)
+                                                .padding(8.dp)
+                                                .background(
+                                                    Color.Black.copy(alpha = 0.35f),
+                                                    RoundedCornerShape(10.dp)
+                                                )
+                                                .padding(horizontal = 6.dp, vertical = 2.dp)
+                                        )
+                                    }
+                                    if (message.text.isNotBlank()) {
+                                        Spacer(modifier = Modifier.height(6.dp))
+                                    }
+                                }
+
+                                if (message.text.isNotBlank()) {
+                                    Text(
+                                        text = message.text,
+                                        fontSize = 15.sp,
+                                        color = Color.Black,
+                                        fontWeight = FontWeight.Medium,
+                                        modifier = Modifier.wrapContentWidth(),
+                                        softWrap = true
+                                    )
+                                }
+                            }
+
+                            if (message.imageUrl.isBlank()) {
                                 Text(
-                                    text = message.text,
-                                    fontSize = 15.sp,
-                                    color = Color.Black,
-                                    fontWeight = FontWeight.Medium,
-                                    modifier = Modifier.wrapContentWidth(),
-                                    softWrap = true
+                                    text = formatMessageTime(message.timestamp),
+                                    fontSize = 10.sp,
+                                    color = Color.Gray.copy(alpha = 0.7f),
+                                    modifier = Modifier.align(Alignment.BottomEnd)
                                 )
                             }
-                        }
+}
                     }
                     
                     if (showEmojiPicker) {

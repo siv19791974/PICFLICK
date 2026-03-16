@@ -1,16 +1,17 @@
 package com.picflick.app.data
 
-import com.picflick.app.data.NotificationType
-
 /**
  * User notification preferences - simplified unified settings
  * One toggle controls both push and in-app notifications
  */
 data class NotificationPreferences(
-    // Master Switch
+    // In-app master switch
     val notificationsEnabled: Boolean = true,
 
-    // Unified Notification Toggles (controls both push + in-app)
+    // Push master switch
+    val pushNotificationsEnabled: Boolean = true,
+
+    // Unified in-app notification toggles
     val likes: Boolean = true,
     val reactions: Boolean = true,
     val comments: Boolean = true,
@@ -21,6 +22,18 @@ data class NotificationPreferences(
     val streakReminders: Boolean = true,
     val achievements: Boolean = true,
     val systemAnnouncements: Boolean = true,
+
+    // Push notification type toggles
+    val pushLikes: Boolean = true,
+    val pushReactions: Boolean = true,
+    val pushComments: Boolean = true,
+    val pushFollows: Boolean = true,
+    val pushMessages: Boolean = true,
+    val pushNewPhotos: Boolean = true,
+    val pushMentions: Boolean = true,
+    val pushStreakReminders: Boolean = true,
+    val pushAchievements: Boolean = true,
+    val pushSystemAnnouncements: Boolean = true,
 
     // Quiet Hours / Do Not Disturb (only affects push)
     val quietHoursEnabled: Boolean = false,
@@ -42,21 +55,21 @@ data class NotificationPreferences(
      * Check if push notification should be sent
      */
     fun shouldSendPush(type: NotificationType): Boolean {
-        if (!notificationsEnabled) return false
+        if (!pushNotificationsEnabled) return false
         if (isInQuietHours()) return false
 
         return when (type) {
-            NotificationType.LIKE -> likes
-            NotificationType.REACTION -> reactions
-            NotificationType.COMMENT -> comments
-            NotificationType.FOLLOW -> follows
-            NotificationType.FRIEND_REQUEST -> follows
-            NotificationType.MESSAGE -> messages
-            NotificationType.PHOTO_ADDED -> newPhotos
-            NotificationType.MENTION -> mentions
-            NotificationType.STREAK_REMINDER -> streakReminders
-            NotificationType.ACHIEVEMENT -> achievements
-            NotificationType.SYSTEM -> systemAnnouncements
+            NotificationType.LIKE -> pushLikes
+            NotificationType.REACTION -> pushReactions
+            NotificationType.COMMENT -> pushComments
+            NotificationType.FOLLOW -> pushFollows
+            NotificationType.FRIEND_REQUEST -> pushFollows
+            NotificationType.MESSAGE -> pushMessages
+            NotificationType.PHOTO_ADDED -> pushNewPhotos
+            NotificationType.MENTION -> pushMentions
+            NotificationType.STREAK_REMINDER -> pushStreakReminders
+            NotificationType.ACHIEVEMENT -> pushAchievements
+            NotificationType.SYSTEM -> pushSystemAnnouncements
         }
     }
 

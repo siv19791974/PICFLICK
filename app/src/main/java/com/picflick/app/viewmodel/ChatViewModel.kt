@@ -312,6 +312,36 @@ class ChatViewModel : ViewModel() {
     }
 
     /**
+     * Delete one chat session.
+     */
+    fun deleteChat(chatId: String) {
+        viewModelScope.launch {
+            when (val result = repository.deleteChatSession(chatId)) {
+                is Result.Success -> Unit
+                is Result.Error -> errorMessage = "Failed to delete chat: ${result.message}"
+                is Result.Loading -> Unit
+            }
+        }
+    }
+
+    /**
+     * Instantly report + block target user from messages and remove current chat.
+     */
+    fun blockAndReportUser(currentUserId: String, targetUserId: String, chatId: String?) {
+        viewModelScope.launch {
+            when (val result = repository.blockAndReportUser(currentUserId, targetUserId)) {
+                is Result.Success -> {
+                    if (!chatId.isNullOrBlank()) {
+                        repository.deleteChatSession(chatId)
+                    }
+                }
+                is Result.Error -> errorMessage = "Failed to block user: ${result.message}"
+                is Result.Loading -> Unit
+            }
+        }
+    }
+
+    /**
      * Clear error
      */
     fun clearError() {

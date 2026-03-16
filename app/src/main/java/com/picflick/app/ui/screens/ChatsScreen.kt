@@ -2,12 +2,15 @@ package com.picflick.app.ui.screens
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.pullrefresh.PullRefreshIndicator
 import androidx.compose.material.pullrefresh.pullRefresh
@@ -81,6 +84,12 @@ fun ChatsScreen(
     }
 
     var showNewChatDialog by remember { mutableStateOf(false) }
+    val selectedChatIds = remember { mutableStateListOf<String>() }
+    var showHeaderMenu by remember { mutableStateOf(false) }
+    var showDeleteConfirm by remember { mutableStateOf(false) }
+    var showBlockConfirm by remember { mutableStateOf(false) }
+    var searchQuery by remember { mutableStateOf("") }
+    val isSelectionMode = selectedChatIds.isNotEmpty()
     val isDarkMode = ThemeManager.isDarkMode.value
 
     // Modern PullRefresh state
@@ -88,6 +97,27 @@ fun ChatsScreen(
         refreshing = viewModel.isLoading,
         onRefresh = { viewModel.loadChatSessions(userProfile.uid) }
     )
+
+    val selectedChatId = selectedChatIds.firstOrNull()
+    val selectedSession = remember(selectedChatId, viewModel.chatSessions) {
+        viewModel.chatSessions.firstOrNull { it.id == selectedChatId }
+    }
+    val selectedOtherUserId = remember(selectedSession, userProfile.uid) {
+        selectedSession?.participants?.firstOrNull { it != userProfile.uid }
+    }
+
+    val filteredChatSessions = remember(viewModel.chatSessions, searchQuery, userProfile.uid) {
+        val q = searchQuery.trim().lowercase(Locale.getDefault())
+        if (q.isBlank()) {
+            viewModel.chatSessions
+        } else {
+            viewModel.chatSessions.filter { session ->
+                val otherId = session.participants.firstOrNull { it != userProfile.uid } ?: ""
+                val otherName = session.participantNames[otherId].orEmpty()
+                otherName.lowercase(Locale.getDefault()).contains(q)
+            }
+        }
+    }
 
     Box(
         modifier = Modifier
@@ -97,7 +127,113 @@ fun ChatsScreen(
         Column(
             modifier = Modifier.fillMaxSize()
         ) {
-            // NO BANNER - banner is in MainActivity
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(48.dp)
+                    .background(Color.Black),
+                contentAlignment = Alignment.CenterStart
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    IconButton(onClick = onBack, modifier = Modifier.size(48.dp)) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Back",
+                            tint = Color.White
+                        )
+                    }
+                    Text(
+                        text = if (isSelectionMode) {
+                            "Selected (${selectedChatIds.size})"
+                        } else {
+                            "My Messages (${filteredChatSessions.size})"
+                        },
+                        modifier = Modifier.weight(1f),
+                        color = Color.White,
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Bold,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                    )
+                    Box {
+                        IconButton(
+                            onClick = { showHeaderMenu = true },
+                            modifier = Modifier.size(48.dp)
+                        ) {
+                            Text(
+                                text = "⋮",
+                                color = Color.White,
+                                fontSize = 20.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                        DropdownMenu(
+                            expanded = showHeaderMenu,
+                            onDismissRequest = { showHeaderMenu = false }
+                        ) {
+                            DropdownMenuItem(
+                                text = {
+                                    Text(
+                                        if (selectedChatIds.size <= 1) "Delete selected" else "Delete selected (${selectedChatIds.size})",
+                                        color = Color.Red
+                                    )
+                                },
+                                onClick = {
+                                    showHeaderMenu = false
+                                    showDeleteConfirm = true
+                                },
+                                enabled = selectedChatIds.isNotEmpty()
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Mark selected as read") },
+                                onClick = {
+                                    selectedChatIds.toList().forEach { chatId ->
+                                        viewModel.markAsRead(chatId, userProfile.uid)
+                                    }
+                                    selectedChatIds.clear()
+                                    showHeaderMenu = false
+                                },
+                                enabled = selectedChatIds.isNotEmpty()
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Block user", color = Color.Red) },
+                                onClick = {
+                                    showHeaderMenu = false
+                                    showBlockConfirm = true
+                                },
+                                enabled = selectedChatIds.size == 1 && !selectedOtherUserId.isNullOrBlank()
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Clear selection") },
+                                onClick = {
+                                    selectedChatIds.clear()
+                                    showHeaderMenu = false
+                                },
+                                enabled = selectedChatIds.isNotEmpty()
+                            )
+                        }
+                    }
+                }
+            }
+
+            OutlinedTextField(
+                value = searchQuery,
+                onValueChange = { searchQuery = it },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                singleLine = true,
+                placeholder = { Text("Search conversations") },
+                leadingIcon = {
+                    Icon(
+                        imageVector = Icons.Default.Search,
+                        contentDescription = "Search"
+                    )
+                },
+                shape = RoundedCornerShape(12.dp)
+            )
 
             // Error message display - compact snackbar style, only when NOT loading
             if (viewModel.errorMessage != null && !viewModel.isLoading) {
@@ -145,7 +281,7 @@ fun ChatsScreen(
                     .pullRefresh(pullRefreshState)
             ) {
                 when {
-                    viewModel.isLoading && viewModel.chatSessions.isEmpty() -> {
+                    viewModel.isLoading && filteredChatSessions.isEmpty() -> {
                         Box(
                             modifier = Modifier.fillMaxSize(),
                             contentAlignment = Alignment.Center
@@ -153,7 +289,7 @@ fun ChatsScreen(
                             CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
                         }
                     }
-                    viewModel.chatSessions.isEmpty() -> {
+                    filteredChatSessions.isEmpty() -> {
                         // Empty state
                         Box(
                             modifier = Modifier.fillMaxSize(),
@@ -187,7 +323,7 @@ fun ChatsScreen(
                             modifier = Modifier.fillMaxSize()
                         ) {
                             items(
-                                items = viewModel.chatSessions,
+                                items = filteredChatSessions,
                                 key = { it.id }
                             ) { session ->
                                 val otherUserId = session.participants.find { it != userProfile.uid } ?: ""
@@ -216,7 +352,25 @@ fun ChatsScreen(
                                     otherUserName = otherUserName,
                                     otherUserPhoto = otherUserPhoto,
                                     currentUserId = userProfile.uid,
-                                    onClick = { onChatClick(session, otherUserId) },
+                                    isSelected = selectedChatIds.contains(session.id),
+                                    onClick = {
+                                        if (isSelectionMode) {
+                                            if (selectedChatIds.contains(session.id)) {
+                                                selectedChatIds.remove(session.id)
+                                            } else {
+                                                selectedChatIds.add(session.id)
+                                            }
+                                        } else {
+                                            onChatClick(session, otherUserId)
+                                        }
+                                    },
+                                    onLongClick = {
+                                        if (selectedChatIds.contains(session.id)) {
+                                            selectedChatIds.remove(session.id)
+                                        } else {
+                                            selectedChatIds.add(session.id)
+                                        }
+                                    },
                                     onProfilePhotoClick = { onUserProfileClick(otherUserId) }
                                 )
 
@@ -259,6 +413,63 @@ fun ChatsScreen(
         }
     }
 
+    if (showDeleteConfirm) {
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirm = false },
+            title = { Text("Delete conversation(s)?") },
+            text = { Text("This action cannot be undone.") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        selectedChatIds.toList().forEach { chatId ->
+                            viewModel.deleteChat(chatId)
+                        }
+                        selectedChatIds.clear()
+                        showDeleteConfirm = false
+                    }
+                ) {
+                    Text("Delete", color = Color.Red)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteConfirm = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
+    if (showBlockConfirm) {
+        AlertDialog(
+            onDismissRequest = { showBlockConfirm = false },
+            title = { Text("Block user?") },
+            text = { Text("This will instantly report and block this user, and remove this conversation.") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        val otherUserId = selectedOtherUserId
+                        if (!otherUserId.isNullOrBlank()) {
+                            viewModel.blockAndReportUser(
+                                currentUserId = userProfile.uid,
+                                targetUserId = otherUserId,
+                                chatId = selectedChatId
+                            )
+                        }
+                        selectedChatIds.clear()
+                        showBlockConfirm = false
+                    }
+                ) {
+                    Text("Block", color = Color.Red)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showBlockConfirm = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
     // New Chat Dialog
     if (showNewChatDialog) {
         NewChatDialog(
@@ -275,6 +486,7 @@ fun ChatsScreen(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun ChatListItem(
     session: ChatSession,
@@ -282,7 +494,9 @@ private fun ChatListItem(
     otherUserName: String,
     otherUserPhoto: String,
     currentUserId: String,
+    isSelected: Boolean,
     onClick: () -> Unit,
+    onLongClick: () -> Unit,
     onProfilePhotoClick: () -> Unit = {}
 ) {
     val isLastMessageFromMe = session.lastSenderId == currentUserId
@@ -291,7 +505,11 @@ private fun ChatListItem(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick)
+            .background(if (isSelected) Color(0x221565C0) else Color.Transparent)
+            .combinedClickable(
+                onClick = onClick,
+                onLongClick = onLongClick
+            )
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -502,10 +720,43 @@ private fun NewChatDialog(
             .fillMaxSize()
             .background(backgroundColor)
     ) {
-        when {
+        Column(modifier = Modifier.fillMaxSize()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(48.dp)
+                    .background(Color.Black),
+                contentAlignment = Alignment.CenterStart
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    IconButton(onClick = onDismiss, modifier = Modifier.size(48.dp)) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Back",
+                            tint = Color.White
+                        )
+                    }
+                    Text(
+                        text = "Compose Message",
+                        modifier = Modifier.weight(1f),
+                        color = Color.White,
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Bold,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                    )
+                    Spacer(modifier = Modifier.size(48.dp))
+                }
+            }
+
+            when {
             isLoading -> {
                 Box(
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f),
                     contentAlignment = Alignment.Center
                 ) {
                     CircularProgressIndicator(color = if (isDarkMode) Color.White else Color.Black)
@@ -515,6 +766,7 @@ private fun NewChatDialog(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .weight(1f)
                         .padding(32.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
@@ -539,7 +791,11 @@ private fun NewChatDialog(
                 }
             }
             else -> {
-                LazyColumn(modifier = Modifier.fillMaxSize()) {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f)
+                ) {
                     items(friends) { friend ->
                         FullScreenFriendItem(
                             friend = friend,
@@ -551,20 +807,8 @@ private fun NewChatDialog(
                 }
             }
         }
-
-        IconButton(
-            onClick = onDismiss,
-            modifier = Modifier
-                .align(Alignment.TopStart)
-                .padding(8.dp)
-        ) {
-            Icon(
-                imageVector = Icons.Default.Close,
-                contentDescription = "Close",
-                tint = if (isDarkMode) Color.White else Color.Black
-            )
-        }
     }
+}
 }
 
 /**

@@ -1287,6 +1287,7 @@ class FlickRepository private constructor() {
                                 message = data["message"] as? String ?: "",
                                 flickId = data["flickId"] as? String,
                                 flickImageUrl = data["flickImageUrl"] as? String,
+                                chatId = data["chatId"] as? String,
                                 isRead = data["isRead"] as? Boolean ?: false,
                                 timestamp = (data["timestamp"] as? Long) ?: System.currentTimeMillis()
                             )
@@ -1342,6 +1343,29 @@ class FlickRepository private constructor() {
     }
 
     /**
+     * Delete all notifications for a user
+     */
+    suspend fun deleteAllNotifications(userId: String): Result<Unit> {
+        return try {
+            val batch = db.batch()
+
+            val snapshot = db.collection("notifications")
+                .whereEqualTo("userId", userId)
+                .get()
+                .await()
+
+            snapshot.documents.forEach { doc ->
+                batch.delete(doc.reference)
+            }
+
+            batch.commit().await()
+            Result.Success(Unit)
+        } catch (e: Exception) {
+            Result.Error(e, "Failed to delete all notifications")
+        }
+    }
+
+    /**
      * Delete a notification
      */
     suspend fun deleteNotification(notificationId: String): Result<Unit> {
@@ -1352,6 +1376,47 @@ class FlickRepository private constructor() {
             Result.Success(Unit)
         } catch (e: Exception) {
             Result.Error(e, "Failed to delete notification")
+        }
+    }
+
+    /**
+     * Delete all MESSAGE notifications for the same conversation.
+     * Matches by chatId when available, otherwise falls back to senderId.
+     */
+    suspend fun deleteMessageNotificationsForConversation(
+        userId: String,
+        chatId: String?,
+        senderId: String
+    ): Result<Unit> {
+        return try {
+            val snapshot = db.collection("notifications")
+                .whereEqualTo("userId", userId)
+                .whereEqualTo("type", "MESSAGE")
+                .get()
+                .await()
+
+            val batch = db.batch()
+            val hasChatId = !chatId.isNullOrBlank()
+
+            snapshot.documents.forEach { doc ->
+                val docChatId = doc.getString("chatId").orEmpty()
+                val docSenderId = doc.getString("senderId").orEmpty()
+
+                val isSameConversation = if (hasChatId) {
+                    docChatId == chatId
+                } else {
+                    docSenderId == senderId
+                }
+
+                if (isSameConversation) {
+                    batch.delete(doc.reference)
+                }
+            }
+
+            batch.commit().await()
+            Result.Success(Unit)
+        } catch (e: Exception) {
+            Result.Error(e, "Failed to delete conversation notifications")
         }
     }
 

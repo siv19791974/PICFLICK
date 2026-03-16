@@ -3,6 +3,7 @@ package com.picflick.app.repository
 import com.picflick.app.data.ChatMessage
 import com.picflick.app.data.ChatSession
 import com.picflick.app.data.Result
+import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 import kotlinx.coroutines.channels.awaitClose
@@ -335,6 +336,64 @@ class ChatRepository {
         } catch (e: Exception) {
             android.util.Log.e("ChatRepository", "addReaction FAILED: ${e.message}", e)
             Result.Error(e, e.message ?: "Failed to add reaction")
+        }
+    }
+
+    /**
+     * Delete a chat session and all its messages.
+     */
+    suspend fun deleteChatSession(chatId: String): Result<Unit> {
+        return try {
+            val messages = db.collection("chatSessions")
+                .document(chatId)
+                .collection("messages")
+                .get()
+                .await()
+
+            if (!messages.isEmpty) {
+                val batch = db.batch()
+                messages.documents.forEach { batch.delete(it.reference) }
+                batch.commit().await()
+            }
+
+            db.collection("chatSessions").document(chatId).delete().await()
+            Result.Success(Unit)
+        } catch (e: Exception) {
+            Result.Error(e, e.message ?: "Failed to delete chat")
+        }
+    }
+
+    /**
+     * Report and block a user instantly from chat context.
+     */
+    suspend fun blockAndReportUser(currentUserId: String, targetUserId: String): Result<Unit> {
+        return try {
+            db.collection("reports")
+                .add(
+                    mapOf(
+                        "reporterId" to currentUserId,
+                        "targetUserId" to targetUserId,
+                        "type" to "USER_BLOCK_FROM_CHAT",
+                        "reason" to "Blocked from messages menu",
+                        "timestamp" to System.currentTimeMillis()
+                    )
+                )
+                .await()
+
+            val batch = db.batch()
+            val currentUserRef = db.collection("users").document(currentUserId)
+            val targetUserRef = db.collection("users").document(targetUserId)
+
+            batch.update(currentUserRef, "blockedUsers", FieldValue.arrayUnion(targetUserId))
+            batch.update(currentUserRef, "following", FieldValue.arrayRemove(targetUserId))
+            batch.update(currentUserRef, "followers", FieldValue.arrayRemove(targetUserId))
+            batch.update(targetUserRef, "following", FieldValue.arrayRemove(currentUserId))
+            batch.update(targetUserRef, "followers", FieldValue.arrayRemove(currentUserId))
+            batch.commit().await()
+
+            Result.Success(Unit)
+        } catch (e: Exception) {
+            Result.Error(e, e.message ?: "Failed to block and report user")
         }
     }
 
