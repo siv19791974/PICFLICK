@@ -2079,13 +2079,15 @@ class FlickRepository private constructor() {
         flickId: String,
         description: String,
         filterType: String,
-        newImageUrl: String
+        newImageUrl: String,
+        taggedFriends: List<String>
     ): Result<Unit> {
         return try {
             val updates = hashMapOf<String, Any>(
                 "description" to description,
                 "filter" to filterType,
                 "imageUrl" to newImageUrl,
+                "taggedFriends" to taggedFriends,
                 "editedAt" to FieldValue.serverTimestamp()
             )
             

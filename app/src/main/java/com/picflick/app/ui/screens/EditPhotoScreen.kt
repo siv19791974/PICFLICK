@@ -35,12 +35,14 @@ import coil3.request.allowHardware
 import coil3.toBitmap
 import com.picflick.app.data.Flick
 import com.picflick.app.data.PhotoFilter
+import com.google.firebase.firestore.FirebaseFirestore
 import com.picflick.app.data.UserProfile
 import com.picflick.app.ui.theme.ThemeManager
 import com.picflick.app.ui.theme.isDarkModeBackground
 import com.picflick.app.ui.theme.PicFlickLightBackground
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
 
 /**
@@ -55,7 +57,7 @@ fun EditPhotoScreen(
     _currentUser: UserProfile,
     _cloudName: String = "",
     onBack: () -> Unit,
-    onSave: (Flick, String, String, Bitmap) -> Unit
+    onSave: (Flick, String, String, List<String>, Bitmap) -> Unit
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -66,6 +68,10 @@ fun EditPhotoScreen(
     var bitmap by remember { mutableStateOf<Bitmap?>(null) }
     var isLoading by remember { mutableStateOf(true) }
     var isSaving by remember { mutableStateOf(false) }
+    var description by remember { mutableStateOf(flick.description) }
+    var taggedFriendIds by remember { mutableStateOf(flick.taggedFriends) }
+    var showTagDialog by remember { mutableStateOf(false) }
+    var followingUsers by remember { mutableStateOf<List<UserProfile>>(emptyList()) }
 
     // Load the existing photo from URL
     LaunchedEffect(flick.imageUrl) {
@@ -80,6 +86,30 @@ fun EditPhotoScreen(
                 withContext(Dispatchers.Main) {
                     isLoading = false
                 }
+            }
+        }
+    }
+
+    // Load following users for Tag Friends
+    LaunchedEffect(_currentUser.uid, _currentUser.following) {
+        if (_currentUser.following.isEmpty()) {
+            followingUsers = emptyList()
+            return@LaunchedEffect
+        }
+
+        withContext(Dispatchers.IO) {
+            val users = mutableListOf<UserProfile>()
+            val db = FirebaseFirestore.getInstance()
+            _currentUser.following.forEach { uid ->
+                try {
+                    val doc = db.collection("users").document(uid).get().await()
+                    doc.toObject(UserProfile::class.java)?.let { users.add(it) }
+                } catch (_: Exception) {
+                    // Ignore failed profile fetches
+                }
+            }
+            withContext(Dispatchers.Main) {
+                followingUsers = users
             }
         }
     }
@@ -112,7 +142,7 @@ fun EditPhotoScreen(
                 try {
                     val filterTransformation = selectedFilter.name
                     val finalBitmap = applyFilterToBitmap(bitmap!!, selectedFilter, thumbnailSize = 0)
-                    onSave(flick, filterTransformation, flick.description, finalBitmap)
+                    onSave(flick, filterTransformation, description.trim(), taggedFriendIds, finalBitmap)
                     withContext(Dispatchers.Main) {
                         android.widget.Toast.makeText(
                             context, 
@@ -281,66 +311,104 @@ fun EditPhotoScreen(
                             )
                         }
 
-                        // Bottom Panel with filter thumbnails
+                        // Bottom Panel with filter thumbnails + metadata
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(260.dp)
+                                .height(320.dp)
                                 .background(if (isDarkMode) Color(0xFF1C1C1E) else PicFlickLightBackground)
                                 .padding(vertical = 8.dp)
                         ) {
-                            // Filter thumbnails - 2 rows with horizontal scrolling
-                            val row1Filters = localFilters.take(8)
-                            val row2Filters = localFilters.drop(8)
-                            
-                            // Row 1
+                            // Filter thumbnails - single row
                             LazyRow(
                                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                                 contentPadding = PaddingValues(horizontal = 16.dp),
                                 modifier = Modifier
                                     .height(118.dp)
-                                    .padding(bottom = 4.dp)
+                                    .padding(bottom = 8.dp)
                             ) {
-                                items(row1Filters) { filter ->
+                                items(localFilters) { filter ->
                                     EditFilterIcon(
                                         filter = filter,
                                         isSelected = selectedFilter == filter,
-                                        onClick = { 
-                                            selectedFilter = filter
-                                        },
+                                        onClick = { selectedFilter = filter },
                                         bitmap = bmp,
                                         isDarkMode = isDarkMode
                                     )
                                 }
                             }
-                            
-                            // Row 2
-                            if (row2Filters.isNotEmpty()) {
-                                LazyRow(
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                    contentPadding = PaddingValues(horizontal = 16.dp),
-                                    modifier = Modifier
-                                        .height(118.dp)
-                                    .padding(bottom = 4.dp)
-                                ) {
-                                    items(row2Filters) { filter ->
-                                        EditFilterIcon(
-                                            filter = filter,
-                                            isSelected = selectedFilter == filter,
-                                            onClick = { 
-                                                selectedFilter = filter
-                                            },
-                                            bitmap = bmp,
-                                            isDarkMode = isDarkMode
-                                        )
+
+                            OutlinedButton(
+                                onClick = { showTagDialog = true },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp)
+                            ) {
+                                Text(
+                                    text = if (followingUsers.isEmpty()) {
+                                        "Find Friends to Tag"
+                                    } else {
+                                        "Tag Friends (${taggedFriendIds.size})"
                                     }
-                                }
+                                )
                             }
+
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            OutlinedTextField(
+                                value = description,
+                                onValueChange = { description = it },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp),
+                                placeholder = { Text("Add a description...") },
+                                minLines = 2,
+                                maxLines = 3,
+                                shape = RoundedCornerShape(12.dp)
+                            )
                         }
                     }
                 }
             }
         }
+    }
+
+    if (showTagDialog) {
+        AlertDialog(
+            onDismissRequest = { showTagDialog = false },
+            title = { Text("Tag Friends") },
+            text = {
+                if (followingUsers.isEmpty()) {
+                    Text("No friends available to tag yet.")
+                } else {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        followingUsers.forEach { friend ->
+                            val isTagged = taggedFriendIds.contains(friend.uid)
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        taggedFriendIds = if (isTagged) taggedFriendIds - friend.uid else taggedFriendIds + friend.uid
+                                    }
+                                    .padding(vertical = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Checkbox(
+                                    checked = isTagged,
+                                    onCheckedChange = { checked ->
+                                        taggedFriendIds = if (checked) taggedFriendIds + friend.uid else taggedFriendIds - friend.uid
+                                    }
+                                )
+                                Text(friend.displayName)
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showTagDialog = false }) { Text("Done") }
+            }
+        )
     }
 }
 
