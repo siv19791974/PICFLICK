@@ -226,6 +226,12 @@ fun SettingsScreen(
             // Support Section - Reorganized with Philosophy, Legal, Privacy Policy, Version
             SettingsSection(title = "SUPPORT", isDarkMode = isDarkMode) {
                 SettingsItem(
+                    icon = Icons.Default.Info,
+                    title = "Contact Us",
+                    subtitle = "Get help and support",
+                    onClick = onHelpSupport
+                )
+                SettingsItem(
                     icon = Icons.Default.Menu,
                     title = "Our Philosophy",
                     subtitle = "What we stand for",

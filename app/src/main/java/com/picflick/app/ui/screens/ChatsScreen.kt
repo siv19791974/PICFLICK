@@ -334,21 +334,46 @@ fun ChatsScreen(
                                 key = { it.id }
                             ) { session ->
                                 val otherUserId = session.participants.find { it != userProfile.uid } ?: ""
-                                val otherUserName = session.participantNames[otherUserId] ?: "Unknown"
-                                var otherUserPhoto by remember { mutableStateOf(session.participantPhotos[otherUserId] ?: "") }
-                                
-                                // Fetch photo from UserProfile if not in chat session
+                                var otherUserName by remember(session.id, otherUserId) {
+                                    mutableStateOf(
+                                        session.participantNames[otherUserId]
+                                            ?.takeIf { it.isNotBlank() }
+                                            ?: "Unknown"
+                                    )
+                                }
+                                var otherUserPhoto by remember(session.id, otherUserId) {
+                                    mutableStateOf(session.participantPhotos[otherUserId] ?: "")
+                                }
+
+                                // Backfill name/photo from users collection for older or incomplete chat sessions
                                 LaunchedEffect(otherUserId) {
-                                    if (otherUserPhoto.isEmpty()) {
+                                    if (otherUserId.isNotBlank() && (otherUserName == "Unknown" || otherUserPhoto.isEmpty())) {
                                         try {
                                             val userDoc = com.google.firebase.firestore.FirebaseFirestore.getInstance()
                                                 .collection("users")
                                                 .document(otherUserId)
                                                 .get()
                                                 .await()
-                                            otherUserPhoto = userDoc.getString("photoUrl") ?: ""
-                                        } catch (e: Exception) {
-                                            // Keep empty if fetch fails
+
+                                            if (otherUserName == "Unknown") {
+                                                otherUserName = userDoc.getString("displayName")
+                                                    ?.takeIf { it.isNotBlank() }
+                                                    ?: userDoc.getString("username")
+                                                        ?.takeIf { it.isNotBlank() }
+                                                    ?: userDoc.getString("name")
+                                                        ?.takeIf { it.isNotBlank() }
+                                                    ?: otherUserName
+                                            }
+
+                                            if (otherUserPhoto.isEmpty()) {
+                                                otherUserPhoto = userDoc.getString("photoUrl")
+                                                    ?: userDoc.getString("photoURL")
+                                                    ?: userDoc.getString("profileImageUrl")
+                                                    ?: userDoc.getString("avatarUrl")
+                                                    ?: ""
+                                            }
+                                        } catch (_: Exception) {
+                                            // Keep current fallback values if fetch fails
                                         }
                                     }
                                 }
@@ -552,16 +577,7 @@ private fun ChatListItem(
                 }
             }
 
-            // Online indicator (could be dynamic)
-            if (hasUnread) {
-                Box(
-                    modifier = Modifier
-                        .size(14.dp)
-                        .clip(CircleShape)
-                        .background(Color(0xFF25D366)) // WhatsApp green
-                        .align(Alignment.BottomEnd)
-                )
-            }
+
         }
 
         Spacer(modifier = Modifier.width(16.dp))
@@ -591,26 +607,8 @@ private fun ChatListItem(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.End
                 ) {
-                    // If you RECEIVED the last message, show BLUE dot with count
-                    if (!isLastMessageFromMe && session.unreadCount > 0) {
-                        Box(
-                            modifier = Modifier
-                                .size(20.dp)
-                                .clip(CircleShape)
-                                .background(Color(0xFF1565C0)),  // BLUE matching bottom nav
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = if (session.unreadCount > 9) "9+" else session.unreadCount.toString(),
-                                color = Color.White,
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-                        Spacer(modifier = Modifier.width(4.dp))
-                    }
                     // If you SENT the last message, show red/green dot
-                    else if (isLastMessageFromMe) {
+                    if (isLastMessageFromMe) {
                         val isRead = session.lastMessageRead
                         val dotColor = if (isRead) Color(0xFF25D366) else Color.Red
                         Box(
@@ -656,19 +654,19 @@ private fun ChatListItem(
                     modifier = Modifier.weight(1f)
                 )
 
-                // Unread badge
+                // Unread messages counter (small blue circle)
                 if (hasUnread) {
                     Spacer(modifier = Modifier.width(8.dp))
                     Box(
                         modifier = Modifier
-                            .size(20.dp)
+                            .size(18.dp)
                             .clip(CircleShape)
-                            .background(Color(0xFF25D366)), // WhatsApp green
+                            .background(Color(0xFF1565C0)),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
                             text = if (session.unreadCount > 99) "99+" else session.unreadCount.toString(),
-                            fontSize = 11.sp,
+                            fontSize = 10.sp,
                             color = Color.White,
                             fontWeight = FontWeight.Bold
                         )

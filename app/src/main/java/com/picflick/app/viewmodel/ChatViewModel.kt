@@ -173,18 +173,34 @@ class ChatViewModel : ViewModel() {
         onComplete: () -> Unit = {}
     ) {
         viewModelScope.launch {
+            val optimisticMessageId = "local_${System.currentTimeMillis()}_${kotlin.random.Random.nextInt(1000, 9999)}"
+            val optimisticMessage = ChatMessage(
+                id = optimisticMessageId,
+                chatId = chatId,
+                senderId = senderId,
+                senderName = senderName,
+                senderPhotoUrl = senderPhotoUrl,
+                text = "",
+                imageUrl = imageUri.toString(),
+                timestamp = System.currentTimeMillis(),
+                read = false,
+                delivered = false
+            )
+
+            // Optimistic insert: show photo bubble instantly
+            messages = (messages + optimisticMessage).sortedBy { it.timestamp }
+
             try {
-                // Convert URI to bytes
                 val inputStream = context.contentResolver.openInputStream(imageUri)
                 val imageBytes = inputStream?.readBytes()
                 inputStream?.close()
 
                 if (imageBytes == null) {
+                    messages = messages.filterNot { it.id == optimisticMessageId }
                     errorMessage = "Failed to read image"
                     return@launch
                 }
 
-                // Upload to Firebase Storage
                 val storageRef = com.google.firebase.storage.FirebaseStorage.getInstance()
                     .reference
                     .child("chat_images")
@@ -194,18 +210,20 @@ class ChatViewModel : ViewModel() {
                 storageRef.putBytes(imageBytes).await()
                 val downloadUrl = storageRef.downloadUrl.await().toString()
 
-                // Send message with image URL
-                sendMessage(
-                    chatId = chatId,
-                    text = "",
-                    senderId = senderId,
-                    recipientId = recipientId,
-                    senderName = senderName,
-                    senderPhotoUrl = senderPhotoUrl,
-                    imageUrl = downloadUrl,
-                    onComplete = onComplete
-                )
+                // Keep same ID so backend write replaces optimistic item seamlessly
+                val finalMessage = optimisticMessage.copy(imageUrl = downloadUrl)
+                when (val result = repository.sendMessage(chatId, finalMessage, recipientId)) {
+                    is Result.Success -> {
+                        onComplete()
+                    }
+                    is Result.Error -> {
+                        messages = messages.filterNot { it.id == optimisticMessageId }
+                        errorMessage = "Failed to send photo: ${result.message}"
+                    }
+                    is Result.Loading -> Unit
+                }
             } catch (e: Exception) {
+                messages = messages.filterNot { it.id == optimisticMessageId }
                 errorMessage = "Failed to send photo: ${e.message}"
             }
         }

@@ -438,6 +438,7 @@ private fun ChatBubble(
     } else {
         RoundedCornerShape(topStart = 4.dp, topEnd = 20.dp, bottomStart = 20.dp, bottomEnd = 20.dp)
     }
+    val isPhotoOnly = message.imageUrl.isNotBlank() && message.text.isBlank() && !message.isReply()
 
     Row(
         modifier = Modifier
@@ -455,24 +456,24 @@ private fun ChatBubble(
                 modifier = Modifier.fillMaxWidth(0.85f),
                 contentAlignment = Alignment.TopEnd
             ) {
-                Column(modifier = Modifier.padding(horizontal = 8.dp)) {
+                Column(modifier = Modifier.padding(horizontal = if (isPhotoOnly) 2.dp else 8.dp)) {
                     Box(
                         modifier = Modifier
                             .wrapContentWidth()
                             .wrapContentHeight()
                             .background(bubbleColor, bubbleShape)
-                            .padding(horizontal = 10.dp, vertical = 6.dp),
+                            .padding(horizontal = if (isPhotoOnly) 4.dp else 10.dp, vertical = if (isPhotoOnly) 4.dp else 6.dp),
                         contentAlignment = Alignment.TopStart
                     ) {
-                        Box(
+Box(
                             modifier = Modifier.wrapContentSize()
                         ) {
                             Column(
                                 modifier = Modifier
-                                    .padding(end = 44.dp, bottom = 2.dp),
+                                    .padding(end = if (message.imageUrl.isNotBlank()) 4.dp else 44.dp, bottom = 2.dp),
                                 verticalArrangement = Arrangement.Top
                             ) {
-                                if (message.isReply()) {
+if (message.isReply()) {
                                     QuotedMessage(
                                         quotedSenderName = message.quotedSenderName ?: "Unknown",
                                         quotedText = message.quotedText ?: "",
