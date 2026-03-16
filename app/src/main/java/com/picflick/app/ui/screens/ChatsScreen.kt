@@ -1,5 +1,6 @@
 package com.picflick.app.ui.screens
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.Image
@@ -23,6 +24,8 @@ import androidx.compose.material.icons.filled.AddCircle
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.*
+import androidx.compose.material.icons.outlined.Notifications
+import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.runtime.*
 import androidx.compose.runtime.LaunchedEffect
 import kotlinx.coroutines.tasks.await
@@ -267,15 +270,7 @@ fun ChatsScreen(
                 showNewChatDialog = false
                 onStartNewChat?.invoke(friendId, friendName, friendPhoto)
             },
-            onUserProfileClick = onUserProfileClick,
-            onBottomNavNavigate = { route ->
-                showNewChatDialog = false
-                when (route) {
-                    "home" -> onNavigateHome()
-                    "chats" -> Unit
-                    else -> onBottomNavNavigate(route)
-                }
-            }
+            onUserProfileClick = onUserProfileClick
         )
     }
 }
@@ -496,129 +491,78 @@ private fun NewChatDialog(
     isDarkMode: Boolean,
     onDismiss: () -> Unit,
     onFriendSelected: (String, String, String) -> Unit,
-    onUserProfileClick: (String) -> Unit,
-    onBottomNavNavigate: (String) -> Unit
+    onUserProfileClick: (String) -> Unit
 ) {
     val backgroundColor = if (isDarkMode) Color.Black else PicFlickLightBackground
-    
-    Dialog(
-        onDismissRequest = onDismiss,
-        properties = DialogProperties(
-            usePlatformDefaultWidth = false
-        )
+
+    BackHandler(onBack = onDismiss)
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(backgroundColor)
     ) {
-        Scaffold(
-            modifier = Modifier.fillMaxSize(),
-            containerColor = backgroundColor,
-            contentWindowInsets = WindowInsets(0, 0, 0, 0),
-            topBar = {
+        when {
+            isLoading -> {
                 Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(Color.Black)
-                        .statusBarsPadding()
-                        .height(56.dp)
-                        .padding(horizontal = 8.dp),
+                    modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
                 ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        IconButton(
-                            onClick = onDismiss,
-                            modifier = Modifier.size(40.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                                contentDescription = "Back",
-                                tint = Color.White
-                            )
-                        }
-
-                        Box(
-                            modifier = Modifier
-                                .weight(1f)
-                                .padding(horizontal = 8.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            LogoImage(modifier = Modifier.height(40.dp))
-                        }
-
-                        IconButton(onClick = { /* Search */ }, modifier = Modifier.size(40.dp)) {
-                            Icon(
-                                imageVector = Icons.Default.Search,
-                                contentDescription = "Search",
-                                tint = Color.White
-                            )
-                        }
-                    }
+                    CircularProgressIndicator(color = if (isDarkMode) Color.White else Color.Black)
                 }
-            },
-            bottomBar = {
-                Box(modifier = Modifier.navigationBarsPadding()) {
-                    BottomNavBar(
-                        currentRoute = "chats",
-                        onNavigate = onBottomNavNavigate
+            }
+            friends.isEmpty() -> {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(32.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Person,
+                        contentDescription = null,
+                        modifier = Modifier.size(64.dp),
+                        tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        text = "No friends yet",
+                        fontSize = 18.sp,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "Follow some friends to start chatting!",
+                        fontSize = 14.sp,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
                     )
                 }
             }
-        ) { paddingValues ->
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues)
-            ) {
-                when {
-                    isLoading -> {
-                        Box(
-                            modifier = Modifier.fillMaxSize(),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            CircularProgressIndicator(color = if (isDarkMode) Color.White else Color.Black)
-                        }
-                    }
-                    friends.isEmpty() -> {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(32.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Person,
-                                contentDescription = null,
-                                modifier = Modifier.size(64.dp),
-                                tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
-                            )
-                            Spacer(modifier = Modifier.height(16.dp))
-                            Text(
-                                text = "No friends yet",
-                                fontSize = 18.sp,
-                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-                            )
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Text(
-                                text = "Follow some friends to start chatting!",
-                                fontSize = 14.sp,
-                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
-                            )
-                        }
-                    }
-                    else -> {
-                        LazyColumn(modifier = Modifier.fillMaxSize()) {
-                            items(friends) { friend ->
-                                FullScreenFriendItem(
-                                    friend = friend,
-                                    isDarkMode = isDarkMode,
-                                    onClick = { onFriendSelected(friend.uid, friend.displayName, friend.photoUrl) },
-                                    onProfilePhotoClick = { onUserProfileClick(friend.uid) }
-                                )
-                            }
-                        }
+            else -> {
+                LazyColumn(modifier = Modifier.fillMaxSize()) {
+                    items(friends) { friend ->
+                        FullScreenFriendItem(
+                            friend = friend,
+                            isDarkMode = isDarkMode,
+                            onClick = { onFriendSelected(friend.uid, friend.displayName, friend.photoUrl) },
+                            onProfilePhotoClick = { onUserProfileClick(friend.uid) }
+                        )
                     }
                 }
             }
+        }
+
+        IconButton(
+            onClick = onDismiss,
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .padding(8.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Default.Close,
+                contentDescription = "Close",
+                tint = if (isDarkMode) Color.White else Color.Black
+            )
         }
     }
 }

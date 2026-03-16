@@ -1,7 +1,5 @@
 package com.picflick.app.data
 
-import com.google.firebase.Timestamp
-
 /**
  * Data class representing a notification for a user
  */
@@ -16,6 +14,7 @@ data class Notification(
     val message: String = "",
     val flickId: String? = null,       // Related photo (if any)
     val flickImageUrl: String? = null,   // Thumbnail of related photo
+    val chatId: String? = null,          // Related chat (for MESSAGE notifications)
     val isRead: Boolean = false,
     val timestamp: Long = System.currentTimeMillis()
 )
@@ -40,7 +39,7 @@ enum class NotificationType {
 fun parseNotificationType(value: String?): NotificationType {
     return try {
         value?.let { NotificationType.valueOf(it) } ?: NotificationType.LIKE
-    } catch (e: IllegalArgumentException) {
+    } catch (_: IllegalArgumentException) {
         NotificationType.LIKE
     }
 }

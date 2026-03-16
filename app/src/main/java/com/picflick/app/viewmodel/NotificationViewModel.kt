@@ -7,6 +7,7 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.picflick.app.data.Notification
+import com.picflick.app.data.NotificationType
 import com.picflick.app.data.Result
 import com.picflick.app.repository.FlickRepository
 import com.picflick.app.repository.NotificationRepository
@@ -131,9 +132,13 @@ class NotificationViewModel : ViewModel() {
                         newNotifications.forEachIndexed { index, notification ->
                             android.util.Log.d("NotificationViewModel", "Notification $index: type=${notification.type}, title=${notification.title}, userId=${notification.userId}")
                         }
+                        val normalizedNotifications = newNotifications
+                            .sortedByDescending { it.timestamp }
+                            .dedupeLatestMessagePerConversation()
+
                         notifications.clear()
-                        notifications.addAll(newNotifications.sortedByDescending { it.timestamp })
-                        unreadCount = newNotifications.count { !it.isRead }
+                        notifications.addAll(normalizedNotifications)
+                        unreadCount = normalizedNotifications.count { !it.isRead }
                         isLoading = false
                         android.util.Log.d("NotificationViewModel", "Notifications updated. Unread: $unreadCount")
                     },
@@ -286,6 +291,33 @@ class NotificationViewModel : ViewModel() {
      */
     fun clearError() {
         errorMessage = null
+    }
+
+    /**
+     * Keep only the latest MESSAGE notification per conversation.
+     * Conversation key priority: chatId, then senderId fallback.
+     */
+    private fun List<Notification>.dedupeLatestMessagePerConversation(): List<Notification> {
+        val latestByConversation = linkedMapOf<String, Notification>()
+        val result = mutableListOf<Notification>()
+
+        for (notification in this) {
+            if (notification.type != NotificationType.MESSAGE) {
+                result.add(notification)
+                continue
+            }
+
+            val conversationKey = notification.chatId
+                ?.takeIf { it.isNotBlank() }
+                ?: notification.senderId
+
+            if (!latestByConversation.containsKey(conversationKey)) {
+                latestByConversation[conversationKey] = notification
+                result.add(notification)
+            }
+        }
+
+        return result
     }
     
     /**
