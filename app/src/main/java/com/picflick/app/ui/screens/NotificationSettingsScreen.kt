@@ -39,6 +39,15 @@ fun NotificationSettingsScreen(
     var preferences by remember { mutableStateOf(userProfile.notificationPreferences) }
     val isDarkMode = ThemeManager.isDarkMode.value
 
+    fun updatePreferences(updated: NotificationPreferences) {
+        preferences = updated
+        onSavePreferences(updated)
+    }
+
+    LaunchedEffect(preferences) {
+        onSavePreferences(preferences)
+    }
+
     Scaffold(
         topBar = {
             // Custom compact 48dp title bar
@@ -86,26 +95,36 @@ fun NotificationSettingsScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            // Master Switch - styled like a Settings section header item
-            SettingsSectionHeader(title = "NOTIFICATIONS", isDarkMode = isDarkMode)
-            
+            // In-app notification controls
+            SettingsSectionHeader(title = "IN-APP NOTIFICATIONS", isDarkMode = isDarkMode)
+
             MasterToggle(
-                title = "Enable Notifications",
-                subtitle = "Receive notifications for activity",
+                title = "Enable In-App Notifications",
+                subtitle = "Show activity inside the app",
                 checked = preferences.notificationsEnabled,
                 onCheckedChange = {
-                    preferences = preferences.copy(notificationsEnabled = it)
-                    // Auto-save when master toggle changes
-                    onSavePreferences(preferences.copy(notificationsEnabled = it))
+                    updatePreferences(preferences.copy(notificationsEnabled = it))
                 },
                 isDarkMode = isDarkMode
             )
 
-            if (preferences.notificationsEnabled) {
+            // Push selector controls
+            SettingsSectionHeader(title = "PUSH NOTIFICATIONS", isDarkMode = isDarkMode)
+            MasterToggle(
+                title = "Enable Push Notifications",
+                subtitle = "Receive alerts on your device",
+                checked = preferences.pushNotificationsEnabled,
+                onCheckedChange = {
+                    updatePreferences(preferences.copy(pushNotificationsEnabled = it))
+                },
+                isDarkMode = isDarkMode
+            )
+
+            if (preferences.notificationsEnabled || preferences.pushNotificationsEnabled) {
                 HorizontalDivider(color = if (isDarkMode) Color(0xFF2C2C2E) else Color.LightGray, thickness = 0.5.dp)
                 
                 // Notification Type Toggles
-                SettingsSectionHeader(title = "NOTIFY ME ABOUT", isDarkMode = isDarkMode)
+                SettingsSectionHeader(title = "NOTIFY ME ABOUT (IN-APP)", isDarkMode = isDarkMode)
 
                 NotificationToggle(
                     title = "Likes",
@@ -185,6 +204,51 @@ fun NotificationSettingsScreen(
                     icon = Icons.Default.Info,
                     checked = preferences.systemAnnouncements,
                     onCheckedChange = { preferences = preferences.copy(systemAnnouncements = it) }
+                )
+
+                HorizontalDivider(color = if (isDarkMode) Color(0xFF2C2C2E) else Color.LightGray, thickness = 0.5.dp)
+
+                // Push Type Toggles
+                SettingsSectionHeader(title = "NOTIFY ME ABOUT (PUSH)", isDarkMode = isDarkMode)
+
+                NotificationToggle(
+                    title = "Messages",
+                    subtitle = "Push for new chat messages",
+                    icon = Icons.Default.MailOutline,
+                    checked = preferences.pushMessages,
+                    onCheckedChange = { updatePreferences(preferences.copy(pushMessages = it)) }
+                )
+
+                NotificationToggle(
+                    title = "Friend Requests",
+                    subtitle = "Push for follow/friend requests",
+                    icon = Icons.Default.PersonAdd,
+                    checked = preferences.pushFollows,
+                    onCheckedChange = { updatePreferences(preferences.copy(pushFollows = it)) }
+                )
+
+                NotificationToggle(
+                    title = "Tags & Mentions",
+                    subtitle = "Push when someone tags/mentions you",
+                    icon = Icons.Default.AlternateEmail,
+                    checked = preferences.pushMentions,
+                    onCheckedChange = { updatePreferences(preferences.copy(pushMentions = it)) }
+                )
+
+                NotificationToggle(
+                    title = "Reactions & Comments",
+                    subtitle = "Push for likes/reactions/comments",
+                    icon = Icons.Default.Favorite,
+                    checked = preferences.pushReactions,
+                    onCheckedChange = { updatePreferences(preferences.copy(pushReactions = it, pushLikes = it, pushComments = it)) }
+                )
+
+                NotificationToggle(
+                    title = "System Announcements",
+                    subtitle = "Important app updates",
+                    icon = Icons.Default.Info,
+                    checked = preferences.pushSystemAnnouncements,
+                    onCheckedChange = { updatePreferences(preferences.copy(pushSystemAnnouncements = it)) }
                 )
 
                 HorizontalDivider(color = if (isDarkMode) Color(0xFF2C2C2E) else Color.LightGray, thickness = 0.5.dp)

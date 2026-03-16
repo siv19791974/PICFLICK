@@ -197,9 +197,30 @@ class NotificationViewModel : ViewModel() {
     }
     
     /**
-     * Delete a notification
+     * Delete all notifications for the current user.
      */
+    fun deleteAllNotifications(userId: String) {
+        viewModelScope.launch {
+            when (val result = flickRepository.deleteAllNotifications(userId)) {
+                is Result.Success -> {
+                    notifications.clear()
+                    unreadCount = 0
+                }
+                is Result.Error -> {
+                    errorMessage = result.exception.message
+                }
+                else -> {}
+            }
+        }
+    }
+
     fun deleteNotification(notificationId: String) {
+        val notification = notifications.firstOrNull { it.id == notificationId }
+        if (notification != null) {
+            deleteNotification(notification)
+            return
+        }
+
         viewModelScope.launch {
             when (val result = flickRepository.deleteNotification(notificationId)) {
                 is Result.Success -> {
@@ -213,7 +234,52 @@ class NotificationViewModel : ViewModel() {
             }
         }
     }
-    
+
+    /**
+     * Delete a notification.
+     * For MESSAGE notifications, delete all notifications from the same conversation.
+     */
+    fun deleteNotification(notification: Notification) {
+        viewModelScope.launch {
+            if (notification.type == NotificationType.MESSAGE) {
+                val userId = currentUserId ?: return@launch
+                when (val result = flickRepository.deleteMessageNotificationsForConversation(
+                    userId = userId,
+                    chatId = notification.chatId,
+                    senderId = notification.senderId
+                )) {
+                    is Result.Success -> {
+                        val hasChatId = !notification.chatId.isNullOrBlank()
+                        notifications.removeAll { existing ->
+                            existing.type == NotificationType.MESSAGE && if (hasChatId) {
+                                existing.chatId == notification.chatId
+                            } else {
+                                existing.senderId == notification.senderId
+                            }
+                        }
+                        unreadCount = notifications.count { !it.isRead }
+                    }
+                    is Result.Error -> {
+                        errorMessage = result.exception.message
+                    }
+                    else -> {}
+                }
+                return@launch
+            }
+
+            when (val result = flickRepository.deleteNotification(notification.id)) {
+                is Result.Success -> {
+                    notifications.removeAll { it.id == notification.id }
+                    unreadCount = notifications.count { !it.isRead }
+                }
+                is Result.Error -> {
+                    errorMessage = result.exception.message
+                }
+                else -> {}
+            }
+        }
+    }
+
     /**
      * Accept a friend request and delete the notification
      */

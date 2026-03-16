@@ -1,7 +1,7 @@
 package com.picflick.app.ui.screens
 
-import android.content.Intent
 import android.net.Uri
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -55,6 +55,7 @@ import com.picflick.app.util.withCacheBust
 import com.picflick.app.viewmodel.HomeViewModel
 import java.io.File
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 /**
  * Home screen with photo grid and bottom navigation
@@ -77,6 +78,10 @@ fun HomeScreen(
     var selectedFlickIndex by remember { mutableIntStateOf(0) }
     var privacySetting by remember { mutableStateOf("friends") } // "friends" or "public"
     var taggedFriends by remember { mutableStateOf<List<String>>(emptyList()) } // ADDED: Tagged friends
+    var showShareToChatDialog by remember { mutableStateOf(false) }
+    var flickToShare by remember { mutableStateOf<Flick?>(null) }
+    var isSharingPhoto by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
     
     // Reaction picker state
     var showReactionPicker by remember { mutableStateOf(false) }
@@ -250,12 +255,8 @@ fun HomeScreen(
                 }
             },
             onShareClick = {
-                val shareIntent = Intent().apply {
-                    action = Intent.ACTION_SEND
-                    type = "text/plain"
-                    putExtra(Intent.EXTRA_TEXT, "Check out this photo on PicFlick: ${flick.imageUrl}")
-                }
-                context.startActivity(Intent.createChooser(shareIntent, "Share Photo"))
+                flickToShare = flick
+                showShareToChatDialog = true
             },
             canDelete = flick.userId == userProfile.uid,
             onDeleteClick = {
@@ -277,6 +278,91 @@ fun HomeScreen(
             }
         )
         } // End key
+    }
+
+    if (showShareToChatDialog && flickToShare != null) {
+        AlertDialog(
+            onDismissRequest = {
+                if (!isSharingPhoto) {
+                    showShareToChatDialog = false
+                    flickToShare = null
+                }
+            },
+            title = { Text("Share to chat") },
+            text = {
+                if (friends.isEmpty()) {
+                    Text("No friends available to share with yet.")
+                } else {
+                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        friends.forEach { friend ->
+                            OutlinedButton(
+                                onClick = {
+                                    val photo = flickToShare ?: return@OutlinedButton
+                                    scope.launch {
+                                        isSharingPhoto = true
+                                        val chatRepository = com.picflick.app.repository.ChatRepository()
+                                        when (val chatResult = chatRepository.getOrCreateChatSession(
+                                            userId1 = userProfile.uid,
+                                            userId2 = friend.uid,
+                                            user1Name = userProfile.displayName,
+                                            user2Name = friend.displayName,
+                                            user1Photo = userProfile.photoUrl,
+                                            user2Photo = friend.photoUrl
+                                        )) {
+                                            is com.picflick.app.data.Result.Success -> {
+                                                val message = com.picflick.app.data.ChatMessage(
+                                                    chatId = chatResult.data,
+                                                    senderId = userProfile.uid,
+                                                    senderName = userProfile.displayName,
+                                                    senderPhotoUrl = userProfile.photoUrl,
+                                                    text = "",
+                                                    imageUrl = photo.imageUrl,
+                                                    timestamp = System.currentTimeMillis(),
+                                                    read = false,
+                                                    delivered = false
+                                                )
+                                                when (val sendResult = chatRepository.sendMessage(chatResult.data, message, friend.uid)) {
+                                                    is com.picflick.app.data.Result.Success -> {
+                                                        Toast.makeText(context, "Photo shared to ${friend.displayName}", Toast.LENGTH_SHORT).show()
+                                                        showShareToChatDialog = false
+                                                        flickToShare = null
+                                                    }
+                                                    is com.picflick.app.data.Result.Error -> {
+                                                        Toast.makeText(context, sendResult.message, Toast.LENGTH_SHORT).show()
+                                                    }
+                                                    else -> Unit
+                                                }
+                                            }
+                                            is com.picflick.app.data.Result.Error -> {
+                                                Toast.makeText(context, chatResult.message, Toast.LENGTH_SHORT).show()
+                                            }
+                                            else -> Unit
+                                        }
+                                        isSharingPhoto = false
+                                    }
+                                },
+                                enabled = !isSharingPhoto,
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text(friend.displayName)
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        if (!isSharingPhoto) {
+                            showShareToChatDialog = false
+                            flickToShare = null
+                        }
+                    }
+                ) {
+                    Text(if (isSharingPhoto) "Sharing..." else "Cancel")
+                }
+            }
+        )
     }
 
     // Animated Reaction Picker Dialog for long press

@@ -68,6 +68,7 @@ fun ProfileScreen(
     onProfilePhotoClick: () -> Unit = {},
     onRefresh: () -> Unit = {},
     onPlanOptions: () -> Unit = {},
+    onFriendsClick: () -> Unit = {},
     onReaction: (Flick, ReactionType?) -> Unit = { _, _ -> },
     isLoading: Boolean = false
 ) {
@@ -97,6 +98,10 @@ fun ProfileScreen(
         uri?.let { onPhotoSelected(it) }
     }
     
+    val friendsCount = remember(userProfile.followers, userProfile.following) {
+        userProfile.followers.intersect(userProfile.following.toSet()).size
+    }
+
     // Keep bio stable - don't clear when profile temporarily reloads
     var cachedBio by remember { mutableStateOf(userProfile.bio) }
     
@@ -316,14 +321,10 @@ fun ProfileScreen(
                 isDarkMode = isDarkMode
             )
             ModernStatItem(
-                value = userProfile.followers.size.toString(),
-                label = "Followers",
-                isDarkMode = isDarkMode
-            )
-            ModernStatItem(
-                value = userProfile.following.size.toString(),
-                label = "Following",
-                isDarkMode = isDarkMode
+                value = friendsCount.toString(),
+                label = "Friends",
+                isDarkMode = isDarkMode,
+                onClick = onFriendsClick
             )
             ModernStatItem(
                 value = currentStreak.toString(),
@@ -809,14 +810,17 @@ private fun ProfilePhotoGridItem(
 private fun ModernStatItem(
     value: String,
     label: String,
-    isDarkMode: Boolean
+    isDarkMode: Boolean,
+    onClick: () -> Unit = {}
 ) {
     val textColor = if (isDarkMode) Color.White else Color.Black
     val subtitleColor = if (isDarkMode) Color.Gray else Color.DarkGray
     
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier.wrapContentWidth()  // Don't expand unnecessarily
+        modifier = Modifier
+            .wrapContentWidth()  // Don't expand unnecessarily
+            .clickable { onClick() }
     ) {
         // Fixed height container for value (30.dp matches badge height)
         Box(

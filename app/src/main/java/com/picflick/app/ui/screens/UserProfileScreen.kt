@@ -1,5 +1,6 @@
 package com.picflick.app.ui.screens
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -15,7 +16,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.pullrefresh.PullRefreshIndicator
 import androidx.compose.material.pullrefresh.pullRefresh
@@ -70,6 +70,8 @@ fun UserProfileScreen(
     onRefresh: () -> Unit = {},
     onReaction: (Flick, ReactionType?) -> Unit = { _, _ -> } // NEW: Reaction callback
 ) {
+    BackHandler(onBack = onBack)
+
     // Pull-to-refresh state
     val pullRefreshState = rememberPullRefreshState(
         refreshing = isLoading,
@@ -98,21 +100,7 @@ fun UserProfileScreen(
                 .verticalScroll(rememberScrollState()),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Top bar with back button
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 8.dp, vertical = 8.dp),
-                horizontalArrangement = Arrangement.Start
-            ) {
-                IconButton(onClick = onBack) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = "Back",
-                        tint = primaryTextColor
-                    )
-                }
-            }
+            Spacer(modifier = Modifier.height(8.dp))
 
             // Profile photo
             Box(
@@ -152,26 +140,7 @@ fun UserProfileScreen(
                 color = primaryTextColor
             )
 
-            // Username handle (use displayName as handle)
-            Text(
-                text = "@${userProfile.displayName.lowercase().replace(" ", "_")}",
-                fontSize = 16.sp,
-                color = secondaryTextColor
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Stats row
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly
-            ) {
-                StatItem(photos.size.toString(), "Photos", primaryTextColor, secondaryTextColor)
-                StatItem(userProfile.followers.size.toString(), "Followers", primaryTextColor, secondaryTextColor)
-                StatItem(userProfile.following.size.toString(), "Following", primaryTextColor, secondaryTextColor)
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
             // Bio
             if (userProfile.bio.isNotEmpty()) {
@@ -181,10 +150,40 @@ fun UserProfileScreen(
                     color = secondaryTextColor,
                     modifier = Modifier.padding(horizontal = 32.dp)
                 )
+                Spacer(modifier = Modifier.height(10.dp))
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Action buttons above photos
+            if (isFriend) {
+                Button(
+                    onClick = onMessageClick,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 32.dp)
+                ) {
+                    Text("Send Message")
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                OutlinedButton(
+                    onClick = onUnfriend,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 32.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        contentColor = Color.Gray
+                    )
+                ) {
+                    Text("Remove Friend")
+                }
+
                 Spacer(modifier = Modifier.height(16.dp))
             }
 
-            Spacer(modifier = Modifier.height(32.dp))
+            Spacer(modifier = Modifier.height(12.dp))
 
             // Photos Grid (only for friends)
             if (isFriend) {
@@ -196,13 +195,14 @@ fun UserProfileScreen(
                     )
                 } else {
                     Text(
-                        text = "Photos",
+                        text = "${photos.size} photos",
                         fontSize = 20.sp,
                         fontWeight = FontWeight.Bold,
                         color = primaryTextColor,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 8.dp)
+                            .padding(vertical = 8.dp),
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
                     )
 
                     // Match ProfileScreen standard sizing exactly
@@ -247,31 +247,6 @@ fun UserProfileScreen(
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
-
-                // Message button for friends
-                Button(
-                    onClick = onMessageClick,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 32.dp)
-                ) {
-                    Text("Send Message")
-                }
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                // Unfriend button
-                OutlinedButton(
-                    onClick = onUnfriend,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 32.dp),
-                    colors = ButtonDefaults.outlinedButtonColors(
-                        contentColor = Color.Gray
-                    )
-                ) {
-                    Text("Remove Friend")
-                }
             } else if (hasReceivedRequest) {
                 // Accept friend request button
                 Text(
@@ -311,12 +286,14 @@ fun UserProfileScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Block user button
-            TextButton(
+            // Block user button (same boxed style)
+            OutlinedButton(
                 onClick = onBlockUser,
-                modifier = Modifier.padding(horizontal = 32.dp),
-                colors = ButtonDefaults.textButtonColors(
-                    contentColor = Color.Red.copy(alpha = 0.7f)
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 32.dp),
+                colors = ButtonDefaults.outlinedButtonColors(
+                    contentColor = Color.Red.copy(alpha = 0.85f)
                 )
             ) {
                 Icon(
@@ -324,7 +301,7 @@ fun UserProfileScreen(
                     contentDescription = null,
                     modifier = Modifier.size(16.dp)
                 )
-                Spacer(modifier = Modifier.width(4.dp))
+                Spacer(modifier = Modifier.width(6.dp))
                 Text("Block User")
             }
 
@@ -358,30 +335,6 @@ fun UserProfileScreen(
         }
     }
     // End of Box (pull-refresh container)
-}
-
-@Composable
-private fun StatItem(
-    value: String,
-    label: String,
-    valueColor: Color,
-    labelColor: Color
-) {
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Text(
-            text = value,
-            fontSize = 24.sp,
-            fontWeight = FontWeight.Bold,
-            color = valueColor
-        )
-        Text(
-            text = label,
-            fontSize = 14.sp,
-            color = labelColor
-        )
-    }
 }
 
 /**
