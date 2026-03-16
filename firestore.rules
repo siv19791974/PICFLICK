@@ -93,6 +93,25 @@ service cloud.firestore {
       // Only the owner can update (mark as read) or delete
       allow update, delete: if isAuth() && isMine(resource.data.userId);
     }
+
+    // FEEDBACK submissions from Contact Us
+    match /feedback/{feedbackId} {
+      // User can create feedback only for themselves
+      allow create: if isAuth() && request.resource.data.userId == request.auth.uid;
+      // User can read only their own feedback entries
+      allow read: if isAuth() && resource.data.userId == request.auth.uid;
+      // No client-side updates/deletes (handled by admin tools)
+      allow update, delete: if false;
+    }
+
+    // REPORTS (photo/user reports)
+    match /reports/{reportId} {
+      // Reporter must be authenticated and match reporterId field
+      allow create: if isAuth() && request.resource.data.reporterId == request.auth.uid;
+      // Users can read only their own reports
+      allow read: if isAuth() && resource.data.reporterId == request.auth.uid;
+      allow update, delete: if false;
+    }
     
     // CHAT SESSIONS - Fixed collection name and rules
     match /chatSessions/{chatId} {

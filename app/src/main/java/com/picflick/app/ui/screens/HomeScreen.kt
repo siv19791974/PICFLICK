@@ -25,6 +25,7 @@ import androidx.compose.material.pullrefresh.PullRefreshIndicator
 import androidx.compose.material.pullrefresh.pullRefresh
 import androidx.compose.material.pullrefresh.rememberPullRefreshState
 import androidx.compose.ui.graphics.RectangleShape
+import android.content.res.Configuration
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -36,6 +37,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -557,8 +559,15 @@ private fun FlickGrid(
     BoxWithConstraints(
         modifier = Modifier.fillMaxSize()
     ) {
-        // Calculate height for 4 rows with tiny gap at bottom for light blue BG
-        val rowHeight = this.maxHeight / 4.1f
+        val configuration = LocalConfiguration.current
+        val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+
+        // Portrait: ~4 rows visible; Landscape: ~1 row visible (3 photos total)
+        val rowHeight = if (isLandscape) {
+            this.maxHeight / 1.1f
+        } else {
+            this.maxHeight / 4.1f
+        }
 
         // Track scroll position for infinite scroll
         val listState = rememberLazyGridState()

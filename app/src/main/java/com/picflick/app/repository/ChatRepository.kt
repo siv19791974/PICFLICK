@@ -77,10 +77,11 @@ class ChatRepository {
         recipientId: String
     ): Result<Unit> {
         return try {
-            val messageWithId = message.copy(
-                id = db.collection("chatSessions").document(chatId)
+            val resolvedMessageId = message.id.ifBlank {
+                db.collection("chatSessions").document(chatId)
                     .collection("messages").document().id
-            )
+            }
+            val messageWithId = message.copy(id = resolvedMessageId)
 
             // Add message
             db.collection("chatSessions").document(chatId)
@@ -146,16 +147,7 @@ class ChatRepository {
         user2Photo: String = ""
     ): Result<String> {
         return try {
-            // SECURITY CHECK: Verify users are friends (mutual followers)
-            val areFriends = flickRepository.areFriends(userId1, userId2)
-            if (!areFriends) {
-                return Result.Error(
-                    Exception("Not friends"), 
-                    "You can only message friends. Follow each other to start chatting!"
-                )
-            }
-            
-            // Check if session already exists
+            // First, check if session already exists (allow reuse even if users are no longer mutuals)
             val existing = db.collection("chatSessions")
                 .whereArrayContains("participants", userId1)
                 .get()
@@ -167,23 +159,32 @@ class ChatRepository {
                 }
 
             if (existing != null) {
-                Result.Success(existing.id)
-            } else {
-                // Create new session
-                val newSession = hashMapOf(
-                    "id" to "",
-                    "participants" to listOf(userId1, userId2),
-                    "participantNames" to mapOf(userId1 to user1Name, userId2 to user2Name),
-                    "participantPhotos" to mapOf(userId1 to user1Photo, userId2 to user2Photo),
-                    "lastMessage" to "",
-                    "lastTimestamp" to System.currentTimeMillis(),
-                    "createdAt" to System.currentTimeMillis()
-                )
-
-                val docRef = db.collection("chatSessions").add(newSession).await()
-                docRef.update("id", docRef.id).await()
-                Result.Success(docRef.id)
+                return Result.Success(existing.id)
             }
+
+            // SECURITY CHECK for NEW chats only: users must be friends (mutual followers)
+            val areFriends = flickRepository.areFriends(userId1, userId2)
+            if (!areFriends) {
+                return Result.Error(
+                    Exception("Not friends"),
+                    "You can only message friends. Follow each other to start chatting!"
+                )
+            }
+
+            // Create new session
+            val newSession = hashMapOf(
+                "id" to "",
+                "participants" to listOf(userId1, userId2),
+                "participantNames" to mapOf(userId1 to user1Name, userId2 to user2Name),
+                "participantPhotos" to mapOf(userId1 to user1Photo, userId2 to user2Photo),
+                "lastMessage" to "",
+                "lastTimestamp" to System.currentTimeMillis(),
+                "createdAt" to System.currentTimeMillis()
+            )
+
+            val docRef = db.collection("chatSessions").add(newSession).await()
+            docRef.update("id", docRef.id).await()
+            Result.Success(docRef.id)
         } catch (e: Exception) {
             Result.Error(e, e.message ?: "Failed to create chat session")
         }
