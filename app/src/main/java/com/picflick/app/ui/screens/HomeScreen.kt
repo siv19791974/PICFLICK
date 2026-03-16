@@ -643,8 +643,7 @@ private fun FlickCard(
     val topReaction = reactionCounts.maxByOrNull { it.value }
     val topReactionCount = topReaction?.value ?: 0
     val topReactionEmoji = topReaction?.key?.toEmoji() ?: "❤️"
-    val totalReactions = flick.getTotalReactions()
-    
+
     Card(
         modifier = Modifier
             .padding(1.dp) // Smaller padding
@@ -675,10 +674,9 @@ private fun FlickCard(
                 modifier = Modifier
                     .align(Alignment.BottomStart)
                     .fillMaxWidth()
-                    .background(
-                        color = Color.Black.copy(alpha = 0.5f)
-                    )
-                    .padding(horizontal = 4.dp, vertical = 2.dp),
+                    .height(20.dp)
+                    .background(color = Color.Black.copy(alpha = 0.5f))
+                    .padding(horizontal = 4.dp, vertical = 1.dp),
                 contentAlignment = Alignment.CenterStart
             ) {
                 Row(
@@ -697,14 +695,19 @@ private fun FlickCard(
                         maxLines = 1,
                         modifier = Modifier.weight(1f)
                     )
-                    
-                    // Right: Show only the TOP reaction (highest count) on thumbnail
-                    if (topReactionCount > 0) {
-                        Text(
-                            text = "$topReactionEmoji $topReactionCount",
-                            fontSize = 10.sp,
-                            color = Color.White
-                        )
+
+                    // Right: fixed-width slot keeps banner stable
+                    Box(
+                        modifier = Modifier.width(36.dp),
+                        contentAlignment = Alignment.CenterEnd
+                    ) {
+                        if (topReactionCount > 0) {
+                            Text(
+                                text = "$topReactionEmoji $topReactionCount",
+                                fontSize = 10.sp,
+                                color = Color.White
+                            )
+                        }
                     }
                 }
             }

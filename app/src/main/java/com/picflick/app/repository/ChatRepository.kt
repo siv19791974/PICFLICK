@@ -18,6 +18,19 @@ class ChatRepository {
     private val db = FirebaseFirestore.getInstance()
     private val flickRepository = FlickRepository.getInstance()
 
+    private fun Any?.toIntOrNullSafe(): Int? = when (this) {
+        is Int -> this
+        is Long -> this.toInt()
+        is Double -> this.toInt()
+        is Float -> this.toInt()
+        is String -> this.toIntOrNull()
+        else -> null
+    }
+
+    private fun com.google.firebase.firestore.DocumentSnapshot.getIntFromAny(field: String): Int? {
+        return get(field).toIntOrNullSafe()
+    }
+
     /**
      * Get all chat sessions for a user
      */
@@ -31,11 +44,25 @@ class ChatRepository {
                     close(error)
                     return@addSnapshotListener
                 }
-                val sessions = snapshot?.toObjects(ChatSession::class.java) ?: emptyList()
+                val sessions = snapshot?.documents?.map { doc ->
+                    val base = doc.toObject(ChatSession::class.java) ?: ChatSession()
+                    val unreadFromDirectField = doc.getIntFromAny("unreadCount_$userId")
+                    val unreadFromMap = (doc.get("unreadCount") as? Map<*, *>)
+                        ?.get(userId)
+                        .toIntOrNullSafe()
+                    val resolvedUnread = unreadFromDirectField
+                        ?: unreadFromMap
+                        ?: base.unreadCount
+
+                    base.copy(
+                        id = if (base.id.isBlank()) doc.id else base.id,
+                        unreadCount = resolvedUnread
+                    )
+                } ?: emptyList()
                 // Sort client-side by lastTimestamp descending
                 val sortedSessions = sessions.sortedByDescending { it.lastTimestamp }
                 trySend(sortedSessions)
-            }
+}
         awaitClose { subscription.remove() }
     }
 
@@ -341,6 +368,61 @@ class ChatRepository {
     }
 
     /**
+     * Delete selected messages in a chat.
+     */
+    suspend fun deleteMessages(chatId: String, messageIds: List<String>): Result<Unit> {
+        return try {
+            if (messageIds.isEmpty()) return Result.Success(Unit)
+
+            val batch = db.batch()
+            val messagesCollection = db.collection("chatSessions")
+                .document(chatId)
+                .collection("messages")
+
+            messageIds.forEach { messageId ->
+                batch.delete(messagesCollection.document(messageId))
+            }
+            batch.commit().await()
+
+            // Update chat summary with latest remaining message (if any)
+            val latestMessageSnapshot = messagesCollection
+                .orderBy("timestamp", Query.Direction.DESCENDING)
+                .limit(1)
+                .get()
+                .await()
+
+            val latestDoc = latestMessageSnapshot.documents.firstOrNull()
+            if (latestDoc != null) {
+                val latestText = latestDoc.getString("text").orEmpty()
+                val latestImage = latestDoc.getString("imageUrl").orEmpty()
+                val lastMessagePreview = if (latestText.isBlank() && latestImage.isNotBlank()) "📷 Photo" else latestText
+
+                db.collection("chatSessions").document(chatId)
+                    .update(
+                        mapOf(
+                            "lastMessage" to lastMessagePreview,
+                            "lastTimestamp" to (latestDoc.getLong("timestamp") ?: System.currentTimeMillis()),
+                            "lastSenderId" to (latestDoc.getString("senderId") ?: "")
+                        )
+                    ).await()
+            } else {
+                db.collection("chatSessions").document(chatId)
+                    .update(
+                        mapOf(
+                            "lastMessage" to "",
+                            "lastTimestamp" to System.currentTimeMillis(),
+                            "lastSenderId" to ""
+                        )
+                    ).await()
+            }
+
+            Result.Success(Unit)
+        } catch (e: Exception) {
+            Result.Error(e, e.message ?: "Failed to delete selected messages")
+        }
+    }
+
+    /**
      * Delete a chat session and all its messages.
      */
     suspend fun deleteChatSession(chatId: String): Result<Unit> {
@@ -413,8 +495,11 @@ class ChatRepository {
                 // Count unread messages from the session data
                 var count = 0
                 snapshot?.documents?.forEach { doc ->
-                    // Get unread count from session metadata if available
-                    val sessionUnread = doc.getLong("unreadCount_$userId")?.toInt() ?: 0
+                    val unreadFromDirectField = doc.getIntFromAny("unreadCount_$userId")
+                    val unreadFromMap = (doc.get("unreadCount") as? Map<*, *>)
+                        ?.get(userId)
+                        .toIntOrNullSafe()
+                    val sessionUnread = unreadFromDirectField ?: unreadFromMap ?: 0
                     count += sessionUnread
                 }
                 trySend(count)

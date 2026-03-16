@@ -1,5 +1,6 @@
 package com.picflick.app.ui.screens
 
+import android.content.res.Configuration
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -30,6 +31,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -84,7 +86,9 @@ fun UserProfileScreen(
     
     // Dark mode state
     val isDarkMode = com.picflick.app.ui.theme.ThemeManager.isDarkMode.value
-    val primaryTextColor = if (isDarkMode) Color.White else Color.Black
+    val configuration = LocalConfiguration.current
+    val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+val primaryTextColor = if (isDarkMode) Color.White else Color.Black
     val secondaryTextColor = if (isDarkMode) Color.Gray else Color.Black.copy(alpha = 0.7f)
     val tierRingColor = userProfile.subscriptionTier.getColor()
 
@@ -103,10 +107,12 @@ fun UserProfileScreen(
             Spacer(modifier = Modifier.height(8.dp))
 
             // Profile photo
+            val avatarSize = if (isLandscape) 116.dp else 150.dp
+            val sidePadding = if (isLandscape) 20.dp else 32.dp
             Box(
                 modifier = Modifier
-                    .size(150.dp)
-                    .clip(CircleShape)
+                    .size(avatarSize)
+.clip(CircleShape)
                     .background(Color.DarkGray.copy(alpha = 0.3f))
                     .border(4.dp, tierRingColor, CircleShape)
                     .clickable { onProfilePhotoClick() },
@@ -148,8 +154,8 @@ fun UserProfileScreen(
                     text = userProfile.bio,
                     fontSize = 14.sp,
                     color = secondaryTextColor,
-                    modifier = Modifier.padding(horizontal = 32.dp)
-                )
+                    modifier = Modifier                        .padding(horizontal = sidePadding)
+)
                 Spacer(modifier = Modifier.height(10.dp))
             }
 
@@ -161,8 +167,8 @@ fun UserProfileScreen(
                     onClick = onMessageClick,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 32.dp)
-                ) {
+                        .padding(horizontal = sidePadding)
+) {
                     Text("Send Message")
                 }
 
@@ -253,15 +259,15 @@ fun UserProfileScreen(
                     text = "${userProfile.displayName} wants to be friends",
                     fontSize = 16.sp,
                     color = primaryTextColor,
-                    modifier = Modifier.padding(horizontal = 32.dp)
-                )
+                    modifier = Modifier                        .padding(horizontal = sidePadding)
+)
                 Spacer(modifier = Modifier.height(16.dp))
                 Button(
                     onClick = onAcceptRequest,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 32.dp)
-                ) {
+                        .padding(horizontal = sidePadding)
+) {
                     Text("Accept Friend Request")
                 }
             } else if (hasSentRequest) {
@@ -270,16 +276,16 @@ fun UserProfileScreen(
                     text = "Friend request sent",
                     fontSize = 16.sp,
                     color = secondaryTextColor,
-                    modifier = Modifier.padding(horizontal = 32.dp)
-                )
+                    modifier = Modifier                        .padding(horizontal = sidePadding)
+)
             } else {
                 // Add friend button
                 Button(
                     onClick = onAddFriend,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 32.dp)
-                ) {
+                        .padding(horizontal = sidePadding)
+) {
                     Text("Add Friend")
                 }
             }
@@ -348,10 +354,10 @@ private fun ProfilePhotoCard(
     onPhotoClick: () -> Unit,
     onLongPress: () -> Unit
 ) {
-    // Get reaction counts and sort by count (descending) to show top 5
     val reactionCounts = flick.getReactionCounts()
-    val topReactions = reactionCounts.entries.sortedByDescending { it.value }.take(5)
-    val totalReactions = flick.getTotalReactions()
+    val topReaction = reactionCounts.maxByOrNull { it.value }
+    val topReactionCount = topReaction?.value ?: 0
+    val topReactionEmoji = topReaction?.key?.toEmoji() ?: "❤️"
 
     Card(
         modifier = Modifier
@@ -378,43 +384,41 @@ private fun ProfilePhotoCard(
                 contentScale = ContentScale.Crop
             )
 
-            // Info overlay at bottom (reactions) - BLACK BAR
-            if (topReactions.isNotEmpty()) {
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.BottomStart)
-                        .fillMaxWidth()
-                        .background(
-                            color = Color.Black.copy(alpha = 0.6f)
-                        )
-                        .padding(horizontal = 4.dp, vertical = 2.dp),
-                    contentAlignment = Alignment.CenterStart
+            // Fixed mini info banner (same style as Home/Profile)
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .fillMaxWidth()
+                    .height(20.dp)
+                    .background(color = Color.Black.copy(alpha = 0.5f))
+                    .padding(horizontal = 4.dp, vertical = 1.dp),
+                contentAlignment = Alignment.CenterStart
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        // Left: Show up to 5 reactions
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(4.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            topReactions.forEach { (reactionType, count) ->
-                                Text(
-                                    text = "${reactionType.toEmoji()} $count",
-                                    fontSize = 9.sp,
-                                    color = Color.White
-                                )
-                            }
-                        }
+                    Text(
+                        text = flick.userName,
+                        color = Color.White,
+                        fontSize = 10.sp,
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            fontWeight = FontWeight.SemiBold
+                        ),
+                        maxLines = 1,
+                        modifier = Modifier.weight(1f)
+                    )
 
-                        // Right: Total count if more than 5
-                        if (totalReactions > 5) {
+                    Box(
+                        modifier = Modifier.width(36.dp),
+                        contentAlignment = Alignment.CenterEnd
+                    ) {
+                        if (topReactionCount > 0) {
                             Text(
-                                text = "+$totalReactions",
-                                fontSize = 9.sp,
-                                color = Color.White.copy(alpha = 0.7f)
+                                text = "$topReactionEmoji $topReactionCount",
+                                fontSize = 10.sp,
+                                color = Color.White
                             )
                         }
                     }

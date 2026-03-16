@@ -8,6 +8,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.*
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -27,6 +28,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
@@ -64,6 +66,7 @@ import com.picflick.app.util.withCacheBust
 import android.app.Activity
 import android.content.ContentValues
 import android.content.Context
+import android.content.ContextWrapper
 import android.content.pm.ActivityInfo
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
@@ -81,6 +84,12 @@ import java.net.HttpURLConnection
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.tasks.await
+
+private tailrec fun Context.findActivity(): Activity? = when (this) {
+    is Activity -> this
+    is ContextWrapper -> baseContext.findActivity()
+    else -> null
+}
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -106,18 +115,10 @@ fun FullScreenPhotoViewer(
     val configuration = LocalConfiguration.current
     val screenHeightPx = with(LocalDensity.current) { configuration.screenHeightDp.dp.toPx() }
     val screenWidthPx = with(LocalDensity.current) { configuration.screenWidthDp.dp.toPx() }
-    
-    // Unlock orientation to allow landscape when viewing photos
-    DisposableEffect(Unit) {
-        val activity = context as? Activity
-        activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
-        
-        onDispose {
-            // Lock back to portrait when closing photo viewer
-            activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
-        }
-    }
-    
+    val isLandscape = configuration.screenWidthDp > configuration.screenHeightDp
+
+    // Orientation is controlled below, based on current displayed photo orientation.
+
     // Helper function to show custom toast with PicFlick logo
     fun showPicFlickToast(message: String) {
         val inflater = LayoutInflater.from(context)
@@ -164,9 +165,29 @@ fun FullScreenPhotoViewer(
     val currentFlick = if (validPhotos.isNotEmpty() && currentPageIndex in validPhotos.indices) {
         validPhotos[currentPageIndex]
     } else flick
+
+    var currentPhotoIsLandscape by remember(currentFlick.id) { mutableStateOf(false) }
+
+    LaunchedEffect(currentFlick.id, currentFlick.imageUrl) {
+        currentPhotoIsLandscape = isLandscapeImageUrl(currentFlick.imageUrl)
+    }
+
+    DisposableEffect(currentPhotoIsLandscape) {
+        val activity = context.findActivity()
+        activity?.requestedOrientation = if (currentPhotoIsLandscape) {
+            ActivityInfo.SCREEN_ORIENTATION_FULL_SENSOR
+        } else {
+            ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+        }
+
+        onDispose {
+            // On flick-away/close, always restore portrait app lock
+            activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+        }
+    }
     
     // Calculate if user can delete/react based on CURRENT flick (updates when swiping)
-    val canDeleteCurrent = currentFlick.userId == currentUser.uid
+val canDeleteCurrent = currentFlick.userId == currentUser.uid
     val canReactCurrent = !canDeleteCurrent
     
     // Description states - keyed to currentFlick.id to reset when swiping
@@ -549,8 +570,8 @@ fun FullScreenPhotoViewer(
                 var isDraggingVertically by remember { mutableStateOf(false) }
                 var isDragging by remember { mutableStateOf(false) }
 
-                // Reset drag when photo changes
-                LaunchedEffect(currentPageIndex) {
+                // Reset drag when photo or orientation changes
+                LaunchedEffect(currentPageIndex, configuration.screenWidthDp, configuration.screenHeightDp) {
                     dragXAnim.snapTo(0f)
                     dragYAnim.snapTo(0f)
                     rawDragX = 0f
@@ -558,12 +579,13 @@ fun FullScreenPhotoViewer(
                     isDraggingVertically = false
                     isDragging = false
                 }
-                
+
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
+                        .clipToBounds()
                         .pointerInput(Unit) {
-                            // SWIPE detection only - pinch handled by Zoomable library
+// SWIPE detection only - pinch handled by Zoomable library
                             detectDragGestures(
                                 onDragStart = {
                                     rawDragX = 0f
@@ -730,9 +752,13 @@ fun FullScreenPhotoViewer(
                                     .build(),
                                 contentDescription = null,
                                 modifier = Modifier.fillMaxSize(),
-                                contentScale = ContentScale.Fit // Always fit, no jump when comments open
+                                contentScale = if (isLandscape && currentPhotoIsLandscape) {
+                                    ContentScale.Crop
+                                } else {
+                                    ContentScale.Fit
+                                }
                             )
-                            
+
                             // Like animation overlay for current photo
                             if (isCurrent && showLikeAnimation) {
                                 LikeAnimation(
@@ -753,46 +779,48 @@ fun FullScreenPhotoViewer(
                         )
                     }
                     
-                    // 2. NEXT at RIGHT (for horizontal swipe)
-                    if (currentPageIndex + 1 < validPhotos.size) {
-                        PhotoAtPosition(
-                            photo = validPhotos[currentPageIndex + 1],
-                            isCurrent = false,
-                            baseX = screenWidthPx,
-                            baseY = 0f
-                        )
-                    }
-                    
-                    // 3. PREV at LEFT (for horizontal swipe)
-                    if (currentPageIndex - 1 >= 0) {
-                        PhotoAtPosition(
-                            photo = validPhotos[currentPageIndex - 1],
-                            isCurrent = false,
-                            baseX = -screenWidthPx,
-                            baseY = 0f
-                        )
-                    }
-                    
-                    // 4. NEXT at BOTTOM (for vertical swipe) - SAME photo as RIGHT
-                    if (currentPageIndex + 1 < validPhotos.size) {
-                        PhotoAtPosition(
-                            photo = validPhotos[currentPageIndex + 1],
-                            isCurrent = false,
-                            baseX = 0f,
-                            baseY = screenHeightPx
-                        )
-                    }
+                    if (!isLandscape) {
+                        // 2. NEXT at RIGHT (for horizontal swipe)
+                        if (currentPageIndex + 1 < validPhotos.size) {
+                            PhotoAtPosition(
+                                photo = validPhotos[currentPageIndex + 1],
+                                isCurrent = false,
+                                baseX = screenWidthPx,
+                                baseY = 0f
+                            )
+                        }
 
-                    // 5. PREV at TOP (for vertical swipe) - SAME photo as LEFT
-                    if (currentPageIndex - 1 >= 0) {
-                        PhotoAtPosition(
-                            photo = validPhotos[currentPageIndex - 1],
-                            isCurrent = false,
-                            baseX = 0f,
-                            baseY = -screenHeightPx
-                        )
+                        // 3. PREV at LEFT (for horizontal swipe)
+                        if (currentPageIndex - 1 >= 0) {
+                            PhotoAtPosition(
+                                photo = validPhotos[currentPageIndex - 1],
+                                isCurrent = false,
+                                baseX = -screenWidthPx,
+                                baseY = 0f
+                            )
+                        }
+
+                        // 4. NEXT at BOTTOM (for vertical swipe) - SAME photo as RIGHT
+                        if (currentPageIndex + 1 < validPhotos.size) {
+                            PhotoAtPosition(
+                                photo = validPhotos[currentPageIndex + 1],
+                                isCurrent = false,
+                                baseX = 0f,
+                                baseY = screenHeightPx
+                            )
+                        }
+
+                        // 5. PREV at TOP (for vertical swipe) - SAME photo as LEFT
+                        if (currentPageIndex - 1 >= 0) {
+                            PhotoAtPosition(
+                                photo = validPhotos[currentPageIndex - 1],
+                                isCurrent = false,
+                                baseX = 0f,
+                                baseY = -screenHeightPx
+                            )
+                        }
                     }
-                }
+}
                 
                 // UI OVERLAY - Shows on tap (back button + right menu)
                 AnimatedVisibility(
@@ -800,14 +828,26 @@ fun FullScreenPhotoViewer(
                     enter = fadeIn(),
                     exit = fadeOut()
                 ) {
-                    Box(modifier = Modifier.fillMaxSize()) {
-                        
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .windowInsetsPadding(
+                                WindowInsets.safeDrawing.only(
+                                    if (isLandscape) {
+                                        WindowInsetsSides.Horizontal
+                                    } else {
+                                        WindowInsetsSides.Top + WindowInsetsSides.Horizontal
+                                    }
+                                )
+                            )
+                    ) {
+
                         // BACK BUTTON
                         Box(
                             modifier = Modifier
-                                .padding(start = 16.dp, top = 16.dp)
+                                .padding(start = if (isLandscape) 8.dp else 16.dp, top = if (isLandscape) 8.dp else 16.dp)
                                 .size(44.dp)
-                                .background(
+.background(
                                     Color.Black.copy(alpha = 0.4f),
                                     CircleShape
                                 )
@@ -826,11 +866,11 @@ fun FullScreenPhotoViewer(
                         Column(
                             modifier = Modifier
                                 .align(Alignment.CenterEnd)
-                                .padding(end = 16.dp),
+                                .padding(end = if (isLandscape) 4.dp else 16.dp),
                             horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(20.dp)
+                            verticalArrangement = Arrangement.spacedBy(if (isLandscape) 14.dp else 20.dp)
                         ) {
-                            if (canDeleteCurrent) {
+if (canDeleteCurrent) {
                                 // MY PHOTOS MODE - Icons: Tag, Comment, Chat/Message, Edit, Delete
                                 
                                 // 1. TAG FRIENDS BUTTON
@@ -2856,11 +2896,32 @@ private fun TagFriendsDialog(
     }
 }
 
+private suspend fun isLandscapeImageUrl(imageUrl: String): Boolean = withContext(Dispatchers.IO) {
+    try {
+        val connection = (URL(imageUrl).openConnection() as HttpURLConnection).apply {
+            doInput = true
+            connectTimeout = 8000
+            readTimeout = 8000
+            connect()
+        }
+
+        connection.inputStream.use { input ->
+            val options = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+            BitmapFactory.decodeStream(input, null, options)
+            val width = options.outWidth
+            val height = options.outHeight
+            width > 0 && height > 0 && width > height
+        }
+    } catch (_: Exception) {
+        false
+    }
+}
+
 /**
  * Download image from URL and save to gallery
  */
 private suspend fun downloadImageToGallery(context: Context, imageUrl: String, flickId: String) {
-    withContext(Dispatchers.IO) {
+withContext(Dispatchers.IO) {
         try {
             val url = URL(imageUrl)
             val connection = url.openConnection() as HttpURLConnection

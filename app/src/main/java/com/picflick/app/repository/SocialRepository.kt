@@ -120,15 +120,8 @@ class SocialRepository private constructor() {
      */
     suspend fun unfollowUser(currentUserId: String, targetUserId: String): Result<Unit> {
         return try {
-            val batch = db.batch()
-
             val currentUserRef = db.collection("users").document(currentUserId)
-            batch.update(currentUserRef, "following", FieldValue.arrayRemove(targetUserId))
-
-            val targetUserRef = db.collection("users").document(targetUserId)
-            batch.update(targetUserRef, "followers", FieldValue.arrayRemove(currentUserId))
-
-            batch.commit().await()
+            currentUserRef.update("following", FieldValue.arrayRemove(targetUserId)).await()
             Result.Success(Unit)
         } catch (e: Exception) {
             Result.Error(e, "Failed to unfollow user")
@@ -156,15 +149,9 @@ class SocialRepository private constructor() {
      * Unfollow a user (callback version)
      */
     fun unfollowUser(currentUserId: String, targetUserId: String, onResult: (Result<Unit>) -> Unit) {
-        val batch = db.batch()
-
         val currentUserRef = db.collection("users").document(currentUserId)
-        batch.update(currentUserRef, "following", FieldValue.arrayRemove(targetUserId))
 
-        val targetUserRef = db.collection("users").document(targetUserId)
-        batch.update(targetUserRef, "followers", FieldValue.arrayRemove(currentUserId))
-
-        batch.commit()
+        currentUserRef.update("following", FieldValue.arrayRemove(targetUserId))
             .addOnSuccessListener { onResult(Result.Success(Unit)) }
             .addOnFailureListener { e -> onResult(Result.Error(Exception(e.message), "Failed to unfollow user")) }
     }

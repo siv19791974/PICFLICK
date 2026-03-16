@@ -1,7 +1,10 @@
 package com.picflick.app
 
 import android.app.Activity
+import android.content.Context
+import android.content.ContextWrapper
 import android.content.Intent
+import android.content.pm.ActivityInfo
 import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
@@ -23,6 +26,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.sp
+import com.picflick.app.data.ChatMessage
 import com.picflick.app.data.ChatSession
 import com.picflick.app.data.Flick
 import com.picflick.app.data.ReactionType
@@ -147,6 +151,7 @@ fun AuthenticatedContent(
             selectedOtherUserId = selectedOtherUserId,
             userProfile = userProfile,
             chatViewModel = chatViewModel,
+            friendsViewModel = friendsViewModel,
             onScreenChange = onScreenChange
         )
 
@@ -580,15 +585,18 @@ private fun ChatDetailScreenContent(
     selectedOtherUserId: String,
     userProfile: UserProfile,
     chatViewModel: ChatViewModel,
+    friendsViewModel: FriendsViewModel,
     onScreenChange: (Screen) -> Unit
 ) {
+    var selectedChatPhoto by remember { mutableStateOf<Flick?>(null) }
+
     // Clear chat when leaving this screen
     DisposableEffect(Unit) {
         onDispose {
             chatViewModel.clearCurrentChat()
         }
     }
-    
+
     if (selectedChatSession != null) {
         ChatDetailScreen(
             chatSession = selectedChatSession,
@@ -598,7 +606,51 @@ private fun ChatDetailScreenContent(
             onBack = { onScreenChange(Screen.Chats) },
             onUserProfileClick = { userId ->
                 onScreenChange(Screen.UserProfile(userId))
+            },
+            onPhotoClick = { message ->
+                if (message.imageUrl.isNotBlank()) {
+                    selectedChatPhoto = Flick(
+                        id = if (message.id.isNotBlank()) message.id else "chat_${message.timestamp}",
+                        userId = message.senderId,
+                        userName = message.senderName,
+                        userPhotoUrl = message.senderPhotoUrl,
+                        imageUrl = message.imageUrl,
+                        description = message.text,
+                        timestamp = message.timestamp,
+                        reactions = emptyMap(),
+                        commentCount = 0,
+                        privacy = "friends",
+                        taggedFriends = emptyList(),
+                        reportCount = 0
+                    )
+                }
             }
+        )
+
+        PhotoViewerWrapper(
+            selectedPhoto = selectedChatPhoto,
+            currentUser = userProfile,
+            allPhotos = emptyList(),
+            currentIndex = 0,
+            onDismiss = { selectedChatPhoto = null },
+            onNavigateToPhoto = { },
+            onNavigateToFindFriends = {
+                selectedChatPhoto = null
+                onScreenChange(Screen.FindFriends)
+            },
+            onUserProfileClick = { userId ->
+                selectedChatPhoto = null
+                onScreenChange(
+                    if (userId == userProfile.uid) Screen.Profile
+                    else Screen.UserProfile(userId)
+                )
+            },
+            onReaction = { _, _ -> },
+            onShareClick = { },
+            onDeleteClick = { selectedChatPhoto = null },
+            canDelete = false,
+            onCaptionUpdated = { _, _ -> },
+            friendProfiles = friendsViewModel.followingUsers.associateBy { it.uid }
         )
     } else {
         onScreenChange(Screen.Chats)
@@ -1133,12 +1185,18 @@ private fun UserProfileScreenContent(
 
 // ============== Helper Composables and Functions ==============
 
+private tailrec fun Context.findActivity(): Activity? = when (this) {
+    is Activity -> this
+    is ContextWrapper -> baseContext.findActivity()
+    else -> null
+}
+
 /**
  * Wrapper for FullScreenPhotoViewer with common functionality.
  */
 @Composable
 private fun PhotoViewerWrapper(
-    selectedPhoto: Flick?,
+selectedPhoto: Flick?,
     currentUser: UserProfile,
     allPhotos: List<Flick>,
     currentIndex: Int,
@@ -1154,18 +1212,28 @@ private fun PhotoViewerWrapper(
     friendProfiles: Map<String, UserProfile> = emptyMap(), // Map of userId -> UserProfile for looking up profile pics
     onEditPhotoClick: (Flick) -> Unit = {} // Navigate to edit photo screen
 ) {
-    selectedPhoto?.let { flick ->
-        val isProfilePhoto = flick.id.startsWith("profile_")
+    val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
+    val chatRepository = remember { ChatRepository() }
+    val activity = context.findActivity()
 
-        BackHandler { onDismiss() }
+    selectedPhoto?.let { flick ->
+val isProfilePhoto = flick.id.startsWith("profile_")
+
+        val dismissAndLockPortrait = {
+            activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+            onDismiss()
+        }
+
+        BackHandler { dismissAndLockPortrait() }
 
         val useSinglePhotoMode = isProfilePhoto || allPhotos.isEmpty()
 
         FullScreenPhotoViewer(
             flick = flick,
             currentUser = currentUser,
-            onDismiss = onDismiss,
-            onReaction = { reactionType ->
+            onDismiss = dismissAndLockPortrait,
+onReaction = { reactionType ->
                 if (!isProfilePhoto) onReaction(flick, reactionType)
             },
             onShareClick = { onShareClick(flick) },
@@ -1183,10 +1251,58 @@ private fun PhotoViewerWrapper(
             },
             onNavigateToFindFriends = onNavigateToFindFriends,
             onUserProfileClick = onUserProfileClick,
+            onShareToFriend = { flickId, friendId ->
+                val flickToSend = allPhotos.firstOrNull { it.id == flickId } ?: flick
+                if (flickToSend.imageUrl.isBlank()) {
+                    Toast.makeText(context, "Photo unavailable to share", Toast.LENGTH_SHORT).show()
+                } else {
+                    coroutineScope.launch {
+                        val friendProfile = friendProfiles[friendId]
+                        val friendName = friendProfile?.displayName?.ifBlank { "Friend" } ?: "Friend"
+                        val friendPhoto = friendProfile?.photoUrl ?: ""
+
+                        when (val sessionResult = chatRepository.getOrCreateChatSession(
+                            userId1 = currentUser.uid,
+                            userId2 = friendId,
+                            user1Name = currentUser.displayName,
+                            user2Name = friendName,
+                            user1Photo = currentUser.photoUrl,
+                            user2Photo = friendPhoto
+                        )) {
+                            is com.picflick.app.data.Result.Success -> {
+                                val message = ChatMessage(
+                                    chatId = sessionResult.data,
+                                    senderId = currentUser.uid,
+                                    senderName = currentUser.displayName,
+                                    senderPhotoUrl = currentUser.photoUrl,
+                                    text = "",
+                                    imageUrl = flickToSend.imageUrl,
+                                    timestamp = System.currentTimeMillis(),
+                                    read = false,
+                                    delivered = false
+                                )
+                                when (val sendResult = chatRepository.sendMessage(sessionResult.data, message, friendId)) {
+                                    is com.picflick.app.data.Result.Success -> {
+                                        Toast.makeText(context, "Photo sent", Toast.LENGTH_SHORT).show()
+                                    }
+                                    is com.picflick.app.data.Result.Error -> {
+                                        Toast.makeText(context, sendResult.message, Toast.LENGTH_SHORT).show()
+                                    }
+                                    is com.picflick.app.data.Result.Loading -> Unit
+                                }
+                            }
+                            is com.picflick.app.data.Result.Error -> {
+                                Toast.makeText(context, sessionResult.message, Toast.LENGTH_SHORT).show()
+                            }
+                            is com.picflick.app.data.Result.Loading -> Unit
+                        }
+                    }
+                }
+            },
             friendProfiles = friendProfiles, // Pass friend profiles for User B profile pics
             onEditPhotoClick = onEditPhotoClick // Pass edit photo callback
         )
-    }
+}
 }
 
 /**
