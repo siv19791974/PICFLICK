@@ -9,6 +9,7 @@ import com.google.firebase.firestore.Query
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 
 /**
@@ -44,24 +45,35 @@ class ChatRepository {
                     close(error)
                     return@addSnapshotListener
                 }
-                val sessions = snapshot?.documents?.map { doc ->
-                    val base = doc.toObject(ChatSession::class.java) ?: ChatSession()
-                    val unreadFromDirectField = doc.getIntFromAny("unreadCount_$userId")
-                    val unreadFromMap = (doc.get("unreadCount") as? Map<*, *>)
-                        ?.get(userId)
-                        .toIntOrNullSafe()
-                    val resolvedUnread = unreadFromDirectField
-                        ?: unreadFromMap
-                        ?: base.unreadCount
+                launch {
+                    val rawSessions = snapshot?.documents?.mapNotNull { doc ->
+                        val base = doc.toObject(ChatSession::class.java) ?: return@mapNotNull null
+                        val unreadFromDirectField = doc.getIntFromAny("unreadCount_$userId")
+                        val unreadFromMap = (doc.get("unreadCount") as? Map<*, *>)
+                            ?.get(userId)
+                            .toIntOrNullSafe()
+                        val resolvedUnread = unreadFromDirectField
+                            ?: unreadFromMap
+                            ?: base.unreadCount
 
-                    base.copy(
-                        id = if (base.id.isBlank()) doc.id else base.id,
-                        unreadCount = resolvedUnread
-                    )
-                } ?: emptyList()
-                // Sort client-side by lastTimestamp descending
-                val sortedSessions = sessions.sortedByDescending { it.lastTimestamp }
-                trySend(sortedSessions)
+                        base.copy(
+                            id = if (base.id.isBlank()) doc.id else base.id,
+                            unreadCount = resolvedUnread
+                        )
+                    } ?: emptyList()
+
+                    // Defensive filtering: hide chats where users are no longer mutual friends.
+                    val filteredSessions = rawSessions.filter { session ->
+                        val otherUserId = session.participants.firstOrNull { it != userId }
+                        otherUserId != null &&
+                                session.participants.size == 2 &&
+                                flickRepository.areFriends(userId, otherUserId)
+                    }
+
+                    // Sort client-side by lastTimestamp descending
+                    val sortedSessions = filteredSessions.sortedByDescending { it.lastTimestamp }
+                    trySend(sortedSessions)
+                }
 }
         awaitClose { subscription.remove() }
     }

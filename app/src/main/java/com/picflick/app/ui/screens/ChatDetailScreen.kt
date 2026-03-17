@@ -421,7 +421,7 @@ Column(modifier = Modifier.fillMaxSize()) {
                                     .fillMaxSize()
                                     .padding(horizontal = 8.dp),
                                 state = listState,
-                                contentPadding = PaddingValues(start = 0.dp, top = 8.dp, end = 0.dp, bottom = 8.dp)
+                                contentPadding = PaddingValues(start = 0.dp, top = 8.dp, end = 0.dp, bottom = 88.dp)
                             ) {
                                 itemsIndexed(
                                     items = viewModel.messages,
@@ -488,7 +488,8 @@ Column(modifier = Modifier.fillMaxSize()) {
         Surface(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
-                .fillMaxWidth(),
+                .fillMaxWidth()
+                .imePadding(),
             color = Color.Black,
             tonalElevation = 0.dp
         ) {

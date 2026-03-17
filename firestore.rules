@@ -37,7 +37,20 @@ service cloud.firestore {
     // USERS
     match /users/{userId} {
       allow read: if true;  // Allow anyone to read user profiles (needed for app startup)
-      allow write: if isAuth() && isMine(userId);
+
+      // Owner can always write their own profile.
+      // Cross-user writes are limited strictly to social relationship fields used by friend requests.
+      allow write: if isAuth() && (
+        isMine(userId) ||
+        request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly([
+            'pendingFollowRequests',
+            'sentFollowRequests',
+            'following',
+            'followers',
+            'blockedUsers'
+          ])
+      );
     }
     
     // FRIENDSHIPS

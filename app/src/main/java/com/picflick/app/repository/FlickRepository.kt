@@ -468,6 +468,33 @@ class FlickRepository private constructor() {
     }
 
     /**
+     * Listen to user profile realtime updates
+     */
+    fun listenToUserProfile(userId: String, onResult: (Result<UserProfile>) -> Unit): ListenerRegistration {
+        onResult(Result.Loading)
+        return db.collection("users").document(userId)
+            .addSnapshotListener { snapshot, error ->
+                when {
+                    error != null -> {
+                        onResult(Result.Error(error, "Failed to listen to profile updates"))
+                    }
+                    snapshot == null || !snapshot.exists() -> {
+                        onResult(Result.Error(Exception("Profile not found"), "Profile not found"))
+                    }
+                    else -> {
+                        val profile = snapshot.toObject(UserProfile::class.java)
+                        if (profile != null) {
+                            _currentUserProfile.value = profile
+                            onResult(Result.Success(profile))
+                        } else {
+                            onResult(Result.Error(Exception("Profile parsing failed"), "Failed to parse profile"))
+                        }
+                    }
+                }
+            }
+    }
+
+    /**
      * Save user profile
      */
     fun saveUserProfile(userId: String, profile: UserProfile, onResult: (Result<Unit>) -> Unit) {
@@ -625,12 +652,12 @@ class FlickRepository private constructor() {
         return try {
             val batch = db.batch()
 
-            // Add to current user's following
+            // Make friendship mutual on both profiles
             val currentUserRef = db.collection("users").document(currentUserId)
-            batch.update(currentUserRef, "following", FieldValue.arrayUnion(targetUserId))
-
-            // Add to target user's followers
             val targetUserRef = db.collection("users").document(targetUserId)
+            batch.update(currentUserRef, "following", FieldValue.arrayUnion(targetUserId))
+            batch.update(currentUserRef, "followers", FieldValue.arrayUnion(targetUserId))
+            batch.update(targetUserRef, "following", FieldValue.arrayUnion(currentUserId))
             batch.update(targetUserRef, "followers", FieldValue.arrayUnion(currentUserId))
 
             batch.commit().await()
@@ -657,12 +684,12 @@ class FlickRepository private constructor() {
         return try {
             val batch = db.batch()
 
-            // Remove from current user's following
+            // Remove friendship mutually on both profiles
             val currentUserRef = db.collection("users").document(currentUserId)
-            batch.update(currentUserRef, "following", FieldValue.arrayRemove(targetUserId))
-
-            // Remove from target user's followers
             val targetUserRef = db.collection("users").document(targetUserId)
+            batch.update(currentUserRef, "following", FieldValue.arrayRemove(targetUserId))
+            batch.update(currentUserRef, "followers", FieldValue.arrayRemove(targetUserId))
+            batch.update(targetUserRef, "following", FieldValue.arrayRemove(currentUserId))
             batch.update(targetUserRef, "followers", FieldValue.arrayRemove(currentUserId))
 
             batch.commit().await()
@@ -730,12 +757,12 @@ class FlickRepository private constructor() {
     fun followUser(currentUserId: String, targetUserId: String, onResult: (Result<Unit>) -> Unit) {
         val batch = db.batch()
 
-        // Add to current user's following
+        // Make friendship mutual on both profiles
         val currentUserRef = db.collection("users").document(currentUserId)
-        batch.update(currentUserRef, "following", FieldValue.arrayUnion(targetUserId))
-
-        // Add to target user's followers
         val targetUserRef = db.collection("users").document(targetUserId)
+        batch.update(currentUserRef, "following", FieldValue.arrayUnion(targetUserId))
+        batch.update(currentUserRef, "followers", FieldValue.arrayUnion(targetUserId))
+        batch.update(targetUserRef, "following", FieldValue.arrayUnion(currentUserId))
         batch.update(targetUserRef, "followers", FieldValue.arrayUnion(currentUserId))
 
         batch.commit()
@@ -749,12 +776,12 @@ class FlickRepository private constructor() {
     fun unfollowUser(currentUserId: String, targetUserId: String, onResult: (Result<Unit>) -> Unit) {
         val batch = db.batch()
 
-        // Remove from current user's following
+        // Remove friendship mutually on both profiles
         val currentUserRef = db.collection("users").document(currentUserId)
-        batch.update(currentUserRef, "following", FieldValue.arrayRemove(targetUserId))
-
-        // Remove from target user's followers
         val targetUserRef = db.collection("users").document(targetUserId)
+        batch.update(currentUserRef, "following", FieldValue.arrayRemove(targetUserId))
+        batch.update(currentUserRef, "followers", FieldValue.arrayRemove(targetUserId))
+        batch.update(targetUserRef, "following", FieldValue.arrayRemove(currentUserId))
         batch.update(targetUserRef, "followers", FieldValue.arrayRemove(currentUserId))
 
         batch.commit()
@@ -852,16 +879,18 @@ class FlickRepository private constructor() {
         return try {
             val batch = db.batch()
 
-            // Remove from pending requests
+            // Remove request residue both ways
             val currentUserRef = db.collection("users").document(currentUserId)
-            batch.update(currentUserRef, "pendingFollowRequests", FieldValue.arrayRemove(requesterId))
-
-            // Remove from requester's sent requests
             val requesterRef = db.collection("users").document(requesterId)
+            batch.update(currentUserRef, "pendingFollowRequests", FieldValue.arrayRemove(requesterId))
+            batch.update(currentUserRef, "sentFollowRequests", FieldValue.arrayRemove(requesterId))
+            batch.update(requesterRef, "pendingFollowRequests", FieldValue.arrayRemove(currentUserId))
             batch.update(requesterRef, "sentFollowRequests", FieldValue.arrayRemove(currentUserId))
 
-            // Add to followers (the requester now follows current user)
+            // Make friendship mutual on both profiles
             batch.update(currentUserRef, "followers", FieldValue.arrayUnion(requesterId))
+            batch.update(currentUserRef, "following", FieldValue.arrayUnion(requesterId))
+            batch.update(requesterRef, "followers", FieldValue.arrayUnion(currentUserId))
             batch.update(requesterRef, "following", FieldValue.arrayUnion(currentUserId))
 
             batch.commit().await()

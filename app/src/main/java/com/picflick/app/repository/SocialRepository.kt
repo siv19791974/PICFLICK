@@ -3,7 +3,6 @@ package com.picflick.app.repository
 import com.picflick.app.data.*
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
-import com.google.firebase.firestore.Query
 import kotlinx.coroutines.tasks.await
 import java.util.UUID
 
@@ -120,8 +119,27 @@ class SocialRepository private constructor() {
      */
     suspend fun unfollowUser(currentUserId: String, targetUserId: String): Result<Unit> {
         return try {
+            val batch = db.batch()
             val currentUserRef = db.collection("users").document(currentUserId)
-            currentUserRef.update("following", FieldValue.arrayRemove(targetUserId)).await()
+            val targetUserRef = db.collection("users").document(targetUserId)
+
+            // Mutual unfriend to keep state consistent on both profiles
+            batch.update(currentUserRef, "following", FieldValue.arrayRemove(targetUserId))
+            batch.update(currentUserRef, "followers", FieldValue.arrayRemove(targetUserId))
+            batch.update(currentUserRef, "sentFollowRequests", FieldValue.arrayRemove(targetUserId))
+            batch.update(currentUserRef, "pendingFollowRequests", FieldValue.arrayRemove(targetUserId))
+
+            batch.update(targetUserRef, "following", FieldValue.arrayRemove(currentUserId))
+            batch.update(targetUserRef, "followers", FieldValue.arrayRemove(currentUserId))
+            batch.update(targetUserRef, "sentFollowRequests", FieldValue.arrayRemove(currentUserId))
+            batch.update(targetUserRef, "pendingFollowRequests", FieldValue.arrayRemove(currentUserId))
+
+            batch.commit().await()
+
+            // Remove shared activities immediately (chat sessions + notifications)
+            deleteSharedChatSessions(currentUserId, targetUserId)
+            deleteRelationshipNotifications(currentUserId, targetUserId)
+
             Result.Success(Unit)
         } catch (e: Exception) {
             Result.Error(e, "Failed to unfollow user")
@@ -149,10 +167,28 @@ class SocialRepository private constructor() {
      * Unfollow a user (callback version)
      */
     fun unfollowUser(currentUserId: String, targetUserId: String, onResult: (Result<Unit>) -> Unit) {
+        val batch = db.batch()
         val currentUserRef = db.collection("users").document(currentUserId)
+        val targetUserRef = db.collection("users").document(targetUserId)
 
-        currentUserRef.update("following", FieldValue.arrayRemove(targetUserId))
-            .addOnSuccessListener { onResult(Result.Success(Unit)) }
+        // Mutual unfriend to keep state consistent on both profiles
+        batch.update(currentUserRef, "following", FieldValue.arrayRemove(targetUserId))
+        batch.update(currentUserRef, "followers", FieldValue.arrayRemove(targetUserId))
+        batch.update(currentUserRef, "sentFollowRequests", FieldValue.arrayRemove(targetUserId))
+        batch.update(currentUserRef, "pendingFollowRequests", FieldValue.arrayRemove(targetUserId))
+
+        batch.update(targetUserRef, "following", FieldValue.arrayRemove(currentUserId))
+        batch.update(targetUserRef, "followers", FieldValue.arrayRemove(currentUserId))
+        batch.update(targetUserRef, "sentFollowRequests", FieldValue.arrayRemove(currentUserId))
+        batch.update(targetUserRef, "pendingFollowRequests", FieldValue.arrayRemove(currentUserId))
+
+        batch.commit()
+            .addOnSuccessListener {
+                // Remove shared activities immediately (chat sessions + notifications)
+                deleteSharedChatSessionsAsync(currentUserId, targetUserId)
+                deleteRelationshipNotificationsAsync(currentUserId, targetUserId)
+                onResult(Result.Success(Unit))
+            }
             .addOnFailureListener { e -> onResult(Result.Error(Exception(e.message), "Failed to unfollow user")) }
     }
 
@@ -210,6 +246,10 @@ class SocialRepository private constructor() {
         currentUserPhotoUrl: String
     ): Result<Unit> {
         return try {
+            if (currentUserId == targetUserId) {
+                return Result.Error(Exception("Invalid request"), "You cannot send a friend request to yourself")
+            }
+
             val batch = db.batch()
 
             val currentUserRef = db.collection("users").document(currentUserId)
@@ -220,13 +260,17 @@ class SocialRepository private constructor() {
 
             batch.commit().await()
 
-            // Create friend request notification
-            createFriendRequestNotification(
-                requesterId = currentUserId,
-                requesterName = currentUserName,
-                requesterPhotoUrl = currentUserPhotoUrl,
-                targetUserId = targetUserId
-            )
+            // Create friend request notification (non-blocking)
+            try {
+                createFriendRequestNotification(
+                    requesterId = currentUserId,
+                    requesterName = currentUserName,
+                    requesterPhotoUrl = currentUserPhotoUrl,
+                    targetUserId = targetUserId
+                )
+            } catch (notificationError: Exception) {
+                android.util.Log.e("SocialRepository", "Friend request saved, but notification failed: ${notificationError.message}")
+            }
 
             Result.Success(Unit)
         } catch (e: Exception) {
@@ -252,11 +296,15 @@ class SocialRepository private constructor() {
 
             val currentUserRef = db.collection("users").document(currentUserId)
             batch.update(currentUserRef, "pendingFollowRequests", FieldValue.arrayRemove(requesterId))
+            batch.update(currentUserRef, "sentFollowRequests", FieldValue.arrayRemove(requesterId))
             batch.update(currentUserRef, "followers", FieldValue.arrayUnion(requesterId))
+            batch.update(currentUserRef, "following", FieldValue.arrayUnion(requesterId))
 
             val requesterRef = db.collection("users").document(requesterId)
             batch.update(requesterRef, "sentFollowRequests", FieldValue.arrayRemove(currentUserId))
+            batch.update(requesterRef, "pendingFollowRequests", FieldValue.arrayRemove(currentUserId))
             batch.update(requesterRef, "following", FieldValue.arrayUnion(currentUserId))
+            batch.update(requesterRef, "followers", FieldValue.arrayUnion(currentUserId))
 
             batch.commit().await()
 
@@ -454,9 +502,95 @@ class SocialRepository private constructor() {
             .addOnFailureListener { e -> onResult(Result.Error(Exception(e.message), "Failed to get users")) }
     }
 
+    private suspend fun deleteSharedChatSessions(userId1: String, userId2: String) {
+        val sessionsSnapshot = db.collection("chatSessions")
+            .whereArrayContains("participants", userId1)
+            .get()
+            .await()
+
+        val sharedSessionRefs = sessionsSnapshot.documents
+            .filter { doc ->
+                val participants = doc.get("participants") as? List<*>
+                participants?.contains(userId2) == true
+            }
+            .map { it.reference }
+
+        // Delete chat sessions first so they disappear instantly from both users' chat lists.
+        sharedSessionRefs.forEach { sessionRef ->
+            sessionRef.delete().await()
+        }
+    }
+
+    private fun deleteSharedChatSessionsAsync(userId1: String, userId2: String) {
+        db.collection("chatSessions")
+            .whereArrayContains("participants", userId1)
+            .get()
+            .addOnSuccessListener { sessionsSnapshot ->
+                val sharedSessionRefs = sessionsSnapshot.documents
+                    .filter { doc ->
+                        val participants = doc.get("participants") as? List<*>
+                        participants?.contains(userId2) == true
+                    }
+                    .map { it.reference }
+
+                // Delete chat sessions first so they disappear instantly from both users' chat lists.
+                sharedSessionRefs.forEach { sessionRef ->
+                    sessionRef.delete()
+                }
+            }
+    }
+
+    private suspend fun deleteRelationshipNotifications(userId1: String, userId2: String) {
+        // Notifications shown to user1 triggered by user2
+        val user1FromUser2 = db.collection("notifications")
+            .whereEqualTo("userId", userId1)
+            .whereEqualTo("senderId", userId2)
+            .get()
+            .await()
+
+        // Notifications shown to user2 triggered by user1
+        val user2FromUser1 = db.collection("notifications")
+            .whereEqualTo("userId", userId2)
+            .whereEqualTo("senderId", userId1)
+            .get()
+            .await()
+
+        val refsToDelete = (user1FromUser2.documents + user2FromUser1.documents)
+            .map { it.reference }
+
+        refsToDelete.chunked(400).forEach { chunk ->
+            val batch = db.batch()
+            chunk.forEach { batch.delete(it) }
+            batch.commit().await()
+        }
+    }
+
+    private fun deleteRelationshipNotificationsAsync(userId1: String, userId2: String) {
+        db.collection("notifications")
+            .whereEqualTo("userId", userId1)
+            .whereEqualTo("senderId", userId2)
+            .get()
+            .addOnSuccessListener { user1FromUser2 ->
+                db.collection("notifications")
+                    .whereEqualTo("userId", userId2)
+                    .whereEqualTo("senderId", userId1)
+                    .get()
+                    .addOnSuccessListener { user2FromUser1 ->
+                        val refsToDelete = (user1FromUser2.documents + user2FromUser1.documents)
+                            .map { it.reference }
+
+                        refsToDelete.chunked(400).forEach { chunk ->
+                            val batch = db.batch()
+                            chunk.forEach { batch.delete(it) }
+                            batch.commit()
+                        }
+                    }
+            }
+    }
+
     // ==================== NOTIFICATION CREATION ====================
 
-    private fun createFriendRequestNotification(
+    private suspend fun createFriendRequestNotification(
         requesterId: String,
         requesterName: String,
         requesterPhotoUrl: String,
@@ -475,7 +609,7 @@ class SocialRepository private constructor() {
             "timestamp" to System.currentTimeMillis()
         )
 
-        db.collection("notifications").add(notification)
+        db.collection("notifications").add(notification).await()
     }
 
     private fun createFollowAcceptedNotification(
