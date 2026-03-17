@@ -109,7 +109,7 @@ val listState = rememberLazyListState()
     fun triggerPullUpRefresh() {
         if (isRefreshingByPullUp) return
         isRefreshingByPullUp = true
-        viewModel.loadMessages(chatId)
+        viewModel.loadMessages(chatId, currentUser.uid)
         viewModel.markAsRead(chatId, currentUser.uid)
         scope.launch {
             delay(700)
@@ -170,7 +170,7 @@ val imagePickerLauncher = rememberLauncherForActivityResult(
 
     // Load messages
     LaunchedEffect(chatId) {
-        viewModel.loadMessages(chatId)
+        viewModel.loadMessages(chatId, currentUser.uid)
         viewModel.markAsRead(chatId, currentUser.uid)
     }
 
@@ -412,7 +412,7 @@ Column(modifier = Modifier.fillMaxSize()) {
                                 TextButton(
                                     onClick = { 
                                         viewModel.clearError()
-                                        viewModel.loadMessages(chatId) 
+                                        viewModel.loadMessages(chatId, currentUser.uid) 
                                     }
                                 ) {
                                     Text("Retry", color = MaterialTheme.colorScheme.onErrorContainer)

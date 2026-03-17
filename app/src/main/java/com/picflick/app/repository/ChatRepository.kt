@@ -81,7 +81,7 @@ class ChatRepository {
     /**
      * Get messages for a specific chat session
      */
-    fun getMessages(chatId: String): Flow<List<ChatMessage>> = callbackFlow {
+    fun getMessages(chatId: String, currentUserId: String): Flow<List<ChatMessage>> = callbackFlow {
         android.util.Log.d("ChatRepository", "Setting up messages listener for chat: $chatId")
         val subscription = db.collection("chatSessions")
             .document(chatId)
@@ -93,17 +93,29 @@ class ChatRepository {
                     close(error)
                     return@addSnapshotListener
                 }
-                val messages = snapshot?.toObjects(ChatMessage::class.java) ?: emptyList()
+
+                val messages = snapshot?.documents?.mapNotNull { doc ->
+                    val message = doc.toObject(ChatMessage::class.java) ?: return@mapNotNull null
+                    val deletedFor = (doc.get("deletedForUserIds") as? List<*>)
+                        ?.filterIsInstance<String>()
+                        ?: emptyList()
+
+                    if (currentUserId.isNotBlank() && deletedFor.contains(currentUserId)) {
+                        null
+                    } else {
+                        message
+                    }
+                } ?: emptyList()
+
                 android.util.Log.d("ChatRepository", "Messages updated: ${messages.size} messages, docChanges: ${snapshot?.documentChanges?.size ?: 0}")
-                // Log status of first few messages
                 messages.take(3).forEach { msg ->
                     android.util.Log.d("ChatRepository", "  Msg ${msg.id.take(8)}: read=${msg.read}, delivered=${msg.delivered}, sender=${msg.senderId.take(8)}")
                 }
                 trySend(messages)
             }
-        awaitClose { 
+        awaitClose {
             android.util.Log.d("ChatRepository", "Removing messages listener for chat: $chatId")
-            subscription.remove() 
+            subscription.remove()
         }
     }
 
@@ -382,7 +394,7 @@ class ChatRepository {
     /**
      * Delete selected messages in a chat.
      */
-    suspend fun deleteMessages(chatId: String, messageIds: List<String>): Result<Unit> {
+    suspend fun deleteMessages(chatId: String, messageIds: List<String>, currentUserId: String): Result<Unit> {
         return try {
             if (messageIds.isEmpty()) return Result.Success(Unit)
 
@@ -391,41 +403,57 @@ class ChatRepository {
                 .document(chatId)
                 .collection("messages")
 
+            val now = System.currentTimeMillis()
+            val deleteForEveryoneWindowMs = 10 * 60 * 1000L
+            var hardDeleteCount = 0
+
             messageIds.forEach { messageId ->
-                batch.delete(messagesCollection.document(messageId))
+                val messageRef = messagesCollection.document(messageId)
+                val messageDoc = messageRef.get().await()
+                val timestamp = messageDoc.getLong("timestamp") ?: 0L
+                val ageMs = now - timestamp
+
+                if (ageMs <= deleteForEveryoneWindowMs) {
+                    batch.delete(messageRef)
+                    hardDeleteCount++
+                } else {
+                    batch.update(messageRef, "deletedForUserIds", FieldValue.arrayUnion(currentUserId))
+                }
             }
             batch.commit().await()
 
-            // Update chat summary with latest remaining message (if any)
-            val latestMessageSnapshot = messagesCollection
-                .orderBy("timestamp", Query.Direction.DESCENDING)
-                .limit(1)
-                .get()
-                .await()
+            if (hardDeleteCount > 0) {
+                // Update chat summary with latest remaining message (if any)
+                val latestMessageSnapshot = messagesCollection
+                    .orderBy("timestamp", Query.Direction.DESCENDING)
+                    .limit(1)
+                    .get()
+                    .await()
 
-            val latestDoc = latestMessageSnapshot.documents.firstOrNull()
-            if (latestDoc != null) {
-                val latestText = latestDoc.getString("text").orEmpty()
-                val latestImage = latestDoc.getString("imageUrl").orEmpty()
-                val lastMessagePreview = if (latestText.isBlank() && latestImage.isNotBlank()) "📷 Photo" else latestText
+                val latestDoc = latestMessageSnapshot.documents.firstOrNull()
+                if (latestDoc != null) {
+                    val latestText = latestDoc.getString("text").orEmpty()
+                    val latestImage = latestDoc.getString("imageUrl").orEmpty()
+                    val lastMessagePreview = if (latestText.isBlank() && latestImage.isNotBlank()) "📷 Photo" else latestText
 
-                db.collection("chatSessions").document(chatId)
-                    .update(
-                        mapOf(
-                            "lastMessage" to lastMessagePreview,
-                            "lastTimestamp" to (latestDoc.getLong("timestamp") ?: System.currentTimeMillis()),
-                            "lastSenderId" to (latestDoc.getString("senderId") ?: "")
-                        )
-                    ).await()
-            } else {
-                db.collection("chatSessions").document(chatId)
-                    .update(
-                        mapOf(
-                            "lastMessage" to "",
-                            "lastTimestamp" to System.currentTimeMillis(),
-                            "lastSenderId" to ""
-                        )
-                    ).await()
+                    db.collection("chatSessions").document(chatId)
+                        .update(
+                            mapOf(
+                                "lastMessage" to lastMessagePreview,
+                                "lastTimestamp" to (latestDoc.getLong("timestamp") ?: System.currentTimeMillis()),
+                                "lastSenderId" to (latestDoc.getString("senderId") ?: "")
+                            )
+                        ).await()
+                } else {
+                    db.collection("chatSessions").document(chatId)
+                        .update(
+                            mapOf(
+                                "lastMessage" to "",
+                                "lastTimestamp" to System.currentTimeMillis(),
+                                "lastSenderId" to ""
+                            )
+                        ).await()
+                }
             }
 
             Result.Success(Unit)

@@ -9,7 +9,6 @@ import com.picflick.app.data.ChatMessage
 import com.picflick.app.data.ChatSession
 import com.picflick.app.data.Result
 import com.picflick.app.repository.ChatRepository
-import com.picflick.app.utils.Analytics
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
@@ -91,16 +90,16 @@ class ChatViewModel : ViewModel() {
      * 
      * @param chatId The chat session ID to load messages for
      */
-    fun loadMessages(chatId: String) {
+    fun loadMessages(chatId: String, currentUserId: String) {
         // Cancel any existing message collection job
         messagesJob?.cancel()
-        
+
         currentChatId = chatId
         messagesJob = viewModelScope.launch {
             errorMessage = null // Clear previous error
             try {
                 android.util.Log.d("ChatViewModel", "Starting message collection for chat: $chatId")
-                repository.getMessages(chatId).collectLatest { msgs ->
+                repository.getMessages(chatId, currentUserId).collectLatest { msgs ->
                     android.util.Log.d("ChatViewModel", "Received ${msgs.size} messages from repository")
                     messages = msgs
                 }
@@ -264,7 +263,7 @@ class ChatViewModel : ViewModel() {
                 is Result.Success -> {
                     android.util.Log.d("ChatViewModel", "markAsRead success, reloading messages")
                     // Reload messages to refresh UI with new read status
-                    loadMessages(chatId)
+                    loadMessages(chatId, userId)
                 }
                 is Result.Error -> {
                     android.util.Log.e("ChatViewModel", "markAsRead failed: ${result.message}")
@@ -285,7 +284,7 @@ class ChatViewModel : ViewModel() {
                     android.util.Log.d("ChatViewModel", "markAsDelivered success, reloading messages")
                     // Small delay to let Firestore propagate, then reload
                     kotlinx.coroutines.delay(300)
-                    loadMessages(chatId)
+                    loadMessages(chatId, userId)
                 }
                 is Result.Error -> {
                     android.util.Log.e("ChatViewModel", "markAsDelivered failed: ${result.message}")
@@ -304,7 +303,7 @@ class ChatViewModel : ViewModel() {
             when (val result = repository.addReaction(chatId, messageId, userId, emoji, senderName, senderPhotoUrl)) {
                 is Result.Success -> {
                     android.util.Log.d("ChatViewModel", "addReaction success")
-                    loadMessages(chatId)
+                    loadMessages(chatId, userId)
                 }
                 is Result.Error -> {
                     android.util.Log.e("ChatViewModel", "addReaction failed: ${result.message}")
@@ -350,7 +349,7 @@ class ChatViewModel : ViewModel() {
                 return@launch
             }
 
-            when (val result = repository.deleteMessages(chatId, deletableIds.toList())) {
+            when (val result = repository.deleteMessages(chatId, deletableIds.toList(), currentUserId)) {
                 is Result.Success -> {
                     messages = messages.filterNot { it.id in deletableIds }
                     onComplete(true)
