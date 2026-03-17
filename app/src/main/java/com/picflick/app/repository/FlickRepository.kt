@@ -454,10 +454,20 @@ class FlickRepository private constructor() {
     /**
      * Resolve a flick by image URL (used by chat photo viewer to recover real flick ID for comments).
      */
-    fun getFlickByImageUrl(imageUrl: String, onResult: (Result<Flick>) -> Unit) {
+    fun getFlickByImageUrl(
+        imageUrl: String,
+        ownerUserId: String? = null,
+        onResult: (Result<Flick>) -> Unit
+    ) {
         fun resolveByUrl(url: String, fallbackUrl: String? = null) {
-            db.collection("flicks")
+            var query: com.google.firebase.firestore.Query = db.collection("flicks")
                 .whereEqualTo("imageUrl", url)
+
+            if (!ownerUserId.isNullOrBlank()) {
+                query = query.whereEqualTo("userId", ownerUserId)
+            }
+
+            query
                 .limit(1)
                 .get()
                 .addOnSuccessListener { snapshot ->
