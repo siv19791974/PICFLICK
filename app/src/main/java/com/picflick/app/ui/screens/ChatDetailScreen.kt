@@ -1,7 +1,5 @@
 package com.picflick.app.ui.screens
 
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -17,6 +15,7 @@ import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
@@ -47,7 +46,10 @@ import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import com.picflick.app.data.ChatMessage
 import com.picflick.app.data.ChatSession
+import com.picflick.app.data.Flick
+import com.picflick.app.data.Result
 import com.picflick.app.data.UserProfile
+import com.picflick.app.repository.FlickRepository
 import com.picflick.app.ui.theme.PicFlickBannerBackground
 import com.picflick.app.viewmodel.ChatViewModel
 import kotlinx.coroutines.delay
@@ -100,6 +102,10 @@ fun ChatDetailScreen(
     var showDeleteSelectedConfirm by remember { mutableStateOf(false) }
     var showClearChatConfirm by remember { mutableStateOf(false) }
     var showBlockUserConfirm by remember { mutableStateOf(false) }
+    var showMyFlickPicker by remember { mutableStateOf(false) }
+    var isLoadingMyFlicks by remember { mutableStateOf(false) }
+    var myFlicks by remember { mutableStateOf<List<Flick>>(emptyList()) }
+    val flickRepository = remember { FlickRepository.getInstance() }
 val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
     var upwardPullDistance by remember { mutableStateOf(0f) }
@@ -154,23 +160,40 @@ if (available.y < 0f) {
         ) { }
     }
 
-    // Image picker for sending photos
-val imagePickerLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.GetContent()
-    ) { uri ->
-        uri?.let { imageUri ->
-            viewModel.sendPhotoMessage(
-                chatId = chatId,
-                imageUri = imageUri,
-                senderId = currentUser.uid,
-                recipientId = otherUserId,
-                senderName = currentUser.displayName,
-                senderPhotoUrl = currentUser.photoUrl,
-                context = context,
-                onComplete = {
-                    // Photo sent successfully
+    fun sendExistingFlickPhoto(imageUrl: String) {
+        viewModel.sendMessage(
+            chatId = chatId,
+            text = "",
+            senderId = currentUser.uid,
+            recipientId = otherUserId,
+            senderName = currentUser.displayName,
+            senderPhotoUrl = currentUser.photoUrl,
+            imageUrl = imageUrl,
+            replyToMessage = null
+        ) {
+            viewModel.stopTyping(chatId, currentUser.uid)
+            scope.launch {
+                delay(80)
+                scrollToBottom()
+            }
+        }
+    }
+
+    fun openMyFlickPicker() {
+        showMyFlickPicker = true
+        isLoadingMyFlicks = true
+        scope.launch {
+            when (val result = flickRepository.getFlicksForUserPaginated(currentUser.uid, null, 60)) {
+                is Result.Success -> {
+                    myFlicks = result.data.filter { it.imageUrl.isNotBlank() }
+                    isLoadingMyFlicks = false
                 }
-            )
+                is Result.Error -> {
+                    myFlicks = emptyList()
+                    isLoadingMyFlicks = false
+                }
+                is Result.Loading -> Unit
+            }
         }
     }
 
@@ -610,7 +633,7 @@ Column(modifier = Modifier.fillMaxSize()) {
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     IconButton(
-                        onClick = { imagePickerLauncher.launch("image/*") },
+                        onClick = { openMyFlickPicker() },
                         modifier = Modifier.size(40.dp)
                     ) {
                         Icon(
@@ -701,6 +724,72 @@ Column(modifier = Modifier.fillMaxSize()) {
             "These selected message(s) will be deleted for everyone."
     }
     val deleteConfirmLabel = if (olderThanWindowCount > 0) "Delete only for you" else "Delete"
+
+    if (showMyFlickPicker) {
+        AlertDialog(
+            onDismissRequest = { showMyFlickPicker = false },
+            title = { Text("Share from My PicFlick Photos") },
+            text = {
+                when {
+                    isLoadingMyFlicks -> {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 16.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator()
+                        }
+                    }
+
+                    myFlicks.isEmpty() -> {
+                        Text("No uploaded PicFlick photos found. Upload a photo to PicFlick first, then share it here.")
+                    }
+
+                    else -> {
+                        LazyColumn(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(max = 340.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            items(myFlicks, key = { it.id }) { flick ->
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clip(RoundedCornerShape(10.dp))
+                                        .clickable {
+                                            showMyFlickPicker = false
+                                            sendExistingFlickPhoto(flick.imageUrl)
+                                        }
+                                        .padding(6.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    AsyncImage(
+                                        model = flick.imageUrl,
+                                        contentDescription = "My photo",
+                                        modifier = Modifier
+                                            .size(56.dp)
+                                            .clip(RoundedCornerShape(8.dp)),
+                                        contentScale = ContentScale.Crop
+                                    )
+                                    Spacer(modifier = Modifier.width(10.dp))
+                                    Text(
+                                        text = if (flick.description.isBlank()) "Photo" else flick.description,
+                                        maxLines = 2,
+                                        style = MaterialTheme.typography.bodyMedium
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showMyFlickPicker = false }) { Text("Close") }
+            }
+        )
+    }
 
     if (showDeleteSelectedConfirm) {
 AlertDialog(
