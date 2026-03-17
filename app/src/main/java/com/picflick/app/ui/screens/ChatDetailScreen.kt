@@ -497,7 +497,8 @@ Column(modifier = Modifier.fillMaxSize()) {
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
-                .navigationBarsPadding(),
+                .navigationBarsPadding()
+                .imePadding(),
             color = Color.Black,
             tonalElevation = 0.dp
         ) {
