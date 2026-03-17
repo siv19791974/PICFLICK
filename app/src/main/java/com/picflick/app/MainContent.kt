@@ -93,13 +93,13 @@ fun AuthenticatedContent(
     onSignOut: () -> Unit,
     selectedPhotoUri: Uri?,
     onPhotoSelected: (Uri) -> Unit,
+    onOpenUploadSourceDialog: () -> Unit,
     pushPhoto: Flick? = null,
     onPushPhotoConsumed: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val repository = remember { FlickRepository.getInstance() }
-    var openHomeUploadDialog by remember { mutableStateOf(false) }
 
     // Capture billingViewModel locally for use in when blocks
     val bvm = billingViewModel
@@ -111,9 +111,7 @@ fun AuthenticatedContent(
             homeViewModel = homeViewModel,
             friendsViewModel = friendsViewModel,
             onScreenChange = onScreenChange,
-            onSignOut = onSignOut,
-            openUploadDialog = openHomeUploadDialog,
-            onUploadDialogOpened = { openHomeUploadDialog = false }
+            onSignOut = onSignOut
         )
 
         is Screen.Profile -> ProfileScreenContent(
@@ -156,10 +154,7 @@ fun AuthenticatedContent(
             chatViewModel = chatViewModel,
             friendsViewModel = friendsViewModel,
             onScreenChange = onScreenChange,
-            onNavigateToHomeUpload = {
-                openHomeUploadDialog = true
-                onScreenChange(Screen.Home)
-            }
+            onOpenUploadSourceDialog = onOpenUploadSourceDialog
         )
 
         is Screen.FindFriends -> FindFriendsScreenContent(
@@ -370,9 +365,7 @@ private fun HomeScreenContent(
     homeViewModel: HomeViewModel,
     friendsViewModel: FriendsViewModel,
     onScreenChange: (Screen) -> Unit,
-    onSignOut: () -> Unit,
-    openUploadDialog: Boolean,
-    onUploadDialogOpened: () -> Unit
+    onSignOut: () -> Unit
 ) {
     HomeScreen(
         userProfile = userProfile,
@@ -402,9 +395,7 @@ private fun HomeScreenContent(
         friends = friendsViewModel.followingUsers, // Pass friends for profile picture lookup
         onEditPhotoClick = { flick ->
             onScreenChange(Screen.EditPhoto(flick))
-        },
-        openUploadDialog = openUploadDialog,
-        onUploadDialogOpened = onUploadDialogOpened
+        }
     )
 }
 
@@ -598,7 +589,7 @@ private fun ChatDetailScreenContent(
     chatViewModel: ChatViewModel,
     friendsViewModel: FriendsViewModel,
     onScreenChange: (Screen) -> Unit,
-    onNavigateToHomeUpload: () -> Unit
+    onOpenUploadSourceDialog: () -> Unit
 ) {
     var selectedChatPhoto by remember { mutableStateOf<Flick?>(null) }
 
@@ -619,7 +610,7 @@ private fun ChatDetailScreenContent(
             onUserProfileClick = { userId ->
                 onScreenChange(Screen.UserProfile(userId))
             },
-            onAddNewPhoto = onNavigateToHomeUpload,
+            onAddNewPhoto = onOpenUploadSourceDialog,
             onPhotoClick = { message ->
                 if (message.imageUrl.isNotBlank()) {
                     selectedChatPhoto = Flick(

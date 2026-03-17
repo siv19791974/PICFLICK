@@ -726,6 +726,9 @@ fun MainScreen(
                     onPhotoSelected = { uri ->
                         profilePhotoToUpload = uri
                     },
+                    onOpenUploadSourceDialog = {
+                        showUploadSourceDialog = true
+                    },
                     pushPhoto = pushPhoto,
                     onPushPhotoConsumed = { pushPhoto = null }
                 )

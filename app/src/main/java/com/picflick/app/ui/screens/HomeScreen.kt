@@ -71,9 +71,7 @@ fun HomeScreen(
     onSignOut: () -> Unit,
     onUserProfileClick: (String) -> Unit = {},
     friends: List<UserProfile> = emptyList(), // Friends list for profile picture lookup
-    onEditPhotoClick: (Flick) -> Unit = {}, // Navigate to edit photo screen
-    openUploadDialog: Boolean = false,
-    onUploadDialogOpened: () -> Unit = {}
+    onEditPhotoClick: (Flick) -> Unit = {} // Navigate to edit photo screen
 ) {
     val context = LocalContext.current
     var showUploadDialog by remember { mutableStateOf(false) }
@@ -100,12 +98,6 @@ fun HomeScreen(
         viewModel.loadFriendGroups(userProfile.uid)
     }
 
-    LaunchedEffect(openUploadDialog) {
-        if (openUploadDialog) {
-            showUploadDialog = true
-            onUploadDialogOpened()
-        }
-    }
 
     LaunchedEffect(userProfile.uid) {
         viewModel.checkDailyUploads(userProfile.uid)
