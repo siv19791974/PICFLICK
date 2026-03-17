@@ -459,24 +459,28 @@ class FlickRepository private constructor() {
         ownerUserId: String? = null,
         onResult: (Result<Flick>) -> Unit
     ) {
-        fun resolveByUrl(url: String, fallbackUrl: String? = null) {
+        fun resolveByUrl(url: String, fallbackUrl: String? = null, enforceOwner: Boolean = true) {
             var query: com.google.firebase.firestore.Query = db.collection("flicks")
                 .whereEqualTo("imageUrl", url)
 
-            if (!ownerUserId.isNullOrBlank()) {
+            if (enforceOwner && !ownerUserId.isNullOrBlank()) {
                 query = query.whereEqualTo("userId", ownerUserId)
             }
 
             query
-                .limit(1)
                 .get()
                 .addOnSuccessListener { snapshot ->
-                    val doc = snapshot.documents.firstOrNull()
+                    val doc = snapshot.documents
+                        .sortedBy { it.id }
+                        .firstOrNull()
                     val flick = doc?.toObject(Flick::class.java)
                     if (doc != null && flick != null) {
                         onResult(Result.Success(flick.copy(id = doc.id)))
+                    } else if (enforceOwner && !ownerUserId.isNullOrBlank()) {
+                        // Fallback: try any owner for legacy/shared photos where sender isn't the original owner
+                        resolveByUrl(url, fallbackUrl, enforceOwner = false)
                     } else if (!fallbackUrl.isNullOrBlank() && fallbackUrl != url) {
-                        resolveByUrl(fallbackUrl)
+                        resolveByUrl(fallbackUrl, null, enforceOwner)
                     } else {
                         onResult(Result.Error(Exception("Photo not found"), "Photo not found"))
                     }
