@@ -632,7 +632,46 @@ class FlickRepository private constructor() {
      * Search users by name or email
      */
     fun searchUsers(query: String, currentUserId: String, onResult: (Result<List<UserProfile>>) -> Unit) {
-        val searchLower = query.trim().lowercase(Locale.getDefault())
+        val searchRaw = query.trim()
+        val searchLower = searchRaw.lowercase(Locale.getDefault())
+        if (searchLower.isBlank()) {
+            onResult(Result.Success(emptyList()))
+            return
+        }
+
+        val resultMap = linkedMapOf<String, UserProfile>()
+
+        fun addFiltered(users: List<UserProfile>) {
+            users.forEach { user ->
+                if (
+                    user.uid != currentUserId &&
+                    user.displayName.lowercase(Locale.getDefault()).startsWith(searchLower)
+                ) {
+                    resultMap[user.uid] = user
+                }
+            }
+        }
+
+        val fallbackPrefixes = listOf(
+            searchRaw,
+            searchRaw.lowercase(Locale.getDefault()),
+            searchRaw.uppercase(Locale.getDefault()),
+            searchRaw.replaceFirstChar { ch -> ch.titlecase(Locale.getDefault()) }
+        ).distinct()
+
+        var pendingQueries = 1 + fallbackPrefixes.size
+
+        fun finishIfDone() {
+            pendingQueries--
+            if (pendingQueries == 0) {
+                onResult(
+                    Result.Success(
+                        resultMap.values
+                            .take(Constants.Pagination.SUGGESTED_USERS_LIMIT)
+                    )
+                )
+            }
+        }
 
         db.collection(Constants.FirebaseCollections.USERS)
             .orderBy("displayNameLower")
@@ -641,14 +680,28 @@ class FlickRepository private constructor() {
             .limit(Constants.Pagination.SUGGESTED_USERS_LIMIT.toLong())
             .get()
             .addOnSuccessListener { snapshot ->
-                val users = snapshot.toObjects(UserProfile::class.java)
-                val filteredUsers = users.filter { user ->
-                    user.uid != currentUserId &&
-                            user.displayName.lowercase(Locale.getDefault()).startsWith(searchLower)
-                }
-                onResult(Result.Success(filteredUsers))
+                addFiltered(snapshot.toObjects(UserProfile::class.java))
+                finishIfDone()
             }
-            .addOnFailureListener { e -> onResult(Result.Error(e, "Failed to search users")) }
+            .addOnFailureListener {
+                finishIfDone()
+            }
+
+        fallbackPrefixes.forEach { prefix ->
+            db.collection(Constants.FirebaseCollections.USERS)
+                .orderBy("displayName")
+                .startAt(prefix)
+                .endAt(prefix + "\uf8ff")
+                .limit(Constants.Pagination.SUGGESTED_USERS_LIMIT.toLong())
+                .get()
+                .addOnSuccessListener { snapshot ->
+                    addFiltered(snapshot.toObjects(UserProfile::class.java))
+                    finishIfDone()
+                }
+                .addOnFailureListener {
+                    finishIfDone()
+                }
+        }
     }
 
     /**
