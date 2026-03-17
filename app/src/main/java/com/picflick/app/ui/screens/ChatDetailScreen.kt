@@ -174,9 +174,17 @@ val imagePickerLauncher = rememberLauncherForActivityResult(
     // Auto-scroll to bottom when new messages arrive
     LaunchedEffect(viewModel.messages.size) {
         if (viewModel.messages.isNotEmpty()) {
-            scope.launch {
-                listState.animateScrollToItem(viewModel.messages.size - 1)
-            }
+            delay(120)
+            listState.animateScrollToItem(viewModel.messages.size - 1)
+        }
+    }
+
+    // Keep latest message visible when keyboard opens/closes
+    val imeBottom = WindowInsets.ime.getBottom(LocalDensity.current)
+    LaunchedEffect(imeBottom) {
+        if (viewModel.messages.isNotEmpty()) {
+            delay(80)
+            listState.animateScrollToItem(viewModel.messages.size - 1)
         }
     }
     

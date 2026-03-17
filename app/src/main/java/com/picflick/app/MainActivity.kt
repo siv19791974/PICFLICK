@@ -589,7 +589,7 @@ fun MainScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             // Keep header height stable even while userProfile is still loading
-            if (currentUser != null && !isChatDetailScreen) {
+            if (currentUser != null) {
                 val profileReady = userProfile != null
                 Box(
                     modifier = Modifier
@@ -687,7 +687,13 @@ fun MainScreen(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .then(if (isChatDetailScreen) Modifier else Modifier.padding(padding))
+                .then(
+                    if (isChatDetailScreen) {
+                        Modifier.padding(top = padding.calculateTopPadding())
+                    } else {
+                        Modifier.padding(padding)
+                    }
+                )
         ) {
             if (currentUser == null) {
                 // Not authenticated - show login
