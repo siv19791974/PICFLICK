@@ -275,20 +275,49 @@ val canDeleteCurrent = currentFlick.userId == currentUser.uid
         showMoreMenu = false
     }
 
-    // Load comments when flick changes - use DisposableEffect to properly manage listener
-    DisposableEffect(currentFlick.id) {
+    // Load comments when flick changes - listen on canonical + fallback chat-photo IDs and merge
+    DisposableEffect(currentFlick.id, currentFlick.imageUrl) {
         isLoadingComments = true
-        val listener = repository.getComments(currentFlick.id) { result ->
+
+        val fallbackCommentThreadId = "chat_photo_${currentFlick.imageUrl.substringBefore("?").hashCode()}"
+        var primaryComments: List<Comment> = emptyList()
+        var secondaryComments: List<Comment> = emptyList()
+
+        fun publishMergedComments() {
+            comments = (primaryComments + secondaryComments)
+                .distinctBy { comment ->
+                    if (comment.id.isNotBlank()) comment.id
+                    else "${comment.userId}_${comment.text}_${comment.timestamp?.time ?: 0L}"
+                }
+                .sortedByDescending { it.timestamp?.time ?: 0L }
+            isLoadingComments = false
+        }
+
+        val primaryListener = repository.getComments(currentFlick.id) { result ->
             when (result) {
                 is com.picflick.app.data.Result.Success -> {
-                    comments = result.data
-                    isLoadingComments = false
+                    primaryComments = result.data
+                    publishMergedComments()
                 }
                 else -> isLoadingComments = false
             }
         }
+
+        val secondaryListener = if (fallbackCommentThreadId != currentFlick.id) {
+            repository.getComments(fallbackCommentThreadId) { result ->
+                when (result) {
+                    is com.picflick.app.data.Result.Success -> {
+                        secondaryComments = result.data
+                        publishMergedComments()
+                    }
+                    else -> Unit
+                }
+            }
+        } else null
+
         onDispose {
-            listener.remove()
+            primaryListener.remove()
+            secondaryListener?.remove()
         }
     }
     
