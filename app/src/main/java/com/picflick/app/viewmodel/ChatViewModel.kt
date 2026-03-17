@@ -53,6 +53,7 @@ class ChatViewModel : ViewModel() {
     private var typingStatusJob: Job? = null
     private var typingUpdateJob: Job? = null
     private var isTypingPublished: Boolean = false
+    private val typingInactivityTimeoutMs = 2000L
 
     var otherUserTyping by mutableStateOf(false)
         private set
@@ -139,20 +140,29 @@ class ChatViewModel : ViewModel() {
     fun updateTypingStatus(chatId: String, currentUserId: String, isTyping: Boolean) {
         if (isTyping) {
             typingUpdateJob?.cancel()
-            if (isTypingPublished) return
-            typingUpdateJob = viewModelScope.launch {
-                when (repository.setTypingStatus(chatId, currentUserId, true)) {
-                    is Result.Success -> isTypingPublished = true
-                    else -> Unit
+
+            viewModelScope.launch {
+                if (!isTypingPublished) {
+                    when (repository.setTypingStatus(chatId, currentUserId, true)) {
+                        is Result.Success -> isTypingPublished = true
+                        else -> Unit
+                    }
                 }
+            }
+
+            typingUpdateJob = viewModelScope.launch {
+                delay(typingInactivityTimeoutMs)
+                if (!isTypingPublished) return@launch
+                repository.setTypingStatus(chatId, currentUserId, false)
+                isTypingPublished = false
             }
             return
         }
 
         typingUpdateJob?.cancel()
-        typingUpdateJob = viewModelScope.launch {
-            delay(1000)
-            if (!isTypingPublished) return@launch
+        if (!isTypingPublished) return
+
+        viewModelScope.launch {
             repository.setTypingStatus(chatId, currentUserId, false)
             isTypingPublished = false
         }
