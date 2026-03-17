@@ -120,6 +120,53 @@ class ChatRepository {
     }
 
     /**
+     * Observe per-user typing state for a chat session.
+     */
+    fun observeTypingStatus(chatId: String): Flow<Map<String, Boolean>> = callbackFlow {
+        val subscription = db.collection("chatSessions")
+            .document(chatId)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    close(error)
+                    return@addSnapshotListener
+                }
+
+                val typingMap = (snapshot?.get("typingStatus") as? Map<*, *>)
+                    ?.mapNotNull { (k, v) ->
+                        val key = k as? String ?: return@mapNotNull null
+                        val value = v as? Boolean ?: false
+                        key to value
+                    }
+                    ?.toMap()
+                    ?: emptyMap()
+
+                trySend(typingMap)
+            }
+
+        awaitClose { subscription.remove() }
+    }
+
+    /**
+     * Update current user's typing state for this chat.
+     */
+    suspend fun setTypingStatus(chatId: String, userId: String, isTyping: Boolean): Result<Unit> {
+        return try {
+            db.collection("chatSessions")
+                .document(chatId)
+                .update(
+                    mapOf(
+                        "typingStatus.$userId" to isTyping,
+                        "typingUpdatedAt" to System.currentTimeMillis()
+                    )
+                )
+                .await()
+            Result.Success(Unit)
+        } catch (e: Exception) {
+            Result.Error(e, e.message ?: "Failed to update typing status")
+        }
+    }
+
+    /**
      * Send a message and create notification
      */
     suspend fun sendMessage(
