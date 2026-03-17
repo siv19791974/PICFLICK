@@ -1,7 +1,6 @@
 package com.picflick.app.ui.theme
 
 import android.app.Activity
-import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
@@ -70,7 +69,8 @@ fun PicFlickTheme(
             val window = (view.context as Activity).window
             window.statusBarColor = PicFlickBannerBackground.toArgb()
             window.navigationBarColor = Color.Black.toArgb() // Black nav bar
-            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = !isDarkModeEnabled
+            // Keep status bar icons light for strong visibility on dark top bar across devices
+            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = false
         }
     }
 
