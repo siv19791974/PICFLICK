@@ -215,6 +215,9 @@ val canDeleteCurrent = currentFlick.userId == currentUser.uid
     
     // Show comment panel state
     var showCommentPanel by remember { mutableStateOf(false) }
+    var canonicalCommentFlickId by remember(currentFlick.id, currentFlick.imageUrl) {
+        mutableStateOf(if (currentFlick.id.startsWith("chat_photo_")) null else currentFlick.id)
+    }
     
     // Like animation state for double-tap
     var showLikeAnimation by remember { mutableStateOf(false) }
@@ -275,22 +278,38 @@ val canDeleteCurrent = currentFlick.userId == currentUser.uid
         showMoreMenu = false
     }
 
-    // Load comments when flick changes - listen on canonical + fallback chat-photo IDs and merge
-    DisposableEffect(currentFlick.id, currentFlick.imageUrl) {
+    // Load comments when flick changes - listen on current + fallback + resolved canonical IDs and merge
+    DisposableEffect(currentFlick.id, currentFlick.imageUrl, currentFlick.userId) {
         isLoadingComments = true
 
         val fallbackCommentThreadId = "chat_photo_${currentFlick.imageUrl.substringBefore("?").hashCode()}"
         var primaryComments: List<Comment> = emptyList()
         var secondaryComments: List<Comment> = emptyList()
+        var tertiaryComments: List<Comment> = emptyList()
+        var tertiaryListener: ListenerRegistration? = null
 
         fun publishMergedComments() {
-            comments = (primaryComments + secondaryComments)
+            comments = (primaryComments + secondaryComments + tertiaryComments)
                 .distinctBy { comment ->
                     if (comment.id.isNotBlank()) comment.id
                     else "${comment.userId}_${comment.text}_${comment.timestamp?.time ?: 0L}"
                 }
                 .sortedByDescending { it.timestamp?.time ?: 0L }
             isLoadingComments = false
+        }
+
+        fun attachCanonicalListenerIfNeeded(canonicalId: String) {
+            if (canonicalId.isBlank() || canonicalId == currentFlick.id || canonicalId == fallbackCommentThreadId) return
+            tertiaryListener?.remove()
+            tertiaryListener = repository.getComments(canonicalId) { result ->
+                when (result) {
+                    is com.picflick.app.data.Result.Success -> {
+                        tertiaryComments = result.data
+                        publishMergedComments()
+                    }
+                    else -> Unit
+                }
+            }
         }
 
         val primaryListener = repository.getComments(currentFlick.id) { result ->
@@ -315,9 +334,23 @@ val canDeleteCurrent = currentFlick.userId == currentUser.uid
             }
         } else null
 
+        if (currentFlick.id.startsWith("chat_photo_")) {
+            canonicalCommentFlickId = null
+            repository.getFlickByImageUrl(currentFlick.imageUrl, currentFlick.userId) { result ->
+                if (result is com.picflick.app.data.Result.Success) {
+                    canonicalCommentFlickId = result.data.id
+                    attachCanonicalListenerIfNeeded(result.data.id)
+                }
+            }
+        } else {
+            canonicalCommentFlickId = currentFlick.id
+            attachCanonicalListenerIfNeeded(currentFlick.id)
+        }
+
         onDispose {
             primaryListener.remove()
             secondaryListener?.remove()
+            tertiaryListener?.remove()
         }
     }
     
@@ -1481,10 +1514,12 @@ if (canDeleteCurrent) {
                                             val text = newCommentText.trim()
                                             val parentComment = replyingToComment
                                             
+                                            val targetFlickId = canonicalCommentFlickId ?: currentFlick.id
+
                                             // OPTIMISTIC UPDATE: Add to UI immediately
                                             val tempComment = Comment(
                                                 id = "temp_${System.currentTimeMillis()}",
-                                                flickId = currentFlick.id,
+                                                flickId = targetFlickId,
                                                 userId = currentUser.uid,
                                                 userName = currentUser.displayName ?: "",
                                                 userPhotoUrl = currentUser.photoUrl ?: "",
@@ -1501,10 +1536,10 @@ if (canDeleteCurrent) {
                                             
                                             // Send to Firestore in background
                                             coroutineScope.launch {
-                                                android.util.Log.d("CommentAdd", "Adding comment: text='$text', userId='${currentUser.uid}', flickId='${currentFlick.id}',")
+                                                android.util.Log.d("CommentAdd", "Adding comment: text='$text', userId='${currentUser.uid}', flickId='$targetFlickId',")
                                                 val result = if (parentComment != null) {
                                                     repository.addReply(
-                                                        flickId = currentFlick.id,
+                                                        flickId = targetFlickId,
                                                         parentCommentId = parentComment.id,
                                                         userId = currentUser.uid,
                                                         userName = currentUser.displayName ?: "",
@@ -1513,7 +1548,7 @@ if (canDeleteCurrent) {
                                                     )
                                                 } else {
                                                     repository.addComment(
-                                                        currentFlick.id,
+                                                        targetFlickId,
                                                         currentUser.uid,
                                                         currentUser.displayName ?: "",
                                                         currentUser.photoUrl ?: "",
