@@ -199,7 +199,12 @@ class FriendsViewModel : ViewModel() {
     /**
      * Send a follow request
      */
-    fun sendFollowRequest(currentUserId: String, targetUser: UserProfile, currentUserProfile: UserProfile) {
+    fun sendFollowRequest(
+        currentUserId: String,
+        targetUser: UserProfile,
+        currentUserProfile: UserProfile,
+        onComplete: ((Boolean) -> Unit)? = null
+    ) {
         addProcessingUser(targetUser.uid)
         viewModelScope.launch {
             val result = socialRepository.sendFollowRequest(
@@ -208,11 +213,13 @@ class FriendsViewModel : ViewModel() {
                 currentUserName = currentUserProfile.displayName,
                 currentUserPhotoUrl = currentUserProfile.photoUrl
             )
-            // Log error if request fails
             if (result is com.picflick.app.data.Result.Error) {
                 android.util.Log.e("FriendsViewModel", "Failed to send follow request: ${result.exception?.message}")
+                errorMessage = result.exception.message ?: result.message
+                onComplete?.invoke(false)
             } else if (result is com.picflick.app.data.Result.Success) {
                 Analytics.trackFriendRequestSent()
+                onComplete?.invoke(true)
             }
             removeProcessingUser(targetUser.uid)
         }

@@ -16,6 +16,7 @@ import com.picflick.app.repository.FlickRepository
 import com.picflick.app.utils.Analytics
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
+import com.google.firebase.firestore.ListenerRegistration
 import kotlinx.coroutines.launch
 
 /**
@@ -38,13 +39,48 @@ class AuthViewModel : ViewModel() {
     var errorMessage by mutableStateOf<String?>(null)
         private set
 
+    private var profileListener: ListenerRegistration? = null
+
     init {
         // Listen for auth state changes
         auth.addAuthStateListener { firebaseAuth ->
             currentUser = firebaseAuth.currentUser
-            // Only load profile if we don't already have one (prevents wiping on token refresh)
+
+            if (currentUser == null) {
+                profileListener?.remove()
+                profileListener = null
+                userProfile = null
+                return@addAuthStateListener
+            }
+
+            val uid = currentUser!!.uid
+            if (profileListener == null || userProfile?.uid != uid) {
+                startProfileListener(uid)
+            }
+
+            // Keep one-time load as fallback for first render
             if (userProfile == null) {
-                currentUser?.let { loadUserProfile(it.uid) }
+                loadUserProfile(uid)
+            }
+        }
+    }
+
+    private fun startProfileListener(uid: String) {
+        profileListener?.remove()
+        profileListener = repository.listenToUserProfile(uid) { result ->
+            when (result) {
+                is Result.Success -> {
+                    userProfile = result.data
+                    isLoading = false
+                    errorMessage = null
+                }
+                is Result.Error -> {
+                    errorMessage = result.message
+                    isLoading = false
+                }
+                is Result.Loading -> {
+                    isLoading = true
+                }
             }
         }
     }
@@ -55,7 +91,11 @@ class AuthViewModel : ViewModel() {
     fun restoreCachedProfile() {
         // If we have a user but no profile, reload it
         if (currentUser != null && userProfile == null) {
-            loadUserProfile(currentUser!!.uid)
+            val uid = currentUser!!.uid
+            if (profileListener == null) {
+                startProfileListener(uid)
+            }
+            loadUserProfile(uid)
         }
     }
 
@@ -258,6 +298,8 @@ class AuthViewModel : ViewModel() {
      * Sign out the current user
      */
     fun signOut() {
+        profileListener?.remove()
+        profileListener = null
         auth.signOut()
         userProfile = null
         currentUser = null
@@ -302,6 +344,12 @@ class AuthViewModel : ViewModel() {
                 onComplete(false, "Unexpected error: ${e.message}")
             }
         }
+    }
+
+    override fun onCleared() {
+        profileListener?.remove()
+        profileListener = null
+        super.onCleared()
     }
 
     /**

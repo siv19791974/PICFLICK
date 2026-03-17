@@ -127,9 +127,14 @@ fun FindFriendsScreen(
                             onProfileRefresh() // Refresh to update button state
                         }
                         "send_request" -> {
-                            viewModel.sendFollowRequest(userProfile.uid, user, userProfile)
-                            android.widget.Toast.makeText(context, "Friend request sent to ${user.displayName}", android.widget.Toast.LENGTH_SHORT).show()
-                            onProfileRefresh() // Refresh to update button state
+                            viewModel.sendFollowRequest(userProfile.uid, user, userProfile) { success ->
+                                if (success) {
+                                    android.widget.Toast.makeText(context, "Friend request sent to ${user.displayName}", android.widget.Toast.LENGTH_SHORT).show()
+                                    onProfileRefresh() // Refresh to update button state
+                                } else {
+                                    android.widget.Toast.makeText(context, "Failed to send request. Please try again.", android.widget.Toast.LENGTH_SHORT).show()
+                                }
+                            }
                         }
                     }
                 },
@@ -153,9 +158,14 @@ fun FindFriendsScreen(
                             onProfileRefresh() // Refresh to update button state
                         }
                         "send_request" -> {
-                            viewModel.sendFollowRequest(userProfile.uid, user, userProfile)
-                            android.widget.Toast.makeText(context, "Friend request sent to ${user.displayName}", android.widget.Toast.LENGTH_SHORT).show()
-                            onProfileRefresh() // Refresh to update button state
+                            viewModel.sendFollowRequest(userProfile.uid, user, userProfile) { success ->
+                                if (success) {
+                                    android.widget.Toast.makeText(context, "Friend request sent to ${user.displayName}", android.widget.Toast.LENGTH_SHORT).show()
+                                    onProfileRefresh() // Refresh to update button state
+                                } else {
+                                    android.widget.Toast.makeText(context, "Failed to send request. Please try again.", android.widget.Toast.LENGTH_SHORT).show()
+                                }
+                            }
                         }
                     }
                 },
