@@ -154,6 +154,7 @@ fun AuthenticatedContent(
             chatViewModel = chatViewModel,
             friendsViewModel = friendsViewModel,
             onScreenChange = onScreenChange,
+            onSetSelectedChat = onSetSelectedChat,
             onOpenUploadSourceDialog = onOpenUploadSourceDialog
         )
 
@@ -589,6 +590,7 @@ private fun ChatDetailScreenContent(
     chatViewModel: ChatViewModel,
     friendsViewModel: FriendsViewModel,
     onScreenChange: (Screen) -> Unit,
+    onSetSelectedChat: (ChatSession, String) -> Unit,
     onOpenUploadSourceDialog: () -> Unit
 ) {
     var selectedChatPhoto by remember { mutableStateOf<Flick?>(null) }
@@ -601,6 +603,33 @@ private fun ChatDetailScreenContent(
     }
 
     if (selectedChatSession != null) {
+        LaunchedEffect(userProfile.uid) {
+            chatViewModel.loadChatSessions(userProfile.uid)
+        }
+
+        val tenDaysAgo = remember { System.currentTimeMillis() - (10L * 24L * 60L * 60L * 1000L) }
+        val quickSwitchChats = remember(chatViewModel.chatSessions, userProfile.uid, tenDaysAgo) {
+            chatViewModel.chatSessions
+                .asSequence()
+                .filter { session ->
+                    session.participants.contains(userProfile.uid) && session.lastTimestamp >= tenDaysAgo
+                }
+                .mapNotNull { session ->
+                    val otherId = session.participants.firstOrNull { it != userProfile.uid } ?: return@mapNotNull null
+                    val otherName = session.participantNames[otherId]?.takeIf { it.isNotBlank() } ?: "Chat"
+                    val otherPhoto = session.participantPhotos[otherId] ?: ""
+                    com.picflick.app.ui.screens.QuickSwitchChatItem(
+                        chatSession = session,
+                        otherUserId = otherId,
+                        otherUserName = otherName,
+                        otherUserPhoto = otherPhoto
+                    )
+                }
+                .distinctBy { it.otherUserId }
+                .sortedByDescending { it.chatSession.lastTimestamp }
+                .toList()
+        }
+
         ChatDetailScreen(
             chatSession = selectedChatSession,
             otherUserId = selectedOtherUserId,
@@ -611,6 +640,11 @@ private fun ChatDetailScreenContent(
                 onScreenChange(Screen.UserProfile(userId))
             },
             onAddNewPhoto = onOpenUploadSourceDialog,
+            quickSwitchChats = quickSwitchChats,
+            onQuickSwitchChat = { session, otherId ->
+                onSetSelectedChat(session, otherId)
+                onScreenChange(Screen.ChatDetail)
+            },
             onPhotoClick = { message ->
                 if (message.imageUrl.isNotBlank()) {
                     selectedChatPhoto = Flick(
