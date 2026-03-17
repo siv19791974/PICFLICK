@@ -36,7 +36,6 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
@@ -284,15 +283,7 @@ val imagePickerLauncher = rememberLauncherForActivityResult(
                     Spacer(modifier = Modifier.width(12.dp))
 
                     if (isSelectionMode) {
-                        Text(
-                            text = "Selected (${selectedMessageIds.size})",
-                            color = Color.White,
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.Bold,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.weight(1f)
-                        )
+                        Spacer(modifier = Modifier.weight(1f))
 
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             IconButton(
@@ -309,6 +300,14 @@ val imagePickerLauncher = rememberLauncherForActivityResult(
                                     tint = Color.White
                                 )
                             }
+
+                            Text(
+                                text = selectedMessageIds.size.toString(),
+                                color = Color.White,
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(end = 8.dp)
+                            )
 
                             IconButton(
                                 onClick = {
