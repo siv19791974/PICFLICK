@@ -136,6 +136,18 @@ if (available.y < 0f) {
         }
     }
 
+    fun sendHeyMessage() {
+        viewModel.sendMessage(
+            chatId = chatId,
+            text = "Hey 👋",
+            senderId = currentUser.uid,
+            recipientId = otherUserId,
+            senderName = currentUser.displayName,
+            senderPhotoUrl = currentUser.photoUrl,
+            replyToMessage = null
+        ) { }
+    }
+
     // Image picker for sending photos
 val imagePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
@@ -408,17 +420,7 @@ Column(modifier = Modifier.fillMaxSize()) {
                                     )
                                     Spacer(modifier = Modifier.height(8.dp))
                                     AssistChip(
-                                        onClick = {
-                                            viewModel.sendMessage(
-                                                chatId = chatId,
-                                                text = "Hey 👋",
-                                                senderId = currentUser.uid,
-                                                recipientId = otherUserId,
-                                                senderName = currentUser.displayName,
-                                                senderPhotoUrl = currentUser.photoUrl,
-                                                replyToMessage = null
-                                            ) { }
-                                        },
+                                        onClick = { sendHeyMessage() },
                                         label = { Text("Say hello") }
                                     )
                                 }
@@ -513,6 +515,19 @@ Column(modifier = Modifier.fillMaxSize()) {
                         onCancel = { replyToMessage = null }
                     )
                     Spacer(modifier = Modifier.height(4.dp))
+                }
+
+                if (viewModel.messages.isEmpty() && messageText.isBlank() && replyToMessage == null) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        AssistChip(
+                            onClick = { sendHeyMessage() },
+                            label = { Text("Send Hey") }
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(6.dp))
                 }
 
                 Row(
