@@ -28,6 +28,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
+import android.widget.Toast
+import androidx.compose.ui.platform.LocalContext
 import com.picflick.app.data.UserProfile
 import com.picflick.app.ui.components.ListItemShimmer
 import com.picflick.app.ui.theme.isDarkModeBackground
@@ -46,7 +48,8 @@ fun FriendsScreen(
     onFindFriendsClick: () -> Unit = {},
     onProfilePhotoClick: (UserProfile) -> Unit = {}
 ) {
-    var pendingDeleteFriendId by remember { mutableStateOf<String?>(null) }
+    val context = LocalContext.current
+    var friendToDelete by remember { mutableStateOf<UserProfile?>(null) }
     val optimisticallyRemovedFriendIds = remember { mutableStateListOf<String>() }
 
     // Load following users
@@ -61,8 +64,10 @@ fun FriendsScreen(
     )
 
     val isDarkMode = ThemeManager.isDarkMode.value
-    val visibleFollowingUsers = remember(viewModel.followingUsers, optimisticallyRemovedFriendIds) {
-        viewModel.followingUsers.filterNot { it.uid in optimisticallyRemovedFriendIds }
+    val visibleFollowingUsers by remember {
+        derivedStateOf {
+            viewModel.followingUsers.filterNot { it.uid in optimisticallyRemovedFriendIds }
+        }
     }
 
     Column(
@@ -121,23 +126,12 @@ modifier = Modifier.weight(1f),
                     LazyColumn(
                         contentPadding = PaddingValues(vertical = 8.dp)
                     ) {
-                        items(visibleFollowingUsers) { friend ->
+                        items(visibleFollowingUsers, key = { it.uid }) { friend ->
                             FriendListItem(
                                 friend = friend,
                                 onProfilePhotoClick = { onProfilePhotoClick(friend) },
-                                isPendingDelete = pendingDeleteFriendId == friend.uid,
                                 onDeleteFriend = {
-                                    if (pendingDeleteFriendId == friend.uid) {
-                                        optimisticallyRemovedFriendIds.add(friend.uid)
-                                        pendingDeleteFriendId = null
-                                        viewModel.unfollowUser(userProfile.uid, friend.uid) { success ->
-                                            if (!success) {
-                                                optimisticallyRemovedFriendIds.remove(friend.uid)
-                                            }
-                                        }
-                                    } else {
-                                        pendingDeleteFriendId = friend.uid
-                                    }
+                                    friendToDelete = friend
                                 }
                             )
                         }
@@ -171,6 +165,37 @@ modifier = Modifier.weight(1f),
             Spacer(modifier = Modifier.width(8.dp))
             Text("Find Friends")
         }
+
+        friendToDelete?.let { friend ->
+            AlertDialog(
+                onDismissRequest = { friendToDelete = null },
+                title = { Text("Delete friend?") },
+                text = { Text("Remove ${friend.displayName} from your friends list?") },
+                confirmButton = {
+                    TextButton(onClick = {
+                        val friendId = friend.uid
+                        val friendName = friend.displayName
+                        optimisticallyRemovedFriendIds.add(friendId)
+                        friendToDelete = null
+                        viewModel.unfollowUser(userProfile.uid, friendId) { success ->
+                            if (success) {
+                                Toast.makeText(context, "$friendName unfriended", Toast.LENGTH_SHORT).show()
+                            } else {
+                                optimisticallyRemovedFriendIds.remove(friendId)
+                                Toast.makeText(context, "Failed to unfriend. Please try again.", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    }) {
+                        Text("Confirm")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { friendToDelete = null }) {
+                        Text("Cancel")
+                    }
+                }
+            )
+        }
     }
 }
 
@@ -178,7 +203,6 @@ modifier = Modifier.weight(1f),
 private fun FriendListItem(
     friend: UserProfile,
     onProfilePhotoClick: () -> Unit = {},
-    isPendingDelete: Boolean = false,
     onDeleteFriend: () -> Unit = {}
 ) {
     // Use Row like ChatListItem - no card
@@ -261,7 +285,7 @@ Row(
                 contentColor = Color(0xFFFF4444) // Red
             )
         ) {
-            Text(if (isPendingDelete) "Confirm" else "Delete", fontSize = 12.sp)
+            Text("Delete", fontSize = 12.sp)
         }
 }
 }
