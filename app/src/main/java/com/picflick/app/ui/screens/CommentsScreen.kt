@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Send
@@ -25,7 +24,9 @@ import com.picflick.app.data.Comment
 import com.picflick.app.data.Flick
 import com.picflick.app.data.UserProfile
 import com.picflick.app.repository.PhotoRepository
+import com.picflick.app.repository.FlickRepository
 import com.picflick.app.ui.theme.ThemeManager
+import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -51,22 +52,28 @@ fun CommentsScreen(
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var newCommentText by remember { mutableStateOf("") }
     var isSending by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    val flickRepository = remember { FlickRepository.getInstance() }
 
-    // Load comments
-    LaunchedEffect(flick.id) {
-        photoRepository.getComments(flick.id) { result ->
+    // Realtime comments listener (instant updates across devices)
+    DisposableEffect(flick.id) {
+        isLoading = true
+        val listener = flickRepository.getComments(flick.id) { result ->
             when (result) {
                 is com.picflick.app.data.Result.Success -> {
                     comments = result.data
                     isLoading = false
+                    errorMessage = null
                 }
                 is com.picflick.app.data.Result.Error -> {
                     errorMessage = result.message
                     isLoading = false
                 }
-                else -> {}
+                else -> Unit
             }
         }
+
+        onDispose { listener.remove() }
     }
 
     Scaffold(
@@ -143,24 +150,40 @@ fun CommentsScreen(
                     IconButton(
                         onClick = {
                             if (newCommentText.isNotBlank() && !isSending) {
-                                isSending = true
-                                photoRepository.addComment(
+                                val text = newCommentText.trim()
+                                val tempComment = Comment(
+                                    id = "temp_${System.currentTimeMillis()}",
                                     flickId = flick.id,
                                     userId = currentUser.uid,
                                     userName = currentUser.displayName,
                                     userPhotoUrl = currentUser.photoUrl,
-                                    text = newCommentText.trim()
-                                ) { result ->
-                                    isSending = false
-                                    when (result) {
+                                    text = text,
+                                    timestamp = Date()
+                                )
+
+                                // Optimistic UI update (instant local)
+                                comments = listOf(tempComment) + comments
+                                newCommentText = ""
+                                isSending = true
+
+                                scope.launch {
+                                    when (val result = flickRepository.addComment(
+                                        flickId = flick.id,
+                                        userId = currentUser.uid,
+                                        userName = currentUser.displayName,
+                                        userPhotoUrl = currentUser.photoUrl,
+                                        text = text
+                                    )) {
                                         is com.picflick.app.data.Result.Success -> {
-                                            comments = listOf(result.data) + comments
-                                            newCommentText = ""
+                                            isSending = false
+                                            // Realtime listener will replace temp with canonical comment docs
                                         }
                                         is com.picflick.app.data.Result.Error -> {
+                                            isSending = false
+                                            comments = comments.filterNot { it.id == tempComment.id }
                                             errorMessage = result.message
                                         }
-                                        else -> {}
+                                        else -> Unit
                                     }
                                 }
                             }
@@ -209,22 +232,10 @@ fun CommentsScreen(
                             color = MaterialTheme.colorScheme.error
                         )
                         Spacer(modifier = Modifier.height(16.dp))
-                        Button(onClick = { 
-                            isLoading = true
+                        Button(onClick = {
+                            // Listener is already active; clear message and wait for next snapshot
                             errorMessage = null
-                            photoRepository.getComments(flick.id) { result ->
-                                when (result) {
-                                    is com.picflick.app.data.Result.Success -> {
-                                        comments = result.data
-                                        isLoading = false
-                                    }
-                                    is com.picflick.app.data.Result.Error -> {
-                                        errorMessage = result.message
-                                        isLoading = false
-                                    }
-                                    else -> {}
-                                }
-                            }
+                            isLoading = true
                         }) {
                             Text("Retry")
                         }
