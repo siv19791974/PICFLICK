@@ -407,10 +407,19 @@ Column(modifier = Modifier.fillMaxSize()) {
                                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
                                     )
                                     Spacer(modifier = Modifier.height(8.dp))
-                                    Text(
-                                        text = "Say hello!",
-                                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
-                                        fontSize = 14.sp
+                                    AssistChip(
+                                        onClick = {
+                                            viewModel.sendMessage(
+                                                chatId = chatId,
+                                                text = "Hey 👋",
+                                                senderId = currentUser.uid,
+                                                recipientId = otherUserId,
+                                                senderName = currentUser.displayName,
+                                                senderPhotoUrl = currentUser.photoUrl,
+                                                replyToMessage = null
+                                            ) { }
+                                        },
+                                        label = { Text("Say hello") }
                                     )
                                 }
                             }
@@ -489,7 +498,7 @@ Column(modifier = Modifier.fillMaxSize()) {
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
-                .imePadding(),
+                .navigationBarsPadding(),
             color = Color.Black,
             tonalElevation = 0.dp
         ) {
