@@ -9,6 +9,8 @@ import com.picflick.app.data.ChatMessage
 import com.picflick.app.data.ChatSession
 import com.picflick.app.data.Result
 import com.picflick.app.repository.ChatRepository
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
@@ -47,7 +49,13 @@ class ChatViewModel : ViewModel() {
         private set
     
     /** Job for message collection - prevents duplicate listeners */
-    private var messagesJob: kotlinx.coroutines.Job? = null
+    private var messagesJob: Job? = null
+    private var typingStatusJob: Job? = null
+    private var typingUpdateJob: Job? = null
+    private var isTypingPublished: Boolean = false
+
+    var otherUserTyping by mutableStateOf(false)
+        private set
 
     /** Total unread messages across all chats */
     var unreadCount by mutableStateOf(0)
@@ -112,6 +120,50 @@ class ChatViewModel : ViewModel() {
                     errorMessage = "Failed to load messages: ${e.message}"
                 }
             }
+        }
+    }
+
+    fun observeTypingStatus(chatId: String, otherUserId: String) {
+        typingStatusJob?.cancel()
+        typingStatusJob = viewModelScope.launch {
+            try {
+                repository.observeTypingStatus(chatId).collectLatest { typingMap ->
+                    otherUserTyping = typingMap[otherUserId] == true
+                }
+            } catch (_: Exception) {
+                otherUserTyping = false
+            }
+        }
+    }
+
+    fun updateTypingStatus(chatId: String, currentUserId: String, isTyping: Boolean) {
+        if (isTyping) {
+            typingUpdateJob?.cancel()
+            if (isTypingPublished) return
+            typingUpdateJob = viewModelScope.launch {
+                when (repository.setTypingStatus(chatId, currentUserId, true)) {
+                    is Result.Success -> isTypingPublished = true
+                    else -> Unit
+                }
+            }
+            return
+        }
+
+        typingUpdateJob?.cancel()
+        typingUpdateJob = viewModelScope.launch {
+            delay(1000)
+            if (!isTypingPublished) return@launch
+            repository.setTypingStatus(chatId, currentUserId, false)
+            isTypingPublished = false
+        }
+    }
+
+    fun stopTyping(chatId: String, currentUserId: String) {
+        typingUpdateJob?.cancel()
+        if (!isTypingPublished) return
+        viewModelScope.launch {
+            repository.setTypingStatus(chatId, currentUserId, false)
+            isTypingPublished = false
         }
     }
 
@@ -283,7 +335,7 @@ class ChatViewModel : ViewModel() {
                 is Result.Success -> {
                     android.util.Log.d("ChatViewModel", "markAsDelivered success, reloading messages")
                     // Small delay to let Firestore propagate, then reload
-                    kotlinx.coroutines.delay(300)
+                    delay(300)
                     loadMessages(chatId, userId)
                 }
                 is Result.Error -> {
@@ -405,7 +457,13 @@ class ChatViewModel : ViewModel() {
      */
     fun clearCurrentChat() {
         messagesJob?.cancel()
+        typingStatusJob?.cancel()
+        typingUpdateJob?.cancel()
         messagesJob = null
+        typingStatusJob = null
+        typingUpdateJob = null
+        otherUserTyping = false
+        isTypingPublished = false
         currentChatId = null
         messages = emptyList()
     }

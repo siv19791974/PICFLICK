@@ -2,6 +2,12 @@ package com.picflick.app.ui.screens
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
@@ -28,8 +34,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.IntOffset
@@ -168,10 +174,26 @@ val imagePickerLauncher = rememberLauncherForActivityResult(
         }
     }
 
-    // Load messages
-    LaunchedEffect(chatId) {
+    // Load messages and typing listener
+    LaunchedEffect(chatId, otherUserId) {
         viewModel.loadMessages(chatId, currentUser.uid)
+        viewModel.observeTypingStatus(chatId, otherUserId)
         viewModel.markAsRead(chatId, currentUser.uid)
+    }
+
+    // Publish local typing state with debounce handled in ViewModel
+    LaunchedEffect(chatId, messageText) {
+        viewModel.updateTypingStatus(
+            chatId = chatId,
+            currentUserId = currentUser.uid,
+            isTyping = messageText.isNotBlank()
+        )
+    }
+
+    DisposableEffect(chatId, currentUser.uid) {
+        onDispose {
+            viewModel.stopTyping(chatId, currentUser.uid)
+        }
     }
 
     suspend fun scrollToBottom() {
@@ -325,6 +347,13 @@ val imagePickerLauncher = rememberLauncherForActivityResult(
                             }
                         }
                     } else {
+                        if (viewModel.otherUserTyping) {
+                            TypingDotsIndicator(
+                                modifier = Modifier.padding(end = 8.dp),
+                                dotColor = Color.White
+                            )
+                        }
+
                         Spacer(modifier = Modifier.weight(1f))
                         Box(modifier = Modifier.size(48.dp), contentAlignment = Alignment.Center) {
                             IconButton(
@@ -612,6 +641,7 @@ Column(modifier = Modifier.fillMaxSize()) {
                                 ) {
                                     messageText = ""
                                     replyToMessage = null
+                                    viewModel.stopTyping(chatId, currentUser.uid)
                                     scope.launch {
                                         delay(80)
                                         scrollToBottom()
@@ -1158,5 +1188,50 @@ private fun QuotedMessage(
                 maxLines = 1
             )
         }
+    }
+}
+
+@Composable
+private fun TypingDotsIndicator(
+    modifier: Modifier = Modifier,
+    dotColor: Color = Color.White
+) {
+    val transition = rememberInfiniteTransition(label = "typingDots")
+    val dot1Alpha by transition.animateFloat(
+        initialValue = 0.3f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 700, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "dot1"
+    )
+    val dot2Alpha by transition.animateFloat(
+        initialValue = 0.3f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 700, delayMillis = 140, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "dot2"
+    )
+    val dot3Alpha by transition.animateFloat(
+        initialValue = 0.3f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 700, delayMillis = 280, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "dot3"
+    )
+
+    Row(
+        modifier = modifier,
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        Box(modifier = Modifier.size(6.dp).clip(CircleShape).background(dotColor.copy(alpha = dot1Alpha)))
+        Box(modifier = Modifier.size(6.dp).clip(CircleShape).background(dotColor.copy(alpha = dot2Alpha)))
+        Box(modifier = Modifier.size(6.dp).clip(CircleShape).background(dotColor.copy(alpha = dot3Alpha)))
     }
 }
