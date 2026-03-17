@@ -41,7 +41,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.IntOffset
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -79,7 +78,6 @@ fun ChatDetailScreen(
 ) {
     val chatId = chatSession.id
     var otherUserPhoto by remember { mutableStateOf(chatSession.participantPhotos[otherUserId] ?: "") }
-    val context = LocalContext.current
 
     // Fetch photo from users collection if not in chat session (for old chats)
     LaunchedEffect(otherUserId) {
@@ -738,7 +736,7 @@ Column(modifier = Modifier.fillMaxSize()) {
     if (showMyFlickPicker) {
         AlertDialog(
             onDismissRequest = { showMyFlickPicker = false },
-            title = { Text("Share Photo") },
+            title = { Text("Share from PicFlick") },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     myFlickPickerError?.let {
@@ -762,7 +760,7 @@ Column(modifier = Modifier.fillMaxSize()) {
                         }
 
                         myFlicks.isEmpty() -> {
-                            Text("No uploaded PicFlick photos found yet. Tap Add new photo to upload via Camera/Gallery screen.")
+                            Text("No uploaded PicFlick photos found yet. Tap Open Add Photo screen to use the standard Camera/Gallery upload flow.")
                         }
 
                         else -> {
@@ -805,7 +803,7 @@ Column(modifier = Modifier.fillMaxSize()) {
                         showMyFlickPicker = false
                         onAddNewPhoto()
                     }
-                ) { Text("Add new photo") }
+                ) { Text("Open Add Photo screen") }
             },
             dismissButton = {
                 TextButton(onClick = { showMyFlickPicker = false }) { Text("Close") }
