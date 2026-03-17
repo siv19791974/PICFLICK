@@ -10,6 +10,7 @@ data class ChatMessage(
     val senderId: String = "",
     val text: String = "",
     val imageUrl: String = "", // Photo message support
+    val flickId: String = "", // Link to original flick for comments/reactions context
     val timestamp: Long = 0,
     val read: Boolean = false,
     val delivered: Boolean = false,

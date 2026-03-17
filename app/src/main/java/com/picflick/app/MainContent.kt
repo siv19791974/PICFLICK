@@ -663,10 +663,19 @@ private fun ChatDetailScreenContent(
                         reportCount = 0
                     )
 
-                    flickRepository.getFlickByImageUrl(message.imageUrl) { result ->
-                        selectedChatPhoto = when (result) {
-                            is com.picflick.app.data.Result.Success -> result.data
-                            else -> fallbackFlick
+                    if (message.flickId.isNotBlank()) {
+                        flickRepository.getFlickById(message.flickId) { result ->
+                            selectedChatPhoto = when (result) {
+                                is com.picflick.app.data.Result.Success -> result.data
+                                else -> fallbackFlick
+                            }
+                        }
+                    } else {
+                        flickRepository.getFlickByImageUrl(message.imageUrl) { result ->
+                            selectedChatPhoto = when (result) {
+                                is com.picflick.app.data.Result.Success -> result.data
+                                else -> fallbackFlick
+                            }
                         }
                     }
                 }
@@ -1323,6 +1332,7 @@ onReaction = { reactionType ->
                                     senderPhotoUrl = currentUser.photoUrl,
                                     text = "",
                                     imageUrl = flickToSend.imageUrl,
+                                    flickId = flickToSend.id,
                                     timestamp = System.currentTimeMillis(),
                                     read = false,
                                     delivered = false
