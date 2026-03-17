@@ -514,15 +514,15 @@ Column(modifier = Modifier.fillMaxSize()) {
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
-                .onSizeChanged { composerHeightPx = it.height }
-                .navigationBarsPadding()
-                .imePadding(),
+                .onSizeChanged { composerHeightPx = it.height },
             color = Color.Black,
             tonalElevation = 0.dp
         ) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .navigationBarsPadding()
+                    .imePadding()
                     .padding(horizontal = 8.dp, vertical = 4.dp)
             ) {
                 if (replyToMessage != null) {
@@ -914,7 +914,7 @@ modifier = Modifier
                         ) {
                             Column(
                                 modifier = Modifier
-                                    .padding(end = if (message.imageUrl.isNotBlank()) 4.dp else 36.dp, bottom = 2.dp),
+                                    .padding(end = if (message.imageUrl.isNotBlank()) 4.dp else 52.dp, bottom = 2.dp),
                                 verticalArrangement = Arrangement.Top
                             ) {
                                 if (message.isReply()) {
