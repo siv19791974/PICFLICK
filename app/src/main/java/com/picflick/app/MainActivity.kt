@@ -579,7 +579,9 @@ fun MainScreen(
         }
     }
 
-    // Outer Scaffold with bottom navigation for all screens
+    val isChatDetailScreen = currentScreen is Screen.ChatDetail
+
+    // Outer Scaffold with bottom navigation for non-chat screens
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         containerColor = MaterialTheme.colorScheme.background,
@@ -587,7 +589,7 @@ fun MainScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             // Keep header height stable even while userProfile is still loading
-            if (currentUser != null) {
+            if (currentUser != null && !isChatDetailScreen) {
                 val profileReady = userProfile != null
                 Box(
                     modifier = Modifier
@@ -655,7 +657,7 @@ fun MainScreen(
         },
         bottomBar = {
             // Keep bottom bar stable while profile is loading (prevents layout jump)
-            if (currentUser != null) {
+            if (currentUser != null && !isChatDetailScreen) {
                 val profileReady = userProfile != null
                 BottomNavBar(
                     currentRoute = when (currentScreen) {
@@ -685,7 +687,7 @@ fun MainScreen(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding)
+                .then(if (isChatDetailScreen) Modifier else Modifier.padding(padding))
         ) {
             if (currentUser == null) {
                 // Not authenticated - show login
