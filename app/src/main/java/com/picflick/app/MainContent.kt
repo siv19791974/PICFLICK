@@ -594,6 +594,7 @@ private fun ChatDetailScreenContent(
     onOpenUploadSourceDialog: () -> Unit
 ) {
     var selectedChatPhoto by remember { mutableStateOf<Flick?>(null) }
+    val flickRepository = remember { FlickRepository.getInstance() }
 
     // Clear chat when leaving this screen
     DisposableEffect(Unit) {
@@ -647,7 +648,7 @@ private fun ChatDetailScreenContent(
             },
             onPhotoClick = { message ->
                 if (message.imageUrl.isNotBlank()) {
-                    selectedChatPhoto = Flick(
+                    val fallbackFlick = Flick(
                         id = if (message.id.isNotBlank()) message.id else "chat_${message.timestamp}",
                         userId = message.senderId,
                         userName = message.senderName,
@@ -661,6 +662,13 @@ private fun ChatDetailScreenContent(
                         taggedFriends = emptyList(),
                         reportCount = 0
                     )
+
+                    flickRepository.getFlickByImageUrl(message.imageUrl) { result ->
+                        selectedChatPhoto = when (result) {
+                            is com.picflick.app.data.Result.Success -> result.data
+                            else -> fallbackFlick
+                        }
+                    }
                 }
             }
         )
