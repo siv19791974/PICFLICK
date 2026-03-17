@@ -244,6 +244,14 @@ val imagePickerLauncher = rememberLauncherForActivityResult(
         }
     }
 
+    // Keep typing indicator bubble visible at bottom when other user starts typing
+    LaunchedEffect(viewModel.otherUserTyping, isSelectionMode, viewModel.messages.size) {
+        if (!isSelectionMode && viewModel.otherUserTyping && viewModel.messages.isNotEmpty()) {
+            delay(100)
+            scrollToBottom()
+        }
+    }
+
     // LAYOUT: Box + Column with keyboard-aware input
     Box(
         modifier = Modifier
@@ -347,13 +355,6 @@ val imagePickerLauncher = rememberLauncherForActivityResult(
                             }
                         }
                     } else {
-                        if (viewModel.otherUserTyping) {
-                            TypingDotsIndicator(
-                                modifier = Modifier.padding(end = 8.dp),
-                                dotColor = Color.White
-                            )
-                        }
-
                         Spacer(modifier = Modifier.weight(1f))
                         Box(modifier = Modifier.size(48.dp), contentAlignment = Alignment.Center) {
                             IconButton(
@@ -537,6 +538,27 @@ Column(modifier = Modifier.fillMaxSize()) {
                                         }
                                     )
                                     Spacer(modifier = Modifier.height(4.dp))
+                                }
+
+                                if (viewModel.otherUserTyping && !isSelectionMode) {
+                                    item(key = "typing-indicator-bubble") {
+                                        Row(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(start = 8.dp, top = 2.dp, bottom = 2.dp),
+                                            horizontalArrangement = Arrangement.Start
+                                        ) {
+                                            Surface(
+                                                color = Color(0xFFE0E0E0),
+                                                shape = RoundedCornerShape(topStart = 4.dp, topEnd = 20.dp, bottomStart = 20.dp, bottomEnd = 20.dp)
+                                            ) {
+                                                TypingDotsIndicator(
+                                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
+                                                    dotColor = Color.Black.copy(alpha = 0.65f)
+                                                )
+                                            }
+                                        }
+                                    }
                                 }
 
                             }
