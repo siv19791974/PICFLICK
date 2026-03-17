@@ -119,6 +119,16 @@ fun ChatsScreen(
         }
     }
 
+    val existingChatUserIds = remember(viewModel.chatSessions, userProfile.uid) {
+        viewModel.chatSessions
+            .mapNotNull { session -> session.participants.firstOrNull { it != userProfile.uid } }
+            .toSet()
+    }
+
+    val availableFriendsForNewChat = remember(friendsViewModel.followingUsers, existingChatUserIds) {
+        friendsViewModel.followingUsers.filter { it.uid !in existingChatUserIds }
+    }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -505,7 +515,7 @@ fun ChatsScreen(
     // New Chat Dialog
     if (showNewChatDialog) {
         NewChatDialog(
-            friends = friendsViewModel.followingUsers,
+            friends = availableFriendsForNewChat,
             isLoading = friendsViewModel.isLoading,
             isDarkMode = isDarkMode,
             onDismiss = { showNewChatDialog = false },
@@ -793,13 +803,13 @@ private fun NewChatDialog(
                     )
                     Spacer(modifier = Modifier.height(16.dp))
                     Text(
-                        text = "No friends yet",
+                        text = "No available users",
                         fontSize = 18.sp,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = "Follow some friends to start chatting!",
+                        text = "All your friends already have an active chat.",
                         fontSize = 14.sp,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
                     )
