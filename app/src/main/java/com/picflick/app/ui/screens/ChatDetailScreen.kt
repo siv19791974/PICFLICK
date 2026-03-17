@@ -43,8 +43,6 @@ import com.picflick.app.data.ChatMessage
 import com.picflick.app.data.ChatSession
 import com.picflick.app.data.UserProfile
 import com.picflick.app.ui.theme.PicFlickBannerBackground
-import com.picflick.app.ui.theme.ThemeManager
-import com.picflick.app.ui.theme.isDarkModeBackground
 import com.picflick.app.viewmodel.ChatViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -98,7 +96,6 @@ fun ChatDetailScreen(
     var showBlockUserConfirm by remember { mutableStateOf(false) }
 val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
-    val isDarkMode = ThemeManager.isDarkMode.value
     var upwardPullDistance by remember { mutableStateOf(0f) }
     var isRefreshingByPullUp by remember { mutableStateOf(false) }
 
@@ -203,7 +200,7 @@ val imagePickerLauncher = rememberLauncherForActivityResult(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(isDarkModeBackground(isDarkMode))
+            .background(Color(0xFFD9E7F5))
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
             // Header with other user's info (56dp fixed height)
@@ -688,12 +685,10 @@ private fun ChatBubble(
     reactionLiftPx: Int = 0,
     onReactionPickerToggle: (Boolean) -> Unit = {}
 ) {
-    val isDarkMode = ThemeManager.isDarkMode.value
-    
-    // MID BLUE for User A (sender/me), GREY for User B (other)
-    val sentColor = if (isDarkMode) Color(0xFF2A4A73) else Color(0xFFB8D4F0)
-    val receivedColor = if (isDarkMode) Color(0xFF2A2A2A) else Color(0xFFE0E0E0)
-    
+    // Fixed chat palette across devices (independent of local theme toggle)
+    val sentColor = Color(0xFFB8D4F0)
+    val receivedColor = Color(0xFFE0E0E0)
+
     val bubbleColor = if (isMe) sentColor else receivedColor
 
     var showEmojiPicker by remember { mutableStateOf(false) }
