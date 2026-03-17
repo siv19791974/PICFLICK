@@ -480,6 +480,8 @@ Column(modifier = Modifier.fillMaxSize()) {
                                         isSelectionMode = isSelectionMode,
                                         isSelected = message.id in selectedMessageIds,
                                         onToggleSelection = {
+                                            if (!isMe) return@ChatBubble
+
                                             if (message.id in selectedMessageIds) {
                                                 selectedMessageIds.remove(message.id)
                                                 if (selectedMessageIds.isEmpty()) {
@@ -491,6 +493,8 @@ Column(modifier = Modifier.fillMaxSize()) {
                                             }
                                         },
                                         onLongPressSelect = {
+                                            if (!isMe) return@ChatBubble
+
                                             if (message.id !in selectedMessageIds) {
                                                 selectedMessageIds.add(message.id)
                                             }
@@ -638,7 +642,11 @@ AlertDialog(
                 TextButton(
                     onClick = {
                         showDeleteSelectedConfirm = false
-                        viewModel.deleteSelectedMessages(chatId, selectedMessageIds.toSet()) { success ->
+                        viewModel.deleteSelectedMessages(
+                            chatId = chatId,
+                            messageIds = selectedMessageIds.toSet(),
+                            currentUserId = currentUser.uid
+                        ) { success ->
                             if (success) {
                                 selectedMessageIds.clear()
                                 isSelectionMode = false

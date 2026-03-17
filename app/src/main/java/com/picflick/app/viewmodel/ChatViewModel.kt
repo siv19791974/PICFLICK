@@ -332,11 +332,27 @@ class ChatViewModel : ViewModel() {
     /**
      * Delete selected messages in currently open chat.
      */
-    fun deleteSelectedMessages(chatId: String, messageIds: Set<String>, onComplete: (Boolean) -> Unit = {}) {
+    fun deleteSelectedMessages(
+        chatId: String,
+        messageIds: Set<String>,
+        currentUserId: String,
+        onComplete: (Boolean) -> Unit = {}
+    ) {
         viewModelScope.launch {
-            when (val result = repository.deleteMessages(chatId, messageIds.toList())) {
+            val deletableIds = messages
+                .filter { it.id in messageIds && it.senderId == currentUserId }
+                .map { it.id }
+                .toSet()
+
+            if (deletableIds.isEmpty()) {
+                errorMessage = "You can only delete your own messages"
+                onComplete(false)
+                return@launch
+            }
+
+            when (val result = repository.deleteMessages(chatId, deletableIds.toList())) {
                 is Result.Success -> {
-                    messages = messages.filterNot { it.id in messageIds }
+                    messages = messages.filterNot { it.id in deletableIds }
                     onComplete(true)
                 }
                 is Result.Error -> {
