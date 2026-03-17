@@ -664,20 +664,41 @@ private fun ChatDetailScreenContent(
                         reportCount = 0
                     )
 
-                    if (message.flickId.isNotBlank()) {
-                        flickRepository.getFlickById(message.flickId) { result ->
-                            selectedChatPhoto = when (result) {
-                                is com.picflick.app.data.Result.Success -> result.data
+                    fun backfillMessageFlickId(resolvedFlickId: String) {
+                        if (message.id.isBlank() || resolvedFlickId.isBlank() || message.flickId == resolvedFlickId) return
+                        com.google.firebase.firestore.FirebaseFirestore.getInstance()
+                            .collection("chatSessions")
+                            .document(message.chatId)
+                            .collection("messages")
+                            .document(message.id)
+                            .update("flickId", resolvedFlickId)
+                    }
+
+                    fun resolveByImageUrlWithBackfill() {
+                        flickRepository.getFlickByImageUrl(message.imageUrl) { byUrlResult ->
+                            selectedChatPhoto = when (byUrlResult) {
+                                is com.picflick.app.data.Result.Success -> {
+                                    backfillMessageFlickId(byUrlResult.data.id)
+                                    byUrlResult.data
+                                }
                                 else -> fallbackFlick
+                            }
+                        }
+                    }
+
+                    if (message.flickId.isNotBlank()) {
+                        flickRepository.getFlickById(message.flickId) { byIdResult ->
+                            when (byIdResult) {
+                                is com.picflick.app.data.Result.Success -> {
+                                    selectedChatPhoto = byIdResult.data
+                                }
+                                else -> {
+                                    resolveByImageUrlWithBackfill()
+                                }
                             }
                         }
                     } else {
-                        flickRepository.getFlickByImageUrl(message.imageUrl) { result ->
-                            selectedChatPhoto = when (result) {
-                                is com.picflick.app.data.Result.Success -> result.data
-                                else -> fallbackFlick
-                            }
-                        }
+                        resolveByImageUrlWithBackfill()
                     }
                 }
             }
