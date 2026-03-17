@@ -675,7 +675,7 @@ private fun ChatDetailScreenContent(
                     }
 
                     fun resolveByImageUrlWithBackfill() {
-                        flickRepository.getFlickByImageUrl(message.imageUrl) { byUrlResult ->
+                        flickRepository.getFlickByImageUrl(message.imageUrl, message.senderId) { byUrlResult ->
                             selectedChatPhoto = when (byUrlResult) {
                                 is com.picflick.app.data.Result.Success -> {
                                     backfillMessageFlickId(byUrlResult.data.id)
