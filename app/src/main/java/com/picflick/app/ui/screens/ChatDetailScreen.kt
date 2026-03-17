@@ -64,6 +64,13 @@ import java.util.*
  * Chat Detail Screen - Restored with Working Keyboard Fix
  * Uses imeInsets minus navInsets for accurate keyboard height
  */
+data class QuickSwitchChatItem(
+    val chatSession: ChatSession,
+    val otherUserId: String,
+    val otherUserName: String,
+    val otherUserPhoto: String
+)
+
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun ChatDetailScreen(
@@ -74,7 +81,9 @@ fun ChatDetailScreen(
     onBack: () -> Unit,
     onUserProfileClick: (String) -> Unit = {},
     onPhotoClick: (ChatMessage) -> Unit = {},
-    onAddNewPhoto: () -> Unit = {}
+    onAddNewPhoto: () -> Unit = {},
+    quickSwitchChats: List<QuickSwitchChatItem> = emptyList(),
+    onQuickSwitchChat: (ChatSession, String) -> Unit = { _, _ -> }
 ) {
     val chatId = chatSession.id
     var otherUserPhoto by remember { mutableStateOf(chatSession.participantPhotos[otherUserId] ?: "") }
@@ -303,155 +312,141 @@ if (available.y < 0f) {
             .background(Color(0xFFD9E7F5))
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
-            // Header with other user's info (56dp fixed height)
-            Box(
+            // Header + quick switch bar
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(56.dp)
-                    .background(PicFlickBannerBackground),
-                contentAlignment = Alignment.CenterStart
+                    .background(PicFlickBannerBackground)
             ) {
-                Row(
+                Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                        .height(56.dp),
+                    contentAlignment = Alignment.CenterStart
                 ) {
-                    IconButton(
-                        onClick = onBack,
-                        modifier = Modifier.size(48.dp)
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back",
-                            tint = Color.White
-                        )
-                    }
-                    
-                    // Other user's profile pic
-                    if (otherUserPhoto.isNotEmpty()) {
-                        AsyncImage(
-                            model = otherUserPhoto,
-                            contentDescription = "User profile photo",
-                            modifier = Modifier
-                                .size(40.dp)
-                                .clip(CircleShape),
-                            contentScale = ContentScale.Crop
-                        )
-                    } else {
-                        Box(
-                            modifier = Modifier
-                                .size(40.dp)
-                                .clip(CircleShape)
-                                .background(Color.Gray),
-                            contentAlignment = Alignment.Center
+                        IconButton(
+                            onClick = onBack,
+                            modifier = Modifier.size(48.dp)
                         ) {
                             Icon(
-                                imageVector = Icons.Default.Person,
-                                contentDescription = null,
+                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = "Back",
                                 tint = Color.White
                             )
                         }
-                    }
-                    
-                    Spacer(modifier = Modifier.width(12.dp))
 
-                    if (isSelectionMode) {
                         Spacer(modifier = Modifier.weight(1f))
 
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            IconButton(
-                                onClick = {
-                                    if (selectedMessageIds.isNotEmpty()) {
-                                        showDeleteSelectedConfirm = true
-                                    }
-                                },
-                                modifier = Modifier.size(40.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Delete,
-                                    contentDescription = "Delete selected",
-                                    tint = Color.White
+                        if (isSelectionMode) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                IconButton(
+                                    onClick = {
+                                        if (selectedMessageIds.isNotEmpty()) {
+                                            showDeleteSelectedConfirm = true
+                                        }
+                                    },
+                                    modifier = Modifier.size(40.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Delete,
+                                        contentDescription = "Delete selected",
+                                        tint = Color.White
+                                    )
+                                }
+
+                                Text(
+                                    text = selectedMessageIds.size.toString(),
+                                    color = Color.White,
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.padding(end = 8.dp)
                                 )
+
+                                IconButton(
+                                    onClick = {
+                                        isSelectionMode = false
+                                        selectedMessageIds.clear()
+                                        activeReactionMessageId = null
+                                    },
+                                    modifier = Modifier.size(40.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Close,
+                                        contentDescription = "Cancel selection",
+                                        tint = Color.White
+                                    )
+                                }
                             }
+                        } else {
+                            Box(modifier = Modifier.size(48.dp), contentAlignment = Alignment.Center) {
+                                IconButton(
+                                    onClick = { showHeaderMenu = true },
+                                    modifier = Modifier.size(40.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.MoreVert,
+                                        contentDescription = "Chat menu",
+                                        tint = Color.White
+                                    )
+                                }
 
-                            Text(
-                                text = selectedMessageIds.size.toString(),
-                                color = Color.White,
-                                fontSize = 16.sp,
-                                fontWeight = FontWeight.Bold,
-                                modifier = Modifier.padding(end = 8.dp)
-                            )
+                                DropdownMenu(
+                                    expanded = showHeaderMenu,
+                                    onDismissRequest = { showHeaderMenu = false }
+                                ) {
+                                    DropdownMenuItem(
+                                        text = { Text("View profile") },
+                                        onClick = {
+                                            showHeaderMenu = false
+                                            onUserProfileClick(otherUserId)
+                                        }
+                                    )
 
-                            IconButton(
-                                onClick = {
-                                    isSelectionMode = false
-                                    selectedMessageIds.clear()
-                                    activeReactionMessageId = null
-                                },
-                                modifier = Modifier.size(40.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Close,
-                                    contentDescription = "Cancel selection",
-                                    tint = Color.White
-                                )
-                            }
-                        }
-                    } else {
-                        Spacer(modifier = Modifier.weight(1f))
-                        Box(modifier = Modifier.size(48.dp), contentAlignment = Alignment.Center) {
-                            IconButton(
-                                onClick = { showHeaderMenu = true },
-                                modifier = Modifier.size(40.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.MoreVert,
-                                    contentDescription = "Chat menu",
-                                    tint = Color.White
-                                )
-                            }
+                                    DropdownMenuItem(
+                                        text = { Text("Select messages") },
+                                        onClick = {
+                                            showHeaderMenu = false
+                                            isSelectionMode = true
+                                        }
+                                    )
 
-                            DropdownMenu(
-                                expanded = showHeaderMenu,
-                                onDismissRequest = { showHeaderMenu = false }
-                            ) {
-                                DropdownMenuItem(
-                                    text = { Text("View profile") },
-                                    onClick = {
-                                        showHeaderMenu = false
-                                        onUserProfileClick(otherUserId)
-                                    }
-                                )
+                                    HorizontalDivider()
 
-                                DropdownMenuItem(
-                                    text = { Text("Select messages") },
-                                    onClick = {
-                                        showHeaderMenu = false
-                                        isSelectionMode = true
-                                    }
-                                )
+                                    DropdownMenuItem(
+                                        text = { Text("Clear chat", color = Color.Red) },
+                                        onClick = {
+                                            showHeaderMenu = false
+                                            showClearChatConfirm = true
+                                        }
+                                    )
 
-                                HorizontalDivider()
-
-                                DropdownMenuItem(
-                                    text = { Text("Clear chat", color = Color.Red) },
-                                    onClick = {
-                                        showHeaderMenu = false
-                                        showClearChatConfirm = true
-                                    }
-                                )
-
-                                DropdownMenuItem(
-                                    text = { Text("Block user", color = Color.Red) },
-                                    onClick = {
-                                        showHeaderMenu = false
-                                        showBlockUserConfirm = true
-                                    }
-                                )
+                                    DropdownMenuItem(
+                                        text = { Text("Block user", color = Color.Red) },
+                                        onClick = {
+                                            showHeaderMenu = false
+                                            showBlockUserConfirm = true
+                                        }
+                                    )
+                                }
                             }
                         }
                     }
+                }
+
+                if (!isSelectionMode) {
+                    QuickSwitchChatBar(
+                        currentChatSession = chatSession,
+                        currentOtherUserId = otherUserId,
+                        currentOtherUserPhoto = otherUserPhoto,
+                        quickSwitchChats = quickSwitchChats,
+                        onSwitchChat = onQuickSwitchChat
+                    )
                 }
             }
 
@@ -1331,6 +1326,107 @@ private fun QuotedMessage(
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
                 maxLines = 1
             )
+        }
+    }
+}
+
+@Composable
+private fun QuickSwitchChatBar(
+    currentChatSession: ChatSession,
+    currentOtherUserId: String,
+    currentOtherUserPhoto: String,
+    quickSwitchChats: List<QuickSwitchChatItem>,
+    onSwitchChat: (ChatSession, String) -> Unit
+) {
+    val currentName = currentChatSession.participantNames[currentOtherUserId]
+        ?.takeIf { it.isNotBlank() }
+        ?: "Chat"
+
+    val sortedOthers = quickSwitchChats
+        .filter { it.otherUserId != currentOtherUserId }
+        .sortedByDescending { it.chatSession.lastTimestamp }
+        .take(4)
+
+    val slots = listOf(
+        sortedOthers.getOrNull(2),
+        sortedOthers.getOrNull(0),
+        QuickSwitchChatItem(
+            chatSession = currentChatSession,
+            otherUserId = currentOtherUserId,
+            otherUserName = currentName,
+            otherUserPhoto = currentOtherUserPhoto
+        ),
+        sortedOthers.getOrNull(1),
+        sortedOthers.getOrNull(3)
+    )
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 8.dp, vertical = 4.dp),
+        verticalAlignment = Alignment.Top,
+        horizontalArrangement = Arrangement.SpaceEvenly
+    ) {
+        slots.forEachIndexed { index, item ->
+            val isCenter = index == 2
+            val avatarSize = if (isCenter) 44.dp else 34.dp
+
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.width(62.dp)
+            ) {
+                if (item == null) {
+                    Spacer(
+                        modifier = Modifier
+                            .size(avatarSize)
+                            .clip(CircleShape)
+                            .background(Color.White.copy(alpha = 0.15f))
+                    )
+                } else {
+                    Box(
+                        modifier = Modifier
+                            .size(avatarSize)
+                            .clip(CircleShape)
+                            .background(Color.White.copy(alpha = if (isCenter) 0.35f else 0.2f))
+                            .clickable {
+                                if (!isCenter) {
+                                    onSwitchChat(item.chatSession, item.otherUserId)
+                                }
+                            },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (item.otherUserPhoto.isNotBlank()) {
+                            AsyncImage(
+                                model = item.otherUserPhoto,
+                                contentDescription = item.otherUserName,
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .clip(CircleShape),
+                                contentScale = ContentScale.Crop
+                            )
+                        } else {
+                            Icon(
+                                imageVector = Icons.Default.Person,
+                                contentDescription = null,
+                                tint = Color.White,
+                                modifier = Modifier.size(if (isCenter) 24.dp else 20.dp)
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = item?.otherUserName
+                        ?.trim()
+                        ?.split(" ")
+                        ?.firstOrNull()
+                        ?: "",
+                    color = Color.White,
+                    fontSize = if (isCenter) 10.sp else 9.sp,
+                    maxLines = 1
+                )
+            }
         }
     }
 }
