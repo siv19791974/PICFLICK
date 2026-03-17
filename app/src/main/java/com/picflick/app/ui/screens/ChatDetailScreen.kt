@@ -1,7 +1,5 @@
 package com.picflick.app.ui.screens
 
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -17,9 +15,11 @@ import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -36,6 +36,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
@@ -73,7 +74,8 @@ fun ChatDetailScreen(
     viewModel: ChatViewModel,
     onBack: () -> Unit,
     onUserProfileClick: (String) -> Unit = {},
-    onPhotoClick: (ChatMessage) -> Unit = {}
+    onPhotoClick: (ChatMessage) -> Unit = {},
+    onAddNewPhoto: () -> Unit = {}
 ) {
     val chatId = chatSession.id
     var otherUserPhoto by remember { mutableStateOf(chatSession.participantPhotos[otherUserId] ?: "") }
@@ -106,7 +108,6 @@ fun ChatDetailScreen(
     var showBlockUserConfirm by remember { mutableStateOf(false) }
     var showMyFlickPicker by remember { mutableStateOf(false) }
     var isLoadingMyFlicks by remember { mutableStateOf(false) }
-    var isUploadingDevicePhoto by remember { mutableStateOf(false) }
     var myFlickPickerError by remember { mutableStateOf<String?>(null) }
     var myFlicks by remember { mutableStateOf<List<Flick>>(emptyList()) }
     val flickRepository = remember { FlickRepository.getInstance() }
@@ -205,41 +206,6 @@ if (available.y < 0f) {
         }
     }
 
-    val devicePhotoPickerLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.GetContent()
-    ) { uri ->
-        if (uri == null) return@rememberLauncherForActivityResult
-
-        isUploadingDevicePhoto = true
-        myFlickPickerError = null
-
-        scope.launch {
-            try {
-                val bytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
-                if (bytes == null) {
-                    myFlickPickerError = "Could not read selected photo"
-                    isUploadingDevicePhoto = false
-                    return@launch
-                }
-
-                when (val uploadResult = flickRepository.uploadFlickImage(currentUser.uid, bytes)) {
-                    is Result.Success -> {
-                        showMyFlickPicker = false
-                        isUploadingDevicePhoto = false
-                        sendExistingFlickPhoto(uploadResult.data)
-                    }
-                    is Result.Error -> {
-                        myFlickPickerError = uploadResult.message
-                        isUploadingDevicePhoto = false
-                    }
-                    is Result.Loading -> Unit
-                }
-            } catch (e: Exception) {
-                myFlickPickerError = e.message ?: "Failed to upload selected photo"
-                isUploadingDevicePhoto = false
-            }
-        }
-    }
 
     // Load messages and typing listener
     LaunchedEffect(chatId, otherUserId) {
@@ -771,11 +737,7 @@ Column(modifier = Modifier.fillMaxSize()) {
 
     if (showMyFlickPicker) {
         AlertDialog(
-            onDismissRequest = {
-                if (!isUploadingDevicePhoto) {
-                    showMyFlickPicker = false
-                }
-            },
+            onDismissRequest = { showMyFlickPicker = false },
             title = { Text("Share Photo") },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -788,18 +750,6 @@ Column(modifier = Modifier.fillMaxSize()) {
                     }
 
                     when {
-                        isUploadingDevicePhoto -> {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 16.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                CircularProgressIndicator()
-                            }
-                            Text("Uploading photo to PicFlick...")
-                        }
-
                         isLoadingMyFlicks -> {
                             Box(
                                 modifier = Modifier
@@ -812,7 +762,7 @@ Column(modifier = Modifier.fillMaxSize()) {
                         }
 
                         myFlicks.isEmpty() -> {
-                            Text("No uploaded PicFlick photos found yet. You can choose one from your device and it will be uploaded to PicFlick before sending.")
+                            Text("No uploaded PicFlick photos found yet. Tap Add new photo to upload via Camera/Gallery screen.")
                         }
 
                         else -> {
@@ -821,39 +771,28 @@ Column(modifier = Modifier.fillMaxSize()) {
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
-                            LazyColumn(
+                            LazyVerticalGrid(
+                                columns = GridCells.Fixed(3),
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .heightIn(max = 300.dp),
-                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                                    .heightIn(max = 320.dp),
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                verticalArrangement = Arrangement.spacedBy(6.dp)
                             ) {
                                 items(myFlicks, key = { it.id }) { flick ->
-                                    Row(
+                                    AsyncImage(
+                                        model = flick.imageUrl,
+                                        contentDescription = "My photo",
                                         modifier = Modifier
                                             .fillMaxWidth()
-                                            .clip(RoundedCornerShape(10.dp))
-                                            .clickable(enabled = !isUploadingDevicePhoto) {
+                                            .aspectRatio(1f)
+                                            .clip(RoundedCornerShape(8.dp))
+                                            .clickable {
                                                 showMyFlickPicker = false
                                                 sendExistingFlickPhoto(flick.imageUrl)
-                                            }
-                                            .padding(6.dp),
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        AsyncImage(
-                                            model = flick.imageUrl,
-                                            contentDescription = "My photo",
-                                            modifier = Modifier
-                                                .size(56.dp)
-                                                .clip(RoundedCornerShape(8.dp)),
-                                            contentScale = ContentScale.Crop
-                                        )
-                                        Spacer(modifier = Modifier.width(10.dp))
-                                        Text(
-                                            text = if (flick.description.isBlank()) "Photo" else flick.description,
-                                            maxLines = 2,
-                                            style = MaterialTheme.typography.bodyMedium
-                                        )
-                                    }
+                                            },
+                                        contentScale = ContentScale.Crop
+                                    )
                                 }
                             }
                         }
@@ -863,18 +802,13 @@ Column(modifier = Modifier.fillMaxSize()) {
             confirmButton = {
                 TextButton(
                     onClick = {
-                        if (!isUploadingDevicePhoto) {
-                            devicePhotoPickerLauncher.launch("image/*")
-                        }
-                    },
-                    enabled = !isUploadingDevicePhoto
-                ) { Text("Choose from device") }
+                        showMyFlickPicker = false
+                        onAddNewPhoto()
+                    }
+                ) { Text("Add new photo") }
             },
             dismissButton = {
-                TextButton(
-                    onClick = { showMyFlickPicker = false },
-                    enabled = !isUploadingDevicePhoto
-                ) { Text("Close") }
+                TextButton(onClick = { showMyFlickPicker = false }) { Text("Close") }
             }
         )
     }

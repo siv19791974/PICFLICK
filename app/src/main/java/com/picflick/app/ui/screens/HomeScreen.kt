@@ -71,7 +71,9 @@ fun HomeScreen(
     onSignOut: () -> Unit,
     onUserProfileClick: (String) -> Unit = {},
     friends: List<UserProfile> = emptyList(), // Friends list for profile picture lookup
-    onEditPhotoClick: (Flick) -> Unit = {} // Navigate to edit photo screen
+    onEditPhotoClick: (Flick) -> Unit = {}, // Navigate to edit photo screen
+    openUploadDialog: Boolean = false,
+    onUploadDialogOpened: () -> Unit = {}
 ) {
     val context = LocalContext.current
     var showUploadDialog by remember { mutableStateOf(false) }
@@ -96,6 +98,13 @@ fun HomeScreen(
     LaunchedEffect(userProfile.uid) {
         viewModel.loadFlicks(userProfile.uid)
         viewModel.loadFriendGroups(userProfile.uid)
+    }
+
+    LaunchedEffect(openUploadDialog) {
+        if (openUploadDialog) {
+            showUploadDialog = true
+            onUploadDialogOpened()
+        }
     }
 
     LaunchedEffect(userProfile.uid) {
