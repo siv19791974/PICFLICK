@@ -159,12 +159,14 @@ service cloud.firestore {
           isChatParticipant() && 
           request.auth.uid == request.resource.data.senderId;
         
-        // Sender can update their own messages OR recipient can update read/delivered status OR reactions
+        // Sender can update their own messages OR participants can update constrained delivery/reaction/backfill fields
         allow update: if isAuth() && isChatParticipant() && (
           // Sender can update anything
           request.auth.uid == resource.data.senderId ||
           // Recipient can only update read/delivered fields (delivery receipts)
           request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read', 'delivered']) ||
+          // Participants can backfill canonical flickId for legacy chat-photo messages
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['flickId']) ||
           // Anyone can add reactions (reactions field or reactions.{userId} field)
           request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reactions']) ||
           request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reactions', 'reactions.' + request.auth.uid])
