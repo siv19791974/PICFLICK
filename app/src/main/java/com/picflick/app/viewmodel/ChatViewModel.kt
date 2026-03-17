@@ -188,6 +188,7 @@ class ChatViewModel : ViewModel() {
         senderName: String,
         senderPhotoUrl: String,
         imageUrl: String = "",
+        flickId: String = "",
         replyToMessage: ChatMessage? = null,
         onComplete: () -> Unit = {}
     ) {
@@ -199,6 +200,7 @@ class ChatViewModel : ViewModel() {
                 senderPhotoUrl = senderPhotoUrl,
                 text = text,
                 imageUrl = imageUrl,
+                flickId = flickId,
                 timestamp = System.currentTimeMillis(),
                 read = false,
                 delivered = false,

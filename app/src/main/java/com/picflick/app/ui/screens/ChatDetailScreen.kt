@@ -172,7 +172,7 @@ if (available.y < 0f) {
         ) { }
     }
 
-    fun sendExistingFlickPhoto(imageUrl: String) {
+    fun sendExistingFlickPhoto(flick: Flick) {
         viewModel.sendMessage(
             chatId = chatId,
             text = "",
@@ -180,7 +180,8 @@ if (available.y < 0f) {
             recipientId = otherUserId,
             senderName = currentUser.displayName,
             senderPhotoUrl = currentUser.photoUrl,
-            imageUrl = imageUrl,
+            imageUrl = flick.imageUrl,
+            flickId = flick.id,
             replyToMessage = null
         ) {
             viewModel.stopTyping(chatId, currentUser.uid)
@@ -793,7 +794,7 @@ Column(modifier = Modifier.fillMaxSize()) {
                                             .clip(RoundedCornerShape(8.dp))
                                             .clickable {
                                                 showMyFlickPicker = false
-                                                sendExistingFlickPhoto(flick.imageUrl)
+                                                sendExistingFlickPhoto(flick)
                                             },
                                         contentScale = ContentScale.Crop
                                     )

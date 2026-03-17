@@ -455,22 +455,29 @@ class FlickRepository private constructor() {
      * Resolve a flick by image URL (used by chat photo viewer to recover real flick ID for comments).
      */
     fun getFlickByImageUrl(imageUrl: String, onResult: (Result<Flick>) -> Unit) {
-        db.collection("flicks")
-            .whereEqualTo("imageUrl", imageUrl)
-            .limit(1)
-            .get()
-            .addOnSuccessListener { snapshot ->
-                val doc = snapshot.documents.firstOrNull()
-                val flick = doc?.toObject(Flick::class.java)
-                if (doc != null && flick != null) {
-                    onResult(Result.Success(flick.copy(id = doc.id)))
-                } else {
-                    onResult(Result.Error(Exception("Photo not found"), "Photo not found"))
+        fun resolveByUrl(url: String, fallbackUrl: String? = null) {
+            db.collection("flicks")
+                .whereEqualTo("imageUrl", url)
+                .limit(1)
+                .get()
+                .addOnSuccessListener { snapshot ->
+                    val doc = snapshot.documents.firstOrNull()
+                    val flick = doc?.toObject(Flick::class.java)
+                    if (doc != null && flick != null) {
+                        onResult(Result.Success(flick.copy(id = doc.id)))
+                    } else if (!fallbackUrl.isNullOrBlank() && fallbackUrl != url) {
+                        resolveByUrl(fallbackUrl)
+                    } else {
+                        onResult(Result.Error(Exception("Photo not found"), "Photo not found"))
+                    }
                 }
-            }
-            .addOnFailureListener { e ->
-                onResult(Result.Error(e, "Failed to load photo"))
-            }
+                .addOnFailureListener { e ->
+                    onResult(Result.Error(e, "Failed to load photo"))
+                }
+        }
+
+        val baseUrl = imageUrl.substringBefore("?")
+        resolveByUrl(imageUrl, baseUrl)
     }
 
     /**
