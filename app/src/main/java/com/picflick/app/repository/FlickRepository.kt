@@ -459,28 +459,34 @@ class FlickRepository private constructor() {
         ownerUserId: String? = null,
         onResult: (Result<Flick>) -> Unit
     ) {
-        fun resolveByUrl(url: String, fallbackUrl: String? = null, enforceOwner: Boolean = true) {
+        fun normalizeImageKey(url: String): String = url.substringBefore("?")
+
+        fun mapDocToFlick(doc: com.google.firebase.firestore.DocumentSnapshot): Flick? {
+            val flick = doc.toObject(Flick::class.java) ?: return null
+            return flick.copy(id = doc.id)
+        }
+
+        fun resolveByNormalizedKey(key: String, enforceOwner: Boolean) {
             var query: com.google.firebase.firestore.Query = db.collection("flicks")
-                .whereEqualTo("imageUrl", url)
 
             if (enforceOwner && !ownerUserId.isNullOrBlank()) {
                 query = query.whereEqualTo("userId", ownerUserId)
             }
 
             query
+                .limit(400)
                 .get()
                 .addOnSuccessListener { snapshot ->
-                    val doc = snapshot.documents
-                        .sortedBy { it.id }
-                        .firstOrNull()
-                    val flick = doc?.toObject(Flick::class.java)
-                    if (doc != null && flick != null) {
-                        onResult(Result.Success(flick.copy(id = doc.id)))
+                    val flick = snapshot.documents
+                        .sortedByDescending { it.getLong("timestamp") ?: 0L }
+                        .asSequence()
+                        .mapNotNull(::mapDocToFlick)
+                        .firstOrNull { normalizeImageKey(it.imageUrl) == key }
+
+                    if (flick != null) {
+                        onResult(Result.Success(flick))
                     } else if (enforceOwner && !ownerUserId.isNullOrBlank()) {
-                        // Fallback: try any owner for legacy/shared photos where sender isn't the original owner
-                        resolveByUrl(url, fallbackUrl, enforceOwner = false)
-                    } else if (!fallbackUrl.isNullOrBlank() && fallbackUrl != url) {
-                        resolveByUrl(fallbackUrl, null, enforceOwner)
+                        resolveByNormalizedKey(key, enforceOwner = false)
                     } else {
                         onResult(Result.Error(Exception("Photo not found"), "Photo not found"))
                     }
@@ -490,8 +496,8 @@ class FlickRepository private constructor() {
                 }
         }
 
-        val baseUrl = imageUrl.substringBefore("?")
-        resolveByUrl(imageUrl, baseUrl)
+        val normalizedKey = normalizeImageKey(imageUrl)
+        resolveByNormalizedKey(normalizedKey, enforceOwner = true)
     }
 
     /**
