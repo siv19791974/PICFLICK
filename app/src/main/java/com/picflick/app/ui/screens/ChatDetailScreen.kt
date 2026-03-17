@@ -321,7 +321,7 @@ if (available.y < 0f) {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(56.dp),
+                        .height(64.dp),
                     contentAlignment = Alignment.CenterStart
                 ) {
                     Row(
@@ -1370,44 +1370,63 @@ private fun QuickSwitchChatBar(
             val isCenter = index == 2
             val avatarSize = if (isCenter) 40.dp else 30.dp
 
-            if (item == null) {
-                Spacer(
-                    modifier = Modifier
-                        .size(avatarSize)
-                        .clip(CircleShape)
-                        .background(Color.White.copy(alpha = 0.15f))
-                )
-            } else {
-                Box(
-                    modifier = Modifier
-                        .size(avatarSize)
-                        .clip(CircleShape)
-                        .background(Color.White.copy(alpha = if (isCenter) 0.35f else 0.2f))
-                        .clickable {
-                            if (!isCenter) {
-                                onSwitchChat(item.chatSession, item.otherUserId)
-                            }
-                        },
-                    contentAlignment = Alignment.Center
-                ) {
-                    if (item.otherUserPhoto.isNotBlank()) {
-                        AsyncImage(
-                            model = item.otherUserPhoto,
-                            contentDescription = item.otherUserName,
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .clip(CircleShape),
-                            contentScale = ContentScale.Crop
-                        )
-                    } else {
-                        Icon(
-                            imageVector = Icons.Default.Person,
-                            contentDescription = null,
-                            tint = Color.White,
-                            modifier = Modifier.size(if (isCenter) 22.dp else 18.dp)
-                        )
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.width(52.dp)
+            ) {
+                if (item == null) {
+                    Spacer(
+                        modifier = Modifier
+                            .size(avatarSize)
+                            .clip(CircleShape)
+                            .background(Color.White.copy(alpha = 0.15f))
+                    )
+                } else {
+                    Box(
+                        modifier = Modifier
+                            .size(avatarSize)
+                            .clip(CircleShape)
+                            .background(Color.White.copy(alpha = if (isCenter) 0.35f else 0.2f))
+                            .clickable {
+                                if (!isCenter) {
+                                    onSwitchChat(item.chatSession, item.otherUserId)
+                                }
+                            },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (item.otherUserPhoto.isNotBlank()) {
+                            AsyncImage(
+                                model = item.otherUserPhoto,
+                                contentDescription = item.otherUserName,
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .clip(CircleShape),
+                                contentScale = ContentScale.Crop
+                            )
+                        } else {
+                            Icon(
+                                imageVector = Icons.Default.Person,
+                                contentDescription = null,
+                                tint = Color.White,
+                                modifier = Modifier.size(if (isCenter) 22.dp else 18.dp)
+                            )
+                        }
                     }
                 }
+
+                val firstName = item?.otherUserName
+                    ?.trim()
+                    ?.split(" ")
+                    ?.firstOrNull()
+                    .orEmpty()
+
+                Text(
+                    text = firstName,
+                    color = Color.White,
+                    fontSize = if (isCenter) 9.sp else 8.sp,
+                    maxLines = 1,
+                    modifier = Modifier.padding(top = 1.dp)
+                )
             }
         }
     }
