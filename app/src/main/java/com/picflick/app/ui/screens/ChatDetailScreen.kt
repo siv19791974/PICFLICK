@@ -31,6 +31,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -98,9 +99,12 @@ val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
     var upwardPullDistance by remember { mutableStateOf(0f) }
     var isRefreshingByPullUp by remember { mutableStateOf(false) }
+    var composerHeightPx by remember { mutableStateOf(0) }
 
     // Composer positioning: sit on nav bar when closed, move with keyboard when open
     val density = LocalDensity.current
+    val composerHeightDp = with(density) { composerHeightPx.toDp() }
+    val listBottomPadding = composerHeightDp + if (activeReactionMessageId != null) 220.dp else 16.dp
     val pullUpRefreshThreshold = with(density) { 96.dp.toPx() }
 
     fun triggerPullUpRefresh() {
@@ -171,20 +175,26 @@ val imagePickerLauncher = rememberLauncherForActivityResult(
         viewModel.markAsRead(chatId, currentUser.uid)
     }
 
-    // Auto-scroll to bottom when new messages arrive
-    LaunchedEffect(viewModel.messages.size) {
+    suspend fun scrollToBottom() {
         if (viewModel.messages.isNotEmpty()) {
-            delay(120)
-            listState.animateScrollToItem(viewModel.messages.size - 1)
+            listState.scrollToItem(viewModel.messages.lastIndex)
         }
     }
 
-    // Keep latest message visible when keyboard opens/closes
+    // Auto-scroll to bottom when new messages arrive (disabled during selection to prevent jumps)
+    LaunchedEffect(viewModel.messages.size, isSelectionMode) {
+        if (!isSelectionMode && viewModel.messages.isNotEmpty()) {
+            delay(120)
+            scrollToBottom()
+        }
+    }
+
+    // Keep latest message visible when keyboard/composer changes (disabled during selection)
     val imeBottom = WindowInsets.ime.getBottom(LocalDensity.current)
-    LaunchedEffect(imeBottom) {
-        if (viewModel.messages.isNotEmpty()) {
-            delay(80)
-            listState.animateScrollToItem(viewModel.messages.size - 1)
+    LaunchedEffect(imeBottom, composerHeightPx, isSelectionMode) {
+        if (!isSelectionMode && viewModel.messages.isNotEmpty()) {
+            delay(100)
+            scrollToBottom()
         }
     }
     
@@ -205,10 +215,11 @@ val imagePickerLauncher = rememberLauncherForActivityResult(
     }
 
     // Keep last message + reaction choices visible when reaction picker is opened
-    LaunchedEffect(activeReactionMessageId, viewModel.messages.size) {
-        if (activeReactionMessageId != null && viewModel.messages.isNotEmpty()) {
+    // (do not auto-scroll while selecting to avoid jumpy long-press behavior)
+    LaunchedEffect(activeReactionMessageId, viewModel.messages.size, composerHeightPx, isSelectionMode) {
+        if (!isSelectionMode && activeReactionMessageId != null && viewModel.messages.isNotEmpty()) {
             delay(120)
-            listState.animateScrollToItem(viewModel.messages.lastIndex)
+            scrollToBottom()
         }
     }
 
@@ -445,12 +456,12 @@ Column(modifier = Modifier.fillMaxSize()) {
                                     .fillMaxSize()
                                     .padding(horizontal = 8.dp),
                                 state = listState,
-                                contentPadding = PaddingValues(start = 0.dp, top = 8.dp, end = 0.dp, bottom = 88.dp)
+                                contentPadding = PaddingValues(start = 0.dp, top = 8.dp, end = 0.dp, bottom = listBottomPadding)
                             ) {
                                 itemsIndexed(
                                     items = viewModel.messages,
                                     key = { _, item -> item.id }
-                                ) { index, message ->
+                                ) { _, message ->
                                     val isMe = message.senderId == currentUser.uid
                                     ChatBubble(
                                         message = message,
@@ -486,21 +497,11 @@ Column(modifier = Modifier.fillMaxSize()) {
                                         reactionLiftPx = if (isSelectionMode && selectedMessageIds.size == 1 && activeReactionMessageId == message.id) 12 else 0,
                                         onReactionPickerToggle = { opened ->
                                             activeReactionMessageId = if (opened) message.id else null
-                                            if (opened) {
-                                                scope.launch {
-                                                    val lastIndex = viewModel.messages.lastIndex
-                                                    listState.animateScrollToItem((index + 1).coerceAtMost(lastIndex))
-                                                }
-                                            }
                                         }
                                     )
                                     Spacer(modifier = Modifier.height(4.dp))
                                 }
-                                if (activeReactionMessageId != null) {
-                                    item(key = "reaction-picker-bottom-spacer") {
-                                        Spacer(modifier = Modifier.height(220.dp))
-                                    }
-                                }
+
                             }
                         }
                     }
@@ -513,6 +514,7 @@ Column(modifier = Modifier.fillMaxSize()) {
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
+                .onSizeChanged { composerHeightPx = it.height }
                 .navigationBarsPadding()
                 .imePadding(),
             color = Color.Black,
@@ -602,6 +604,10 @@ Column(modifier = Modifier.fillMaxSize()) {
                                 ) {
                                     messageText = ""
                                     replyToMessage = null
+                                    scope.launch {
+                                        delay(80)
+                                        scrollToBottom()
+                                    }
                                 }
                             }
                         },
