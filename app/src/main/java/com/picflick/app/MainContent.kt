@@ -672,6 +672,12 @@ private fun ChatDetailScreenContent(
                             .collection("messages")
                             .document(message.id)
                             .update("flickId", resolvedFlickId)
+                            .addOnSuccessListener {
+                                android.util.Log.d("ChatPhotoBackfill", "flickId backfilled for message=${message.id} -> $resolvedFlickId")
+                            }
+                            .addOnFailureListener { e ->
+                                android.util.Log.e("ChatPhotoBackfill", "FAILED flickId backfill for message=${message.id}: ${e.message}")
+                            }
                     }
 
                     fun resolveByImageUrlWithBackfill() {
