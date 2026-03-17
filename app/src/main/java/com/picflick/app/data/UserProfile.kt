@@ -7,6 +7,7 @@ data class UserProfile(
     val uid: String = "",
     val email: String = "",
     val displayName: String = "",
+    val displayNameLower: String = "",
     val photoUrl: String = "",
     val phoneNumber: String = "", // Auto-detected from device SIM
     val bio: String = "",
