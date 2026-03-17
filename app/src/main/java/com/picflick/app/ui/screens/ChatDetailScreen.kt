@@ -191,7 +191,20 @@ if (available.y < 0f) {
         scope.launch {
             when (val result = flickRepository.getFlicksForUserPaginated(currentUser.uid, null, 60)) {
                 is Result.Success -> {
-                    myFlicks = result.data.filter { it.imageUrl.isNotBlank() }
+                    val candidateFlicks = result.data.filter { it.imageUrl.isNotBlank() }
+                    val ownerIdsToCheck = candidateFlicks
+                        .map { it.userId }
+                        .filter { it.isNotBlank() && it != currentUser.uid }
+                        .toSet()
+
+                    val ownerCanShareToRecipient = mutableMapOf<String, Boolean>()
+                    ownerIdsToCheck.forEach { ownerId ->
+                        ownerCanShareToRecipient[ownerId] = flickRepository.areFriends(ownerId, otherUserId)
+                    }
+
+                    myFlicks = candidateFlicks.filter { flick ->
+                        flick.userId == currentUser.uid || ownerCanShareToRecipient[flick.userId] == true
+                    }
                     isLoadingMyFlicks = false
                 }
                 is Result.Error -> {
@@ -760,12 +773,12 @@ Column(modifier = Modifier.fillMaxSize()) {
                         }
 
                         myFlicks.isEmpty() -> {
-                            Text("No uploaded PicFlick photos found yet. Tap Open Add Photo screen to use the standard Camera/Gallery upload flow.")
+                            Text("No photos are available to share with this user right now. Tap Open Add Photo screen to upload your own photo first.")
                         }
 
                         else -> {
                             Text(
-                                text = "Choose an existing PicFlick photo",
+                                text = "Choose an existing PicFlick photo shareable with this user",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
