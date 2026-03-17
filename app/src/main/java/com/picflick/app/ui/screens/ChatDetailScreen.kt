@@ -470,6 +470,11 @@ Column(modifier = Modifier.fillMaxSize()) {
                                         onReplyClick = { replyToMessage = message },
                                         onReaction = { emoji ->
                                             viewModel.addReaction(chatId, message.id, currentUser.uid, emoji, currentUser.displayName, currentUser.photoUrl)
+                                            if (isSelectionMode) {
+                                                selectedMessageIds.clear()
+                                                isSelectionMode = false
+                                                activeReactionMessageId = null
+                                            }
                                         },
                                         onPhotoClick = { onPhotoClick(message) },
                                         isSelectionMode = isSelectionMode,
