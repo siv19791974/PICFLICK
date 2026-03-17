@@ -75,6 +75,8 @@ import android.provider.MediaStore
 import android.widget.Toast
 import android.view.LayoutInflater
 import android.widget.TextView
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.Dispatchers
@@ -136,6 +138,15 @@ fun FullScreenPhotoViewer(
     
     val repository = remember { FlickRepository.getInstance() }
     val coroutineScope = rememberCoroutineScope()
+
+    DisposableEffect(Unit) {
+        val activity = context.findActivity()
+        if (activity != null) {
+            WindowInsetsControllerCompat(activity.window, activity.window.decorView)
+                .show(WindowInsetsCompat.Type.statusBars())
+        }
+        onDispose { }
+    }
     
     // Scroll state for comments section
     val scrollState = rememberScrollState()
