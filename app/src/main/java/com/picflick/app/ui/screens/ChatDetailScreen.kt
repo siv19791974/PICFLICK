@@ -341,9 +341,8 @@ if (available.y < 0f) {
                             )
                         }
 
-                        Spacer(modifier = Modifier.weight(1f))
-
                         if (isSelectionMode) {
+                            Spacer(modifier = Modifier.weight(1f))
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 IconButton(
                                     onClick = {
@@ -384,6 +383,15 @@ if (available.y < 0f) {
                                 }
                             }
                         } else {
+                            QuickSwitchChatBar(
+                                modifier = Modifier.weight(1f),
+                                currentChatSession = chatSession,
+                                currentOtherUserId = otherUserId,
+                                currentOtherUserPhoto = otherUserPhoto,
+                                quickSwitchChats = quickSwitchChats,
+                                onSwitchChat = onQuickSwitchChat
+                            )
+
                             Box(modifier = Modifier.size(48.dp), contentAlignment = Alignment.Center) {
                                 IconButton(
                                     onClick = { showHeaderMenu = true },
@@ -437,16 +445,6 @@ if (available.y < 0f) {
                             }
                         }
                     }
-                }
-
-                if (!isSelectionMode) {
-                    QuickSwitchChatBar(
-                        currentChatSession = chatSession,
-                        currentOtherUserId = otherUserId,
-                        currentOtherUserPhoto = otherUserPhoto,
-                        quickSwitchChats = quickSwitchChats,
-                        onSwitchChat = onQuickSwitchChat
-                    )
                 }
             }
 
@@ -1332,6 +1330,7 @@ private fun QuotedMessage(
 
 @Composable
 private fun QuickSwitchChatBar(
+    modifier: Modifier = Modifier,
     currentChatSession: ChatSession,
     currentOtherUserId: String,
     currentOtherUserPhoto: String,
@@ -1361,71 +1360,54 @@ private fun QuickSwitchChatBar(
     )
 
     Row(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 8.dp, vertical = 4.dp),
-        verticalAlignment = Alignment.Top,
+            .padding(horizontal = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceEvenly
     ) {
         slots.forEachIndexed { index, item ->
             val isCenter = index == 2
-            val avatarSize = if (isCenter) 44.dp else 34.dp
+            val avatarSize = if (isCenter) 40.dp else 30.dp
 
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier.width(62.dp)
-            ) {
-                if (item == null) {
-                    Spacer(
-                        modifier = Modifier
-                            .size(avatarSize)
-                            .clip(CircleShape)
-                            .background(Color.White.copy(alpha = 0.15f))
-                    )
-                } else {
-                    Box(
-                        modifier = Modifier
-                            .size(avatarSize)
-                            .clip(CircleShape)
-                            .background(Color.White.copy(alpha = if (isCenter) 0.35f else 0.2f))
-                            .clickable {
-                                if (!isCenter) {
-                                    onSwitchChat(item.chatSession, item.otherUserId)
-                                }
-                            },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        if (item.otherUserPhoto.isNotBlank()) {
-                            AsyncImage(
-                                model = item.otherUserPhoto,
-                                contentDescription = item.otherUserName,
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .clip(CircleShape),
-                                contentScale = ContentScale.Crop
-                            )
-                        } else {
-                            Icon(
-                                imageVector = Icons.Default.Person,
-                                contentDescription = null,
-                                tint = Color.White,
-                                modifier = Modifier.size(if (isCenter) 24.dp else 20.dp)
-                            )
-                        }
+            if (item == null) {
+                Spacer(
+                    modifier = Modifier
+                        .size(avatarSize)
+                        .clip(CircleShape)
+                        .background(Color.White.copy(alpha = 0.15f))
+                )
+            } else {
+                Box(
+                    modifier = Modifier
+                        .size(avatarSize)
+                        .clip(CircleShape)
+                        .background(Color.White.copy(alpha = if (isCenter) 0.35f else 0.2f))
+                        .clickable {
+                            if (!isCenter) {
+                                onSwitchChat(item.chatSession, item.otherUserId)
+                            }
+                        },
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (item.otherUserPhoto.isNotBlank()) {
+                        AsyncImage(
+                            model = item.otherUserPhoto,
+                            contentDescription = item.otherUserName,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .clip(CircleShape),
+                            contentScale = ContentScale.Crop
+                        )
+                    } else {
+                        Icon(
+                            imageVector = Icons.Default.Person,
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(if (isCenter) 22.dp else 18.dp)
+                        )
                     }
                 }
-
-                Spacer(modifier = Modifier.height(2.dp))
-                Text(
-                    text = item?.otherUserName
-                        ?.trim()
-                        ?.split(" ")
-                        ?.firstOrNull()
-                        ?: "",
-                    color = Color.White,
-                    fontSize = if (isCenter) 10.sp else 9.sp,
-                    maxLines = 1
-                )
             }
         }
     }
