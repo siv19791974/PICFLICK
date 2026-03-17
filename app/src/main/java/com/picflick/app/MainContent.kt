@@ -679,8 +679,7 @@ private fun ChatDetailScreenContent(
                             selectedChatPhoto = when (byUrlResult) {
                                 is com.picflick.app.data.Result.Success -> {
                                     backfillMessageFlickId(byUrlResult.data.id)
-                                    // Force shared chat-thread ID for comments so both users always converge.
-                                    byUrlResult.data.copy(id = sharedFallbackId)
+                                    byUrlResult.data
                                 }
                                 else -> fallbackFlick
                             }
@@ -691,8 +690,7 @@ private fun ChatDetailScreenContent(
                         flickRepository.getFlickById(message.flickId) { byIdResult ->
                             when (byIdResult) {
                                 is com.picflick.app.data.Result.Success -> {
-                                    // Force shared chat-thread ID for comments so both users always converge.
-                                    selectedChatPhoto = byIdResult.data.copy(id = sharedFallbackId)
+                                    selectedChatPhoto = byIdResult.data
                                 }
                                 else -> {
                                     resolveByImageUrlWithBackfill()
