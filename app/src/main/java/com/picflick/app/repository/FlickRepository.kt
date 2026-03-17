@@ -13,6 +13,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import java.util.Calendar
+import java.util.Locale
 import java.util.UUID
 import com.picflick.app.Constants
 
@@ -498,7 +499,10 @@ class FlickRepository private constructor() {
      * Save user profile
      */
     fun saveUserProfile(userId: String, profile: UserProfile, onResult: (Result<Unit>) -> Unit) {
-        db.collection("users").document(userId).set(profile)
+        val normalizedProfile = profile.copy(
+            displayNameLower = profile.displayName.trim().lowercase(Locale.getDefault())
+        )
+        db.collection("users").document(userId).set(normalizedProfile)
             .addOnSuccessListener { onResult(Result.Success(Unit)) }
             .addOnFailureListener { e -> onResult(Result.Error(e, "Failed to save profile")) }
     }
@@ -628,18 +632,20 @@ class FlickRepository private constructor() {
      * Search users by name or email
      */
     fun searchUsers(query: String, currentUserId: String, onResult: (Result<List<UserProfile>>) -> Unit) {
-        val searchLower = query.lowercase()
+        val searchLower = query.trim().lowercase(Locale.getDefault())
 
         db.collection(Constants.FirebaseCollections.USERS)
-            .orderBy("displayName")
+            .orderBy("displayNameLower")
             .startAt(searchLower)
             .endAt(searchLower + "\uf8ff")
             .limit(Constants.Pagination.SUGGESTED_USERS_LIMIT.toLong())
             .get()
             .addOnSuccessListener { snapshot ->
                 val users = snapshot.toObjects(UserProfile::class.java)
-                // Filter out current user
-                val filteredUsers = users.filter { it.uid != currentUserId }
+                val filteredUsers = users.filter { user ->
+                    user.uid != currentUserId &&
+                            user.displayName.lowercase(Locale.getDefault()).startsWith(searchLower)
+                }
                 onResult(Result.Success(filteredUsers))
             }
             .addOnFailureListener { e -> onResult(Result.Error(e, "Failed to search users")) }
