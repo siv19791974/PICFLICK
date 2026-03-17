@@ -648,8 +648,9 @@ private fun ChatDetailScreenContent(
             },
             onPhotoClick = { message ->
                 if (message.imageUrl.isNotBlank()) {
+                    val sharedFallbackId = "chat_photo_${message.imageUrl.substringBefore("?").hashCode()}"
                     val fallbackFlick = Flick(
-                        id = if (message.id.isNotBlank()) message.id else "chat_${message.timestamp}",
+                        id = sharedFallbackId,
                         userId = message.senderId,
                         userName = message.senderName,
                         userPhotoUrl = message.senderPhotoUrl,
