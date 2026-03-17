@@ -204,6 +204,14 @@ val imagePickerLauncher = rememberLauncherForActivityResult(
         }
     }
 
+    // Keep last message + reaction choices visible when reaction picker is opened
+    LaunchedEffect(activeReactionMessageId, viewModel.messages.size) {
+        if (activeReactionMessageId != null && viewModel.messages.isNotEmpty()) {
+            delay(120)
+            listState.animateScrollToItem(viewModel.messages.lastIndex)
+        }
+    }
+
     // LAYOUT: Box + Column with keyboard-aware input
     Box(
         modifier = Modifier
@@ -490,7 +498,7 @@ Column(modifier = Modifier.fillMaxSize()) {
                                 }
                                 if (activeReactionMessageId != null) {
                                     item(key = "reaction-picker-bottom-spacer") {
-                                        Spacer(modifier = Modifier.height(120.dp))
+                                        Spacer(modifier = Modifier.height(220.dp))
                                     }
                                 }
                             }
