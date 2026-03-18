@@ -141,20 +141,26 @@ val listState = rememberLazyListState()
         }
     }
 
-    val pullUpRefreshConnection = remember(chatId, currentUser.uid, isRefreshingByPullUp) {
+    val pullUpRefreshConnection = remember(chatId, currentUser.uid, isRefreshingByPullUp, listState.canScrollForward) {
         object : NestedScrollConnection {
-            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
-                if (source == NestedScrollSource.UserInput) {
-if (available.y < 0f) {
-                        upwardPullDistance += -available.y
-                        if (upwardPullDistance >= pullUpRefreshThreshold) {
-                            upwardPullDistance = 0f
-                            triggerPullUpRefresh()
-                        }
-                    } else if (available.y > 0f) {
+            override fun onPostScroll(
+                consumed: Offset,
+                available: Offset,
+                source: NestedScrollSource
+            ): Offset {
+                if (source != NestedScrollSource.UserInput) return Offset.Zero
+
+                val atBottom = !listState.canScrollForward
+                if (atBottom && available.y < 0f) {
+                    upwardPullDistance += -available.y
+                    if (upwardPullDistance >= pullUpRefreshThreshold) {
                         upwardPullDistance = 0f
+                        triggerPullUpRefresh()
                     }
+                } else {
+                    upwardPullDistance = 0f
                 }
+
                 return Offset.Zero
             }
         }
