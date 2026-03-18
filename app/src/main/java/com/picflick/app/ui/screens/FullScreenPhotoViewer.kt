@@ -179,22 +179,12 @@ fun FullScreenPhotoViewer(
         validPhotos[currentPageIndex]
     } else flick
 
-    var currentPhotoIsLandscape by remember(currentFlick.id) { mutableStateOf(false) }
-
-    LaunchedEffect(currentFlick.id, currentFlick.imageUrl) {
-        currentPhotoIsLandscape = isLandscapeImageUrl(currentFlick.imageUrl)
-    }
-
-    DisposableEffect(currentPhotoIsLandscape) {
+    // Force portrait everywhere (including fullscreen), regardless of photo orientation.
+    DisposableEffect(Unit) {
         val activity = context.findActivity()
-        activity?.requestedOrientation = if (currentPhotoIsLandscape) {
-            ActivityInfo.SCREEN_ORIENTATION_FULL_SENSOR
-        } else {
-            ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
-        }
+        activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
 
         onDispose {
-            // On flick-away/close, always restore portrait app lock
             activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
         }
     }
