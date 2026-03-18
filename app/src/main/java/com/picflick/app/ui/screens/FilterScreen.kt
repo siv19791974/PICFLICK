@@ -2,8 +2,10 @@ package com.picflick.app.ui.screens
 
 import android.graphics.Bitmap
 import android.graphics.ColorMatrix
-import android.graphics.ColorMatrixColorFilter
 import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+
+import android.graphics.ColorMatrixColorFilter
 import androidx.compose.animation.*
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -39,6 +41,10 @@ import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.allowHardware
 import coil3.toBitmap
+import com.canhub.cropper.CropImageContract
+import com.canhub.cropper.CropImageContractOptions
+import com.canhub.cropper.CropImageOptions
+import com.canhub.cropper.CropImageView
 import com.picflick.app.R
 import com.picflick.app.data.PhotoFilter
 import com.picflick.app.data.UserProfile
@@ -84,8 +90,9 @@ fun FilterScreen(
     var description by remember { mutableStateOf("") }
     var showDescriptionSheet by remember { mutableStateOf(false) }
 
-    // Upload loading state
+    // Upload/crop loading state
     var isUploading by remember { mutableStateOf(false) }
+    var isCropping by remember { mutableStateOf(false) }
     
     // Optimistic daily upload counter - updates instantly on click
     var optimisticDailyCount by remember { mutableIntStateOf(dailyUploadCount) }
@@ -98,6 +105,55 @@ fun FilterScreen(
     // Calculate remaining uploads using optimistic count
     val remainingUploads = maxDailyUploads - optimisticDailyCount
     val canUpload = remainingUploads > 0
+
+    val cropLauncher = rememberLauncherForActivityResult(CropImageContract()) { result ->
+        isCropping = false
+        val croppedUri = result.uriContent
+        if (croppedUri != null) {
+            scope.launch(Dispatchers.IO) {
+                val croppedBitmap = loadBitmapFromUri(context, croppedUri)
+                withContext(Dispatchers.Main) {
+                    if (croppedBitmap != null) {
+                        bitmap = croppedBitmap
+                        selectedFilter = PhotoFilter.ORIGINAL
+                    } else {
+                        android.widget.Toast.makeText(context, "Failed to load cropped photo", android.widget.Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
+        }
+    }
+
+    fun launchCrop() {
+        val currentBitmap = bitmap ?: return
+        isCropping = true
+        scope.launch(Dispatchers.IO) {
+            try {
+                val sourceUri = saveBitmapToTempUri(context, currentBitmap)
+                withContext(Dispatchers.Main) {
+                    cropLauncher.launch(
+                        CropImageContractOptions(
+                            uri = sourceUri,
+                            cropImageOptions = CropImageOptions().apply {
+                                activityTitle = "Crop Photo"
+                                cropMenuCropButtonTitle = "Save"
+                                guidelines = CropImageView.Guidelines.ON
+                                fixAspectRatio = false
+                                allowFlipping = false
+                                allowRotation = true
+                            }
+                        )
+                    )
+                }
+            } catch (_: Exception) {
+                withContext(Dispatchers.Main) {
+                    isCropping = false
+                    android.widget.Toast.makeText(context, "Unable to start crop", android.widget.Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+    }
+
     LaunchedEffect(photoUri) {
         scope.launch(Dispatchers.IO) {
             try {
@@ -324,8 +380,8 @@ fun FilterScreen(
                     Column(
                         modifier = Modifier.fillMaxSize()
                     ) {
-                        // Uploading Overlay (when uploading)
-                        if (isUploading) {
+                        // Uploading/Cropping Overlay
+                        if (isUploading || isCropping) {
                             Box(
                                 modifier = Modifier
                                     .fillMaxSize()
@@ -342,7 +398,7 @@ fun FilterScreen(
                                     )
                                     Spacer(modifier = Modifier.height(12.dp))
                                     Text(
-                                        text = "Uploading...",
+                                        text = if (isCropping) "Cropping..." else "Uploading...",
                                         color = if (isDarkMode) Color.White else Color.Black,
                                         fontSize = 16.sp,
                                         fontWeight = FontWeight.Medium
@@ -421,40 +477,67 @@ fun FilterScreen(
                                 }
                             }
                             
-                            // Tag Friends Button
-                            TextButton(
-                                onClick = {
-                                    if (friends.isEmpty()) {
-                                        // Navigate to Find Friends if no friends
-                                        onNavigateToFindFriends()
-                                    } else {
-                                        // Show friend picker if friends exist
-                                        showFriendPicker = true
-                                    }
-                                },
+                            Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(horizontal = 16.dp)
+                                    .padding(horizontal = 16.dp),
+                                horizontalArrangement = Arrangement.spacedBy(10.dp)
                             ) {
-                                Text(
-                                    text = "+",
-                                    color = if (isDarkMode) Color(0xFF87CEEB) else Color(0xFF1565C0),
-                                    fontSize = 24.sp,
-                                    fontWeight = FontWeight.Bold
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(
-                                    text = if (friends.isEmpty()) "Find Friends to Tag" else "Tag Friends (${taggedFriends.size})",
-                                    color = if (isDarkMode) Color(0xFF87CEEB) else Color(0xFF1565C0)
-                                )
+                                TextButton(
+                                    onClick = {
+                                        if (friends.isEmpty()) {
+                                            onNavigateToFindFriends()
+                                        } else {
+                                            showFriendPicker = true
+                                        }
+                                    },
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .height(44.dp)
+                                        .clip(RoundedCornerShape(12.dp))
+                                        .background(if (isDarkMode) Color.White.copy(alpha = 0.08f) else Color.White.copy(alpha = 0.65f))
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.PersonAdd,
+                                        contentDescription = null,
+                                        tint = if (isDarkMode) Color(0xFF87CEEB) else Color(0xFF1565C0)
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        text = if (friends.isEmpty()) "Find Friends" else "Tag Friends (${taggedFriends.size})",
+                                        color = if (isDarkMode) Color(0xFF87CEEB) else Color(0xFF1565C0),
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                }
+
+                                TextButton(
+                                    onClick = { launchCrop() },
+                                    enabled = bitmap != null && !isCropping && !isUploading,
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .height(44.dp)
+                                        .clip(RoundedCornerShape(12.dp))
+                                        .background(if (isDarkMode) Color.White.copy(alpha = 0.08f) else Color.White.copy(alpha = 0.65f))
+                                ) {
+                                    Text(
+                                        text = "Crop",
+                                        color = if (isDarkMode) Color(0xFF87CEEB) else Color(0xFF1565C0),
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                }
                             }
-                            
+
+                            Spacer(modifier = Modifier.height(10.dp))
+
                             // Description button
                             TextButton(
                                 onClick = { showDescriptionSheet = true },
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .padding(horizontal = 16.dp)
+                                    .height(44.dp)
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(if (isDarkMode) Color.White.copy(alpha = 0.08f) else Color.White.copy(alpha = 0.65f))
                             ) {
                                 Text(
                                     text = if (description.isBlank()) "Add Description" else "Edit Description",
@@ -1167,6 +1250,16 @@ private suspend fun loadBitmapFromUri(context: android.content.Context, uri: Uri
     } catch (e: Exception) {
         android.util.Log.e("FilterScreen", "Failed to load bitmap from URI", e)
         null
+    }
+}
+
+private suspend fun saveBitmapToTempUri(context: android.content.Context, bitmap: Bitmap): Uri {
+    return withContext(Dispatchers.IO) {
+        val tempFile = java.io.File.createTempFile("crop_source_", ".jpg", context.cacheDir)
+        java.io.FileOutputStream(tempFile).use { out ->
+            bitmap.compress(Bitmap.CompressFormat.JPEG, 100, out)
+        }
+        Uri.fromFile(tempFile)
     }
 }
 
