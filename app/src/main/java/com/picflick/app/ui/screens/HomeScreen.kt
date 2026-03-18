@@ -44,10 +44,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.FileProvider
 import coil3.compose.AsyncImage
+import com.picflick.app.data.ChatMessage
 import com.picflick.app.data.Flick
 import com.picflick.app.data.ReactionType
 import com.picflick.app.data.UserProfile
 import com.picflick.app.data.toEmoji
+import com.picflick.app.repository.ChatRepository
 import com.picflick.app.ui.components.AnimatedReactionPicker
 import com.picflick.app.ui.components.ErrorMessage
 import com.picflick.app.ui.components.PhotoGridShimmer
@@ -84,6 +86,7 @@ fun HomeScreen(
     var flickToShare by remember { mutableStateOf<Flick?>(null) }
     var isSharingPhoto by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
+    val chatRepository = remember { ChatRepository() }
     
     // Reaction picker state
     var showReactionPicker by remember { mutableStateOf(false) }
@@ -280,6 +283,48 @@ fun HomeScreen(
             },
             onUserProfileClick = { userId ->
                 onUserProfileClick(userId)
+            },
+            onShareToFriend = { flickId, friendId ->
+                val flickToSend = viewModel.flicks.firstOrNull { it.id == flickId } ?: flick
+                if (flickToSend.imageUrl.isBlank()) {
+                    Toast.makeText(context, "Photo unavailable to share", Toast.LENGTH_SHORT).show()
+                } else {
+                    scope.launch {
+                        val friendProfile = friends.firstOrNull { it.uid == friendId }
+                        val friendName = friendProfile?.displayName?.ifBlank { "Friend" } ?: "Friend"
+                        val friendPhoto = friendProfile?.photoUrl ?: ""
+                        when (val sessionResult = chatRepository.getOrCreateChatSession(
+                            userId1 = userProfile.uid,
+                            userId2 = friendId,
+                            user1Name = userProfile.displayName,
+                            user2Name = friendName,
+                            user1Photo = userProfile.photoUrl,
+                            user2Photo = friendPhoto
+                        )) {
+                            is com.picflick.app.data.Result.Success -> {
+                                val message = ChatMessage(
+                                    chatId = sessionResult.data,
+                                    senderId = userProfile.uid,
+                                    senderName = userProfile.displayName,
+                                    senderPhotoUrl = userProfile.photoUrl,
+                                    text = "",
+                                    imageUrl = flickToSend.imageUrl,
+                                    flickId = flickToSend.id,
+                                    timestamp = System.currentTimeMillis(),
+                                    read = false,
+                                    delivered = false
+                                )
+                                when (val sendResult = chatRepository.sendMessage(sessionResult.data, message, friendId)) {
+                                    is com.picflick.app.data.Result.Success -> Toast.makeText(context, "Photo sent", Toast.LENGTH_SHORT).show()
+                                    is com.picflick.app.data.Result.Error -> Toast.makeText(context, sendResult.message, Toast.LENGTH_SHORT).show()
+                                    is com.picflick.app.data.Result.Loading -> Unit
+                                }
+                            }
+                            is com.picflick.app.data.Result.Error -> Toast.makeText(context, sessionResult.message, Toast.LENGTH_SHORT).show()
+                            is com.picflick.app.data.Result.Loading -> Unit
+                        }
+                    }
+                }
             },
             friendProfiles = friends.associateBy { it.uid },
             onEditPhotoClick = { flick ->

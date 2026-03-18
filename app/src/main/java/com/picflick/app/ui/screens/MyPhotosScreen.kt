@@ -20,12 +20,15 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
+import com.picflick.app.data.ChatMessage
 import com.picflick.app.data.Flick
 import com.picflick.app.data.UserProfile
+import com.picflick.app.repository.ChatRepository
 import com.picflick.app.ui.components.*
 import com.picflick.app.ui.theme.isDarkModeBackground
 import com.picflick.app.ui.theme.ThemeManager
 import com.picflick.app.viewmodel.ProfileViewModel
+import kotlinx.coroutines.launch
 
 /**
  * Screen showing current user's photos - MATCHES HOMESCREEN EXACTLY
@@ -42,6 +45,8 @@ fun MyPhotosScreen(
     val context = LocalContext.current
     val isDarkMode = ThemeManager.isDarkMode.value
     var selectedPhoto by remember { mutableStateOf<Flick?>(null) }
+    val scope = rememberCoroutineScope()
+    val chatRepository = remember { ChatRepository() }
 
     // Load user photos
     LaunchedEffect(userId) {
@@ -115,6 +120,45 @@ fun MyPhotosScreen(
             },
             canDelete = photo.userId == currentUser.uid,
             onDeleteClick = { /* Handle delete in viewModel if needed */ },
+            onShareToFriend = { flickId, friendId ->
+                val flickToSend = viewModel.photos.firstOrNull { it.id == flickId } ?: photo
+                if (flickToSend.imageUrl.isBlank()) {
+                    android.widget.Toast.makeText(context, "Photo unavailable to share", android.widget.Toast.LENGTH_SHORT).show()
+                } else {
+                    scope.launch {
+                        when (val sessionResult = chatRepository.getOrCreateChatSession(
+                            userId1 = currentUser.uid,
+                            userId2 = friendId,
+                            user1Name = currentUser.displayName,
+                            user2Name = "Friend",
+                            user1Photo = currentUser.photoUrl,
+                            user2Photo = ""
+                        )) {
+                            is com.picflick.app.data.Result.Success -> {
+                                val message = ChatMessage(
+                                    chatId = sessionResult.data,
+                                    senderId = currentUser.uid,
+                                    senderName = currentUser.displayName,
+                                    senderPhotoUrl = currentUser.photoUrl,
+                                    text = "",
+                                    imageUrl = flickToSend.imageUrl,
+                                    flickId = flickToSend.id,
+                                    timestamp = System.currentTimeMillis(),
+                                    read = false,
+                                    delivered = false
+                                )
+                                when (val sendResult = chatRepository.sendMessage(sessionResult.data, message, friendId)) {
+                                    is com.picflick.app.data.Result.Success -> android.widget.Toast.makeText(context, "Photo sent", android.widget.Toast.LENGTH_SHORT).show()
+                                    is com.picflick.app.data.Result.Error -> android.widget.Toast.makeText(context, sendResult.message, android.widget.Toast.LENGTH_SHORT).show()
+                                    is com.picflick.app.data.Result.Loading -> Unit
+                                }
+                            }
+                            is com.picflick.app.data.Result.Error -> android.widget.Toast.makeText(context, sessionResult.message, android.widget.Toast.LENGTH_SHORT).show()
+                            is com.picflick.app.data.Result.Loading -> Unit
+                        }
+                    }
+                }
+            },
             onEditPhotoClick = { flick ->
                 // Navigate to edit photo screen
                 onEditPhotoClick(flick)

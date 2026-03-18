@@ -387,7 +387,6 @@ withContext(Dispatchers.Main) {
                                 .weight(1.3f)
                                 .background(if (isDarkMode) Color(0xFF1C1C1E) else PicFlickLightBackground)
                                 .padding(vertical = 8.dp)
-                                .windowInsetsPadding(WindowInsets.navigationBars)
                                 .verticalScroll(bottomPanelScroll)
                         ) {
                             // Filter thumbnails - single row
@@ -395,8 +394,8 @@ withContext(Dispatchers.Main) {
                                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                                 contentPadding = PaddingValues(horizontal = 16.dp),
                                 modifier = Modifier
-                                    .height(118.dp)
-                                    .padding(bottom = 8.dp)
+                                    .height(104.dp)
+                                    .padding(bottom = 12.dp)
                             ) {
                                 items(localFilters) { filter ->
                                     EditFilterIcon(
@@ -413,14 +412,14 @@ withContext(Dispatchers.Main) {
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .padding(horizontal = 16.dp)
-                                    .padding(bottom = 6.dp),
+                                    .padding(bottom = 10.dp),
                                 verticalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
                                 TextButton(
                                     onClick = { showTagDialog = true },
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .defaultMinSize(minHeight = 56.dp)
+                                        .defaultMinSize(minHeight = 52.dp)
                                         .clip(RoundedCornerShape(12.dp))
                                         .background(Color.White)
                                 ) {
@@ -444,7 +443,7 @@ withContext(Dispatchers.Main) {
                                     enabled = bitmap != null && !isCropping && !isSaving,
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .defaultMinSize(minHeight = 56.dp)
+                                        .defaultMinSize(minHeight = 52.dp)
                                         .clip(RoundedCornerShape(12.dp))
                                         .background(Color.White)
                                 ) {
@@ -466,7 +465,7 @@ withContext(Dispatchers.Main) {
                                     onClick = { showDescriptionSheet = true },
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .defaultMinSize(minHeight = 56.dp)
+                                        .defaultMinSize(minHeight = 52.dp)
                                         .clip(RoundedCornerShape(12.dp))
                                         .background(Color.White)
                                 ) {
