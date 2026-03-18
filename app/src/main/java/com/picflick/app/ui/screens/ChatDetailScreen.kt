@@ -38,8 +38,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.IntOffset
 import kotlin.math.roundToInt
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -52,10 +52,10 @@ import com.picflick.app.data.Result
 import com.picflick.app.data.UserProfile
 import com.picflick.app.repository.FlickRepository
 import com.picflick.app.ui.theme.PicFlickBannerBackground
+import com.picflick.app.util.rememberLiveUserPhotoUrl
 import com.picflick.app.viewmodel.ChatViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.tasks.await
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -85,23 +85,10 @@ fun ChatDetailScreen(
     onQuickSwitchChat: (ChatSession, String) -> Unit = { _, _ -> }
 ) {
     val chatId = chatSession.id
-    var otherUserPhoto by remember { mutableStateOf(chatSession.participantPhotos[otherUserId] ?: "") }
-
-    // Fetch photo from users collection if not in chat session (for old chats)
-    LaunchedEffect(otherUserId) {
-        if (otherUserPhoto.isEmpty()) {
-            try {
-                val userDoc = com.google.firebase.firestore.FirebaseFirestore.getInstance()
-                    .collection("users")
-                    .document(otherUserId)
-                    .get()
-                    .await()
-                otherUserPhoto = userDoc.getString("photoUrl") ?: ""
-            } catch (_: Exception) {
-// Keep empty if fetch fails
-            }
-        }
-    }
+    val otherUserPhoto = rememberLiveUserPhotoUrl(
+        userId = otherUserId,
+        fallbackPhotoUrl = chatSession.participantPhotos[otherUserId]
+    )
     
     var messageText by remember { mutableStateOf("") }
     var replyToMessage by remember { mutableStateOf<ChatMessage?>(null) }
@@ -566,6 +553,7 @@ Column(modifier = Modifier.fillMaxSize()) {
                     }
                 }
             }
+
 
         }
 
@@ -1396,6 +1384,10 @@ private fun QuickSwitchChatBar(
                             .background(Color.White.copy(alpha = 0.15f))
                     )
                 } else {
+                    val quickSwitchPhoto = rememberLiveUserPhotoUrl(
+                        userId = item.otherUserId,
+                        fallbackPhotoUrl = item.otherUserPhoto
+                    )
                     Box(
                         modifier = Modifier
                             .size(avatarSize)
@@ -1408,9 +1400,9 @@ private fun QuickSwitchChatBar(
                             },
                         contentAlignment = Alignment.Center
                     ) {
-                        if (item.otherUserPhoto.isNotBlank()) {
+                        if (quickSwitchPhoto.isNotBlank()) {
                             AsyncImage(
-                                model = item.otherUserPhoto,
+                                model = quickSwitchPhoto,
                                 contentDescription = item.otherUserName,
                                 modifier = Modifier
                                     .fillMaxSize()

@@ -22,6 +22,9 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.pullrefresh.PullRefreshIndicator
+import androidx.compose.material.pullrefresh.pullRefresh
+import androidx.compose.material.pullrefresh.rememberPullRefreshState
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -95,7 +98,7 @@ private tailrec fun Context.findActivity(): Activity? = when (this) {
     else -> null
 }
 
-@OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class, androidx.compose.material.ExperimentalMaterialApi::class)
 @Composable
 fun FullScreenPhotoViewer(
     flick: Flick,
@@ -156,8 +159,25 @@ fun FullScreenPhotoViewer(
     var comments by remember { mutableStateOf<List<Comment>>(emptyList()) }
     var newCommentText by remember { mutableStateOf("") }
     var isLoadingComments by remember { mutableStateOf(true) }
+    var commentsRefreshNonce by remember { mutableStateOf(0) }
+    var isRefreshingComments by remember { mutableStateOf(false) }
     var showDeleteConfirmation by remember { mutableStateOf(false) }
     var showEditCaption by remember { mutableStateOf(false) }
+
+    val commentsPullRefreshState = rememberPullRefreshState(
+        refreshing = isRefreshingComments,
+        onRefresh = {
+            isLoadingComments = true
+            isRefreshingComments = true
+            commentsRefreshNonce++
+        }
+    )
+
+    LaunchedEffect(isLoadingComments, isRefreshingComments) {
+        if (isRefreshingComments && !isLoadingComments) {
+            isRefreshingComments = false
+        }
+    }
 
     // Report and block menu state
     var showMoreMenu by remember { mutableStateOf(false) }
@@ -271,7 +291,7 @@ val canDeleteCurrent = currentFlick.userId == currentUser.uid
     }
 
     // Load comments when flick changes - listen on current + fallback + resolved canonical IDs and merge
-    DisposableEffect(currentFlick.id, currentFlick.imageUrl, currentFlick.userId) {
+    DisposableEffect(currentFlick.id, currentFlick.imageUrl, currentFlick.userId, commentsRefreshNonce) {
         isLoadingComments = true
 
         val fallbackCommentThreadId = "chat_photo_${currentFlick.imageUrl.substringBefore("?").hashCode()}"
@@ -1281,6 +1301,7 @@ if (canDeleteCurrent) {
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .heightIn(min = 100.dp, max = 225.dp) // 25% shorter (was 300)
+                                    .pullRefresh(commentsPullRefreshState)
                             ) {
                                 if (isLoadingComments) {
                                     Box(
@@ -1403,6 +1424,14 @@ if (canDeleteCurrent) {
                                         }
                                     }
                                 }
+
+                                PullRefreshIndicator(
+                                    refreshing = isRefreshingComments,
+                                    state = commentsPullRefreshState,
+                                    modifier = Modifier.align(Alignment.TopCenter),
+                                    contentColor = Color.White,
+                                    backgroundColor = Color(0xFF1A1A1A)
+                                )
                             }
                             
                             Spacer(modifier = Modifier.height(16.dp))

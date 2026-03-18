@@ -10,6 +10,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.pullrefresh.PullRefreshIndicator
+import androidx.compose.material.pullrefresh.pullRefresh
+import androidx.compose.material.pullrefresh.rememberPullRefreshState
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -26,6 +29,7 @@ import com.picflick.app.data.UserProfile
 import com.picflick.app.repository.PhotoRepository
 import com.picflick.app.repository.FlickRepository
 import com.picflick.app.ui.theme.ThemeManager
+import com.picflick.app.util.rememberLiveUserPhotoUrl
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
@@ -33,7 +37,7 @@ import java.util.*
 /**
  * Comments Screen - View and add comments on a photo
  */
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, androidx.compose.material.ExperimentalMaterialApi::class)
 @Composable
 fun CommentsScreen(
     flick: Flick,
@@ -52,11 +56,29 @@ fun CommentsScreen(
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var newCommentText by remember { mutableStateOf("") }
     var isSending by remember { mutableStateOf(false) }
+    var refreshNonce by remember { mutableStateOf(0) }
+    var isRefreshing by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val flickRepository = remember { FlickRepository.getInstance() }
 
+    val pullRefreshState = rememberPullRefreshState(
+        refreshing = isRefreshing,
+        onRefresh = {
+            errorMessage = null
+            isLoading = true
+            isRefreshing = true
+            refreshNonce++
+        }
+    )
+
+    LaunchedEffect(isLoading, isRefreshing) {
+        if (isRefreshing && !isLoading) {
+            isRefreshing = false
+        }
+    }
+
     // Realtime comments listener (instant updates across devices)
-    DisposableEffect(flick.id) {
+    DisposableEffect(flick.id, refreshNonce) {
         isLoading = true
         val listener = flickRepository.getComments(flick.id) { result ->
             when (result) {
@@ -215,6 +237,7 @@ fun CommentsScreen(
                 .fillMaxSize()
                 .background(backgroundColor)
                 .padding(padding)
+                .pullRefresh(pullRefreshState)
         ) {
             when {
                 isLoading -> {
@@ -289,6 +312,14 @@ fun CommentsScreen(
                     }
                 }
             }
+
+            PullRefreshIndicator(
+                refreshing = isRefreshing,
+                state = pullRefreshState,
+                modifier = Modifier.align(Alignment.TopCenter),
+                contentColor = MaterialTheme.colorScheme.primary,
+                backgroundColor = backgroundColor
+            )
         }
     }
 }
@@ -308,15 +339,19 @@ private fun CommentItem(
     val textColor = if (isDarkMode) Color.White else Color.Black
     val subtitleColor = if (isDarkMode) Color.Gray else Color.DarkGray
     val isLiked = comment.likedBy.contains(currentUserId)
+    val liveCommentUserPhoto = rememberLiveUserPhotoUrl(
+        userId = comment.userId,
+        fallbackPhotoUrl = comment.userPhotoUrl
+    )
 
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.Top
     ) {
         // User avatar
-        if (comment.userPhotoUrl.isNotEmpty()) {
+        if (liveCommentUserPhoto.isNotEmpty()) {
             AsyncImage(
-                model = comment.userPhotoUrl,
+                model = liveCommentUserPhoto,
                 contentDescription = null,
                 modifier = Modifier
                     .size(40.dp)

@@ -51,6 +51,7 @@ import com.picflick.app.data.NotificationType
 import com.picflick.app.data.UserProfile
 import com.picflick.app.ui.theme.isDarkModeBackground
 import com.picflick.app.ui.theme.ThemeManager
+import com.picflick.app.util.rememberLiveUserPhotoUrl
 import com.picflick.app.viewmodel.NotificationViewModel
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -402,13 +403,14 @@ private fun NotificationItem(
     var senderName by remember(notification.id, notification.senderName) {
         mutableStateOf(notification.senderName.ifBlank { "Someone" })
     }
-    var senderPhotoUrl by remember(notification.id, notification.senderPhotoUrl) {
-        mutableStateOf(normalizePhotoUrl(notification.senderPhotoUrl))
-    }
+    val senderPhotoUrl = rememberLiveUserPhotoUrl(
+        userId = notification.senderId,
+        fallbackPhotoUrl = notification.senderPhotoUrl
+    )
 
     LaunchedEffect(notification.id, notification.senderId, notification.chatId) {
         if (notification.senderId.isBlank()) return@LaunchedEffect
-        if (senderName != "Someone" && senderPhotoUrl.isNotBlank()) return@LaunchedEffect
+        if (senderName != "Someone") return@LaunchedEffect
 
         try {
             // For message notifications, first try chat session participant data
@@ -420,15 +422,11 @@ private fun NotificationItem(
                     .await()
 
                 val participantNames = chatDoc.get("participantNames") as? Map<*, *>
-                val participantPhotos = chatDoc.get("participantPhotos") as? Map<*, *>
 
                 val chatName = participantNames?.get(notification.senderId) as? String
-                val chatPhoto = participantPhotos?.get(notification.senderId) as? String
 
                 if (!chatName.isNullOrBlank()) senderName = chatName
-                normalizePhotoUrl(chatPhoto).takeIf { it.isNotBlank() }?.let {
-                    senderPhotoUrl = it
-                }
+                // Photo URL is resolved live via users listener
             }
 
             // Fallback to users collection
@@ -445,18 +443,7 @@ private fun NotificationItem(
                     .ifBlank { userDoc.getString("name").orEmpty() }
                     .ifBlank { senderName }
 
-                val fetchedPhoto = normalizePhotoUrl(
-                    userDoc.getString("photoUrl")
-                        .orEmpty()
-                        .ifBlank { userDoc.getString("photoURL").orEmpty() }
-                        .ifBlank { userDoc.getString("profileImageUrl").orEmpty() }
-                        .ifBlank { userDoc.getString("avatarUrl").orEmpty() }
-                )
-
                 senderName = fetchedName
-                if (fetchedPhoto.isNotBlank()) {
-                    senderPhotoUrl = fetchedPhoto
-                }
             }
         } catch (_: Exception) {
             // Keep existing fallback values
@@ -496,7 +483,7 @@ private fun NotificationItem(
         ) {
             if (senderPhotoUrl.isNotBlank()) {
                 AsyncImage(
-                    model = normalizePhotoUrl(senderPhotoUrl),
+                    model = senderPhotoUrl,
                     contentDescription = senderName,
                     modifier = Modifier
                         .fillMaxSize()
@@ -726,14 +713,6 @@ private fun SectionLabel(title: String, isDarkMode: Boolean) {
         fontWeight = FontWeight.SemiBold,
         color = if (isDarkMode) Color.Gray else Color.DarkGray
     )
-}
-
-private fun normalizePhotoUrl(url: String?): String {
-    val cleaned = url?.trim().orEmpty()
-    if (cleaned.isBlank()) return ""
-    if (cleaned.equals("null", ignoreCase = true)) return ""
-    if (cleaned.equals("undefined", ignoreCase = true)) return ""
-    return cleaned
 }
 
 internal fun formatTimestamp(timestamp: Long): String {
