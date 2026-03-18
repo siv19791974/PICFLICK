@@ -47,6 +47,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.core.graphics.createBitmap
 import coil3.ImageLoader
 import coil3.compose.AsyncImage
@@ -436,23 +438,6 @@ fun FilterScreen(
                                     contentScale = ContentScale.Crop
                                 )
 
-                                if (isCropMode) {
-                                    CropOverlay(
-                                        frameRect = cropFrameRect,
-                                        overlayColor = Color.Black.copy(alpha = 0.52f),
-                                        borderColor = Color.White,
-                                        onFrameRectChange = { newFrame ->
-                                            cropFrameRect = newFrame
-                                            cropOffset = clampCropOffsetToFrame(
-                                                previewSize = previewSize,
-                                                imageSize = IntSize(previewBitmap.width, previewBitmap.height),
-                                                frameNormalized = cropFrameRect,
-                                                scale = cropScale,
-                                                offset = cropOffset
-                                            )
-                                        }
-                                    )
-                                }
                             }
                         }
 
@@ -539,15 +524,12 @@ fun FilterScreen(
                                                 cropOffset = Offset.Zero
                                                 cropFrameRect = Rect(0.1f, 0.1f, 0.9f, 0.9f)
                                             }
-                                        } else {
-                                            isCropMode = false
-                                            cropApplied = true
                                         }
                                     },
                                     modifier = Modifier.weight(1f)
                                 ) {
                                     Text(
-                                        text = if (isCropMode) "Done Crop" else if (cropApplied) "Edit Crop" else "Crop Photo",
+                                        text = if (isCropMode) "Cropping..." else if (cropApplied) "Edit Crop" else "Crop Photo",
                                         color = if (isDarkMode) Color(0xFF87CEEB) else Color(0xFF1565C0),
                                         fontWeight = FontWeight.Medium
                                     )
@@ -592,6 +574,36 @@ fun FilterScreen(
                                 )
                             }
                         }
+                    }
+
+                    if (isCropMode) {
+                        val cropBitmap = remember(bmp, selectedFilter) {
+                            applyFilterToBitmap(bmp, selectedFilter, thumbnailSize = 0)
+                        }
+                        FullScreenCropDialog(
+                            previewBitmap = cropBitmap,
+                            cropScale = cropScale,
+                            cropOffset = cropOffset,
+                            cropFrameRect = cropFrameRect,
+                            onCropScaleChange = { cropScale = it },
+                            onCropOffsetChange = { cropOffset = it },
+                            onCropFrameChange = { newFrame ->
+                                cropFrameRect = newFrame
+                                cropOffset = clampCropOffsetToFrame(
+                                    previewSize = previewSize,
+                                    imageSize = IntSize(cropBitmap.width, cropBitmap.height),
+                                    frameNormalized = cropFrameRect,
+                                    scale = cropScale,
+                                    offset = cropOffset
+                                )
+                            },
+                            onPreviewSizeChange = { previewSize = it },
+                            onDone = {
+                                cropApplied = true
+                                isCropMode = false
+                            },
+                            isDarkMode = isDarkMode
+                        )
                     }
                 }
             }
@@ -869,6 +881,84 @@ private fun FilteredImage(
 }
 
 @Composable
+private fun FullScreenCropDialog(
+    previewBitmap: Bitmap,
+    cropScale: Float,
+    cropOffset: Offset,
+    cropFrameRect: Rect,
+    onCropScaleChange: (Float) -> Unit,
+    onCropOffsetChange: (Offset) -> Unit,
+    onCropFrameChange: (Rect) -> Unit,
+    onPreviewSizeChange: (IntSize) -> Unit,
+    onDone: () -> Unit,
+    isDarkMode: Boolean
+) {
+    Dialog(
+        onDismissRequest = onDone,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(if (isDarkMode) Color.Black else Color(0xFF111111))
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 8.dp, vertical = 16.dp)
+                    .onSizeChanged { onPreviewSizeChange(it) }
+                    .pointerInput(previewBitmap.width, previewBitmap.height, cropFrameRect, cropScale) {
+                        detectTransformGestures { _, pan, zoom, _ ->
+                            val newScale = (cropScale * zoom).coerceIn(1f, 6f)
+                            val proposed = cropOffset + (pan * 1.1f)
+                            onCropScaleChange(newScale)
+                            onCropOffsetChange(
+                                clampCropOffsetToFrame(
+                                    previewSize = IntSize(size.width, size.height),
+                                    imageSize = IntSize(previewBitmap.width, previewBitmap.height),
+                                    frameNormalized = cropFrameRect,
+                                    scale = newScale,
+                                    offset = proposed
+                                )
+                            )
+                        }
+                    }
+            ) {
+                Image(
+                    painter = BitmapPainter(previewBitmap.asImageBitmap()),
+                    contentDescription = "Crop preview",
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .graphicsLayer {
+                            scaleX = cropScale
+                            scaleY = cropScale
+                            translationX = cropOffset.x
+                            translationY = cropOffset.y
+                        },
+                    contentScale = ContentScale.Crop
+                )
+
+                CropOverlay(
+                    frameRect = cropFrameRect,
+                    overlayColor = Color.Black.copy(alpha = 0.52f),
+                    borderColor = Color.White,
+                    onFrameRectChange = onCropFrameChange
+                )
+            }
+
+            Button(
+                onClick = onDone,
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 24.dp)
+            ) {
+                Text("Done Crop")
+            }
+        }
+    }
+}
+
+@Composable
 private fun CropOverlay(
     frameRect: Rect,
     overlayColor: Color,
@@ -881,7 +971,6 @@ private fun CropOverlay(
             .pointerInput(frameRect) {
                 val minSize = 0.18f
                 detectDragGestures { change, dragAmount ->
-                    change.consume()
                     val dx = dragAmount.x / size.width
                     val dy = dragAmount.y / size.height
                     val edgeThreshold = 0.05f
@@ -897,19 +986,20 @@ private fun CropOverlay(
                     val nearRight = kotlin.math.abs(touchX - right) < edgeThreshold
                     val nearTop = kotlin.math.abs(touchY - top) < edgeThreshold
                     val nearBottom = kotlin.math.abs(touchY - bottom) < edgeThreshold
-                    val inside = touchX in left..right && touchY in top..bottom
 
-                    when {
-                        nearLeft -> left += dx
-                        nearRight -> right += dx
-                        nearTop -> top += dy
-                        nearBottom -> bottom += dy
-                        inside -> {
-                            left += dx
-                            right += dx
-                            top += dy
-                            bottom += dy
-                        }
+                    if (!(nearLeft || nearRight || nearTop || nearBottom)) {
+                        return@detectDragGestures
+                    }
+                    change.consume()
+
+                    if (nearLeft) {
+                        left += dx
+                    } else if (nearRight) {
+                        right += dx
+                    } else if (nearTop) {
+                        top += dy
+                    } else {
+                        bottom += dy
                     }
 
                     if (right - left < minSize) {
