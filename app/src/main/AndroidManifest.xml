@@ -86,6 +86,11 @@
                 android:resource="@xml/fileprovider_paths" />
         </provider>
 
+        <activity
+            android:name="com.yalantis.ucrop.UCropActivity"
+            android:screenOrientation="portrait"
+            android:theme="@style/Theme.AppCompat.Light.NoActionBar" />
+
         <!-- Firebase Cloud Messaging Service -->
         <service
             android:name=".service.PicFlickMessagingService"

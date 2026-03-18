@@ -115,6 +115,9 @@ dependencies {
     
     // Firebase Analytics - Track user engagement and app usage
     implementation(libs.firebase.analytics)
+
+    // Proven image cropper
+    implementation(libs.ucrop)
     
     // Testing
     testImplementation(libs.junit)

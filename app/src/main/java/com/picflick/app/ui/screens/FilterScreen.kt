@@ -1,5 +1,6 @@
 package com.picflick.app.ui.screens
 
+import android.app.Activity
 import android.graphics.Bitmap
 import android.graphics.ColorMatrix
 import android.graphics.ColorMatrixColorFilter
@@ -25,6 +26,8 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material3.*
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -56,6 +59,7 @@ import coil3.request.ImageRequest
 import coil3.request.allowHardware
 import coil3.toBitmap
 import com.picflick.app.R
+import com.yalantis.ucrop.UCrop
 import com.picflick.app.data.PhotoFilter
 import com.picflick.app.data.UserProfile
 import com.picflick.app.data.getDailyUploadLimit
@@ -66,6 +70,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.io.File
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
@@ -112,6 +117,24 @@ fun FilterScreen(
 
     // Upload loading state
     var isUploading by remember { mutableStateOf(false) }
+
+    val cropLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            val outputUri = result.data?.let { UCrop.getOutput(it) }
+            if (outputUri != null) {
+                scope.launch {
+                    val cropped = withContext(Dispatchers.IO) { loadBitmapFromUri(context, outputUri) }
+                    if (cropped != null) {
+                        bitmap = cropped
+                        cropApplied = true
+                        isCropMode = false
+                    }
+                }
+            }
+        }
+    }
     
     // Optimistic daily upload counter - updates instantly on click
     var optimisticDailyCount by remember { mutableIntStateOf(dailyUploadCount) }
@@ -175,12 +198,7 @@ fun FilterScreen(
                     val filteredUri = applyFilterAndSave(
                         context = context,
                         bitmap = bitmap!!,
-                        filter = selectedFilter,
-                        cropEnabled = cropApplied || isCropMode,
-                        cropFrameNormalized = cropFrameRect,
-                        cropScale = cropScale,
-                        cropOffsetPx = cropOffset,
-                        previewSize = previewSize
+                        filter = selectedFilter
                     )
                     onUpload(filteredUri, selectedFilter, taggedFriends.map { it.uid }, description.trim())
                     // Show success toast
@@ -518,17 +536,29 @@ fun FilterScreen(
 
                                 TextButton(
                                     onClick = {
-                                        if (!isCropMode) {
-                                            isCropMode = true
-                                            cropScale = 1f
-                                            cropOffset = Offset.Zero
-                                            cropFrameRect = Rect(0.1f, 0.1f, 0.9f, 0.9f)
+                                        val srcBitmap = bitmap ?: return@TextButton
+                                        scope.launch {
+                                            val sourceUri = withContext(Dispatchers.IO) {
+                                                saveBitmapToTempUri(context, srcBitmap, "crop_src")
+                                            }
+                                            val destUri = Uri.fromFile(File(context.cacheDir, "crop_out_${System.currentTimeMillis()}.jpg"))
+                                            val options = UCrop.Options().apply {
+                                                setFreeStyleCropEnabled(true)
+                                                setShowCropGrid(true)
+                                                setCompressionFormat(Bitmap.CompressFormat.JPEG)
+                                                setCompressionQuality(98)
+                                                setToolbarTitle("Crop Photo")
+                                            }
+                                            val intent = UCrop.of(sourceUri, destUri)
+                                                .withOptions(options)
+                                                .getIntent(context)
+                                            cropLauncher.launch(intent)
                                         }
                                     },
                                     modifier = Modifier.weight(1f)
                                 ) {
                                     Text(
-                                        text = if (isCropMode) "Cropping..." else if (cropApplied) "Edit Crop" else "Crop Photo",
+                                        text = if (cropApplied) "Edit Crop" else "Crop Photo",
                                         color = if (isDarkMode) Color(0xFF87CEEB) else Color(0xFF1565C0),
                                         fontWeight = FontWeight.Medium
                                     )
@@ -1396,36 +1426,27 @@ private suspend fun loadBitmapFromUri(context: android.content.Context, uri: Uri
     }
 }
 
+private fun saveBitmapToTempUri(context: android.content.Context, bitmap: Bitmap, prefix: String): Uri {
+    val tempFile = File.createTempFile(prefix, ".jpg", context.cacheDir)
+    java.io.FileOutputStream(tempFile).use { out ->
+        bitmap.compress(Bitmap.CompressFormat.JPEG, 100, out)
+    }
+    return Uri.fromFile(tempFile)
+}
+
 /**
  * Apply filter and save to temp file
  */
 private suspend fun applyFilterAndSave(
     context: android.content.Context,
     bitmap: Bitmap,
-    filter: PhotoFilter,
-    cropEnabled: Boolean,
-    cropFrameNormalized: Rect,
-    cropScale: Float,
-    cropOffsetPx: Offset,
-    previewSize: IntSize
+    filter: PhotoFilter
 ): Uri {
     return withContext(Dispatchers.IO) {
         val filteredBitmap = applyFilterToBitmap(bitmap, filter)
-        val finalBitmap = if (cropEnabled) {
-            cropBitmapByFrameAndTransform(
-                source = filteredBitmap,
-                frameRectNormalized = cropFrameNormalized,
-                scale = cropScale,
-                offsetPx = cropOffsetPx,
-                previewSize = previewSize
-            )
-        } else {
-            filteredBitmap
-        }
-
         val tempFile = java.io.File.createTempFile("filtered_", ".jpg", context.cacheDir)
         java.io.FileOutputStream(tempFile).use { out ->
-            finalBitmap.compress(Bitmap.CompressFormat.JPEG, 100, out)
+            filteredBitmap.compress(Bitmap.CompressFormat.JPEG, 100, out)
         }
 
         Uri.fromFile(tempFile)

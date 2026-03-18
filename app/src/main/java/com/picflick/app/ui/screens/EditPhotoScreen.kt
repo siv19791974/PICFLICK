@@ -1,7 +1,9 @@
 package com.picflick.app.ui.screens
 
+import android.app.Activity
 import android.graphics.Bitmap
 import android.graphics.ColorMatrix
+import android.net.Uri
 import android.graphics.ColorMatrixColorFilter
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -23,6 +25,8 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material3.*
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -57,9 +61,11 @@ import com.picflick.app.data.Flick
 import com.picflick.app.data.PhotoFilter
 import com.google.firebase.firestore.FirebaseFirestore
 import com.picflick.app.data.UserProfile
+import com.yalantis.ucrop.UCrop
 import com.picflick.app.ui.theme.ThemeManager
 import com.picflick.app.ui.theme.isDarkModeBackground
 import com.picflick.app.ui.theme.PicFlickLightBackground
+import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
@@ -100,6 +106,24 @@ fun EditPhotoScreen(
     var cropOffset by remember { mutableStateOf(Offset.Zero) }
     var previewSize by remember { mutableStateOf(IntSize.Zero) }
     var cropFrameRect by remember { mutableStateOf(Rect(0.1f, 0.1f, 0.9f, 0.9f)) }
+
+    val cropLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            val outputUri = result.data?.let { UCrop.getOutput(it) }
+            if (outputUri != null) {
+                scope.launch {
+                    val cropped = withContext(Dispatchers.IO) { loadBitmapFromUri(context, outputUri) }
+                    if (cropped != null) {
+                        bitmap = cropped
+                        cropApplied = true
+                        isCropMode = false
+                    }
+                }
+            }
+        }
+    }
 
     // Load the existing photo from URL
     LaunchedEffect(flick.imageUrl) {
@@ -173,18 +197,7 @@ val localFilters = listOf(
             scope.launch {
                 try {
                     val filterTransformation = selectedFilter.name
-                    val filteredBitmap = applyFilterToBitmap(bitmap!!, selectedFilter, thumbnailSize = 0)
-                    val finalBitmap = if (cropApplied || isCropMode) {
-                        cropBitmapByFrameAndTransform(
-                            source = filteredBitmap,
-                            frameRectNormalized = cropFrameRect,
-                            scale = cropScale,
-                            offsetPx = cropOffset,
-                            previewSize = previewSize
-                        )
-                    } else {
-                        filteredBitmap
-                    }
+                    val finalBitmap = applyFilterToBitmap(bitmap!!, selectedFilter, thumbnailSize = 0)
                     onSave(flick, filterTransformation, description.trim(), taggedFriendIds, finalBitmap)
                     withContext(Dispatchers.Main) {
                         android.widget.Toast.makeText(
@@ -459,17 +472,29 @@ withContext(Dispatchers.Main) {
 
                                 TextButton(
                                     onClick = {
-                                        if (!isCropMode) {
-                                            isCropMode = true
-                                            cropScale = 1f
-                                            cropOffset = Offset.Zero
-                                            cropFrameRect = Rect(0.1f, 0.1f, 0.9f, 0.9f)
+                                        val srcBitmap = bitmap ?: return@TextButton
+                                        scope.launch {
+                                            val sourceUri = withContext(Dispatchers.IO) {
+                                                saveBitmapToTempUri(context, srcBitmap, "crop_src")
+                                            }
+                                            val destUri = Uri.fromFile(File(context.cacheDir, "crop_out_${System.currentTimeMillis()}.jpg"))
+                                            val options = UCrop.Options().apply {
+                                                setFreeStyleCropEnabled(true)
+                                                setShowCropGrid(true)
+                                                setCompressionFormat(Bitmap.CompressFormat.JPEG)
+                                                setCompressionQuality(98)
+                                                setToolbarTitle("Crop Photo")
+                                            }
+                                            val intent = UCrop.of(sourceUri, destUri)
+                                                .withOptions(options)
+                                                .getIntent(context)
+                                            cropLauncher.launch(intent)
                                         }
                                     },
                                     modifier = Modifier.weight(1f)
                                 ) {
                                     Text(
-                                        text = if (isCropMode) "Cropping..." else if (cropApplied) "Edit Crop" else "Crop Photo",
+                                        text = if (cropApplied) "Edit Crop" else "Crop Photo",
                                         color = if (isDarkMode) Color(0xFF87CEEB) else Color(0xFF1565C0),
                                         fontWeight = FontWeight.Medium
                                     )
@@ -1364,4 +1389,29 @@ private suspend fun loadBitmapFromUrl(context: android.content.Context, url: Str
         android.util.Log.e("EditPhotoScreen", "Failed to load bitmap from URL", e)
         null
     }
+}
+
+private suspend fun loadBitmapFromUri(context: android.content.Context, uri: Uri): Bitmap? {
+    return try {
+        val request = ImageRequest.Builder(context)
+            .data(uri)
+            .allowHardware(false)
+            .size(coil3.size.Dimension.Undefined, coil3.size.Dimension.Undefined)
+            .build()
+
+        val imageLoader = ImageLoader.Builder(context).build()
+        val result = imageLoader.execute(request)
+        result.image?.toBitmap()
+    } catch (e: Exception) {
+        android.util.Log.e("EditPhotoScreen", "Failed to load bitmap from URI", e)
+        null
+    }
+}
+
+private fun saveBitmapToTempUri(context: android.content.Context, bitmap: Bitmap, prefix: String): Uri {
+    val tempFile = File.createTempFile(prefix, ".jpg", context.cacheDir)
+    java.io.FileOutputStream(tempFile).use { out ->
+        bitmap.compress(Bitmap.CompressFormat.JPEG, 100, out)
+    }
+    return Uri.fromFile(tempFile)
 }
