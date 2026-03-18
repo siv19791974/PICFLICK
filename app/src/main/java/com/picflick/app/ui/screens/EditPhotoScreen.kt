@@ -51,6 +51,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.core.content.FileProvider
 import androidx.core.graphics.createBitmap
 import coil3.ImageLoader
 import coil3.compose.AsyncImage
@@ -475,7 +476,9 @@ withContext(Dispatchers.Main) {
                                             val sourceUri = withContext(Dispatchers.IO) {
                                                 saveBitmapToTempUri(context, srcBitmap)
                                             }
-                                            val destUri = Uri.fromFile(File(context.cacheDir, "crop_out_${System.currentTimeMillis()}.jpg"))
+                                            val destUri = withContext(Dispatchers.IO) {
+                                                createCropOutputUri(context)
+                                            }
                                             val options = UCrop.Options().apply {
                                                 setFreeStyleCropEnabled(true)
                                                 setShowCropGrid(true)
@@ -486,6 +489,10 @@ withContext(Dispatchers.Main) {
                                             val intent = UCrop.of(sourceUri, destUri)
                                                 .withOptions(options)
                                                 .getIntent(context)
+                                                .apply {
+                                                    addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                                    addFlags(android.content.Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+                                                }
                                             cropLauncher.launch(intent)
                                         }
                                     },
@@ -1365,5 +1372,10 @@ private fun saveBitmapToTempUri(context: android.content.Context, bitmap: Bitmap
     java.io.FileOutputStream(tempFile).use { out ->
         bitmap.compress(Bitmap.CompressFormat.JPEG, 100, out)
     }
-    return Uri.fromFile(tempFile)
+    return FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", tempFile)
+}
+
+private fun createCropOutputUri(context: android.content.Context): Uri {
+    val outputFile = File(context.cacheDir, "crop_out_${System.currentTimeMillis()}.jpg")
+    return FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", outputFile)
 }
