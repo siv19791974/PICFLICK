@@ -11,9 +11,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
-import androidx.compose.ui.input.nestedscroll.NestedScrollSource
-import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -35,7 +32,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -120,7 +116,6 @@ fun ChatDetailScreen(
     val flickRepository = remember { FlickRepository.getInstance() }
 val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
-    var upwardPullDistance by remember { mutableStateOf(0f) }
     var isRefreshingByPullUp by remember { mutableStateOf(false) }
     var composerHeightPx by remember { mutableStateOf(0) }
 
@@ -128,7 +123,6 @@ val listState = rememberLazyListState()
     val density = LocalDensity.current
     val composerHeightDp = with(density) { composerHeightPx.toDp() }
     val listBottomPadding = composerHeightDp + if (activeReactionMessageId != null) 220.dp else 16.dp
-    val pullUpRefreshThreshold = with(density) { 96.dp.toPx() }
 
     fun triggerPullUpRefresh() {
         if (isRefreshingByPullUp) return
@@ -141,37 +135,6 @@ val listState = rememberLazyListState()
         }
     }
 
-    val pullUpRefreshConnection = remember(chatId, currentUser.uid, isRefreshingByPullUp, listState.canScrollForward) {
-        object : NestedScrollConnection {
-            override fun onPostScroll(
-                consumed: Offset,
-                available: Offset,
-                source: NestedScrollSource
-            ): Offset {
-                if (source != NestedScrollSource.UserInput) return Offset.Zero
-
-                val layoutInfo = listState.layoutInfo
-                val totalItems = layoutInfo.totalItemsCount
-                val lastVisibleItemIndex = layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: -1
-                val atOrNearBottom = totalItems == 0 || lastVisibleItemIndex >= totalItems - 1
-
-                if (atOrNearBottom) {
-                    val overscrollDelta = kotlin.math.abs(available.y)
-                    if (overscrollDelta > 0f) {
-                        upwardPullDistance += overscrollDelta
-                        if (upwardPullDistance >= pullUpRefreshThreshold) {
-                            upwardPullDistance = 0f
-                            triggerPullUpRefresh()
-                        }
-                    }
-                } else {
-                    upwardPullDistance = 0f
-                }
-
-                return Offset.Zero
-            }
-        }
-    }
 
     fun sendHeyMessage() {
         viewModel.sendMessage(
@@ -533,7 +496,6 @@ Column(modifier = Modifier.fillMaxSize()) {
                             LazyColumn(
                                 modifier = Modifier
                                     .fillMaxSize()
-                                    .nestedScroll(pullUpRefreshConnection)
                                     .padding(horizontal = 8.dp),
                                 state = listState,
                                 contentPadding = PaddingValues(start = 0.dp, top = 8.dp, end = 0.dp, bottom = listBottomPadding)
@@ -609,6 +571,23 @@ Column(modifier = Modifier.fillMaxSize()) {
                                                 )
                                             }
                                         }
+                                    }
+                                }
+
+                                item(key = "bottom-refresh-control") {
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(top = 6.dp, bottom = 2.dp),
+                                        horizontalArrangement = Arrangement.Center
+                                    ) {
+                                        AssistChip(
+                                            onClick = { triggerPullUpRefresh() },
+                                            enabled = !isRefreshingByPullUp,
+                                            label = {
+                                                Text(if (isRefreshingByPullUp) "Refreshing chat..." else "Pull up / tap to refresh")
+                                            }
+                                        )
                                     }
                                 }
 
