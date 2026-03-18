@@ -168,12 +168,20 @@ fun FullScreenPhotoViewer(
     // UI visibility toggle
     var uiVisible by remember { mutableStateOf(true) }
     
-    // 2D Pager state
-    var currentPageIndex by remember { mutableIntStateOf(currentIndex) }
-    
-    // Filter out photos with empty image URLs - NO remember() so it updates when reactions change
+    // Filter out photos with empty image URLs
     val validPhotos = allPhotos.filter { it.imageUrl.isNotBlank() }
-    
+
+    // Keep selected index stable even when list/rotation changes.
+    var currentPageIndex by remember(validPhotos, currentIndex, flick.id) {
+        mutableIntStateOf(
+            when {
+                validPhotos.isEmpty() -> 0
+                currentIndex in validPhotos.indices && validPhotos[currentIndex].id == flick.id -> currentIndex
+                else -> validPhotos.indexOfFirst { it.id == flick.id }.takeIf { it >= 0 } ?: 0
+            }
+        )
+    }
+
     // Current flick based on page index
     val currentFlick = if (validPhotos.isNotEmpty() && currentPageIndex in validPhotos.indices) {
         validPhotos[currentPageIndex]
@@ -844,15 +852,13 @@ val canDeleteCurrent = currentFlick.userId == currentUser.uid
                 }
                     
                     // 1. CURRENT at CENTER
-                    if (currentPageIndex < validPhotos.size) {
-                        PhotoAtPosition(
-                            photo = validPhotos[currentPageIndex],
-                            isCurrent = true,
-                            baseX = 0f,
-                            baseY = 0f
-                        )
-                    }
-                    
+                    PhotoAtPosition(
+                        photo = currentFlick,
+                        isCurrent = true,
+                        baseX = 0f,
+                        baseY = 0f
+                    )
+
                     // Keep only the current photo rendered to avoid side-strip artifacts in landscape.
                 }
                 

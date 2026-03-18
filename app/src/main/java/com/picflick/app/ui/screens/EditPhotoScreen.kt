@@ -30,6 +30,7 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -457,6 +458,12 @@ withContext(Dispatchers.Main) {
                                         .clip(RoundedCornerShape(12.dp))
                                         .background(if (isDarkMode) Color.White.copy(alpha = 0.08f) else Color.White.copy(alpha = 0.65f))
                                 ) {
+                                    Icon(
+                                        painter = painterResource(id = android.R.drawable.ic_menu_crop),
+                                        contentDescription = null,
+                                        tint = if (isDarkMode) Color(0xFF87CEEB) else Color(0xFF1565C0)
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
                                     Text(
                                         text = "Crop",
                                         color = if (isDarkMode) Color(0xFF87CEEB) else Color(0xFF1565C0),
@@ -476,6 +483,12 @@ withContext(Dispatchers.Main) {
                                     .clip(RoundedCornerShape(12.dp))
                                     .background(if (isDarkMode) Color.White.copy(alpha = 0.08f) else Color.White.copy(alpha = 0.65f))
                             ) {
+                                Icon(
+                                    painter = painterResource(id = android.R.drawable.ic_menu_edit),
+                                    contentDescription = null,
+                                    tint = if (isDarkMode) Color(0xFF87CEEB) else Color(0xFF1565C0)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
                                 Text(
                                     text = if (description.isBlank()) "Add Description" else "Edit Description",
                                     color = if (isDarkMode) Color(0xFF87CEEB) else Color(0xFF1565C0),
