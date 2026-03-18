@@ -362,7 +362,7 @@ fun ProfileScreen(
             // Home calculates: (screen - banner - nav - status) / 4.1f = ~148dp
             val rowCount = ((photos.size + 2) / 3).coerceAtLeast(1)
             val rowHeight = 148.dp // Fine-tuned to match Home exactly
-            val gridHeight = (rowCount * rowHeight.value).dp
+            val gridHeight = (rowCount * rowHeight.value).dp + 2.dp // tiny bottom safety so last row never clips
             
             Box(
                 modifier = Modifier
@@ -378,7 +378,7 @@ fun ProfileScreen(
                         start = 1.dp,
                         end = 1.dp,
                         top = 4.dp,
-                        bottom = 0.dp
+                        bottom = 1.dp
                     ),
                     userScrollEnabled = false
                 ) {
