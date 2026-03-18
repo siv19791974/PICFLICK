@@ -65,6 +65,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
 import kotlin.math.max
+import kotlin.math.min
 import kotlin.math.roundToInt
 
 /**
@@ -461,11 +462,9 @@ withContext(Dispatchers.Main) {
                                     onClick = {
                                         if (!isCropMode) {
                                             isCropMode = true
-                                            if (!cropApplied) {
-                                                cropScale = 1f
-                                                cropOffset = Offset.Zero
-                                                cropFrameRect = Rect(0.1f, 0.1f, 0.9f, 0.9f)
-                                            }
+                                            cropScale = 1f
+                                            cropOffset = Offset.Zero
+                                            cropFrameRect = Rect(0.1f, 0.1f, 0.9f, 0.9f)
                                         }
                                     },
                                     modifier = Modifier.weight(1f)
@@ -504,10 +503,14 @@ withContext(Dispatchers.Main) {
                             cropScale = cropScale,
                             cropOffset = cropOffset,
                             cropFrameRect = cropFrameRect,
-                            onCropScaleChange = { cropScale = it },
-                            onCropOffsetChange = { cropOffset = it },
                             onCropFrameChange = { newFrame ->
-                                cropFrameRect = newFrame
+                                val imageBounds = computeVisibleImageBoundsNormalized(
+                                    previewSize = previewSize,
+                                    imageSize = IntSize(cropBitmap.width, cropBitmap.height),
+                                    scale = cropScale,
+                                    offset = cropOffset
+                                )
+                                cropFrameRect = clampFrameToBounds(newFrame, imageBounds)
                                 cropOffset = clampCropOffsetToFrame(
                                     previewSize = previewSize,
                                     imageSize = IntSize(cropBitmap.width, cropBitmap.height),
@@ -515,6 +518,16 @@ withContext(Dispatchers.Main) {
                                     scale = cropScale,
                                     offset = cropOffset
                                 )
+                            },
+                            onSetOrientation = { isVertical ->
+                                val imageBounds = computeVisibleImageBoundsNormalized(
+                                    previewSize = previewSize,
+                                    imageSize = IntSize(cropBitmap.width, cropBitmap.height),
+                                    scale = cropScale,
+                                    offset = cropOffset
+                                )
+                                val targetAspect = if (isVertical) 3f / 4f else 4f / 3f
+                                cropFrameRect = createAspectFrameInBounds(imageBounds, targetAspect)
                             },
                             onPreviewSizeChange = { previewSize = it },
                             onDone = {
@@ -737,9 +750,8 @@ private fun FullScreenCropDialog(
     cropScale: Float,
     cropOffset: Offset,
     cropFrameRect: Rect,
-    onCropScaleChange: (Float) -> Unit,
-    onCropOffsetChange: (Offset) -> Unit,
     onCropFrameChange: (Rect) -> Unit,
+    onSetOrientation: (Boolean) -> Unit,
     onPreviewSizeChange: (IntSize) -> Unit,
     onDone: () -> Unit,
     isDarkMode: Boolean
@@ -758,21 +770,6 @@ private fun FullScreenCropDialog(
                     .fillMaxSize()
                     .padding(horizontal = 8.dp, vertical = 16.dp)
                     .onSizeChanged { onPreviewSizeChange(it) }
-                    .pointerInput(previewBitmap.width, previewBitmap.height, cropFrameRect, cropScale) {
-                        detectDragGestures { change, dragAmount ->
-                            change.consume()
-                            val proposed = cropOffset + (dragAmount * 1.05f)
-                            onCropOffsetChange(
-                                clampCropOffsetToFrame(
-                                    previewSize = IntSize(size.width, size.height),
-                                    imageSize = IntSize(previewBitmap.width, previewBitmap.height),
-                                    frameNormalized = cropFrameRect,
-                                    scale = cropScale,
-                                    offset = proposed
-                                )
-                            )
-                        }
-                    }
             ) {
                 Image(
                     painter = BitmapPainter(previewBitmap.asImageBitmap()),
@@ -796,13 +793,23 @@ private fun FullScreenCropDialog(
                 )
             }
 
-            Button(
-                onClick = onDone,
+            Row(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
-                    .padding(bottom = 24.dp)
+                    .windowInsetsPadding(WindowInsets.navigationBars)
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Text("Done Crop")
+                OutlinedButton(onClick = { onSetOrientation(true) }) {
+                    Text("Vertical")
+                }
+                OutlinedButton(onClick = { onSetOrientation(false) }) {
+                    Text("Horizontal")
+                }
+                Button(onClick = onDone) {
+                    Text("Done Crop")
+                }
             }
         }
     }
@@ -853,6 +860,71 @@ private fun CropOverlay(
     )
 }
 
+private fun computeVisibleImageBoundsNormalized(
+    previewSize: IntSize,
+    imageSize: IntSize,
+    scale: Float,
+    offset: Offset
+): Rect {
+    if (previewSize.width <= 0 || previewSize.height <= 0 || imageSize.width <= 0 || imageSize.height <= 0) {
+        return Rect(0f, 0f, 1f, 1f)
+    }
+
+    val containerW = previewSize.width.toFloat()
+    val containerH = previewSize.height.toFloat()
+    val srcW = imageSize.width.toFloat()
+    val srcH = imageSize.height.toFloat()
+
+    val baseScale = min(containerW / srcW, containerH / srcH)
+    val baseW = srcW * baseScale
+    val baseH = srcH * baseScale
+    val baseOffsetX = (containerW - baseW) / 2f
+    val baseOffsetY = (containerH - baseH) / 2f
+    val cx = containerW / 2f
+    val cy = containerH / 2f
+
+    val left = cx + (baseOffsetX - cx) * scale + offset.x
+    val top = cy + (baseOffsetY - cy) * scale + offset.y
+    val width = baseW * scale
+    val height = baseH * scale
+
+    return Rect(
+        left = (left / containerW).coerceIn(0f, 1f),
+        top = (top / containerH).coerceIn(0f, 1f),
+        right = ((left + width) / containerW).coerceIn(0f, 1f),
+        bottom = ((top + height) / containerH).coerceIn(0f, 1f)
+    )
+}
+
+private fun clampFrameToBounds(frame: Rect, bounds: Rect, minSize: Float = 0.18f): Rect {
+    val boundsWidth = (bounds.right - bounds.left).coerceAtLeast(minSize)
+    val boundsHeight = (bounds.bottom - bounds.top).coerceAtLeast(minSize)
+    val width = (frame.right - frame.left).coerceAtMost(boundsWidth)
+    val height = (frame.bottom - frame.top).coerceAtMost(boundsHeight)
+
+    val left = frame.left.coerceIn(bounds.left, bounds.right - width)
+    val top = frame.top.coerceIn(bounds.top, bounds.bottom - height)
+    return Rect(left, top, left + width, top + height)
+}
+
+private fun createAspectFrameInBounds(bounds: Rect, targetAspect: Float): Rect {
+    val boundsWidth = bounds.right - bounds.left
+    val boundsHeight = bounds.bottom - bounds.top
+    val boundsAspect = boundsWidth / boundsHeight
+
+    val (frameW, frameH) = if (boundsAspect > targetAspect) {
+        val h = boundsHeight * 0.92f
+        Pair(h * targetAspect, h)
+    } else {
+        val w = boundsWidth * 0.92f
+        Pair(w, w / targetAspect)
+    }
+
+    val left = bounds.left + (boundsWidth - frameW) / 2f
+    val top = bounds.top + (boundsHeight - frameH) / 2f
+    return Rect(left, top, left + frameW, top + frameH)
+}
+
 private fun cropBitmapByFrameAndTransform(
     source: Bitmap,
     frameRectNormalized: Rect,
@@ -867,7 +939,7 @@ private fun cropBitmapByFrameAndTransform(
     val srcW = source.width.toFloat()
     val srcH = source.height.toFloat()
 
-    val baseScale = max(containerW / srcW, containerH / srcH)
+    val baseScale = min(containerW / srcW, containerH / srcH)
     val baseW = srcW * baseScale
     val baseH = srcH * baseScale
     val baseOffsetX = (containerW - baseW) / 2f
@@ -915,7 +987,7 @@ private fun clampCropOffsetToFrame(
     val srcW = imageSize.width.toFloat()
     val srcH = imageSize.height.toFloat()
 
-    val baseScale = max(containerW / srcW, containerH / srcH)
+    val baseScale = min(containerW / srcW, containerH / srcH)
     val baseW = srcW * baseScale
     val baseH = srcH * baseScale
 
