@@ -271,6 +271,12 @@ fun HomeScreen(
             onNavigateToPhoto = { index ->
                 selectedFlickIndex = index
                 selectedFlick = viewModel.flicks.getOrNull(index)
+
+                // Keep loading more while swiping near the end so very long sessions continue.
+                val remaining = viewModel.flicks.size - 1 - index
+                if (remaining <= 2 && viewModel.canLoadMore && !viewModel.isLoadingMore) {
+                    viewModel.loadMoreFlicks()
+                }
             },
             onUserProfileClick = { userId ->
                 onUserProfileClick(userId)
