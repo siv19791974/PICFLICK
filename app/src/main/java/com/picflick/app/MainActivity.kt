@@ -123,14 +123,39 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun handlePushNotification(intent: Intent) {
-        val extras = intent.extras ?: return
+        val extras = intent.extras ?: android.os.Bundle()
+        val deepLinkData = intent.data
+
+        val deepLinkLastSegment = deepLinkData?.lastPathSegment?.takeIf { it.isNotBlank() }
+        val deepLinkHost = deepLinkData?.host?.lowercase()
 
         val flickId = extras.getFirstString("flickId", "flick_id", "postId", "post_id")
+            ?: if (deepLinkHost == "photo") deepLinkLastSegment else null
         val chatId = extras.getFirstString("chatId", "chat_id", "conversationId")
+            ?: if (deepLinkHost == "chat") deepLinkLastSegment else null
         val senderId = extras.getFirstString("senderId", "sender_id", "fromUserId", "userId")
+            ?: if (deepLinkHost == "profile") deepLinkLastSegment else null
         val senderName = extras.getFirstString("senderName", "sender_name", "fromUserName", "userName")
         val notificationType = extras.getFirstString("type", "notificationType")
-        val targetScreen = extras.getFirstString("targetScreen", "screen", "destination")
+        val explicitTargetScreen = extras.getFirstString("targetScreen", "screen", "destination")
+            ?: when (deepLinkHost) {
+                "photo" -> "photo"
+                "chat" -> "chat"
+                "profile" -> "profile"
+                else -> null
+            }
+
+        val hasPushRoutingData = !flickId.isNullOrBlank() ||
+            !chatId.isNullOrBlank() ||
+            !senderId.isNullOrBlank() ||
+            !notificationType.isNullOrBlank() ||
+            !explicitTargetScreen.isNullOrBlank()
+
+        if (!hasPushRoutingData) {
+            return
+        }
+
+        val targetScreen = explicitTargetScreen
             ?: when {
                 !flickId.isNullOrBlank() -> "photo"
                 !chatId.isNullOrBlank() -> "chat"
@@ -216,10 +241,13 @@ fun MainScreen(
 
     // Track login state for analytics
     val activity = LocalContext.current as? MainActivity
+    val currentUser = authViewModel.currentUser
 
     val pushEventVersion = activity?.pushEventVersion ?: 0
 
-    LaunchedEffect(pushEventVersion) {
+    LaunchedEffect(pushEventVersion, currentUser?.uid) {
+        if (currentUser == null) return@LaunchedEffect
+
         // Check if there's pending push notification data
         val pushData = activity?.consumePushData()
         if (pushData != null) {
@@ -339,7 +367,6 @@ fun MainScreen(
         }
     }
 
-    val currentUser = authViewModel.currentUser
     val userProfile = authViewModel.userProfile
     val context = LocalContext.current
 
@@ -652,7 +679,6 @@ fun MainScreen(
     }
 
     val isChatDetailScreen = currentScreen is Screen.ChatDetail
-    val isEditorScreen = currentScreen is Screen.Filter || currentScreen is Screen.EditPhoto
 
     // Outer Scaffold with bottom navigation for non-chat screens
     Scaffold(
@@ -662,7 +688,7 @@ fun MainScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             // Keep header height stable even while userProfile is still loading
-            if (currentUser != null && !isEditorScreen) {
+            if (currentUser != null) {
                 val profileReady = userProfile != null
                 Box(
                     modifier = Modifier
@@ -730,7 +756,7 @@ fun MainScreen(
         },
         bottomBar = {
             // Keep bottom bar stable while profile is loading (prevents layout jump)
-            if (currentUser != null && !isChatDetailScreen && !isEditorScreen) {
+            if (currentUser != null && !isChatDetailScreen) {
                 val profileReady = userProfile != null
                 BottomNavBar(
                     currentRoute = when (currentScreen) {

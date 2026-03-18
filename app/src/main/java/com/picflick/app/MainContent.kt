@@ -1407,6 +1407,8 @@ private fun UserProfilePhotoViewer(
     onReaction: (Flick, ReactionType?) -> Unit
 ) {
     val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
+    val chatRepository = remember { ChatRepository() }
     selectedPhoto?.let { flick ->
         val isUserProfilePhoto = flick.id.startsWith("profile_")
 
@@ -1434,7 +1436,46 @@ private fun UserProfilePhotoViewer(
                 if (!isUserProfilePhoto) onNavigateToPhoto(index)
             },
             onNavigateToFindFriends = onNavigateToFindFriends,
-            onUserProfileClick = onUserProfileClick
+            onUserProfileClick = onUserProfileClick,
+            onShareToFriend = { flickId, friendId ->
+                val flickToSend = targetUserPhotos.firstOrNull { it.id == flickId } ?: flick
+                if (flickToSend.imageUrl.isBlank()) {
+                    Toast.makeText(context, "Photo unavailable to share", Toast.LENGTH_SHORT).show()
+                } else {
+                    coroutineScope.launch {
+                        when (val sessionResult = chatRepository.getOrCreateChatSession(
+                            userId1 = currentUser.uid,
+                            userId2 = friendId,
+                            user1Name = currentUser.displayName,
+                            user2Name = "Friend",
+                            user1Photo = currentUser.photoUrl,
+                            user2Photo = ""
+                        )) {
+                            is com.picflick.app.data.Result.Success -> {
+                                val message = ChatMessage(
+                                    chatId = sessionResult.data,
+                                    senderId = currentUser.uid,
+                                    senderName = currentUser.displayName,
+                                    senderPhotoUrl = currentUser.photoUrl,
+                                    text = "",
+                                    imageUrl = flickToSend.imageUrl,
+                                    flickId = flickToSend.id,
+                                    timestamp = System.currentTimeMillis(),
+                                    read = false,
+                                    delivered = false
+                                )
+                                when (val sendResult = chatRepository.sendMessage(sessionResult.data, message, friendId)) {
+                                    is com.picflick.app.data.Result.Success -> Toast.makeText(context, "Photo sent", Toast.LENGTH_SHORT).show()
+                                    is com.picflick.app.data.Result.Error -> Toast.makeText(context, sendResult.message, Toast.LENGTH_SHORT).show()
+                                    is com.picflick.app.data.Result.Loading -> Unit
+                                }
+                            }
+                            is com.picflick.app.data.Result.Error -> Toast.makeText(context, sessionResult.message, Toast.LENGTH_SHORT).show()
+                            is com.picflick.app.data.Result.Loading -> Unit
+                        }
+                    }
+                }
+            }
         )
     }
 }

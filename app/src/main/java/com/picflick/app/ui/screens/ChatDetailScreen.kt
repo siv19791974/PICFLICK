@@ -9,7 +9,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.lazy.LazyColumn
@@ -514,8 +514,6 @@ Column(modifier = Modifier.fillMaxSize()) {
                                         isSelectionMode = isSelectionMode,
                                         isSelected = message.id in selectedMessageIds,
                                         onToggleSelection = {
-                                            if (!isMe) return@ChatBubble
-
                                             if (message.id in selectedMessageIds) {
                                                 selectedMessageIds.remove(message.id)
                                                 if (selectedMessageIds.isEmpty()) {
@@ -527,8 +525,6 @@ Column(modifier = Modifier.fillMaxSize()) {
                                             }
                                         },
                                         onLongPressSelect = {
-                                            if (!isMe) return@ChatBubble
-
                                             if (message.id !in selectedMessageIds) {
                                                 selectedMessageIds.add(message.id)
                                             }
@@ -651,7 +647,21 @@ Column(modifier = Modifier.fillMaxSize()) {
                         maxLines = 5
                     )
 
-                    Spacer(modifier = Modifier.width(8.dp))
+                    if (replyToMessage != null) {
+                        IconButton(
+                            onClick = { replyToMessage = null },
+                            modifier = Modifier.size(36.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = "Cancel reply",
+                                tint = Color.LightGray
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(4.dp))
+                    } else {
+                        Spacer(modifier = Modifier.width(8.dp))
+                    }
 
                     FloatingActionButton(
                         onClick = {
@@ -887,6 +897,19 @@ private fun ChatBubble(
     }
     val isPhotoOnly = message.imageUrl.isNotBlank() && message.text.isBlank() && !message.isReply()
     var swipeOffsetX by remember(message.id) { mutableStateOf(0f) }
+    var imageAspectRatio by remember(message.id) { mutableFloatStateOf(1f) }
+    val isPortraitPhoto = imageAspectRatio <= 1f
+    val photoBoxModifier = if (isPortraitPhoto) {
+        Modifier
+            .fillMaxWidth(0.66f)
+            .heightIn(min = 180.dp, max = 360.dp)
+            .aspectRatio(3f / 4f)
+    } else {
+        Modifier
+            .fillMaxWidth(0.9f)
+            .heightIn(min = 120.dp, max = 260.dp)
+            .aspectRatio(4f / 3f)
+    }
 
     Row(
         modifier = Modifier
@@ -894,9 +917,9 @@ private fun ChatBubble(
             .background(if (isSelected) Color(0x332196F3) else Color.Transparent)
             .offset { IntOffset(swipeOffsetX.roundToInt(), -reactionLiftPx) }
             .pointerInput(message.id, isSelectionMode) {
-                detectDragGestures(
+                detectHorizontalDragGestures(
                     onDragEnd = {
-                        if (!isSelectionMode && swipeOffsetX > 56f) {
+                        if (!isSelectionMode && swipeOffsetX > 104f) {
                             onReplyClick()
                         }
                         swipeOffsetX = 0f
@@ -905,8 +928,8 @@ private fun ChatBubble(
                         swipeOffsetX = 0f
                     }
                 ) { _, dragAmount ->
-                    if (!isSelectionMode && dragAmount.x > 0f) {
-                        swipeOffsetX = (swipeOffsetX + dragAmount.x).coerceIn(0f, 96f)
+                    if (!isSelectionMode && dragAmount > 0f) {
+                        swipeOffsetX = (swipeOffsetX + dragAmount).coerceIn(0f, 128f)
                     }
                 }
             }
@@ -954,11 +977,7 @@ if (message.isReply()) {
                                     Spacer(modifier = Modifier.height(2.dp))
                                 }
                                 if (message.imageUrl.isNotBlank()) {
-                                    Box(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .heightIn(min = 120.dp, max = 260.dp)
-                                    ) {
+                                    Box(modifier = photoBoxModifier) {
                                         AsyncImage(
                                             model = message.imageUrl,
                                             contentDescription = "Sent photo",
@@ -971,7 +990,14 @@ if (message.isReply()) {
                                                     },
                                                     onLongClick = { onLongPressSelect() }
                                                 ),
-                                            contentScale = ContentScale.Crop
+                                            contentScale = ContentScale.Crop,
+                                            onSuccess = { success ->
+                                                val width = success.result.image.width
+                                                val height = success.result.image.height
+                                                if (width > 0 && height > 0) {
+                                                    imageAspectRatio = width.toFloat() / height.toFloat()
+                                                }
+                                            }
                                         )
 
                                         Row(
@@ -1107,11 +1133,7 @@ modifier = Modifier
                                     Spacer(modifier = Modifier.height(2.dp))
                                 }
                                 if (message.imageUrl.isNotBlank()) {
-                                    Box(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .heightIn(min = 120.dp, max = 260.dp)
-                                    ) {
+                                    Box(modifier = photoBoxModifier) {
                                         AsyncImage(
                                             model = message.imageUrl,
                                             contentDescription = "Sent photo",
@@ -1124,7 +1146,14 @@ modifier = Modifier
                                                     },
                                                     onLongClick = { onLongPressSelect() }
                                                 ),
-                                            contentScale = ContentScale.Crop
+                                            contentScale = ContentScale.Crop,
+                                            onSuccess = { success ->
+                                                val width = success.result.image.width
+                                                val height = success.result.image.height
+                                                if (width > 0 && height > 0) {
+                                                    imageAspectRatio = width.toFloat() / height.toFloat()
+                                                }
+                                            }
                                         )
 
                                         Row(

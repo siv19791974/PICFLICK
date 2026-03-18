@@ -443,14 +443,15 @@ fun FilterScreen(
                                 .weight(1.3f) // Fill remaining space
                                 .background(if (isDarkMode) Color(0xFF1C1C1E) else PicFlickLightBackground)
                                 .padding(vertical = 8.dp) // Reduced padding
-                                .windowInsetsPadding(WindowInsets.navigationBars) // Handle nav bar insets
                                 .verticalScroll(bottomPanelScroll)
                         ) {
                             // Filter Icons (simplified - no text)
                             LazyRow(
                                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                                 contentPadding = PaddingValues(horizontal = 16.dp),
-                                modifier = Modifier.padding(bottom = 8.dp) // Reduced from 16.dp
+                                modifier = Modifier
+                                    .height(104.dp)
+                                    .padding(bottom = 12.dp)
                             ) {
                                 items(filters) { filter ->
                                     FilterIcon(
@@ -467,7 +468,7 @@ fun FilterScreen(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .padding(horizontal = 16.dp)
-                                    .padding(bottom = 6.dp),
+                                    .padding(bottom = 10.dp),
                                 verticalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
                                 TextButton(
@@ -480,7 +481,7 @@ fun FilterScreen(
                                     },
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .defaultMinSize(minHeight = 56.dp)
+                                        .defaultMinSize(minHeight = 52.dp)
                                         .clip(RoundedCornerShape(12.dp))
                                         .background(Color.White)
                                 ) {
@@ -503,7 +504,7 @@ fun FilterScreen(
                                     enabled = bitmap != null && !isCropping && !isUploading,
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .defaultMinSize(minHeight = 56.dp)
+                                        .defaultMinSize(minHeight = 52.dp)
                                         .clip(RoundedCornerShape(12.dp))
                                         .background(Color.White)
                                 ) {
@@ -525,7 +526,7 @@ fun FilterScreen(
                                     onClick = { showDescriptionSheet = true },
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .defaultMinSize(minHeight = 56.dp)
+                                        .defaultMinSize(minHeight = 52.dp)
                                         .clip(RoundedCornerShape(12.dp))
                                         .background(Color.White)
                                 ) {
