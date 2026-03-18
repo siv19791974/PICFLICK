@@ -914,11 +914,24 @@ private fun FullScreenCropDialog(
                 .fillMaxSize()
                 .background(if (isDarkMode) Color.Black else Color(0xFF111111))
         ) {
+            var localPreviewSize by remember { mutableStateOf(IntSize.Zero) }
+            val imageBounds = remember(localPreviewSize, previewBitmap.width, previewBitmap.height, cropScale, cropOffset) {
+                computeVisibleImageBoundsNormalized(
+                    previewSize = localPreviewSize,
+                    imageSize = IntSize(previewBitmap.width, previewBitmap.height),
+                    scale = cropScale,
+                    offset = cropOffset
+                )
+            }
+
             Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(horizontal = 8.dp, vertical = 16.dp)
-                    .onSizeChanged { onPreviewSizeChange(it) }
+                    .onSizeChanged {
+                        localPreviewSize = it
+                        onPreviewSizeChange(it)
+                    }
             ) {
                 Image(
                     painter = BitmapPainter(previewBitmap.asImageBitmap()),
@@ -935,7 +948,8 @@ private fun FullScreenCropDialog(
                 )
 
                 CropOverlay(
-                    frameRect = cropFrameRect,
+                    frameRect = clampFrameToBounds(cropFrameRect, imageBounds),
+                    boundsRect = imageBounds,
                     overlayColor = Color.Black.copy(alpha = 0.52f),
                     borderColor = Color.White,
                     onFrameRectChange = onCropFrameChange
@@ -945,9 +959,10 @@ private fun FullScreenCropDialog(
             Row(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
                     .windowInsetsPadding(WindowInsets.navigationBars)
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                horizontalArrangement = Arrangement.Center,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 OutlinedButton(onClick = { onSetOrientation(true) }) {
@@ -967,6 +982,7 @@ private fun FullScreenCropDialog(
 @Composable
 private fun CropOverlay(
     frameRect: Rect,
+    boundsRect: Rect,
     overlayColor: Color,
     borderColor: Color,
     onFrameRectChange: (Rect) -> Unit
@@ -974,18 +990,28 @@ private fun CropOverlay(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .pointerInput(frameRect) {
-                detectDragGestures { change, dragAmount ->
-                    change.consume()
-                    val dx = dragAmount.x / size.width
-                    val dy = dragAmount.y / size.height
-                    val width = frameRect.right - frameRect.left
-                    val height = frameRect.bottom - frameRect.top
+            .pointerInput(boundsRect) {
+                var startFrame = frameRect
+                var accumDx = 0f
+                var accumDy = 0f
+                detectDragGestures(
+                    onDragStart = {
+                        startFrame = clampFrameToBounds(frameRect, boundsRect)
+                        accumDx = 0f
+                        accumDy = 0f
+                    },
+                    onDrag = { change, dragAmount ->
+                        change.consume()
+                        accumDx += dragAmount.x / size.width
+                        accumDy += dragAmount.y / size.height
+                        val width = startFrame.right - startFrame.left
+                        val height = startFrame.bottom - startFrame.top
 
-                    val newLeft = (frameRect.left + dx).coerceIn(0f, 1f - width)
-                    val newTop = (frameRect.top + dy).coerceIn(0f, 1f - height)
-                    onFrameRectChange(Rect(newLeft, newTop, newLeft + width, newTop + height))
-                }
+                        val newLeft = (startFrame.left + accumDx).coerceIn(boundsRect.left, boundsRect.right - width)
+                        val newTop = (startFrame.top + accumDy).coerceIn(boundsRect.top, boundsRect.bottom - height)
+                        onFrameRectChange(Rect(newLeft, newTop, newLeft + width, newTop + height))
+                    }
+                )
             }
             .drawWithContent {
                 drawContent()
