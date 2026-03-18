@@ -108,6 +108,8 @@ class MainActivity : ComponentActivity() {
 
     // Store push notification data for handling when app opens
     private var pendingPushData: android.os.Bundle? = null
+    var pushEventVersion by mutableStateOf(0)
+        private set
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
@@ -116,26 +118,41 @@ class MainActivity : ComponentActivity() {
         handlePushNotification(intent)
     }
 
+    private fun android.os.Bundle.getFirstString(vararg keys: String): String? {
+        return keys.firstNotNullOfOrNull { key -> getString(key)?.takeIf { it.isNotBlank() } }
+    }
+
     private fun handlePushNotification(intent: Intent) {
-        val extras = intent.extras
-        if (extras != null) {
-            val flickId = extras.getString("flickId")
-            val chatId = extras.getString("chatId")
-            val targetScreen = extras.getString("targetScreen")
-                ?: when {
-                    !flickId.isNullOrBlank() -> "photo"
-                    !chatId.isNullOrBlank() -> "chat"
-                    else -> "notifications"
-                }
-            val notificationType = extras.getString("type")
-            val senderId = extras.getString("senderId")
+        val extras = intent.extras ?: return
 
-            android.util.Log.d("MainActivity", "Push notification clicked: type=$notificationType, screen=$targetScreen, sender=$senderId")
+        val flickId = extras.getFirstString("flickId", "flick_id", "postId", "post_id")
+        val chatId = extras.getFirstString("chatId", "chat_id", "conversationId")
+        val senderId = extras.getFirstString("senderId", "sender_id", "fromUserId", "userId")
+        val senderName = extras.getFirstString("senderName", "sender_name", "fromUserName", "userName")
+        val notificationType = extras.getFirstString("type", "notificationType")
+        val targetScreen = extras.getFirstString("targetScreen", "screen", "destination")
+            ?: when {
+                !flickId.isNullOrBlank() -> "photo"
+                !chatId.isNullOrBlank() -> "chat"
+                else -> "notifications"
+            }
 
-            // Ensure MainScreen always gets a target to route correctly
-            extras.putString("targetScreen", targetScreen)
-            pendingPushData = extras
+        android.util.Log.d(
+            "MainActivity",
+            "Push notification clicked: type=$notificationType, screen=$targetScreen, flickId=$flickId, chatId=$chatId, sender=$senderId"
+        )
+
+        val normalizedExtras = android.os.Bundle(extras).apply {
+            putString("targetScreen", targetScreen)
+            putString("flickId", flickId ?: "")
+            putString("chatId", chatId ?: "")
+            putString("senderId", senderId ?: "")
+            putString("senderName", senderName ?: "")
+            putString("type", notificationType ?: "")
         }
+
+        pendingPushData = normalizedExtras
+        pushEventVersion++
     }
 
     /**
@@ -193,10 +210,16 @@ fun MainScreen(
     // State for push notification photo (opens FullScreenPhotoViewer directly)
     var pushPhoto by remember { mutableStateOf<Flick?>(null) }
 
+    // State for selected chat (for navigation to ChatDetail)
+    var selectedChatSession by remember { mutableStateOf<ChatSession?>(null) }
+    var selectedOtherUserId by remember { mutableStateOf<String>("") }
+
     // Track login state for analytics
     val activity = LocalContext.current as? MainActivity
 
-    LaunchedEffect(Unit) {
+    val pushEventVersion = activity?.pushEventVersion ?: 0
+
+    LaunchedEffect(pushEventVersion) {
         // Check if there's pending push notification data
         val pushData = activity?.consumePushData()
         if (pushData != null) {
@@ -211,20 +234,32 @@ fun MainScreen(
                     currentScreen = Screen.Notifications
                 }
                 "chat" -> {
-                    if (senderId != null && senderName != null) {
-                        // Open chat with sender - use startChat method
-                        val currentUserId = activity?.getCurrentUserId()
-                        if (currentUserId != null) {
-                            chatViewModel.startChat(
-                                userId = currentUserId,
-                                otherUserId = senderId,
-                                userName = senderName,
-                                otherUserName = senderName,
-                                onChatReady = { _ ->
-                                    currentScreen = Screen.ChatDetail
-                                }
-                            )
-                        }
+                    val currentUserId = activity?.getCurrentUserId()
+                    if (currentUserId != null && !senderId.isNullOrBlank()) {
+                        val resolvedSenderName = senderName?.ifBlank { null } ?: "Chat"
+                        chatViewModel.startChat(
+                            userId = currentUserId,
+                            otherUserId = senderId,
+                            userName = resolvedSenderName,
+                            otherUserName = resolvedSenderName,
+                            onChatReady = { chatId ->
+                                selectedOtherUserId = senderId
+                                selectedChatSession = ChatSession(
+                                    id = chatId,
+                                    participants = listOf(currentUserId, senderId),
+                                    participantNames = mapOf(
+                                        currentUserId to (authViewModel.userProfile?.displayName ?: "You"),
+                                        senderId to resolvedSenderName
+                                    ),
+                                    lastMessage = "",
+                                    lastTimestamp = System.currentTimeMillis(),
+                                    unreadCount = 0
+                                )
+                                currentScreen = Screen.ChatDetail
+                            }
+                        )
+                    } else {
+                        currentScreen = Screen.Chats
                     }
                 }
                 "profile" -> {
@@ -235,7 +270,7 @@ fun MainScreen(
                 "photo" -> {
                     val flickId = pushData.getString("flickId")
                     android.util.Log.d("MainActivity", "Opening photo from push: flickId=$flickId")
-                    if (flickId != null) {
+                    if (!flickId.isNullOrBlank()) {
                         // Load the flick and open FullScreenPhotoViewer
                         val repository = FlickRepository.getInstance()
                         repository.getFlickById(flickId) { result ->
@@ -389,10 +424,6 @@ fun MainScreen(
     // Upload flow states
     var showUploadSourceDialog by remember { mutableStateOf(false) }
     var selectedPhotoUri by remember { mutableStateOf<Uri?>(null) }
-
-    // State for selected chat (for navigation to ChatDetail)
-    var selectedChatSession by remember { mutableStateOf<ChatSession?>(null) }
-    var selectedOtherUserId by remember { mutableStateOf<String>("") }
 
     // Android 13+ runtime permission for push notification display
     val notificationPermissionLauncher = rememberLauncherForActivityResult(
@@ -621,6 +652,7 @@ fun MainScreen(
     }
 
     val isChatDetailScreen = currentScreen is Screen.ChatDetail
+    val isEditorScreen = currentScreen is Screen.Filter || currentScreen is Screen.EditPhoto
 
     // Outer Scaffold with bottom navigation for non-chat screens
     Scaffold(
@@ -630,7 +662,7 @@ fun MainScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             // Keep header height stable even while userProfile is still loading
-            if (currentUser != null) {
+            if (currentUser != null && !isEditorScreen) {
                 val profileReady = userProfile != null
                 Box(
                     modifier = Modifier
@@ -698,7 +730,7 @@ fun MainScreen(
         },
         bottomBar = {
             // Keep bottom bar stable while profile is loading (prevents layout jump)
-            if (currentUser != null && !isChatDetailScreen) {
+            if (currentUser != null && !isChatDetailScreen && !isEditorScreen) {
                 val profileReady = userProfile != null
                 BottomNavBar(
                     currentRoute = when (currentScreen) {
