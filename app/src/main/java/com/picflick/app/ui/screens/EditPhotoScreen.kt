@@ -7,6 +7,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -92,10 +93,11 @@ fun EditPhotoScreen(
     var showTagDialog by remember { mutableStateOf(false) }
     var followingUsers by remember { mutableStateOf<List<UserProfile>>(emptyList()) }
     var isCropMode by remember { mutableStateOf(false) }
+    var cropApplied by remember { mutableStateOf(false) }
     var cropScale by remember { mutableFloatStateOf(1f) }
     var cropOffset by remember { mutableStateOf(Offset.Zero) }
     var previewSize by remember { mutableStateOf(IntSize.Zero) }
-    val cropFrameRect = remember { Rect(0.1f, 0.1f, 0.9f, 0.9f) }
+    var cropFrameRect by remember { mutableStateOf(Rect(0.1f, 0.1f, 0.9f, 0.9f)) }
 
     // Load the existing photo from URL
     LaunchedEffect(flick.imageUrl) {
@@ -170,7 +172,7 @@ val localFilters = listOf(
                 try {
                     val filterTransformation = selectedFilter.name
                     val filteredBitmap = applyFilterToBitmap(bitmap!!, selectedFilter, thumbnailSize = 0)
-                    val finalBitmap = if (isCropMode) {
+                    val finalBitmap = if (cropApplied || isCropMode) {
                         cropBitmapByFrameAndTransform(
                             source = filteredBitmap,
                             frameRectNormalized = cropFrameRect,
@@ -347,7 +349,7 @@ withContext(Dispatchers.Main) {
                                     .border(3.dp, if (isDarkMode) Color.White.copy(alpha = 0.9f) else Color.Black.copy(alpha = 0.9f), RoundedCornerShape(8.dp))
                                     .padding(3.dp)
                                     .onSizeChanged { previewSize = it }
-                                    .pointerInput(isCropMode, previewSize, previewBitmap.width, previewBitmap.height) {
+                                    .pointerInput(isCropMode, previewSize, previewBitmap.width, previewBitmap.height, cropFrameRect) {
                                         if (!isCropMode) return@pointerInput
                                         detectTransformGestures { _, pan, zoom, _ ->
                                             val newScale = (cropScale * zoom).coerceIn(1f, 5f)
@@ -383,7 +385,17 @@ withContext(Dispatchers.Main) {
                                     CropOverlay(
                                         frameRect = cropFrameRect,
                                         overlayColor = Color.Black.copy(alpha = 0.52f),
-                                        borderColor = Color.White
+                                        borderColor = Color.White,
+                                        onFrameRectChange = { newFrame ->
+                                            cropFrameRect = newFrame
+                                            cropOffset = clampCropOffsetToFrame(
+                                                previewSize = previewSize,
+                                                imageSize = IntSize(previewBitmap.width, previewBitmap.height),
+                                                frameNormalized = cropFrameRect,
+                                                scale = cropScale,
+                                                offset = cropOffset
+                                            )
+                                        }
                                     )
                                 }
                             }
@@ -463,16 +475,22 @@ withContext(Dispatchers.Main) {
 
                                 TextButton(
                                     onClick = {
-                                        isCropMode = !isCropMode
-                                        if (isCropMode) {
-                                            cropScale = 1f
-                                            cropOffset = Offset.Zero
+                                        if (!isCropMode) {
+                                            isCropMode = true
+                                            if (!cropApplied) {
+                                                cropScale = 1f
+                                                cropOffset = Offset.Zero
+                                                cropFrameRect = Rect(0.1f, 0.1f, 0.9f, 0.9f)
+                                            }
+                                        } else {
+                                            isCropMode = false
+                                            cropApplied = true
                                         }
                                     },
                                     modifier = Modifier.weight(1f)
                                 ) {
                                     Text(
-                                        text = if (isCropMode) "Done Crop" else "Crop Photo",
+                                        text = if (isCropMode) "Done Crop" else if (cropApplied) "Edit Crop" else "Crop Photo",
                                         color = if (isDarkMode) Color(0xFF87CEEB) else Color(0xFF1565C0),
                                         fontWeight = FontWeight.Medium
                                     )
@@ -705,11 +723,63 @@ filter: PhotoFilter,
 private fun CropOverlay(
     frameRect: Rect,
     overlayColor: Color,
-    borderColor: Color
+    borderColor: Color,
+    onFrameRectChange: (Rect) -> Unit
 ) {
     Box(
         modifier = Modifier
             .fillMaxSize()
+            .pointerInput(frameRect) {
+                val minSize = 0.18f
+                detectDragGestures { change, dragAmount ->
+                    change.consume()
+                    val dx = dragAmount.x / size.width
+                    val dy = dragAmount.y / size.height
+                    val edgeThreshold = 0.05f
+
+                    var left = frameRect.left
+                    var top = frameRect.top
+                    var right = frameRect.right
+                    var bottom = frameRect.bottom
+
+                    val touchX = change.position.x / size.width
+                    val touchY = change.position.y / size.height
+                    val nearLeft = kotlin.math.abs(touchX - left) < edgeThreshold
+                    val nearRight = kotlin.math.abs(touchX - right) < edgeThreshold
+                    val nearTop = kotlin.math.abs(touchY - top) < edgeThreshold
+                    val nearBottom = kotlin.math.abs(touchY - bottom) < edgeThreshold
+                    val inside = touchX in left..right && touchY in top..bottom
+
+                    when {
+                        nearLeft -> left += dx
+                        nearRight -> right += dx
+                        nearTop -> top += dy
+                        nearBottom -> bottom += dy
+                        inside -> {
+                            left += dx
+                            right += dx
+                            top += dy
+                            bottom += dy
+                        }
+                    }
+
+                    if (right - left < minSize) {
+                        if (nearLeft) left = right - minSize else right = left + minSize
+                    }
+                    if (bottom - top < minSize) {
+                        if (nearTop) top = bottom - minSize else bottom = top + minSize
+                    }
+
+                    val width = right - left
+                    val height = bottom - top
+                    left = left.coerceIn(0f, 1f - width)
+                    top = top.coerceIn(0f, 1f - height)
+                    right = (left + width).coerceIn(minSize, 1f)
+                    bottom = (top + height).coerceIn(minSize, 1f)
+
+                    onFrameRectChange(Rect(left, top, right, bottom))
+                }
+            }
             .drawWithContent {
                 drawContent()
                 val left = frameRect.left * size.width
