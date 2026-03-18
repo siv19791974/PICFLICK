@@ -371,7 +371,8 @@ fun ProfileScreen(
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Bold,
                 color = if (isDarkMode) Color.White else Color.Black,
-                modifier = Modifier.padding(horizontal = 8.dp)  // Match reduced grid padding
+                modifier = Modifier.fillMaxWidth(),
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center
             )
             Spacer(modifier = Modifier.height(12.dp))
             
@@ -897,7 +898,7 @@ private fun TierBadgeStatItem(
         ) {
             Box(
                 modifier = Modifier
-                    .size(22.dp) // same visual footprint as numeric value height
+                    .size(22.dp) // exact match target with 22sp stat value sizing
                     .clip(CircleShape)
                     .background(
                         brush = Brush.sweepGradient(
@@ -920,8 +921,9 @@ private fun TierBadgeStatItem(
         Text(
             text = tierName,
             fontSize = 12.sp,
-            color = subtitleColor,
-            fontWeight = FontWeight.Medium
+            color = subtitleColor.copy(alpha = 1f),
+            fontWeight = FontWeight.Medium,
+            modifier = Modifier.padding(top = 1.dp)
         )
     }
 }

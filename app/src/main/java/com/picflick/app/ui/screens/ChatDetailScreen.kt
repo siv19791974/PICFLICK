@@ -210,8 +210,8 @@ val listState = rememberLazyListState()
         }
     }
 
-    // Auto-scroll to bottom when new messages arrive (disabled during selection to prevent jumps)
-    LaunchedEffect(viewModel.messages.size, isSelectionMode) {
+    // Auto-scroll only when message count changes (prevents jump on reaction/selection state changes)
+    LaunchedEffect(viewModel.messages.size) {
         if (!isSelectionMode && viewModel.messages.isNotEmpty()) {
             delay(120)
             scrollToBottom()
