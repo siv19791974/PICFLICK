@@ -31,6 +31,7 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -411,7 +412,7 @@ fun FilterScreen(
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .weight(1.35f)
+                                .weight(1.2f)
                                 .padding(horizontal = 24.dp, vertical = 16.dp),
                             contentAlignment = Alignment.Center
                         ) {
@@ -436,7 +437,7 @@ fun FilterScreen(
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .weight(0.9f) // Fill remaining space
+                                .weight(1.05f) // Fill remaining space
                                 .background(if (isDarkMode) Color(0xFF1C1C1E) else PicFlickLightBackground)
                                 .padding(vertical = 8.dp) // Reduced padding
                                 .windowInsetsPadding(WindowInsets.navigationBars) // Handle nav bar insets
@@ -458,25 +459,8 @@ fun FilterScreen(
                                 }
                             }
                             
-                            // Tagged Friends Section
-                            if (taggedFriends.isNotEmpty()) {
-                                LazyRow(
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                    contentPadding = PaddingValues(horizontal = 16.dp),
-                                    modifier = Modifier.padding(bottom = 12.dp)
-                                ) {
-                                    items(taggedFriends) { friend ->
-                                        TaggedFriendChip(
-                                            friend = friend,
-                                            onRemove = {
-                                                taggedFriends = taggedFriends - friend
-                                            },
-                                            isDarkMode = isDarkMode
-                                        )
-                                    }
-                                }
-                            }
-                            
+                            Spacer(modifier = Modifier.weight(1f))
+
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -493,19 +477,19 @@ fun FilterScreen(
                                     },
                                     modifier = Modifier
                                         .weight(1f)
-                                        .height(44.dp)
+                                        .height(42.dp)
                                         .clip(RoundedCornerShape(12.dp))
-                                        .background(if (isDarkMode) Color.White.copy(alpha = 0.08f) else Color.White.copy(alpha = 0.65f))
+                                        .background(Color.White)
                                 ) {
                                     Icon(
                                         imageVector = Icons.Default.PersonAdd,
                                         contentDescription = null,
-                                        tint = if (isDarkMode) Color(0xFF87CEEB) else Color(0xFF1565C0)
+                                        tint = Color.Black
                                     )
                                     Spacer(modifier = Modifier.width(8.dp))
                                     Text(
                                         text = if (friends.isEmpty()) "Find Friends" else "Tag Friends (${taggedFriends.size})",
-                                        color = if (isDarkMode) Color(0xFF87CEEB) else Color(0xFF1565C0),
+                                        color = Color.Black,
                                         fontWeight = FontWeight.SemiBold
                                     )
                                 }
@@ -515,19 +499,25 @@ fun FilterScreen(
                                     enabled = bitmap != null && !isCropping && !isUploading,
                                     modifier = Modifier
                                         .weight(1f)
-                                        .height(44.dp)
+                                        .height(42.dp)
                                         .clip(RoundedCornerShape(12.dp))
-                                        .background(if (isDarkMode) Color.White.copy(alpha = 0.08f) else Color.White.copy(alpha = 0.65f))
+                                        .background(Color.White)
                                 ) {
+                                    Icon(
+                                        painter = painterResource(id = android.R.drawable.ic_menu_crop),
+                                        contentDescription = null,
+                                        tint = Color.Black
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
                                     Text(
                                         text = "Crop",
-                                        color = if (isDarkMode) Color(0xFF87CEEB) else Color(0xFF1565C0),
+                                        color = Color.Black,
                                         fontWeight = FontWeight.SemiBold
                                     )
                                 }
                             }
 
-                            Spacer(modifier = Modifier.height(10.dp))
+                            Spacer(modifier = Modifier.height(4.dp))
 
                             // Description button
                             TextButton(
@@ -535,13 +525,19 @@ fun FilterScreen(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .padding(horizontal = 16.dp)
-                                    .height(44.dp)
+                                    .height(42.dp)
                                     .clip(RoundedCornerShape(12.dp))
-                                    .background(if (isDarkMode) Color.White.copy(alpha = 0.08f) else Color.White.copy(alpha = 0.65f))
+                                    .background(Color.White)
                             ) {
+                                Icon(
+                                    painter = painterResource(id = android.R.drawable.ic_menu_edit),
+                                    contentDescription = null,
+                                    tint = Color.Black
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
                                 Text(
                                     text = if (description.isBlank()) "Add Description" else "Edit Description",
-                                    color = if (isDarkMode) Color(0xFF87CEEB) else Color(0xFF1565C0),
+                                    color = Color.Black,
                                     fontWeight = FontWeight.SemiBold
                                 )
                             }

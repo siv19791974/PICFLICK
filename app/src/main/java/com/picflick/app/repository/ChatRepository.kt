@@ -17,7 +17,6 @@ import kotlinx.coroutines.tasks.await
  */
 class ChatRepository {
     private val db = FirebaseFirestore.getInstance()
-    private val flickRepository = FlickRepository.getInstance()
 
     private fun Any?.toIntOrNullSafe(): Int? = when (this) {
         is Int -> this
@@ -62,12 +61,10 @@ class ChatRepository {
                         )
                     } ?: emptyList()
 
-                    // Defensive filtering: hide chats where users are no longer mutual friends.
+                    // Keep valid 1:1 chat sessions visible even if friendship changes later.
                     val filteredSessions = rawSessions.filter { session ->
                         val otherUserId = session.participants.firstOrNull { it != userId }
-                        otherUserId != null &&
-                                session.participants.size == 2 &&
-                                flickRepository.areFriends(userId, otherUserId)
+                        otherUserId != null && session.participants.size == 2
                     }
 
                     // Sort client-side by lastTimestamp descending
@@ -258,15 +255,6 @@ class ChatRepository {
 
             if (existing != null) {
                 return Result.Success(existing.id)
-            }
-
-            // SECURITY CHECK for NEW chats only: users must be friends (mutual followers)
-            val areFriends = flickRepository.areFriends(userId1, userId2)
-            if (!areFriends) {
-                return Result.Error(
-                    Exception("Not friends"),
-                    "You can only message friends. Follow each other to start chatting!"
-                )
             }
 
             // Create new session

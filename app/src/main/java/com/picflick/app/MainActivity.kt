@@ -79,6 +79,9 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        // Handle push tap when app is launched from a killed/background state
+        handlePushNotification(intent)
+
         // Enforce visible system bars across all screens/devices
         WindowCompat.setDecorFitsSystemWindows(window, true)
         WindowInsetsControllerCompat(window, window.decorView).show(WindowInsetsCompat.Type.statusBars())
@@ -108,6 +111,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
+        setIntent(intent)
         // Handle push notification clicks
         handlePushNotification(intent)
     }
@@ -115,17 +119,22 @@ class MainActivity : ComponentActivity() {
     private fun handlePushNotification(intent: Intent) {
         val extras = intent.extras
         if (extras != null) {
+            val flickId = extras.getString("flickId")
+            val chatId = extras.getString("chatId")
             val targetScreen = extras.getString("targetScreen")
+                ?: when {
+                    !flickId.isNullOrBlank() -> "photo"
+                    !chatId.isNullOrBlank() -> "chat"
+                    else -> "notifications"
+                }
             val notificationType = extras.getString("type")
             val senderId = extras.getString("senderId")
-            val senderName = extras.getString("senderName")
 
             android.util.Log.d("MainActivity", "Push notification clicked: type=$notificationType, screen=$targetScreen, sender=$senderId")
 
-            if (targetScreen != null) {
-                // Store the data to be processed when MainScreen loads
-                pendingPushData = extras
-            }
+            // Ensure MainScreen always gets a target to route correctly
+            extras.putString("targetScreen", targetScreen)
+            pendingPushData = extras
         }
     }
 
