@@ -280,6 +280,15 @@ class NotificationViewModel : ViewModel() {
         }
     }
 
+    fun deleteNotifications(notificationIds: Set<String>) {
+        if (notificationIds.isEmpty()) return
+
+        val selectedNotifications = notifications.filter { it.id in notificationIds }
+        selectedNotifications.forEach { notification ->
+            deleteNotification(notification)
+        }
+    }
+
     /**
      * Accept a friend request and delete the notification
      */
