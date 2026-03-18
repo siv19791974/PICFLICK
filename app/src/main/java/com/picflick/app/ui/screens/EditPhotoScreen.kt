@@ -71,7 +71,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
 import kotlin.math.min
-import kotlin.math.roundToInt
 
 /**
  * Screen for editing previously uploaded photos
@@ -82,8 +81,7 @@ import kotlin.math.roundToInt
 @Composable
 fun EditPhotoScreen(
     flick: Flick,
-    _currentUser: UserProfile,
-    _cloudName: String = "",
+    currentUser: UserProfile,
     onBack: () -> Unit,
     onSave: (Flick, String, String, List<String>, Bitmap) -> Unit
 ) {
@@ -143,8 +141,8 @@ withContext(Dispatchers.Main) {
     }
 
     // Load following users for Tag Friends
-    LaunchedEffect(_currentUser.uid, _currentUser.following) {
-        if (_currentUser.following.isEmpty()) {
+    LaunchedEffect(currentUser.uid, currentUser.following) {
+        if (currentUser.following.isEmpty()) {
             followingUsers = emptyList()
             return@LaunchedEffect
         }
@@ -152,7 +150,7 @@ withContext(Dispatchers.Main) {
         withContext(Dispatchers.IO) {
             val users = mutableListOf<UserProfile>()
             val db = FirebaseFirestore.getInstance()
-            _currentUser.following.forEach { uid ->
+            currentUser.following.forEach { uid ->
                 try {
                     val doc = db.collection("users").document(uid).get().await()
                     doc.toObject(UserProfile::class.java)?.let { users.add(it) }
@@ -475,7 +473,7 @@ withContext(Dispatchers.Main) {
                                         val srcBitmap = bitmap ?: return@TextButton
                                         scope.launch {
                                             val sourceUri = withContext(Dispatchers.IO) {
-                                                saveBitmapToTempUri(context, srcBitmap, "crop_src")
+                                                saveBitmapToTempUri(context, srcBitmap)
                                             }
                                             val destUri = Uri.fromFile(File(context.cacheDir, "crop_out_${System.currentTimeMillis()}.jpg"))
                                             val options = UCrop.Options().apply {
@@ -973,52 +971,6 @@ private fun createAspectFrameInBounds(bounds: Rect, targetAspect: Float): Rect {
     return Rect(left, top, left + frameW, top + frameH)
 }
 
-private fun cropBitmapByFrameAndTransform(
-    source: Bitmap,
-    frameRectNormalized: Rect,
-    scale: Float,
-    offsetPx: Offset,
-    previewSize: IntSize
-): Bitmap {
-    if (previewSize.width <= 0 || previewSize.height <= 0) return source
-
-    val containerW = previewSize.width.toFloat()
-    val containerH = previewSize.height.toFloat()
-    val srcW = source.width.toFloat()
-    val srcH = source.height.toFloat()
-
-    val baseScale = min(containerW / srcW, containerH / srcH)
-    val baseW = srcW * baseScale
-    val baseH = srcH * baseScale
-    val baseOffsetX = (containerW - baseW) / 2f
-    val baseOffsetY = (containerH - baseH) / 2f
-
-    val cx = containerW / 2f
-    val cy = containerH / 2f
-
-    fun screenToSourceX(x: Float): Float {
-        val beforeScale = ((x - offsetPx.x - cx) / scale) + cx
-        return (beforeScale - baseOffsetX) / baseScale
-    }
-
-    fun screenToSourceY(y: Float): Float {
-        val beforeScale = ((y - offsetPx.y - cy) / scale) + cy
-        return (beforeScale - baseOffsetY) / baseScale
-    }
-
-    val leftPx = frameRectNormalized.left * containerW
-    val topPx = frameRectNormalized.top * containerH
-    val rightPx = frameRectNormalized.right * containerW
-    val bottomPx = frameRectNormalized.bottom * containerH
-
-    val srcLeft = screenToSourceX(leftPx).roundToInt().coerceIn(0, source.width - 1)
-    val srcTop = screenToSourceY(topPx).roundToInt().coerceIn(0, source.height - 1)
-    val srcRight = screenToSourceX(rightPx).roundToInt().coerceIn(srcLeft + 1, source.width)
-    val srcBottom = screenToSourceY(bottomPx).roundToInt().coerceIn(srcTop + 1, source.height)
-
-    return Bitmap.createBitmap(source, srcLeft, srcTop, srcRight - srcLeft, srcBottom - srcTop)
-}
-
 private fun clampCropOffsetToFrame(
     previewSize: IntSize,
     imageSize: IntSize,
@@ -1408,8 +1360,8 @@ private suspend fun loadBitmapFromUri(context: android.content.Context, uri: Uri
     }
 }
 
-private fun saveBitmapToTempUri(context: android.content.Context, bitmap: Bitmap, prefix: String): Uri {
-    val tempFile = File.createTempFile(prefix, ".jpg", context.cacheDir)
+private fun saveBitmapToTempUri(context: android.content.Context, bitmap: Bitmap): Uri {
+    val tempFile = File.createTempFile("crop_src", ".jpg", context.cacheDir)
     java.io.FileOutputStream(tempFile).use { out ->
         bitmap.compress(Bitmap.CompressFormat.JPEG, 100, out)
     }
