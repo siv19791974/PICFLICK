@@ -385,6 +385,26 @@ fun MainScreen(
     var selectedChatSession by remember { mutableStateOf<ChatSession?>(null) }
     var selectedOtherUserId by remember { mutableStateOf<String>("") }
 
+    // Android 13+ runtime permission for push notification display
+    val notificationPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        android.util.Log.d("FCM", "POST_NOTIFICATIONS granted: $granted")
+    }
+
+    LaunchedEffect(Unit) {
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+            val granted = androidx.core.content.ContextCompat.checkSelfPermission(
+                context,
+                android.Manifest.permission.POST_NOTIFICATIONS
+            ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+
+            if (!granted) {
+                notificationPermissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+            }
+        }
+    }
+
     // Load notifications when user is authenticated
     LaunchedEffect(userProfile?.uid) {
         android.util.Log.d("MainActivity", "LaunchedEffect triggered. userProfile.uid=${userProfile?.uid}")

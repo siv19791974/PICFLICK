@@ -9,6 +9,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.lazy.LazyColumn
@@ -36,8 +37,10 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.platform.LocalDensity
+import kotlin.math.roundToInt
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -883,12 +886,30 @@ private fun ChatBubble(
         RoundedCornerShape(topStart = 4.dp, topEnd = 20.dp, bottomStart = 20.dp, bottomEnd = 20.dp)
     }
     val isPhotoOnly = message.imageUrl.isNotBlank() && message.text.isBlank() && !message.isReply()
+    var swipeOffsetX by remember(message.id) { mutableStateOf(0f) }
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .background(if (isSelected) Color(0x332196F3) else Color.Transparent)
-            .offset { IntOffset(0, -reactionLiftPx) }
+            .offset { IntOffset(swipeOffsetX.roundToInt(), -reactionLiftPx) }
+            .pointerInput(message.id, isSelectionMode) {
+                detectDragGestures(
+                    onDragEnd = {
+                        if (!isSelectionMode && swipeOffsetX > 56f) {
+                            onReplyClick()
+                        }
+                        swipeOffsetX = 0f
+                    },
+                    onDragCancel = {
+                        swipeOffsetX = 0f
+                    }
+                ) { _, dragAmount ->
+                    if (!isSelectionMode && dragAmount.x > 0f) {
+                        swipeOffsetX = (swipeOffsetX + dragAmount.x).coerceIn(0f, 96f)
+                    }
+                }
+            }
             .combinedClickable(
                 onClick = {
                     if (isSelectionMode) onToggleSelection()
