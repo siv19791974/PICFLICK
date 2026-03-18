@@ -10,6 +10,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -597,6 +598,7 @@ fun FilterScreen(
                                 )
                             },
                             onPreviewSizeChange = { previewSize = it },
+                            previewSize = previewSize,
                             onDone = {
                                 cropApplied = true
                                 isCropMode = false
@@ -889,6 +891,7 @@ private fun FullScreenCropDialog(
     onCropOffsetChange: (Offset) -> Unit,
     onCropFrameChange: (Rect) -> Unit,
     onPreviewSizeChange: (IntSize) -> Unit,
+    previewSize: IntSize,
     onDone: () -> Unit,
     isDarkMode: Boolean
 ) {
@@ -907,16 +910,15 @@ private fun FullScreenCropDialog(
                     .padding(horizontal = 8.dp, vertical = 16.dp)
                     .onSizeChanged { onPreviewSizeChange(it) }
                     .pointerInput(previewBitmap.width, previewBitmap.height, cropFrameRect, cropScale) {
-                        detectTransformGestures { _, pan, zoom, _ ->
-                            val newScale = (cropScale * zoom).coerceIn(1f, 6f)
-                            val proposed = cropOffset + (pan * 1.1f)
-                            onCropScaleChange(newScale)
+                        detectDragGestures { change, dragAmount ->
+                            change.consume()
+                            val proposed = cropOffset + (dragAmount * 1.05f)
                             onCropOffsetChange(
                                 clampCropOffsetToFrame(
                                     previewSize = IntSize(size.width, size.height),
                                     imageSize = IntSize(previewBitmap.width, previewBitmap.height),
                                     frameNormalized = cropFrameRect,
-                                    scale = newScale,
+                                    scale = cropScale,
                                     offset = proposed
                                 )
                             )
@@ -945,13 +947,37 @@ private fun FullScreenCropDialog(
                 )
             }
 
-            Button(
-                onClick = onDone,
+            Column(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
-                    .padding(bottom = 24.dp)
+                    .padding(horizontal = 16.dp, vertical = 20.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Text("Done Crop")
+                Text(
+                    text = "Zoom",
+                    color = Color.White,
+                    style = MaterialTheme.typography.labelLarge
+                )
+                Slider(
+                    value = cropScale,
+                    onValueChange = { newScale ->
+                        val clampedScale = newScale.coerceIn(1f, 6f)
+                        onCropScaleChange(clampedScale)
+                        onCropOffsetChange(
+                            clampCropOffsetToFrame(
+                                previewSize = previewSize,
+                                imageSize = IntSize(previewBitmap.width, previewBitmap.height),
+                                frameNormalized = cropFrameRect,
+                                scale = clampedScale,
+                                offset = cropOffset
+                            )
+                        )
+                    },
+                    valueRange = 1f..6f
+                )
+                Button(onClick = onDone) {
+                    Text("Done Crop")
+                }
             }
         }
     }
