@@ -30,6 +30,7 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -356,7 +357,7 @@ withContext(Dispatchers.Main) {
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .weight(1.35f)
+                                .weight(1.2f)
                                 .padding(horizontal = 24.dp, vertical = 16.dp),
                             contentAlignment = Alignment.Center
                         ) {
@@ -380,9 +381,10 @@ withContext(Dispatchers.Main) {
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(280.dp)
+                                .weight(1.05f)
                                 .background(if (isDarkMode) Color(0xFF1C1C1E) else PicFlickLightBackground)
                                 .padding(vertical = 8.dp)
+                                .windowInsetsPadding(WindowInsets.navigationBars)
                         ) {
                             // Filter thumbnails - single row
                             LazyRow(
@@ -403,23 +405,7 @@ withContext(Dispatchers.Main) {
                                 }
                             }
 
-                            if (taggedFriends.isNotEmpty()) {
-                                LazyRow(
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                    contentPadding = PaddingValues(horizontal = 16.dp),
-                                    modifier = Modifier.padding(bottom = 8.dp)
-                                ) {
-                                    items(taggedFriends) { friend ->
-                                        EditTaggedFriendChip(
-                                            friend = friend,
-                                            isDarkMode = isDarkMode,
-                                            onRemove = {
-                                                taggedFriendIds = taggedFriendIds - friend.uid
-                                            }
-                                        )
-                                    }
-                                }
-                            }
+                            Spacer(modifier = Modifier.weight(1f))
 
                             Row(
                                 modifier = Modifier
@@ -431,19 +417,19 @@ withContext(Dispatchers.Main) {
                                     onClick = { showTagDialog = true },
                                     modifier = Modifier
                                         .weight(1f)
-                                        .height(44.dp)
+                                        .height(42.dp)
                                         .clip(RoundedCornerShape(12.dp))
-                                        .background(if (isDarkMode) Color.White.copy(alpha = 0.08f) else Color.White.copy(alpha = 0.65f))
+                                        .background(Color.White)
                                 ) {
                                     Icon(
                                         imageVector = Icons.Default.PersonAdd,
                                         contentDescription = null,
-                                        tint = if (isDarkMode) Color(0xFF87CEEB) else Color(0xFF1565C0)
+                                        tint = Color.Black
                                     )
                                     Spacer(modifier = Modifier.width(8.dp))
                                     Text(
                                         text = if (followingUsers.isEmpty()) "No friends" else "Tag Friends (${taggedFriendIds.size})",
-                                        color = if (isDarkMode) Color(0xFF87CEEB) else Color(0xFF1565C0),
+                                        color = Color.Black,
                                         fontWeight = FontWeight.SemiBold
                                     )
                                 }
@@ -453,32 +439,44 @@ withContext(Dispatchers.Main) {
                                     enabled = bitmap != null && !isCropping && !isSaving,
                                     modifier = Modifier
                                         .weight(1f)
-                                        .height(44.dp)
+                                        .height(42.dp)
                                         .clip(RoundedCornerShape(12.dp))
-                                        .background(if (isDarkMode) Color.White.copy(alpha = 0.08f) else Color.White.copy(alpha = 0.65f))
+                                        .background(Color.White)
                                 ) {
+                                    Icon(
+                                        painter = painterResource(id = android.R.drawable.ic_menu_crop),
+                                        contentDescription = null,
+                                        tint = Color.Black
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
                                     Text(
                                         text = "Crop",
-                                        color = if (isDarkMode) Color(0xFF87CEEB) else Color(0xFF1565C0),
+                                        color = Color.Black,
                                         fontWeight = FontWeight.SemiBold
                                     )
                                 }
                             }
 
-                            Spacer(modifier = Modifier.height(10.dp))
+                            Spacer(modifier = Modifier.height(4.dp))
 
                             TextButton(
                                 onClick = { showDescriptionSheet = true },
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .padding(horizontal = 16.dp)
-                                    .height(44.dp)
+                                    .height(42.dp)
                                     .clip(RoundedCornerShape(12.dp))
-                                    .background(if (isDarkMode) Color.White.copy(alpha = 0.08f) else Color.White.copy(alpha = 0.65f))
+                                    .background(Color.White)
                             ) {
+                                Icon(
+                                    painter = painterResource(id = android.R.drawable.ic_menu_edit),
+                                    contentDescription = null,
+                                    tint = Color.Black
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
                                 Text(
                                     text = if (description.isBlank()) "Add Description" else "Edit Description",
-                                    color = if (isDarkMode) Color(0xFF87CEEB) else Color(0xFF1565C0),
+                                    color = Color.Black,
                                     fontWeight = FontWeight.SemiBold
                                 )
                             }

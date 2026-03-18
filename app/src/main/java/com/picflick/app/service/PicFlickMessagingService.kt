@@ -75,10 +75,17 @@ class PicFlickMessagingService : FirebaseMessagingService() {
         }
 
         // Create intent to open app
+        val resolvedTargetScreen = data["targetScreen"]
+            ?: when {
+                !data["flickId"].isNullOrBlank() -> "photo"
+                !data["chatId"].isNullOrBlank() -> "chat"
+                else -> "notifications"
+            }
+
         val intent = Intent(this, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
             // Add explicit data fields for notification routing
-            putExtra("targetScreen", data["targetScreen"] ?: "notifications")
+            putExtra("targetScreen", resolvedTargetScreen)
             putExtra("type", data["type"] ?: "")
             putExtra("flickId", data["flickId"] ?: "")
             putExtra("senderId", data["senderId"] ?: "")
