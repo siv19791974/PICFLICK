@@ -218,9 +218,9 @@ val listState = rememberLazyListState()
         }
     }
 
-    // Keep latest message visible when keyboard/composer changes (disabled during selection)
+    // Keep latest message visible when keyboard/composer changes (do not react to selection/reaction toggles)
     val imeBottom = WindowInsets.ime.getBottom(LocalDensity.current)
-    LaunchedEffect(imeBottom, composerHeightPx, isSelectionMode) {
+    LaunchedEffect(imeBottom, composerHeightPx) {
         if (!isSelectionMode && viewModel.messages.isNotEmpty()) {
             delay(100)
             scrollToBottom()
@@ -244,8 +244,8 @@ val listState = rememberLazyListState()
     }
 
     // Keep last message + reaction choices visible when reaction picker is opened
-    // (do not auto-scroll while selecting to avoid jumpy long-press behavior)
-    LaunchedEffect(activeReactionMessageId, viewModel.messages.size, composerHeightPx, isSelectionMode) {
+    // (do not let selection-mode changes trigger scroll)
+    LaunchedEffect(activeReactionMessageId, viewModel.messages.size, composerHeightPx) {
         if (!isSelectionMode && activeReactionMessageId != null && viewModel.messages.isNotEmpty()) {
             delay(120)
             scrollToBottom()
@@ -253,7 +253,7 @@ val listState = rememberLazyListState()
     }
 
     // Keep typing indicator bubble visible at bottom when other user starts typing
-    LaunchedEffect(viewModel.otherUserTyping, isSelectionMode, viewModel.messages.size) {
+    LaunchedEffect(viewModel.otherUserTyping, viewModel.messages.size) {
         if (!isSelectionMode && viewModel.otherUserTyping && viewModel.messages.isNotEmpty()) {
             delay(100)
             scrollToBottom()
@@ -938,7 +938,12 @@ private fun ChatBubble(
                 modifier = Modifier.fillMaxWidth(0.85f),
                 contentAlignment = Alignment.TopEnd
             ) {
-                Column(modifier = Modifier.padding(horizontal = if (isPhotoOnly) 2.dp else 8.dp)) {
+                Column(
+                    modifier = Modifier.padding(
+                        start = if (isPhotoOnly) 2.dp else 8.dp,
+                        end = 2.dp
+                    )
+                ) {
                     Box(
 modifier = Modifier
                             .align(Alignment.End)
