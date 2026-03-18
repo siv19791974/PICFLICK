@@ -595,7 +595,7 @@ private fun FlickGrid(
                 start = 1.dp,
                 end = 1.dp,
                 top = 4.dp,  // Slight top gap to match bottom
-                bottom = 80.dp // Bottom padding for loading indicator
+                bottom = if (isLoadingMore) 80.dp else 2.dp // Avoid large empty scroll gap when not loading
             ),
             userScrollEnabled = true // Enable scrolling for pull-to-refresh
         ) {
