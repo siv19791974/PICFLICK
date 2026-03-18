@@ -12,6 +12,8 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -96,7 +98,8 @@ fun FilterScreen(
     var description by remember { mutableStateOf("") }
 
     // Crop state (normalized to preview container)
-    var cropRect by remember { mutableStateOf(Rect(0.15f, 0.15f, 0.85f, 0.85f)) }
+    var isCropMode by remember { mutableStateOf(false) }
+    var cropRect by remember { mutableStateOf(Rect(0f, 0f, 1f, 1f)) }
     var previewSize by remember { mutableStateOf(IntSize.Zero) }
 
     // Upload loading state
@@ -165,7 +168,7 @@ fun FilterScreen(
                         context = context,
                         bitmap = bitmap!!,
                         filter = selectedFilter,
-                        cropRectNormalized = cropRect,
+                        cropRectNormalized = if (isCropMode) cropRect else Rect(0f, 0f, 1f, 1f),
                         previewSize = previewSize
                     )
                     onUpload(filteredUri, selectedFilter, taggedFriends.map { it.uid }, description.trim())
@@ -343,7 +346,9 @@ fun FilterScreen(
             } else {
                 bitmap?.let { bmp ->
                     Column(
-                        modifier = Modifier.fillMaxSize()
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .imePadding()
                     ) {
                         // Uploading Overlay (when uploading)
                         if (isUploading) {
@@ -400,12 +405,14 @@ fun FilterScreen(
                                     contentScale = ContentScale.Crop
                                 )
 
-                                CropOverlay(
-                                    cropRect = cropRect,
-                                    onCropRectChange = { cropRect = it },
-                                    overlayColor = Color.Black.copy(alpha = 0.52f),
-                                    borderColor = Color.White
-                                )
+                                if (isCropMode) {
+                                    CropOverlay(
+                                        cropRect = cropRect,
+                                        onCropRectChange = { cropRect = it },
+                                        overlayColor = Color.Black.copy(alpha = 0.52f),
+                                        borderColor = Color.White
+                                    )
+                                }
                             }
                         }
 
@@ -417,6 +424,7 @@ fun FilterScreen(
                                 .background(if (isDarkMode) Color(0xFF1C1C1E) else PicFlickLightBackground)
                                 .padding(vertical = 8.dp) // Reduced padding
                                 .windowInsetsPadding(WindowInsets.navigationBars) // Handle nav bar insets
+                                .verticalScroll(rememberScrollState())
                         ) {
                             // Filter Icons (simplified - no text)
                             LazyRow(
@@ -454,32 +462,49 @@ fun FilterScreen(
                                 }
                             }
                             
-                            // Tag Friends Button
-                            TextButton(
-                                onClick = { 
-                                    if (friends.isEmpty()) {
-                                        // Navigate to Find Friends if no friends
-                                        onNavigateToFindFriends()
-                                    } else {
-                                        // Show friend picker if friends exist
-                                        showFriendPicker = true
-                                    }
-                                },
+                            Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(horizontal = 16.dp)
+                                    .padding(horizontal = 16.dp),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
-                                Text(
-                                    text = "+",
-                                    color = if (isDarkMode) Color(0xFF87CEEB) else Color(0xFF1565C0),
-                                    fontSize = 24.sp,
-                                    fontWeight = FontWeight.Bold
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(
-                                    text = if (friends.isEmpty()) "Find Friends to Tag" else "Tag Friends (${taggedFriends.size})",
-                                    color = if (isDarkMode) Color(0xFF87CEEB) else Color(0xFF1565C0)
-                                )
+                                TextButton(
+                                    onClick = {
+                                        if (friends.isEmpty()) {
+                                            onNavigateToFindFriends()
+                                        } else {
+                                            showFriendPicker = true
+                                        }
+                                    },
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.PersonAdd,
+                                        contentDescription = null,
+                                        tint = if (isDarkMode) Color(0xFF87CEEB) else Color(0xFF1565C0)
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(
+                                        text = if (friends.isEmpty()) "Find Friends" else "Tag Friends (${taggedFriends.size})",
+                                        color = if (isDarkMode) Color(0xFF87CEEB) else Color(0xFF1565C0)
+                                    )
+                                }
+
+                                TextButton(
+                                    onClick = {
+                                        isCropMode = !isCropMode
+                                        if (isCropMode) {
+                                            cropRect = Rect(0.1f, 0.1f, 0.9f, 0.9f)
+                                        }
+                                    },
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Text(
+                                        text = if (isCropMode) "Done Crop" else "Crop Photo",
+                                        color = if (isDarkMode) Color(0xFF87CEEB) else Color(0xFF1565C0),
+                                        fontWeight = FontWeight.Medium
+                                    )
+                                }
                             }
                             
                             // Description/Caption Input Field - Wrapped in surface to cover background
@@ -806,22 +831,72 @@ private fun CropOverlay(
         modifier = Modifier
             .fillMaxSize()
             .pointerInput(cropRect) {
-                detectDragGestures { _, dragAmount ->
-                    val width = cropRect.width
-                    val height = cropRect.height
+                var dragMode = 0 // 0 none, 1 tl, 2 tr, 3 bl, 4 br, 5 move
+                detectDragGestures(
+                    onDragStart = { start ->
+                        val left = cropRect.left * size.width
+                        val top = cropRect.top * size.height
+                        val right = cropRect.right * size.width
+                        val bottom = cropRect.bottom * size.height
+                        val handleRadius = 44f
+
+                        fun near(px: Float, py: Float): Boolean {
+                            val dx = start.x - px
+                            val dy = start.y - py
+                            return dx * dx + dy * dy <= handleRadius * handleRadius
+                        }
+
+                        dragMode = when {
+                            near(left, top) -> 1
+                            near(right, top) -> 2
+                            near(left, bottom) -> 3
+                            near(right, bottom) -> 4
+                            start.x in left..right && start.y in top..bottom -> 5
+                            else -> 0
+                        }
+                    },
+                    onDragEnd = { dragMode = 0 },
+                    onDragCancel = { dragMode = 0 }
+                ) { _, dragAmount ->
+                    if (dragMode == 0) return@detectDragGestures
+
                     val dx = dragAmount.x / size.width.toFloat()
                     val dy = dragAmount.y / size.height.toFloat()
+                    val minSize = 0.18f
 
-                    val newLeft = (cropRect.left + dx).coerceIn(0f, 1f - width)
-                    val newTop = (cropRect.top + dy).coerceIn(0f, 1f - height)
-                    onCropRectChange(
-                        Rect(
-                            left = newLeft,
-                            top = newTop,
-                            right = newLeft + width,
-                            bottom = newTop + height
-                        )
-                    )
+                    var l = cropRect.left
+                    var t = cropRect.top
+                    var r = cropRect.right
+                    var b = cropRect.bottom
+
+                    when (dragMode) {
+                        1 -> {
+                            l = (l + dx).coerceIn(0f, r - minSize)
+                            t = (t + dy).coerceIn(0f, b - minSize)
+                        }
+                        2 -> {
+                            r = (r + dx).coerceIn(l + minSize, 1f)
+                            t = (t + dy).coerceIn(0f, b - minSize)
+                        }
+                        3 -> {
+                            l = (l + dx).coerceIn(0f, r - minSize)
+                            b = (b + dy).coerceIn(t + minSize, 1f)
+                        }
+                        4 -> {
+                            r = (r + dx).coerceIn(l + minSize, 1f)
+                            b = (b + dy).coerceIn(t + minSize, 1f)
+                        }
+                        5 -> {
+                            val w = r - l
+                            val h = b - t
+                            l = (l + dx).coerceIn(0f, 1f - w)
+                            t = (t + dy).coerceIn(0f, 1f - h)
+                            r = l + w
+                            b = t + h
+                        }
+                    }
+
+                    onCropRectChange(Rect(l, t, r, b))
                 }
             }
             .drawWithContent {
@@ -842,6 +917,12 @@ private fun CropOverlay(
                     size = Size(cropRight - cropLeft, cropBottom - cropTop),
                     style = Stroke(width = 3f)
                 )
+
+                val handleRadius = 10f
+                drawCircle(borderColor, handleRadius, Offset(cropLeft, cropTop))
+                drawCircle(borderColor, handleRadius, Offset(cropRight, cropTop))
+                drawCircle(borderColor, handleRadius, Offset(cropLeft, cropBottom))
+                drawCircle(borderColor, handleRadius, Offset(cropRight, cropBottom))
             }
     )
 }
@@ -1221,7 +1302,11 @@ private suspend fun applyFilterAndSave(
 ): Uri {
     return withContext(Dispatchers.IO) {
         val filteredBitmap = applyFilterToBitmap(bitmap, filter)
-        val finalBitmap = cropBitmapByNormalizedRect(filteredBitmap, cropRectNormalized, previewSize)
+        val finalBitmap = if (cropRectNormalized.left <= 0f && cropRectNormalized.top <= 0f && cropRectNormalized.right >= 1f && cropRectNormalized.bottom >= 1f) {
+            filteredBitmap
+        } else {
+            cropBitmapByNormalizedRect(filteredBitmap, cropRectNormalized, previewSize)
+        }
 
         // Save to temp file at MAXIMUM QUALITY (100% JPEG)
         val tempFile = java.io.File.createTempFile("filtered_", ".jpg", context.cacheDir)
