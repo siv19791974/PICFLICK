@@ -151,8 +151,8 @@ val listState = rememberLazyListState()
                 if (source != NestedScrollSource.UserInput) return Offset.Zero
 
                 val atBottom = !listState.canScrollForward
-                if (atBottom && available.y < 0f) {
-                    upwardPullDistance += -available.y
+                if (atBottom && available.y > 0f) {
+                    upwardPullDistance += available.y
                     if (upwardPullDistance >= pullUpRefreshThreshold) {
                         upwardPullDistance = 0f
                         triggerPullUpRefresh()
