@@ -463,7 +463,6 @@ val listState = rememberLazyListState()
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f)
-                    .nestedScroll(pullUpRefreshConnection)
             ) {
 Column(modifier = Modifier.fillMaxSize()) {
                     // Error message display
@@ -530,6 +529,7 @@ Column(modifier = Modifier.fillMaxSize()) {
                             LazyColumn(
                                 modifier = Modifier
                                     .fillMaxSize()
+                                    .nestedScroll(pullUpRefreshConnection)
                                     .padding(horizontal = 8.dp),
                                 state = listState,
                                 contentPadding = PaddingValues(start = 0.dp, top = 8.dp, end = 0.dp, bottom = listBottomPadding)
