@@ -9,6 +9,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.lazy.LazyColumn
@@ -38,6 +39,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -117,12 +119,14 @@ fun ChatDetailScreen(
 val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
     var isRefreshingByPullUp by remember { mutableStateOf(false) }
+    var upwardPullDistance by remember { mutableStateOf(0f) }
     var composerHeightPx by remember { mutableStateOf(0) }
 
     // Composer positioning: sit on nav bar when closed, move with keyboard when open
     val density = LocalDensity.current
     val composerHeightDp = with(density) { composerHeightPx.toDp() }
     val listBottomPadding = composerHeightDp + if (activeReactionMessageId != null) 220.dp else 16.dp
+    val pullUpRefreshThreshold = with(density) { 86.dp.toPx() }
 
     fun triggerPullUpRefresh() {
         if (isRefreshingByPullUp) return
@@ -496,6 +500,32 @@ Column(modifier = Modifier.fillMaxSize()) {
                             LazyColumn(
                                 modifier = Modifier
                                     .fillMaxSize()
+                                    .pointerInput(isRefreshingByPullUp, viewModel.messages.size) {
+                                        detectVerticalDragGestures(
+                                            onVerticalDrag = { _, dragAmount ->
+                                                val layoutInfo = listState.layoutInfo
+                                                val totalItems = layoutInfo.totalItemsCount
+                                                val lastVisibleItemIndex = layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: -1
+                                                val atOrNearBottom = totalItems == 0 || lastVisibleItemIndex >= totalItems - 1
+
+                                                if (atOrNearBottom && dragAmount < 0f && !isRefreshingByPullUp) {
+                                                    upwardPullDistance += -dragAmount
+                                                    if (upwardPullDistance >= pullUpRefreshThreshold) {
+                                                        upwardPullDistance = 0f
+                                                        triggerPullUpRefresh()
+                                                    }
+                                                } else if (!atOrNearBottom || dragAmount > 0f) {
+                                                    upwardPullDistance = 0f
+                                                }
+                                            },
+                                            onDragEnd = {
+                                                upwardPullDistance = 0f
+                                            },
+                                            onDragCancel = {
+                                                upwardPullDistance = 0f
+                                            }
+                                        )
+                                    }
                                     .padding(horizontal = 8.dp),
                                 state = listState,
                                 contentPadding = PaddingValues(start = 0.dp, top = 8.dp, end = 0.dp, bottom = listBottomPadding)
