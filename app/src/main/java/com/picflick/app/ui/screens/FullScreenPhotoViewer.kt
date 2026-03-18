@@ -2404,10 +2404,7 @@ private fun ShareFriendsDialog(
                 repository.getUserProfile(userId) { result ->
                     when (result) {
                         is com.picflick.app.data.Result.Success -> {
-                            // Share-to-chat only works between mutual friends.
-                            if (currentUser.isMutualFriend(result.data.uid)) {
-                                loadedFriends.add(result.data)
-                            }
+                            loadedFriends.add(result.data)
                         }
                         else -> { /* Skip failed loads */ }
                     }
@@ -2525,7 +2522,7 @@ private fun ShareFriendsDialog(
                                 )
                                 Spacer(modifier = Modifier.height(8.dp))
                                 Text(
-                                    text = "No mutual friends to message",
+                                    text = "No friends yet",
                                     color = Color.White.copy(alpha = 0.6f),
                                     fontSize = 14.sp
                                 )
@@ -2783,7 +2780,7 @@ private fun TagFriendsDialog(
                                 )
                                 Spacer(modifier = Modifier.height(8.dp))
                                 Text(
-                                    text = "No mutual friends to message",
+                                    text = "No friends yet",
                                     color = Color.White.copy(alpha = 0.6f),
                                     fontSize = 14.sp
                                 )
@@ -2956,27 +2953,6 @@ private fun TagFriendsDialog(
                 }
             }
         }
-    }
-}
-
-private suspend fun isLandscapeImageUrl(imageUrl: String): Boolean = withContext(Dispatchers.IO) {
-    try {
-        val connection = (URL(imageUrl).openConnection() as HttpURLConnection).apply {
-            doInput = true
-            connectTimeout = 8000
-            readTimeout = 8000
-            connect()
-        }
-
-        connection.inputStream.use { input ->
-            val options = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-            BitmapFactory.decodeStream(input, null, options)
-            val width = options.outWidth
-            val height = options.outHeight
-            width > 0 && height > 0 && width > height
-        }
-    } catch (_: Exception) {
-        false
     }
 }
 
