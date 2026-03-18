@@ -1,11 +1,13 @@
 package com.picflick.app.data
 
+import com.google.firebase.firestore.IgnoreExtraProperties
 import com.google.firebase.firestore.ServerTimestamp
 import java.util.Date
 
 /**
  * Data class representing a comment on a photo/flick
  */
+@IgnoreExtraProperties
 data class Comment(
     val id: String = "",
     val flickId: String = "",           // The photo being commented on

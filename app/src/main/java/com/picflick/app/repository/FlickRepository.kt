@@ -1940,7 +1940,6 @@ class FlickRepository private constructor() {
     fun getComments(flickId: String, onResult: (Result<List<Comment>>) -> Unit): ListenerRegistration {
         return db.collection("comments")
             .whereEqualTo("flickId", flickId)
-            .orderBy("timestamp", Query.Direction.DESCENDING)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
                     onResult(Result.Error(error, "Failed to load comments"))
@@ -1954,7 +1953,8 @@ class FlickRepository private constructor() {
                             android.util.Log.w("CommentDebug", "Comment has blank ID after mapping! Doc ID: ${doc.id}")
                         }
                         comment
-                    }
+                    }.sortedBy { it.timestamp?.time ?: 0L }
+
                     android.util.Log.d("CommentDebug", "Loaded ${comments.size} comments, first ID: ${comments.firstOrNull()?.id}")
                     onResult(Result.Success(comments))
                 }

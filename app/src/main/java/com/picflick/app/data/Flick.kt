@@ -1,8 +1,11 @@
 package com.picflick.app.data
 
+import com.google.firebase.firestore.IgnoreExtraProperties
+
 /**
  * Data class representing a photo flick/post in the PicFlick app
  */
+@IgnoreExtraProperties
 data class Flick(
     val id: String = "",
     val userId: String = "",

@@ -80,6 +80,7 @@ import androidx.core.view.WindowInsetsControllerCompat
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import java.net.URL
 import java.net.HttpURLConnection
 
@@ -295,7 +296,7 @@ val canDeleteCurrent = currentFlick.userId == currentUser.uid
                     if (comment.id.isNotBlank()) comment.id
                     else "${comment.userId}_${comment.text}_${comment.timestamp?.time ?: 0L}"
                 }
-                .sortedByDescending { it.timestamp?.time ?: 0L }
+                .sortedBy { it.timestamp?.time ?: 0L }
             isLoadingComments = false
         }
 
@@ -340,7 +341,10 @@ val canDeleteCurrent = currentFlick.userId == currentUser.uid
             repository.getFlickByImageUrl(currentFlick.imageUrl, currentFlick.userId) { result ->
                 if (result is com.picflick.app.data.Result.Success) {
                     canonicalCommentFlickId = result.data.id
+                    android.util.Log.d("CommentThread", "Resolved canonical flickId='${result.data.id}' for chat flick='${currentFlick.id}'")
                     attachCanonicalListenerIfNeeded(result.data.id)
+                } else {
+                    android.util.Log.w("CommentThread", "Failed canonical resolve for chat flick='${currentFlick.id}', imageUrl='${currentFlick.imageUrl.take(120)}'")
                 }
             }
         } else {
@@ -1356,16 +1360,29 @@ if (canDeleteCurrent) {
                                 } else {
                                     val listState = rememberLazyListState()
                                     var activeReactionPickerCommentId by remember { mutableStateOf<String?>(null) }
+                                    var hasAutoScrolledInitially by remember { mutableStateOf(false) }
                                     
                                     // Separate top-level comments and replies FIRST (needed for LaunchedEffect)
                                     val topLevelComments = comments.filter { it.parentCommentId == null }
                                     val repliesByParent = comments.filter { it.parentCommentId != null }
                                         .groupBy { it.parentCommentId }
                                     
-                                    // Auto-scroll to latest comment when list changes
+                                    // Smart auto-scroll: first load always goes to bottom; later only if user is already near bottom.
+                                    // Handles both new top-level comments and new replies.
                                     LaunchedEffect(comments.size) {
-                                        if (comments.isNotEmpty()) {
-                                            listState.animateScrollToItem(comments.size - 1)
+                                        if (topLevelComments.isNotEmpty()) {
+                                            val latestComment = comments.maxByOrNull { it.timestamp?.time ?: 0L }
+                                            val targetTopLevelId = latestComment?.parentCommentId ?: latestComment?.id
+                                            val targetIndex = topLevelComments.indexOfFirst { it.id == targetTopLevelId }
+                                                .takeIf { it >= 0 } ?: topLevelComments.lastIndex
+
+                                            val lastVisibleIndex = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: -1
+                                            val isNearBottom = lastVisibleIndex >= topLevelComments.lastIndex - 1
+
+                                            if (!hasAutoScrolledInitially || isNearBottom) {
+                                                listState.animateScrollToItem(targetIndex)
+                                                hasAutoScrolledInitially = true
+                                            }
                                         }
                                     }
                                     
@@ -1508,13 +1525,25 @@ if (canDeleteCurrent) {
 
                                 Spacer(modifier = Modifier.width(8.dp))
 
+                                val isCanonicalThreadPending = currentFlick.id.startsWith("chat_photo_") && canonicalCommentFlickId.isNullOrBlank()
+
                                 // Send button
                                 FloatingActionButton(
                                     onClick = {
+                                        if (isCanonicalThreadPending) {
+                                            android.util.Log.w(
+                                                "CommentThread",
+                                                "Blocked send: canonical unresolved for chat flick='${currentFlick.id}', currentCanonical='${canonicalCommentFlickId ?: "null"}'"
+                                            )
+                                            showPicFlickToast("Syncing comments thread... try again")
+                                            return@FloatingActionButton
+                                        }
+
                                         if (newCommentText.isNotBlank()) {
                                             val text = newCommentText.trim()
                                             val parentComment = replyingToComment
-                                            
+                                            val replyParentCommentId = parentComment?.parentCommentId ?: parentComment?.id
+
                                             val targetFlickId = canonicalCommentFlickId ?: currentFlick.id
 
                                             // OPTIMISTIC UPDATE: Add to UI immediately
@@ -1525,7 +1554,7 @@ if (canDeleteCurrent) {
                                                 userName = currentUser.displayName ?: "",
                                                 userPhotoUrl = currentUser.photoUrl ?: "",
                                                 text = text,
-                                                parentCommentId = parentComment?.id,
+                                                parentCommentId = replyParentCommentId,
                                                 timestamp = java.util.Date()
                                             )
                                             comments = comments + tempComment
@@ -1538,10 +1567,10 @@ if (canDeleteCurrent) {
                                             // Send to Firestore in background
                                             coroutineScope.launch {
                                                 android.util.Log.d("CommentAdd", "Adding comment: text='$text', userId='${currentUser.uid}', flickId='$targetFlickId',")
-                                                val result = if (parentComment != null) {
+                                                val result = if (parentComment != null && !replyParentCommentId.isNullOrBlank()) {
                                                     repository.addReply(
                                                         flickId = targetFlickId,
-                                                        parentCommentId = parentComment.id,
+                                                        parentCommentId = replyParentCommentId,
                                                         userId = currentUser.uid,
                                                         userName = currentUser.displayName ?: "",
                                                         userPhotoUrl = currentUser.photoUrl ?: "",
@@ -1903,6 +1932,7 @@ private fun CompactCommentItem(
     onLoadReplies: () -> Unit = {}
 ) {
     var showReactionPicker by remember { mutableStateOf(false) }
+    var isDeleting by remember { mutableStateOf(false) }
     // Track reaction locally for optimistic update
     var localReactions by remember { mutableStateOf(comment.reactions) }
     
@@ -1916,16 +1946,20 @@ private fun CompactCommentItem(
         onReactionPickerVisibilityChanged(showReactionPicker)
     }
     
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp)
+    AnimatedVisibility(
+        visible = !isDeleting,
+        exit = fadeOut(tween(180)) + shrinkVertically(animationSpec = tween(180))
     ) {
-        // Main comment row - Profile pic + content
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.Top
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 4.dp)
         ) {
+            // Main comment row - Profile pic + content
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.Top
+            ) {
             // Profile pic on left
             AsyncImage(
                 model = comment.userPhotoUrl,
@@ -2061,10 +2095,13 @@ private fun CompactCommentItem(
                             
                             android.util.Log.d("CommentDelete", "Delete clicked for comment ID: '${comment.id}', flickId: '${flickId}'")
                             
-                            // Remove from UI immediately (optimistic update)
-                            onDelete()
-                            
                             coroutineScope.launch {
+                                isDeleting = true
+                                delay(180)
+
+                                // Remove from UI after exit animation
+                                onDelete()
+
                                 try {
                                     val result = repository.deleteComment(comment.id, flickId)
                                     if (result is com.picflick.app.data.Result.Error) {
@@ -2141,6 +2178,8 @@ private fun CompactCommentItem(
             }
         }
     }
+}
+
 }
 
 @Composable
