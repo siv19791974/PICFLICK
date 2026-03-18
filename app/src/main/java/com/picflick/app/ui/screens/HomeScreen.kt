@@ -55,6 +55,7 @@ import com.picflick.app.ui.components.ErrorMessage
 import com.picflick.app.ui.components.PhotoGridShimmer
 import com.picflick.app.ui.theme.isDarkModeBackground
 import com.picflick.app.ui.theme.ThemeManager
+import com.picflick.app.util.rememberLiveUserPhotoUrl
 import com.picflick.app.util.withCacheBust
 import com.picflick.app.viewmodel.HomeViewModel
 import java.io.File
@@ -87,6 +88,14 @@ fun HomeScreen(
     var isSharingPhoto by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val chatRepository = remember { ChatRepository() }
+    val currentUserPhotoUrl = rememberLiveUserPhotoUrl(userProfile.uid, userProfile.photoUrl)
+    val currentUserWithLivePhoto = remember(userProfile, currentUserPhotoUrl) {
+        userProfile.copy(photoUrl = if (currentUserPhotoUrl.isNotBlank()) currentUserPhotoUrl else userProfile.photoUrl)
+    }
+    val liveFriendProfiles = friends.associate { friend ->
+        val livePhoto = rememberLiveUserPhotoUrl(friend.uid, friend.photoUrl)
+        friend.uid to friend.copy(photoUrl = if (livePhoto.isNotBlank()) livePhoto else friend.photoUrl)
+    }
     
     // Reaction picker state
     var showReactionPicker by remember { mutableStateOf(false) }
@@ -115,7 +124,7 @@ fun HomeScreen(
             viewModel.uploadFlick(
                 userId = userProfile.uid,
                 userDisplayName = userProfile.displayName,
-                userPhotoUrl = userProfile.photoUrl,
+                userPhotoUrl = currentUserWithLivePhoto.photoUrl,
                 imageUri = tempCameraUri!!,
                 context = context,
                 privacy = privacySetting,
@@ -138,7 +147,7 @@ fun HomeScreen(
             viewModel.uploadFlick(
                 userId = userProfile.uid,
                 userDisplayName = userProfile.displayName,
-                userPhotoUrl = userProfile.photoUrl,
+                userPhotoUrl = currentUserWithLivePhoto.photoUrl,
                 imageUri = it,
                 context = context,
                 privacy = privacySetting,
@@ -184,7 +193,7 @@ fun HomeScreen(
                 else -> FlickGrid(
                     flicks = viewModel.flicks,
                     userProfile = userProfile,
-                    onLikeClick = { flick -> viewModel.toggleLike(flick, userProfile.uid, userProfile.displayName, userProfile.photoUrl) },
+                    onLikeClick = { flick -> viewModel.toggleLike(flick, userProfile.uid, userProfile.displayName, currentUserWithLivePhoto.photoUrl) },
                     onPhotoClick = { flick ->
                         selectedFlick = flick
                         selectedFlickIndex = viewModel.flicks.indexOf(flick)
@@ -246,13 +255,13 @@ fun HomeScreen(
         key(flicksHash) {
             FullScreenPhotoViewer(
             flick = flick,
-            currentUser = userProfile,
+            currentUser = currentUserWithLivePhoto,
             onDismiss = { selectedFlick = null },
             onReaction = { reactionType ->
                 // Get the CURRENT flick based on selected index (not the stale flick reference)
                 val currentFlick = viewModel.flicks.getOrNull(selectedFlickIndex) ?: flick
                 // Handle reaction via ViewModel
-                viewModel.toggleReaction(currentFlick, userProfile.uid, userProfile.displayName, userProfile.photoUrl, reactionType)
+                viewModel.toggleReaction(currentFlick, userProfile.uid, userProfile.displayName, currentUserWithLivePhoto.photoUrl, reactionType)
                 // IMMEDIATELY update selectedFlick with the latest data from ViewModel
                 // This ensures the UI shows the reaction immediately
                 val updatedFlick = viewModel.flicks.getOrNull(selectedFlickIndex)
@@ -290,7 +299,7 @@ fun HomeScreen(
                     Toast.makeText(context, "Photo unavailable to share", Toast.LENGTH_SHORT).show()
                 } else {
                     scope.launch {
-                        val friendProfile = friends.firstOrNull { it.uid == friendId }
+                        val friendProfile = liveFriendProfiles[friendId]
                         val friendName = friendProfile?.displayName?.ifBlank { "Friend" } ?: "Friend"
                         val friendPhoto = friendProfile?.photoUrl ?: ""
                         when (val sessionResult = chatRepository.getOrCreateChatSession(
@@ -298,7 +307,7 @@ fun HomeScreen(
                             userId2 = friendId,
                             user1Name = userProfile.displayName,
                             user2Name = friendName,
-                            user1Photo = userProfile.photoUrl,
+                            user1Photo = currentUserWithLivePhoto.photoUrl,
                             user2Photo = friendPhoto
                         )) {
                             is com.picflick.app.data.Result.Success -> {
@@ -306,7 +315,7 @@ fun HomeScreen(
                                     chatId = sessionResult.data,
                                     senderId = userProfile.uid,
                                     senderName = userProfile.displayName,
-                                    senderPhotoUrl = userProfile.photoUrl,
+                                    senderPhotoUrl = currentUserWithLivePhoto.photoUrl,
                                     text = "",
                                     imageUrl = flickToSend.imageUrl,
                                     flickId = flickToSend.id,
@@ -326,7 +335,7 @@ fun HomeScreen(
                     }
                 }
             },
-            friendProfiles = friends.associateBy { it.uid },
+            friendProfiles = liveFriendProfiles,
             onEditPhotoClick = { flick ->
                 onEditPhotoClick(flick)
             }
@@ -344,11 +353,11 @@ fun HomeScreen(
             },
             title = { Text("Share to chat") },
             text = {
-                if (friends.isEmpty()) {
+                if (liveFriendProfiles.isEmpty()) {
                     Text("No friends available to share with yet.")
                 } else {
                     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        friends.forEach { friend ->
+                        liveFriendProfiles.values.forEach { friend ->
                             OutlinedButton(
                                 onClick = {
                                     val photo = flickToShare ?: return@OutlinedButton
@@ -360,7 +369,7 @@ fun HomeScreen(
                                             userId2 = friend.uid,
                                             user1Name = userProfile.displayName,
                                             user2Name = friend.displayName,
-                                            user1Photo = userProfile.photoUrl,
+                                            user1Photo = currentUserWithLivePhoto.photoUrl,
                                             user2Photo = friend.photoUrl
                                         )) {
                                             is com.picflick.app.data.Result.Success -> {
@@ -368,7 +377,7 @@ fun HomeScreen(
                                                     chatId = chatResult.data,
                                                     senderId = userProfile.uid,
                                                     senderName = userProfile.displayName,
-                                                    senderPhotoUrl = userProfile.photoUrl,
+                                                    senderPhotoUrl = currentUserWithLivePhoto.photoUrl,
                                                     text = "",
                                                     imageUrl = photo.imageUrl,
                                                     timestamp = System.currentTimeMillis(),
@@ -439,7 +448,7 @@ fun HomeScreen(
                     flickForReaction!!,
                     userProfile.uid,
                     userProfile.displayName,
-                    userProfile.photoUrl,
+                    currentUserWithLivePhoto.photoUrl,
                     reactionType
                 )
                 showReactionPicker = false

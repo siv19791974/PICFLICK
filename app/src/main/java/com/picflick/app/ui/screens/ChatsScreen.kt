@@ -31,7 +31,6 @@ import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.runtime.*
 import androidx.compose.runtime.LaunchedEffect
-import kotlinx.coroutines.tasks.await
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -53,6 +52,7 @@ import com.picflick.app.ui.components.BottomNavBar
 import com.picflick.app.ui.components.LogoImage
 import com.picflick.app.ui.theme.PicFlickBannerBackground
 import com.picflick.app.ui.theme.PicFlickLightBackground
+import com.picflick.app.util.rememberLiveUserPhotoUrl
 import com.picflick.app.ui.theme.ThemeManager
 import com.picflick.app.ui.theme.isDarkModeBackground
 import com.picflick.app.viewmodel.ChatViewModel
@@ -351,37 +351,28 @@ fun ChatsScreen(
                                             ?: "Unknown"
                                     )
                                 }
-                                var otherUserPhoto by remember(session.id, otherUserId) {
-                                    mutableStateOf(session.participantPhotos[otherUserId] ?: "")
-                                }
+                                val otherUserPhoto = rememberLiveUserPhotoUrl(
+                                    userId = otherUserId,
+                                    fallbackPhotoUrl = session.participantPhotos[otherUserId]
+                                )
 
-                                // Backfill name/photo from users collection for older or incomplete chat sessions
+                                // Backfill name from users collection for older or incomplete chat sessions
                                 LaunchedEffect(otherUserId) {
-                                    if (otherUserId.isNotBlank() && (otherUserName == "Unknown" || otherUserPhoto.isEmpty())) {
+                                    if (otherUserId.isNotBlank() && otherUserName == "Unknown") {
                                         try {
-                                            val userDoc = com.google.firebase.firestore.FirebaseFirestore.getInstance()
+                                            com.google.firebase.firestore.FirebaseFirestore.getInstance()
                                                 .collection("users")
                                                 .document(otherUserId)
                                                 .get()
-                                                .await()
-
-                                            if (otherUserName == "Unknown") {
-                                                otherUserName = userDoc.getString("displayName")
-                                                    ?.takeIf { it.isNotBlank() }
-                                                    ?: userDoc.getString("username")
+                                                .addOnSuccessListener { userDoc ->
+                                                    otherUserName = userDoc.getString("displayName")
                                                         ?.takeIf { it.isNotBlank() }
-                                                    ?: userDoc.getString("name")
-                                                        ?.takeIf { it.isNotBlank() }
-                                                    ?: otherUserName
-                                            }
-
-                                            if (otherUserPhoto.isEmpty()) {
-                                                otherUserPhoto = userDoc.getString("photoUrl")
-                                                    ?: userDoc.getString("photoURL")
-                                                    ?: userDoc.getString("profileImageUrl")
-                                                    ?: userDoc.getString("avatarUrl")
-                                                    ?: ""
-                                            }
+                                                        ?: userDoc.getString("username")
+                                                            ?.takeIf { it.isNotBlank() }
+                                                        ?: userDoc.getString("name")
+                                                            ?.takeIf { it.isNotBlank() }
+                                                        ?: otherUserName
+                                                }
                                         } catch (_: Exception) {
                                             // Keep current fallback values if fetch fails
                                         }

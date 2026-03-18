@@ -13,6 +13,9 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.pullrefresh.PullRefreshIndicator
+import androidx.compose.material.pullrefresh.pullRefresh
+import androidx.compose.material.pullrefresh.rememberPullRefreshState
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -34,7 +37,7 @@ import com.picflick.app.ui.theme.ThemeManager
 /**
  * Albums Screen - View and manage photo albums
  */
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, androidx.compose.material.ExperimentalMaterialApi::class)
 @Composable
 fun AlbumsScreen(
     userProfile: UserProfile,
@@ -52,22 +55,40 @@ fun AlbumsScreen(
     var isLoading by remember { mutableStateOf(true) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var showCreateDialog by remember { mutableStateOf(false) }
+    var isRefreshing by remember { mutableStateOf(false) }
 
-    // Load albums
-    LaunchedEffect(userProfile.uid) {
+    fun loadAlbums(isManualRefresh: Boolean = false) {
+        isLoading = true
+        if (isManualRefresh) {
+            isRefreshing = true
+        }
+        errorMessage = null
+
         photoRepository.getUserAlbums(userProfile.uid) { result ->
             when (result) {
                 is com.picflick.app.data.Result.Success -> {
                     albums = result.data
                     isLoading = false
+                    isRefreshing = false
                 }
                 is com.picflick.app.data.Result.Error -> {
                     errorMessage = result.message
                     isLoading = false
+                    isRefreshing = false
                 }
-                else -> {}
+                else -> Unit
             }
         }
+    }
+
+    val pullRefreshState = rememberPullRefreshState(
+        refreshing = isRefreshing,
+        onRefresh = { loadAlbums(isManualRefresh = true) }
+    )
+
+    // Load albums
+    LaunchedEffect(userProfile.uid) {
+        loadAlbums()
     }
 
     Scaffold(
@@ -103,6 +124,7 @@ fun AlbumsScreen(
                 .fillMaxSize()
                 .background(backgroundColor)
                 .padding(padding)
+                .pullRefresh(pullRefreshState)
         ) {
             when {
                 isLoading -> {
@@ -128,23 +150,7 @@ fun AlbumsScreen(
                             color = MaterialTheme.colorScheme.error
                         )
                         Spacer(modifier = Modifier.height(16.dp))
-                        Button(onClick = {
-                            isLoading = true
-                            errorMessage = null
-                            photoRepository.getUserAlbums(userProfile.uid) { result ->
-                                when (result) {
-                                    is com.picflick.app.data.Result.Success -> {
-                                        albums = result.data
-                                        isLoading = false
-                                    }
-                                    is com.picflick.app.data.Result.Error -> {
-                                        errorMessage = result.message
-                                        isLoading = false
-                                    }
-                                    else -> {}
-                                }
-                            }
-                        }) {
+                        Button(onClick = { loadAlbums() }) {
                             Text("Retry")
                         }
                     }
@@ -190,6 +196,14 @@ fun AlbumsScreen(
                     }
                 }
             }
+
+            PullRefreshIndicator(
+                refreshing = isRefreshing,
+                state = pullRefreshState,
+                modifier = Modifier.align(Alignment.TopCenter),
+                contentColor = MaterialTheme.colorScheme.primary,
+                backgroundColor = backgroundColor
+            )
         }
     }
 
