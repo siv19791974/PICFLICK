@@ -230,8 +230,8 @@ class ChatRepository {
     }
 
     /**
-     * Create or get existing chat session between two users (FRIENDS ONLY)
-     * Only allows chat between friends (mutual followers)
+     * Create or get existing 1:1 chat session between two users.
+     * Supports reusing historical sessions even if friendship changes later.
      */
     suspend fun getOrCreateChatSession(
         userId1: String,

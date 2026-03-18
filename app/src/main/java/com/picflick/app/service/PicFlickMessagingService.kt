@@ -62,6 +62,10 @@ class PicFlickMessagingService : FirebaseMessagingService() {
     private fun showNotification(title: String, message: String, data: Map<String, String>) {
         val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
+        fun Map<String, String>.firstNonBlank(vararg keys: String): String? {
+            return keys.firstNotNullOfOrNull { key -> this[key]?.takeIf { it.isNotBlank() } }
+        }
+
         // Create notification channel for Android O+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
@@ -75,10 +79,16 @@ class PicFlickMessagingService : FirebaseMessagingService() {
         }
 
         // Create intent to open app
-        val resolvedTargetScreen = data["targetScreen"]
+        val flickId = data.firstNonBlank("flickId", "flick_id", "postId", "post_id") ?: ""
+        val chatId = data.firstNonBlank("chatId", "chat_id", "conversationId") ?: ""
+        val senderId = data.firstNonBlank("senderId", "sender_id", "fromUserId", "userId") ?: ""
+        val senderName = data.firstNonBlank("senderName", "sender_name", "fromUserName", "userName") ?: ""
+        val type = data.firstNonBlank("type", "notificationType") ?: ""
+
+        val resolvedTargetScreen = data.firstNonBlank("targetScreen", "screen", "destination")
             ?: when {
-                !data["flickId"].isNullOrBlank() -> "photo"
-                !data["chatId"].isNullOrBlank() -> "chat"
+                flickId.isNotBlank() -> "photo"
+                chatId.isNotBlank() -> "chat"
                 else -> "notifications"
             }
 
@@ -86,11 +96,11 @@ class PicFlickMessagingService : FirebaseMessagingService() {
             flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
             // Add explicit data fields for notification routing
             putExtra("targetScreen", resolvedTargetScreen)
-            putExtra("type", data["type"] ?: "")
-            putExtra("flickId", data["flickId"] ?: "")
-            putExtra("senderId", data["senderId"] ?: "")
-            putExtra("senderName", data["senderName"] ?: "")
-            putExtra("chatId", data["chatId"] ?: "")
+            putExtra("type", type)
+            putExtra("flickId", flickId)
+            putExtra("senderId", senderId)
+            putExtra("senderName", senderName)
+            putExtra("chatId", chatId)
             // Add any other data payload fields
             data.forEach { (key, value) ->
                 if (!hasExtra(key)) { // Don't overwrite explicit fields
@@ -99,8 +109,11 @@ class PicFlickMessagingService : FirebaseMessagingService() {
             }
         }
 
+        val intentIdentity = listOf(type, flickId, chatId, senderId, data["timestamp"] ?: "").joinToString("|")
+        val requestCode = intentIdentity.hashCode()
+
         val pendingIntent = PendingIntent.getActivity(
-            this, 0, intent,
+            this, requestCode, intent,
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
 

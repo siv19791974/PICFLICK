@@ -12,6 +12,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -357,7 +359,7 @@ withContext(Dispatchers.Main) {
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .weight(1.1f)
+                                .weight(0.95f)
                                 .padding(horizontal = 24.dp, vertical = 16.dp),
                             contentAlignment = Alignment.Center
                         ) {
@@ -378,13 +380,15 @@ withContext(Dispatchers.Main) {
                         }
 
                         // Bottom Panel with filter thumbnails + metadata
+                        val bottomPanelScroll = rememberScrollState()
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .weight(1.15f)
+                                .weight(1.3f)
                                 .background(if (isDarkMode) Color(0xFF1C1C1E) else PicFlickLightBackground)
                                 .padding(vertical = 8.dp)
                                 .windowInsetsPadding(WindowInsets.navigationBars)
+                                .verticalScroll(bottomPanelScroll)
                         ) {
                             // Filter thumbnails - single row
                             LazyRow(
@@ -405,19 +409,18 @@ withContext(Dispatchers.Main) {
                                 }
                             }
 
-                            Spacer(modifier = Modifier.weight(1f))
-
-                            Row(
+                            Column(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(horizontal = 16.dp),
-                                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                    .padding(horizontal = 16.dp)
+                                    .padding(bottom = 6.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
                                 TextButton(
                                     onClick = { showTagDialog = true },
                                     modifier = Modifier
-                                        .weight(1f)
-                                        .defaultMinSize(minHeight = 48.dp)
+                                        .fillMaxWidth()
+                                        .defaultMinSize(minHeight = 56.dp)
                                         .clip(RoundedCornerShape(12.dp))
                                         .background(Color.White)
                                 ) {
@@ -430,7 +433,9 @@ withContext(Dispatchers.Main) {
                                     Text(
                                         text = if (followingUsers.isEmpty()) "No friends" else "Tag Friends (${taggedFriendIds.size})",
                                         color = Color.Black,
-                                        fontWeight = FontWeight.SemiBold
+                                        fontWeight = FontWeight.SemiBold,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
                                     )
                                 }
 
@@ -438,8 +443,8 @@ withContext(Dispatchers.Main) {
                                     onClick = { launchCrop() },
                                     enabled = bitmap != null && !isCropping && !isSaving,
                                     modifier = Modifier
-                                        .weight(1f)
-                                        .defaultMinSize(minHeight = 48.dp)
+                                        .fillMaxWidth()
+                                        .defaultMinSize(minHeight = 56.dp)
                                         .clip(RoundedCornerShape(12.dp))
                                         .background(Color.White)
                                 ) {
@@ -452,33 +457,33 @@ withContext(Dispatchers.Main) {
                                     Text(
                                         text = "Crop",
                                         color = Color.Black,
-                                        fontWeight = FontWeight.SemiBold
+                                        fontWeight = FontWeight.SemiBold,
+                                        maxLines = 1
                                     )
                                 }
-                            }
 
-                            Spacer(modifier = Modifier.height(4.dp))
-
-                            TextButton(
-                                onClick = { showDescriptionSheet = true },
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 16.dp)
-                                    .defaultMinSize(minHeight = 48.dp)
-                                    .clip(RoundedCornerShape(12.dp))
-                                    .background(Color.White)
-                            ) {
-                                Icon(
-                                    painter = painterResource(id = android.R.drawable.ic_menu_edit),
-                                    contentDescription = null,
-                                    tint = Color.Black
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(
-                                    text = if (description.isBlank()) "Add Description" else "Edit Description",
-                                    color = Color.Black,
-                                    fontWeight = FontWeight.SemiBold
-                                )
+                                TextButton(
+                                    onClick = { showDescriptionSheet = true },
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .defaultMinSize(minHeight = 56.dp)
+                                        .clip(RoundedCornerShape(12.dp))
+                                        .background(Color.White)
+                                ) {
+                                    Icon(
+                                        painter = painterResource(id = android.R.drawable.ic_menu_edit),
+                                        contentDescription = null,
+                                        tint = Color.Black
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        text = if (description.isBlank()) "Add Description" else "Edit Description",
+                                        color = Color.Black,
+                                        fontWeight = FontWeight.SemiBold,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                }
                             }
                         }
                     }
@@ -728,7 +733,7 @@ filter: PhotoFilter,
             }
         }
         
-        Spacer(modifier = Modifier.height(4.dp))
+        Spacer(modifier = Modifier.height(8.dp))
         
         Text(
             text = filter.displayName,
