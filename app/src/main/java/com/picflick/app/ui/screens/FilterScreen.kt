@@ -10,7 +10,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -29,6 +29,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
@@ -97,10 +98,12 @@ fun FilterScreen(
     // Description/caption state
     var description by remember { mutableStateOf("") }
 
-    // Crop state (normalized to preview container)
+    // Crop state (zoom/pan image under a fixed crop frame)
     var isCropMode by remember { mutableStateOf(false) }
-    var cropRect by remember { mutableStateOf(Rect(0f, 0f, 1f, 1f)) }
+    var cropScale by remember { mutableFloatStateOf(1f) }
+    var cropOffset by remember { mutableStateOf(Offset.Zero) }
     var previewSize by remember { mutableStateOf(IntSize.Zero) }
+    val cropFrameRect = remember { Rect(0.1f, 0.1f, 0.9f, 0.9f) }
 
     // Upload loading state
     var isUploading by remember { mutableStateOf(false) }
@@ -168,7 +171,10 @@ fun FilterScreen(
                         context = context,
                         bitmap = bitmap!!,
                         filter = selectedFilter,
-                        cropRectNormalized = if (isCropMode) cropRect else Rect(0f, 0f, 1f, 1f),
+                        cropEnabled = isCropMode,
+                        cropFrameNormalized = cropFrameRect,
+                        cropScale = cropScale,
+                        cropOffsetPx = cropOffset,
                         previewSize = previewSize
                     )
                     onUpload(filteredUri, selectedFilter, taggedFriends.map { it.uid }, description.trim())
@@ -401,14 +407,37 @@ fun FilterScreen(
                                 Image(
                                     painter = BitmapPainter(previewBitmap.asImageBitmap()),
                                     contentDescription = selectedFilter.displayName,
-                                    modifier = Modifier.fillMaxSize(),
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .graphicsLayer {
+                                            if (isCropMode) {
+                                                scaleX = cropScale
+                                                scaleY = cropScale
+                                                translationX = cropOffset.x
+                                                translationY = cropOffset.y
+                                            }
+                                        }
+                                        .pointerInput(isCropMode, cropScale, cropOffset, previewSize, previewBitmap.width, previewBitmap.height) {
+                                            if (!isCropMode) return@pointerInput
+                                            detectTransformGestures { _, pan, zoom, _ ->
+                                                val newScale = (cropScale * zoom).coerceIn(1f, 5f)
+                                                val proposed = cropOffset + pan
+                                                cropScale = newScale
+                                                cropOffset = clampCropOffsetToFrame(
+                                                    previewSize = previewSize,
+                                                    imageSize = IntSize(previewBitmap.width, previewBitmap.height),
+                                                    frameNormalized = cropFrameRect,
+                                                    scale = cropScale,
+                                                    offset = proposed
+                                                )
+                                            }
+                                        },
                                     contentScale = ContentScale.Crop
                                 )
 
                                 if (isCropMode) {
                                     CropOverlay(
-                                        cropRect = cropRect,
-                                        onCropRectChange = { cropRect = it },
+                                        frameRect = cropFrameRect,
                                         overlayColor = Color.Black.copy(alpha = 0.52f),
                                         borderColor = Color.White
                                     )
@@ -494,7 +523,8 @@ fun FilterScreen(
                                     onClick = {
                                         isCropMode = !isCropMode
                                         if (isCropMode) {
-                                            cropRect = Rect(0.1f, 0.1f, 0.9f, 0.9f)
+                                            cropScale = 1f
+                                            cropOffset = Offset.Zero
                                         }
                                     },
                                     modifier = Modifier.weight(1f)
@@ -822,107 +852,31 @@ private fun FilteredImage(
 
 @Composable
 private fun CropOverlay(
-    cropRect: Rect,
-    onCropRectChange: (Rect) -> Unit,
+    frameRect: Rect,
     overlayColor: Color,
     borderColor: Color
 ) {
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .pointerInput(cropRect) {
-                var dragMode = 0 // 0 none, 1 tl, 2 tr, 3 bl, 4 br, 5 move
-                detectDragGestures(
-                    onDragStart = { start ->
-                        val left = cropRect.left * size.width
-                        val top = cropRect.top * size.height
-                        val right = cropRect.right * size.width
-                        val bottom = cropRect.bottom * size.height
-                        val handleRadius = 44f
-
-                        fun near(px: Float, py: Float): Boolean {
-                            val dx = start.x - px
-                            val dy = start.y - py
-                            return dx * dx + dy * dy <= handleRadius * handleRadius
-                        }
-
-                        dragMode = when {
-                            near(left, top) -> 1
-                            near(right, top) -> 2
-                            near(left, bottom) -> 3
-                            near(right, bottom) -> 4
-                            start.x in left..right && start.y in top..bottom -> 5
-                            else -> 0
-                        }
-                    },
-                    onDragEnd = { dragMode = 0 },
-                    onDragCancel = { dragMode = 0 }
-                ) { _, dragAmount ->
-                    if (dragMode == 0) return@detectDragGestures
-
-                    val dx = dragAmount.x / size.width.toFloat()
-                    val dy = dragAmount.y / size.height.toFloat()
-                    val minSize = 0.18f
-
-                    var l = cropRect.left
-                    var t = cropRect.top
-                    var r = cropRect.right
-                    var b = cropRect.bottom
-
-                    when (dragMode) {
-                        1 -> {
-                            l = (l + dx).coerceIn(0f, r - minSize)
-                            t = (t + dy).coerceIn(0f, b - minSize)
-                        }
-                        2 -> {
-                            r = (r + dx).coerceIn(l + minSize, 1f)
-                            t = (t + dy).coerceIn(0f, b - minSize)
-                        }
-                        3 -> {
-                            l = (l + dx).coerceIn(0f, r - minSize)
-                            b = (b + dy).coerceIn(t + minSize, 1f)
-                        }
-                        4 -> {
-                            r = (r + dx).coerceIn(l + minSize, 1f)
-                            b = (b + dy).coerceIn(t + minSize, 1f)
-                        }
-                        5 -> {
-                            val w = r - l
-                            val h = b - t
-                            l = (l + dx).coerceIn(0f, 1f - w)
-                            t = (t + dy).coerceIn(0f, 1f - h)
-                            r = l + w
-                            b = t + h
-                        }
-                    }
-
-                    onCropRectChange(Rect(l, t, r, b))
-                }
-            }
             .drawWithContent {
                 drawContent()
-                val cropLeft = cropRect.left * size.width
-                val cropTop = cropRect.top * size.height
-                val cropRight = cropRect.right * size.width
-                val cropBottom = cropRect.bottom * size.height
+                val left = frameRect.left * size.width
+                val top = frameRect.top * size.height
+                val right = frameRect.right * size.width
+                val bottom = frameRect.bottom * size.height
 
-                drawRect(overlayColor, topLeft = Offset(0f, 0f), size = Size(size.width, cropTop))
-                drawRect(overlayColor, topLeft = Offset(0f, cropBottom), size = Size(size.width, size.height - cropBottom))
-                drawRect(overlayColor, topLeft = Offset(0f, cropTop), size = Size(cropLeft, cropBottom - cropTop))
-                drawRect(overlayColor, topLeft = Offset(cropRight, cropTop), size = Size(size.width - cropRight, cropBottom - cropTop))
+                drawRect(overlayColor, topLeft = Offset(0f, 0f), size = Size(size.width, top))
+                drawRect(overlayColor, topLeft = Offset(0f, bottom), size = Size(size.width, size.height - bottom))
+                drawRect(overlayColor, topLeft = Offset(0f, top), size = Size(left, bottom - top))
+                drawRect(overlayColor, topLeft = Offset(right, top), size = Size(size.width - right, bottom - top))
 
                 drawRect(
                     color = borderColor,
-                    topLeft = Offset(cropLeft, cropTop),
-                    size = Size(cropRight - cropLeft, cropBottom - cropTop),
+                    topLeft = Offset(left, top),
+                    size = Size(right - left, bottom - top),
                     style = Stroke(width = 3f)
                 )
-
-                val handleRadius = 10f
-                drawCircle(borderColor, handleRadius, Offset(cropLeft, cropTop))
-                drawCircle(borderColor, handleRadius, Offset(cropRight, cropTop))
-                drawCircle(borderColor, handleRadius, Offset(cropLeft, cropBottom))
-                drawCircle(borderColor, handleRadius, Offset(cropRight, cropBottom))
             }
     )
 }
@@ -1297,18 +1251,26 @@ private suspend fun applyFilterAndSave(
     context: android.content.Context,
     bitmap: Bitmap,
     filter: PhotoFilter,
-    cropRectNormalized: Rect,
+    cropEnabled: Boolean,
+    cropFrameNormalized: Rect,
+    cropScale: Float,
+    cropOffsetPx: Offset,
     previewSize: IntSize
 ): Uri {
     return withContext(Dispatchers.IO) {
         val filteredBitmap = applyFilterToBitmap(bitmap, filter)
-        val finalBitmap = if (cropRectNormalized.left <= 0f && cropRectNormalized.top <= 0f && cropRectNormalized.right >= 1f && cropRectNormalized.bottom >= 1f) {
-            filteredBitmap
+        val finalBitmap = if (cropEnabled) {
+            cropBitmapByFrameAndTransform(
+                source = filteredBitmap,
+                frameRectNormalized = cropFrameNormalized,
+                scale = cropScale,
+                offsetPx = cropOffsetPx,
+                previewSize = previewSize
+            )
         } else {
-            cropBitmapByNormalizedRect(filteredBitmap, cropRectNormalized, previewSize)
+            filteredBitmap
         }
 
-        // Save to temp file at MAXIMUM QUALITY (100% JPEG)
         val tempFile = java.io.File.createTempFile("filtered_", ".jpg", context.cacheDir)
         java.io.FileOutputStream(tempFile).use { out ->
             finalBitmap.compress(Bitmap.CompressFormat.JPEG, 100, out)
@@ -1318,9 +1280,11 @@ private suspend fun applyFilterAndSave(
     }
 }
 
-private fun cropBitmapByNormalizedRect(
+private fun cropBitmapByFrameAndTransform(
     source: Bitmap,
-    cropRectNormalized: Rect,
+    frameRectNormalized: Rect,
+    scale: Float,
+    offsetPx: Offset,
     previewSize: IntSize
 ): Bitmap {
     if (previewSize.width <= 0 || previewSize.height <= 0) return source
@@ -1330,21 +1294,80 @@ private fun cropBitmapByNormalizedRect(
     val srcW = source.width.toFloat()
     val srcH = source.height.toFloat()
 
-    val scale = max(containerW / srcW, containerH / srcH)
-    val scaledW = srcW * scale
-    val scaledH = srcH * scale
-    val offsetX = (containerW - scaledW) / 2f
-    val offsetY = (containerH - scaledH) / 2f
+    val baseScale = max(containerW / srcW, containerH / srcH)
+    val baseW = srcW * baseScale
+    val baseH = srcH * baseScale
+    val baseOffsetX = (containerW - baseW) / 2f
+    val baseOffsetY = (containerH - baseH) / 2f
 
-    val leftPx = cropRectNormalized.left * containerW
-    val topPx = cropRectNormalized.top * containerH
-    val rightPx = cropRectNormalized.right * containerW
-    val bottomPx = cropRectNormalized.bottom * containerH
+    val cx = containerW / 2f
+    val cy = containerH / 2f
 
-    val srcLeft = ((leftPx - offsetX) / scale).roundToInt().coerceIn(0, source.width - 1)
-    val srcTop = ((topPx - offsetY) / scale).roundToInt().coerceIn(0, source.height - 1)
-    val srcRight = ((rightPx - offsetX) / scale).roundToInt().coerceIn(srcLeft + 1, source.width)
-    val srcBottom = ((bottomPx - offsetY) / scale).roundToInt().coerceIn(srcTop + 1, source.height)
+    fun screenToSourceX(x: Float): Float {
+        val beforeScale = ((x - offsetPx.x - cx) / scale) + cx
+        return (beforeScale - baseOffsetX) / baseScale
+    }
+
+    fun screenToSourceY(y: Float): Float {
+        val beforeScale = ((y - offsetPx.y - cy) / scale) + cy
+        return (beforeScale - baseOffsetY) / baseScale
+    }
+
+    val leftPx = frameRectNormalized.left * containerW
+    val topPx = frameRectNormalized.top * containerH
+    val rightPx = frameRectNormalized.right * containerW
+    val bottomPx = frameRectNormalized.bottom * containerH
+
+    val srcLeft = screenToSourceX(leftPx).roundToInt().coerceIn(0, source.width - 1)
+    val srcTop = screenToSourceY(topPx).roundToInt().coerceIn(0, source.height - 1)
+    val srcRight = screenToSourceX(rightPx).roundToInt().coerceIn(srcLeft + 1, source.width)
+    val srcBottom = screenToSourceY(bottomPx).roundToInt().coerceIn(srcTop + 1, source.height)
 
     return Bitmap.createBitmap(source, srcLeft, srcTop, srcRight - srcLeft, srcBottom - srcTop)
+}
+
+private fun clampCropOffsetToFrame(
+    previewSize: IntSize,
+    imageSize: IntSize,
+    frameNormalized: Rect,
+    scale: Float,
+    offset: Offset
+): Offset {
+    if (previewSize.width == 0 || previewSize.height == 0 || imageSize.width == 0 || imageSize.height == 0) {
+        return offset
+    }
+
+    val containerW = previewSize.width.toFloat()
+    val containerH = previewSize.height.toFloat()
+    val srcW = imageSize.width.toFloat()
+    val srcH = imageSize.height.toFloat()
+
+    val baseScale = max(containerW / srcW, containerH / srcH)
+    val baseW = srcW * baseScale
+    val baseH = srcH * baseScale
+
+    val cx = containerW / 2f
+    val cy = containerH / 2f
+    val baseOffsetX = (containerW - baseW) / 2f
+    val baseOffsetY = (containerH - baseH) / 2f
+
+    val transformedBaseLeft = cx + (baseOffsetX - cx) * scale
+    val transformedBaseTop = cy + (baseOffsetY - cy) * scale
+    val transformedW = baseW * scale
+    val transformedH = baseH * scale
+
+    val frameLeft = frameNormalized.left * containerW
+    val frameTop = frameNormalized.top * containerH
+    val frameRight = frameNormalized.right * containerW
+    val frameBottom = frameNormalized.bottom * containerH
+
+    val minX = frameRight - transformedBaseLeft - transformedW
+    val maxX = frameLeft - transformedBaseLeft
+    val minY = frameBottom - transformedBaseTop - transformedH
+    val maxY = frameTop - transformedBaseTop
+
+    val clampedX = if (minX > maxX) (minX + maxX) / 2f else offset.x.coerceIn(minX, maxX)
+    val clampedY = if (minY > maxY) (minY + maxY) / 2f else offset.y.coerceIn(minY, maxY)
+
+    return Offset(clampedX, clampedY)
 }
