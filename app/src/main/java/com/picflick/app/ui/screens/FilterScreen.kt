@@ -10,6 +10,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -25,13 +26,21 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.graphics.createBitmap
@@ -51,6 +60,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlin.math.max
+import kotlin.math.roundToInt
 
 /**
  * Screen for applying filters to selected photo with friend tagging and upload countdown
@@ -83,6 +94,10 @@ fun FilterScreen(
     
     // Description/caption state
     var description by remember { mutableStateOf("") }
+
+    // Crop state (normalized to preview container)
+    var cropRect by remember { mutableStateOf(Rect(0.15f, 0.15f, 0.85f, 0.85f)) }
+    var previewSize by remember { mutableStateOf(IntSize.Zero) }
 
     // Upload loading state
     var isUploading by remember { mutableStateOf(false) }
@@ -146,7 +161,13 @@ fun FilterScreen(
             isUploading = true
             scope.launch {
                 try {
-                    val filteredUri = applyFilterAndSave(context, bitmap!!, selectedFilter)
+                    val filteredUri = applyFilterAndSave(
+                        context = context,
+                        bitmap = bitmap!!,
+                        filter = selectedFilter,
+                        cropRectNormalized = cropRect,
+                        previewSize = previewSize
+                    )
                     onUpload(filteredUri, selectedFilter, taggedFriends.map { it.uid }, description.trim())
                     // Show success toast
                     withContext(Dispatchers.Main) {
@@ -364,16 +385,28 @@ fun FilterScreen(
                                 // Pass 0 to get full resolution (no downscaling)
                                 applyFilterToBitmap(bmp, selectedFilter, thumbnailSize = 0)
                             }
-                            Image(
-                                painter = BitmapPainter(previewBitmap.asImageBitmap()),
-                                contentDescription = selectedFilter.displayName,
+                            Box(
                                 modifier = Modifier
                                     .fillMaxSize()
                                     .clip(RoundedCornerShape(8.dp))
                                     .border(3.dp, if (isDarkMode) Color.White.copy(alpha = 0.9f) else Color.Black.copy(alpha = 0.9f), RoundedCornerShape(8.dp))
-                                    .padding(3.dp),
-                                contentScale = ContentScale.Crop
-                            )
+                                    .padding(3.dp)
+                                    .onSizeChanged { previewSize = it }
+                            ) {
+                                Image(
+                                    painter = BitmapPainter(previewBitmap.asImageBitmap()),
+                                    contentDescription = selectedFilter.displayName,
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentScale = ContentScale.Crop
+                                )
+
+                                CropOverlay(
+                                    cropRect = cropRect,
+                                    onCropRectChange = { cropRect = it },
+                                    overlayColor = Color.Black.copy(alpha = 0.52f),
+                                    borderColor = Color.White
+                                )
+                            }
                         }
 
                         // Bottom Panel with BIG filter thumbnails
@@ -762,6 +795,57 @@ private fun FilteredImage(
     )
 }
 
+@Composable
+private fun CropOverlay(
+    cropRect: Rect,
+    onCropRectChange: (Rect) -> Unit,
+    overlayColor: Color,
+    borderColor: Color
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .pointerInput(cropRect) {
+                detectDragGestures { _, dragAmount ->
+                    val width = cropRect.width
+                    val height = cropRect.height
+                    val dx = dragAmount.x / size.width.toFloat()
+                    val dy = dragAmount.y / size.height.toFloat()
+
+                    val newLeft = (cropRect.left + dx).coerceIn(0f, 1f - width)
+                    val newTop = (cropRect.top + dy).coerceIn(0f, 1f - height)
+                    onCropRectChange(
+                        Rect(
+                            left = newLeft,
+                            top = newTop,
+                            right = newLeft + width,
+                            bottom = newTop + height
+                        )
+                    )
+                }
+            }
+            .drawWithContent {
+                drawContent()
+                val cropLeft = cropRect.left * size.width
+                val cropTop = cropRect.top * size.height
+                val cropRight = cropRect.right * size.width
+                val cropBottom = cropRect.bottom * size.height
+
+                drawRect(overlayColor, topLeft = Offset(0f, 0f), size = Size(size.width, cropTop))
+                drawRect(overlayColor, topLeft = Offset(0f, cropBottom), size = Size(size.width, size.height - cropBottom))
+                drawRect(overlayColor, topLeft = Offset(0f, cropTop), size = Size(cropLeft, cropBottom - cropTop))
+                drawRect(overlayColor, topLeft = Offset(cropRight, cropTop), size = Size(size.width - cropRight, cropBottom - cropTop))
+
+                drawRect(
+                    color = borderColor,
+                    topLeft = Offset(cropLeft, cropTop),
+                    size = Size(cropRight - cropLeft, cropBottom - cropTop),
+                    style = Stroke(width = 3f)
+                )
+            }
+    )
+}
+
 /**
  * Apply filter to bitmap
  */
@@ -1131,17 +1215,51 @@ private suspend fun loadBitmapFromUri(context: android.content.Context, uri: Uri
 private suspend fun applyFilterAndSave(
     context: android.content.Context,
     bitmap: Bitmap,
-    filter: PhotoFilter
+    filter: PhotoFilter,
+    cropRectNormalized: Rect,
+    previewSize: IntSize
 ): Uri {
     return withContext(Dispatchers.IO) {
         val filteredBitmap = applyFilterToBitmap(bitmap, filter)
+        val finalBitmap = cropBitmapByNormalizedRect(filteredBitmap, cropRectNormalized, previewSize)
 
         // Save to temp file at MAXIMUM QUALITY (100% JPEG)
         val tempFile = java.io.File.createTempFile("filtered_", ".jpg", context.cacheDir)
         java.io.FileOutputStream(tempFile).use { out ->
-            filteredBitmap.compress(Bitmap.CompressFormat.JPEG, 100, out)  // MAX quality - was 95
+            finalBitmap.compress(Bitmap.CompressFormat.JPEG, 100, out)
         }
 
         Uri.fromFile(tempFile)
     }
+}
+
+private fun cropBitmapByNormalizedRect(
+    source: Bitmap,
+    cropRectNormalized: Rect,
+    previewSize: IntSize
+): Bitmap {
+    if (previewSize.width <= 0 || previewSize.height <= 0) return source
+
+    val containerW = previewSize.width.toFloat()
+    val containerH = previewSize.height.toFloat()
+    val srcW = source.width.toFloat()
+    val srcH = source.height.toFloat()
+
+    val scale = max(containerW / srcW, containerH / srcH)
+    val scaledW = srcW * scale
+    val scaledH = srcH * scale
+    val offsetX = (containerW - scaledW) / 2f
+    val offsetY = (containerH - scaledH) / 2f
+
+    val leftPx = cropRectNormalized.left * containerW
+    val topPx = cropRectNormalized.top * containerH
+    val rightPx = cropRectNormalized.right * containerW
+    val bottomPx = cropRectNormalized.bottom * containerH
+
+    val srcLeft = ((leftPx - offsetX) / scale).roundToInt().coerceIn(0, source.width - 1)
+    val srcTop = ((topPx - offsetY) / scale).roundToInt().coerceIn(0, source.height - 1)
+    val srcRight = ((rightPx - offsetX) / scale).roundToInt().coerceIn(srcLeft + 1, source.width)
+    val srcBottom = ((bottomPx - offsetY) / scale).roundToInt().coerceIn(srcTop + 1, source.height)
+
+    return Bitmap.createBitmap(source, srcLeft, srcTop, srcRight - srcLeft, srcBottom - srcTop)
 }
