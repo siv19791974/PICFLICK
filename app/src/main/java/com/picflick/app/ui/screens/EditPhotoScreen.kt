@@ -7,7 +7,6 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -335,7 +334,7 @@ withContext(Dispatchers.Main) {
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .weight(1.2f)
+                                .weight(1.45f)
                                 .padding(horizontal = 24.dp, vertical = 16.dp),
                             contentAlignment = Alignment.Center
                         ) {
@@ -379,7 +378,7 @@ withContext(Dispatchers.Main) {
                                                 translationY = cropOffset.y
                                             }
                                         },
-                                    contentScale = ContentScale.Crop
+                                    contentScale = ContentScale.Fit
                                 )
 
                             }
@@ -389,7 +388,7 @@ withContext(Dispatchers.Main) {
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(320.dp)
+                                .height(280.dp)
                                 .background(if (isDarkMode) Color(0xFF1C1C1E) else PicFlickLightBackground)
                                 .padding(vertical = 8.dp)
                                 .verticalScroll(rememberScrollState())
@@ -786,7 +785,7 @@ private fun FullScreenCropDialog(
                             translationX = cropOffset.x
                             translationY = cropOffset.y
                         },
-                    contentScale = ContentScale.Crop
+                    contentScale = ContentScale.Fit
                 )
 
                 CropOverlay(
@@ -819,57 +818,6 @@ private fun CropOverlay(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .pointerInput(frameRect) {
-                val minSize = 0.18f
-                detectDragGestures { change, dragAmount ->
-                    val dx = dragAmount.x / size.width
-                    val dy = dragAmount.y / size.height
-                    val edgeThreshold = 0.05f
-
-                    var left = frameRect.left
-                    var top = frameRect.top
-                    var right = frameRect.right
-                    var bottom = frameRect.bottom
-
-                    val touchX = change.position.x / size.width
-                    val touchY = change.position.y / size.height
-                    val nearLeft = kotlin.math.abs(touchX - left) < edgeThreshold
-                    val nearRight = kotlin.math.abs(touchX - right) < edgeThreshold
-                    val nearTop = kotlin.math.abs(touchY - top) < edgeThreshold
-                    val nearBottom = kotlin.math.abs(touchY - bottom) < edgeThreshold
-
-                    if (!(nearLeft || nearRight || nearTop || nearBottom)) {
-                        return@detectDragGestures
-                    }
-                    change.consume()
-
-                    if (nearLeft) {
-                        left += dx
-                    } else if (nearRight) {
-                        right += dx
-                    } else if (nearTop) {
-                        top += dy
-                    } else {
-                        bottom += dy
-                    }
-
-                    if (right - left < minSize) {
-                        if (nearLeft) left = right - minSize else right = left + minSize
-                    }
-                    if (bottom - top < minSize) {
-                        if (nearTop) top = bottom - minSize else bottom = top + minSize
-                    }
-
-                    val width = right - left
-                    val height = bottom - top
-                    left = left.coerceIn(0f, 1f - width)
-                    top = top.coerceIn(0f, 1f - height)
-                    right = (left + width).coerceIn(minSize, 1f)
-                    bottom = (top + height).coerceIn(minSize, 1f)
-
-                    onFrameRectChange(Rect(left, top, right, bottom))
-                }
-            }
             .drawWithContent {
                 drawContent()
                 val left = frameRect.left * size.width
