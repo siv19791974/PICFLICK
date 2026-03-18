@@ -494,9 +494,7 @@ withContext(Dispatchers.Main) {
                     }
 
                     if (isCropMode) {
-                        val cropBitmap = remember(bmp, selectedFilter) {
-                            applyFilterToBitmap(bmp, selectedFilter, thumbnailSize = 0)
-                        }
+                        val cropBitmap = bmp
                         FullScreenCropDialog(
                             previewBitmap = cropBitmap,
                             cropScale = cropScale,
