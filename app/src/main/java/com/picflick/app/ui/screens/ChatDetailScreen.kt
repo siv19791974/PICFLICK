@@ -151,11 +151,14 @@ val listState = rememberLazyListState()
                 if (source != NestedScrollSource.UserInput) return Offset.Zero
 
                 val atBottom = !listState.canScrollForward
-                if (atBottom && available.y > 0f) {
-                    upwardPullDistance += available.y
-                    if (upwardPullDistance >= pullUpRefreshThreshold) {
-                        upwardPullDistance = 0f
-                        triggerPullUpRefresh()
+                if (atBottom) {
+                    val overscrollDelta = kotlin.math.abs(available.y)
+                    if (overscrollDelta > 0f) {
+                        upwardPullDistance += overscrollDelta
+                        if (upwardPullDistance >= pullUpRefreshThreshold) {
+                            upwardPullDistance = 0f
+                            triggerPullUpRefresh()
+                        }
                     }
                 } else {
                     upwardPullDistance = 0f
