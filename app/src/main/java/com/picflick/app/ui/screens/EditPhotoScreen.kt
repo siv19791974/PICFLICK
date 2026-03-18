@@ -301,7 +301,6 @@ withContext(Dispatchers.Main) {
                     Column(
                         modifier = Modifier
                             .fillMaxSize()
-                            .imePadding()
                     ) {
                         // Saving Overlay
                         if (isSaving) {
@@ -504,7 +503,8 @@ withContext(Dispatchers.Main) {
                                 onValueChange = { description = it },
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(horizontal = 16.dp),
+                                    .padding(horizontal = 16.dp)
+                                    .windowInsetsPadding(WindowInsets.ime.only(WindowInsetsSides.Bottom)),
                                 placeholder = { Text("Add a description...") },
                                 minLines = 2,
                                 maxLines = 3,
