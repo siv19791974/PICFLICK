@@ -57,6 +57,7 @@ import com.picflick.app.ui.screens.PrivacyPolicyScreen
 import com.picflick.app.ui.screens.PrivacyScreen
 import com.picflick.app.ui.screens.ProfileScreen
 import com.picflick.app.ui.screens.SettingsScreen
+import com.picflick.app.ui.screens.StreakAchievementsScreen
 import com.picflick.app.ui.screens.SubscriptionStatusScreen
 import com.picflick.app.ui.screens.UserProfileScreen
 import com.picflick.app.viewmodel.AuthViewModel
@@ -206,6 +207,11 @@ fun AuthenticatedContent(
             billingViewModel = bvm,
             context = context,
             onScreenChange = onScreenChange
+        )
+
+        is Screen.StreakAchievements -> StreakAchievementsScreen(
+            currentStreak = profileViewModel.currentStreak,
+            onBack = { onScreenChange(Screen.Profile) }
         )
 
         is Screen.Filter -> FilterScreenContent(
@@ -454,6 +460,7 @@ private fun ProfileScreenContent(
         },
         onPlanOptions = { onScreenChange(Screen.PlanOptions) },
         onFriendsClick = { onScreenChange(Screen.Friends) },
+        onStreakClick = { onScreenChange(Screen.StreakAchievements) },
         onReaction = { flick, reactionType ->
             reactionType?.let {
                 homeViewModel.toggleReaction(

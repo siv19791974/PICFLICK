@@ -341,6 +341,7 @@ fun MainScreen(
             currentScreen is Screen.ManageStorage ||
             currentScreen is Screen.SubscriptionStatus ||
             currentScreen is Screen.PlanOptions ||
+            currentScreen is Screen.StreakAchievements ||
             currentScreen is Screen.Filter ||
             currentScreen is Screen.Philosophy ||
             currentScreen is Screen.Legal -> {
