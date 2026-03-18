@@ -52,6 +52,8 @@ import com.picflick.app.data.Result
 import com.picflick.app.data.UserProfile
 import com.picflick.app.repository.FlickRepository
 import com.picflick.app.ui.theme.PicFlickBannerBackground
+import com.picflick.app.ui.theme.ThemeManager
+import com.picflick.app.ui.theme.isDarkModeBackground
 import com.picflick.app.util.rememberLiveUserPhotoUrl
 import com.picflick.app.viewmodel.ChatViewModel
 import kotlinx.coroutines.delay
@@ -85,6 +87,8 @@ fun ChatDetailScreen(
     onQuickSwitchChat: (ChatSession, String) -> Unit = { _, _ -> }
 ) {
     val chatId = chatSession.id
+    val isDarkMode = ThemeManager.isDarkMode.value
+    val chatBackground = isDarkModeBackground(isDarkMode)
     val otherUserPhoto = rememberLiveUserPhotoUrl(
         userId = otherUserId,
         fallbackPhotoUrl = chatSession.participantPhotos[otherUserId]
@@ -264,7 +268,7 @@ val listState = rememberLazyListState()
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFFD9E7F5))
+            .background(chatBackground)
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
             // Header + quick switch bar
