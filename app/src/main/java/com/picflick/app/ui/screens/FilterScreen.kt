@@ -356,7 +356,6 @@ fun FilterScreen(
                     Column(
                         modifier = Modifier
                             .fillMaxSize()
-                            .imePadding()
                     ) {
                         // Uploading Overlay (when uploading)
                         if (isUploading) {
@@ -566,7 +565,8 @@ fun FilterScreen(
                                     placeholder = { Text(stringResource(R.string.filter_caption_placeholder), color = if (isDarkMode) Color.White.copy(alpha = 0.5f) else Color.Black.copy(alpha = 0.5f)) },
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                                        .windowInsetsPadding(WindowInsets.ime.only(WindowInsetsSides.Bottom)),
                                     colors = OutlinedTextFieldDefaults.colors(
                                         focusedTextColor = if (isDarkMode) Color.White else Color.Black,
                                         unfocusedTextColor = if (isDarkMode) Color.White else Color.Black,
