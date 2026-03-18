@@ -54,7 +54,6 @@ android {
 dependencies {
     // AndroidX
     implementation(libs.androidx.core.ktx)
-    implementation(libs.androidx.appcompat)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.exifinterface)
@@ -117,9 +116,6 @@ dependencies {
     // Firebase Analytics - Track user engagement and app usage
     implementation(libs.firebase.analytics)
 
-    // Proven image cropper
-    implementation(libs.ucrop)
-    
     // Testing
     testImplementation(libs.junit)
     testImplementation(libs.mockk)

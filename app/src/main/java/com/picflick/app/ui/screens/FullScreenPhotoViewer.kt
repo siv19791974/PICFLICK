@@ -203,9 +203,9 @@ fun FullScreenPhotoViewer(
 val canDeleteCurrent = currentFlick.userId == currentUser.uid
     val canReactCurrent = !canDeleteCurrent
     
-    // Description states - keyed to currentFlick.id to reset when swiping
-    var editCaptionText by remember(currentFlick.id) { mutableStateOf(currentFlick.description) }
-    var currentDescription by remember(currentFlick.id) { mutableStateOf(currentFlick.description) }
+    // Description states - keyed to id + description so edits on same photo id refresh correctly
+    var editCaptionText by remember(currentFlick.id, currentFlick.description) { mutableStateOf(currentFlick.description) }
+    var currentDescription by remember(currentFlick.id, currentFlick.description) { mutableStateOf(currentFlick.description) }
     
     // Get user's current reaction
     val userReaction = currentFlick.getUserReaction(currentUser.uid)
