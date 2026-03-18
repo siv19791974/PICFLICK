@@ -357,7 +357,7 @@ withContext(Dispatchers.Main) {
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .weight(1.2f)
+                                .weight(1.1f)
                                 .padding(horizontal = 24.dp, vertical = 16.dp),
                             contentAlignment = Alignment.Center
                         ) {
@@ -381,7 +381,7 @@ withContext(Dispatchers.Main) {
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .weight(1.05f)
+                                .weight(1.15f)
                                 .background(if (isDarkMode) Color(0xFF1C1C1E) else PicFlickLightBackground)
                                 .padding(vertical = 8.dp)
                                 .windowInsetsPadding(WindowInsets.navigationBars)
@@ -417,7 +417,7 @@ withContext(Dispatchers.Main) {
                                     onClick = { showTagDialog = true },
                                     modifier = Modifier
                                         .weight(1f)
-                                        .height(42.dp)
+                                        .defaultMinSize(minHeight = 48.dp)
                                         .clip(RoundedCornerShape(12.dp))
                                         .background(Color.White)
                                 ) {
@@ -439,7 +439,7 @@ withContext(Dispatchers.Main) {
                                     enabled = bitmap != null && !isCropping && !isSaving,
                                     modifier = Modifier
                                         .weight(1f)
-                                        .height(42.dp)
+                                        .defaultMinSize(minHeight = 48.dp)
                                         .clip(RoundedCornerShape(12.dp))
                                         .background(Color.White)
                                 ) {
@@ -464,7 +464,7 @@ withContext(Dispatchers.Main) {
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .padding(horizontal = 16.dp)
-                                    .height(42.dp)
+                                    .defaultMinSize(minHeight = 48.dp)
                                     .clip(RoundedCornerShape(12.dp))
                                     .background(Color.White)
                             ) {
