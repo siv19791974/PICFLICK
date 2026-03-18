@@ -347,6 +347,21 @@ withContext(Dispatchers.Main) {
                                     .border(3.dp, if (isDarkMode) Color.White.copy(alpha = 0.9f) else Color.Black.copy(alpha = 0.9f), RoundedCornerShape(8.dp))
                                     .padding(3.dp)
                                     .onSizeChanged { previewSize = it }
+                                    .pointerInput(isCropMode, previewSize, previewBitmap.width, previewBitmap.height) {
+                                        if (!isCropMode) return@pointerInput
+                                        detectTransformGestures { _, pan, zoom, _ ->
+                                            val newScale = (cropScale * zoom).coerceIn(1f, 5f)
+                                            val proposed = cropOffset + (pan * 1.15f)
+                                            cropScale = newScale
+                                            cropOffset = clampCropOffsetToFrame(
+                                                previewSize = previewSize,
+                                                imageSize = IntSize(previewBitmap.width, previewBitmap.height),
+                                                frameNormalized = cropFrameRect,
+                                                scale = cropScale,
+                                                offset = proposed
+                                            )
+                                        }
+                                    }
                             ) {
                                 Image(
                                     painter = BitmapPainter(previewBitmap.asImageBitmap()),
@@ -359,21 +374,6 @@ withContext(Dispatchers.Main) {
                                                 scaleY = cropScale
                                                 translationX = cropOffset.x
                                                 translationY = cropOffset.y
-                                            }
-                                        }
-                                        .pointerInput(isCropMode, cropScale, cropOffset, previewSize, previewBitmap.width, previewBitmap.height) {
-                                            if (!isCropMode) return@pointerInput
-                                            detectTransformGestures { _, pan, zoom, _ ->
-                                                val newScale = (cropScale * zoom).coerceIn(1f, 5f)
-                                                val proposed = cropOffset + pan
-                                                cropScale = newScale
-                                                cropOffset = clampCropOffsetToFrame(
-                                                    previewSize = previewSize,
-                                                    imageSize = IntSize(previewBitmap.width, previewBitmap.height),
-                                                    frameNormalized = cropFrameRect,
-                                                    scale = cropScale,
-                                                    offset = proposed
-                                                )
                                             }
                                         },
                                     contentScale = ContentScale.Crop
