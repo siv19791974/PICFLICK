@@ -517,7 +517,6 @@ withContext(Dispatchers.Main) {
                                 )
                             },
                             onPreviewSizeChange = { previewSize = it },
-                            previewSize = previewSize,
                             onDone = {
                                 cropApplied = true
                                 isCropMode = false
@@ -742,7 +741,6 @@ private fun FullScreenCropDialog(
     onCropOffsetChange: (Offset) -> Unit,
     onCropFrameChange: (Rect) -> Unit,
     onPreviewSizeChange: (IntSize) -> Unit,
-    previewSize: IntSize,
     onDone: () -> Unit,
     isDarkMode: Boolean
 ) {
@@ -798,37 +796,13 @@ private fun FullScreenCropDialog(
                 )
             }
 
-            Column(
+            Button(
+                onClick = onDone,
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
-                    .padding(horizontal = 16.dp, vertical = 20.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
+                    .padding(bottom = 24.dp)
             ) {
-                Text(
-                    text = "Zoom",
-                    color = Color.White,
-                    style = MaterialTheme.typography.labelLarge
-                )
-                Slider(
-                    value = cropScale,
-                    onValueChange = { newScale ->
-                        val clampedScale = newScale.coerceIn(1f, 6f)
-                        onCropScaleChange(clampedScale)
-                        onCropOffsetChange(
-                            clampCropOffsetToFrame(
-                                previewSize = previewSize,
-                                imageSize = IntSize(previewBitmap.width, previewBitmap.height),
-                                frameNormalized = cropFrameRect,
-                                scale = clampedScale,
-                                offset = cropOffset
-                            )
-                        )
-                    },
-                    valueRange = 1f..6f
-                )
-                Button(onClick = onDone) {
-                    Text("Done Crop")
-                }
+                Text("Done Crop")
             }
         }
     }
@@ -844,6 +818,19 @@ private fun CropOverlay(
     Box(
         modifier = Modifier
             .fillMaxSize()
+            .pointerInput(frameRect) {
+                detectDragGestures { change, dragAmount ->
+                    change.consume()
+                    val dx = dragAmount.x / size.width
+                    val dy = dragAmount.y / size.height
+                    val width = frameRect.right - frameRect.left
+                    val height = frameRect.bottom - frameRect.top
+
+                    val newLeft = (frameRect.left + dx).coerceIn(0f, 1f - width)
+                    val newTop = (frameRect.top + dy).coerceIn(0f, 1f - height)
+                    onFrameRectChange(Rect(newLeft, newTop, newLeft + width, newTop + height))
+                }
+            }
             .drawWithContent {
                 drawContent()
                 val left = frameRect.left * size.width
