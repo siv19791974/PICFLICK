@@ -362,13 +362,13 @@ fun ProfileScreen(
             // Home calculates: (screen - banner - nav - status) / 4.1f = ~148dp
             val rowCount = ((photos.size + 2) / 3).coerceAtLeast(1)
             val rowHeight = 148.dp // Fine-tuned to match Home exactly
-            val gridHeight = (rowCount * rowHeight.value).dp + 2.dp // tiny bottom safety so last row never clips
-            
+            val cellOuterHeight = rowHeight + 2.dp // MyPhotoCard has 1.dp top + 1.dp bottom padding
+            val gridHeight = (rowCount * cellOuterHeight.value).dp + 6.dp // include grid content padding so last row never clips
+
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(gridHeight)
-                    .background(isDarkModeBackground(isDarkMode))
             ) {
                 // 3-column grid matching Home Feed exactly
                 LazyVerticalGrid(
