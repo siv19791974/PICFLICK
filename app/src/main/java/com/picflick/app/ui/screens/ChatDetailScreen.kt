@@ -150,8 +150,12 @@ val listState = rememberLazyListState()
             ): Offset {
                 if (source != NestedScrollSource.UserInput) return Offset.Zero
 
-                val atBottom = !listState.canScrollForward
-                if (atBottom) {
+                val layoutInfo = listState.layoutInfo
+                val totalItems = layoutInfo.totalItemsCount
+                val lastVisibleItemIndex = layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: -1
+                val atOrNearBottom = totalItems == 0 || lastVisibleItemIndex >= totalItems - 1
+
+                if (atOrNearBottom) {
                     val overscrollDelta = kotlin.math.abs(available.y)
                     if (overscrollDelta > 0f) {
                         upwardPullDistance += overscrollDelta
