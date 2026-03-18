@@ -1,0 +1,44 @@
+PICFLICK3 - Last ~3 Hours Work Summary
+Generated: 2026-03-18
+
+Main objective:
+- Fix cross-device inconsistency where chat-photo comments show different counts/threads between users.
+
+What we worked on:
+1) MainContent.kt
+- Added canonical flickId backfill when opening chat photos from legacy chat messages.
+- Added logging around backfill success/failure.
+
+2) FullScreenPhotoViewer.kt
+- Updated comment loading to merge canonical and fallback chat-photo threads.
+- Added canonical thread resolution behavior for legacy chat-photo entries.
+- Updated comment send path to target canonical flickId when resolved.
+
+3) FlickRepository.kt
+- Improved getFlickByImageUrl resolution logic multiple times:
+  - owner-aware lookup first
+  - fallback lookup behavior
+  - deterministic selection across devices
+  - normalized image path/key matching (to avoid URL query parameter mismatches).
+
+4) Firestore rules
+- Updated chat message update rules to allow participant flickId-only backfill for legacy convergence.
+- Deployed firestore rules successfully.
+
+Notifications status:
+- Runtime logs showed COMMENT notifications are being generated and received correctly.
+- Conclusion: notification pipeline appears functional; core issue is still comment thread convergence/display.
+
+Current status:
+- Issue still reproducible at session end: comments remain one-sided on some chat-photo scenarios.
+- Latest pushed state includes normalization + deterministic resolution and rules/backfill support.
+
+Latest WIP commit:
+- d31502bf (normalized image-key chat photo flick resolution)
+
+Recommended first step for next session:
+- Run one clean reproduction and capture app-only structured logs for:
+  1) resolved flickId per device on photo open
+  2) flickId used on comment write
+  3) thread IDs actively listened to in viewer
+- Use that to isolate the final mismatch point quickly.

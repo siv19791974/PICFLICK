@@ -1,21 +1,15 @@
 package com.picflick.app.ui.screens
 
-import android.app.Activity
 import android.graphics.Bitmap
 import android.graphics.ColorMatrix
 import android.graphics.ColorMatrixColorFilter
 import android.net.Uri
 import androidx.compose.animation.*
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectDragGestures
-import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -26,33 +20,19 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material3.*
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawWithContent
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Rect
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
-import androidx.core.content.FileProvider
 import androidx.core.graphics.createBitmap
 import coil3.ImageLoader
 import coil3.compose.AsyncImage
@@ -60,7 +40,6 @@ import coil3.request.ImageRequest
 import coil3.request.allowHardware
 import coil3.toBitmap
 import com.picflick.app.R
-import com.yalantis.ucrop.UCrop
 import com.picflick.app.data.PhotoFilter
 import com.picflick.app.data.UserProfile
 import com.picflick.app.data.getDailyUploadLimit
@@ -71,10 +50,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.io.File
-import kotlin.math.max
-import kotlin.math.min
-import kotlin.math.roundToInt
 
 /**
  * Screen for applying filters to selected photo with friend tagging and upload countdown
@@ -107,35 +82,10 @@ fun FilterScreen(
     
     // Description/caption state
     var description by remember { mutableStateOf("") }
-
-    // Crop state (zoom/pan image under a fixed crop frame)
-    var isCropMode by remember { mutableStateOf(false) }
-    var cropApplied by remember { mutableStateOf(false) }
-    var cropScale by remember { mutableFloatStateOf(1f) }
-    var cropOffset by remember { mutableStateOf(Offset.Zero) }
-    var previewSize by remember { mutableStateOf(IntSize.Zero) }
-    var cropFrameRect by remember { mutableStateOf(Rect(0.1f, 0.1f, 0.9f, 0.9f)) }
+    var showDescriptionSheet by remember { mutableStateOf(false) }
 
     // Upload loading state
     var isUploading by remember { mutableStateOf(false) }
-
-    val cropLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.StartActivityForResult()
-    ) { result ->
-        if (result.resultCode == Activity.RESULT_OK) {
-            val outputUri = result.data?.let { UCrop.getOutput(it) }
-            if (outputUri != null) {
-                scope.launch {
-                    val cropped = withContext(Dispatchers.IO) { loadBitmapFromUri(context, outputUri) }
-                    if (cropped != null) {
-                        bitmap = cropped
-                        cropApplied = true
-                        isCropMode = false
-                    }
-                }
-            }
-        }
-    }
     
     // Optimistic daily upload counter - updates instantly on click
     var optimisticDailyCount by remember { mutableIntStateOf(dailyUploadCount) }
@@ -196,11 +146,7 @@ fun FilterScreen(
             isUploading = true
             scope.launch {
                 try {
-                    val filteredUri = applyFilterAndSave(
-                        context = context,
-                        bitmap = bitmap!!,
-                        filter = selectedFilter
-                    )
+                    val filteredUri = applyFilterAndSave(context, bitmap!!, selectedFilter)
                     onUpload(filteredUri, selectedFilter, taggedFriends.map { it.uid }, description.trim())
                     // Show success toast
                     withContext(Dispatchers.Main) {
@@ -376,8 +322,7 @@ fun FilterScreen(
             } else {
                 bitmap?.let { bmp ->
                     Column(
-                        modifier = Modifier
-                            .fillMaxSize()
+                        modifier = Modifier.fillMaxSize()
                     ) {
                         // Uploading Overlay (when uploading)
                         if (isUploading) {
@@ -410,7 +355,7 @@ fun FilterScreen(
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .weight(1.45f)
+                                .weight(1.35f)
                                 .padding(horizontal = 24.dp, vertical = 16.dp),
                             contentAlignment = Alignment.Center
                         ) {
@@ -419,57 +364,26 @@ fun FilterScreen(
                                 // Pass 0 to get full resolution (no downscaling)
                                 applyFilterToBitmap(bmp, selectedFilter, thumbnailSize = 0)
                             }
-                            Box(
+                            Image(
+                                painter = BitmapPainter(previewBitmap.asImageBitmap()),
+                                contentDescription = selectedFilter.displayName,
                                 modifier = Modifier
                                     .fillMaxSize()
                                     .clip(RoundedCornerShape(8.dp))
                                     .border(3.dp, if (isDarkMode) Color.White.copy(alpha = 0.9f) else Color.Black.copy(alpha = 0.9f), RoundedCornerShape(8.dp))
-                                    .padding(3.dp)
-                                    .onSizeChanged { previewSize = it }
-                                    .pointerInput(isCropMode, previewSize, previewBitmap.width, previewBitmap.height, cropFrameRect) {
-                                        if (!isCropMode) return@pointerInput
-                                        detectTransformGestures { _, pan, zoom, _ ->
-                                            val newScale = (cropScale * zoom).coerceIn(1f, 5f)
-                                            val proposed = cropOffset + (pan * 1.15f)
-                                            cropScale = newScale
-                                            cropOffset = clampCropOffsetToFrame(
-                                                previewSize = previewSize,
-                                                imageSize = IntSize(previewBitmap.width, previewBitmap.height),
-                                                frameNormalized = cropFrameRect,
-                                                scale = cropScale,
-                                                offset = proposed
-                                            )
-                                        }
-                                    }
-                            ) {
-                                Image(
-                                    painter = BitmapPainter(previewBitmap.asImageBitmap()),
-                                    contentDescription = selectedFilter.displayName,
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .graphicsLayer {
-                                            if (isCropMode) {
-                                                scaleX = cropScale
-                                                scaleY = cropScale
-                                                translationX = cropOffset.x
-                                                translationY = cropOffset.y
-                                            }
-                                        },
-                                    contentScale = ContentScale.Fit
-                                )
-
-                            }
+                                    .padding(3.dp),
+                                contentScale = ContentScale.Fit
+                            )
                         }
 
                         // Bottom Panel with BIG filter thumbnails
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .weight(0.85f) // Fill remaining space
+                                .weight(0.9f) // Fill remaining space
                                 .background(if (isDarkMode) Color(0xFF1C1C1E) else PicFlickLightBackground)
                                 .padding(vertical = 8.dp) // Reduced padding
                                 .windowInsetsPadding(WindowInsets.navigationBars) // Handle nav bar insets
-                                .verticalScroll(rememberScrollState())
                         ) {
                             // Filter Icons (simplified - no text)
                             LazyRow(
@@ -507,94 +421,45 @@ fun FilterScreen(
                                 }
                             }
                             
-                            Row(
+                            // Tag Friends Button
+                            TextButton(
+                                onClick = {
+                                    if (friends.isEmpty()) {
+                                        // Navigate to Find Friends if no friends
+                                        onNavigateToFindFriends()
+                                    } else {
+                                        // Show friend picker if friends exist
+                                        showFriendPicker = true
+                                    }
+                                },
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(horizontal = 16.dp),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    .padding(horizontal = 16.dp)
                             ) {
-                                TextButton(
-                                    onClick = {
-                                        if (friends.isEmpty()) {
-                                            onNavigateToFindFriends()
-                                        } else {
-                                            showFriendPicker = true
-                                        }
-                                    },
-                                    modifier = Modifier.weight(1f)
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.PersonAdd,
-                                        contentDescription = null,
-                                        tint = if (isDarkMode) Color(0xFF87CEEB) else Color(0xFF1565C0)
-                                    )
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Text(
-                                        text = if (friends.isEmpty()) "Find Friends" else "Tag Friends (${taggedFriends.size})",
-                                        color = if (isDarkMode) Color(0xFF87CEEB) else Color(0xFF1565C0)
-                                    )
-                                }
-
-                                TextButton(
-                                    onClick = {
-                                        val srcBitmap = bitmap ?: return@TextButton
-                                        scope.launch {
-                                            val sourceUri = withContext(Dispatchers.IO) {
-                                                saveBitmapToTempUri(context, srcBitmap)
-                                            }
-                                            val destUri = withContext(Dispatchers.IO) {
-                                                createCropOutputUri(context)
-                                            }
-                                            val options = UCrop.Options().apply {
-                                                setFreeStyleCropEnabled(true)
-                                                setShowCropGrid(true)
-                                                setCompressionFormat(Bitmap.CompressFormat.JPEG)
-                                                setCompressionQuality(98)
-                                                setToolbarTitle("Crop Photo")
-                                            }
-                                            val intent = UCrop.of(sourceUri, destUri)
-                                                .withOptions(options)
-                                                .getIntent(context)
-                                                .apply {
-                                                    addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                                                    addFlags(android.content.Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
-                                                }
-                                            cropLauncher.launch(intent)
-                                        }
-                                    },
-                                    modifier = Modifier.weight(1f)
-                                ) {
-                                    Text(
-                                        text = if (cropApplied) "Edit Crop" else "Crop Photo",
-                                        color = if (isDarkMode) Color(0xFF87CEEB) else Color(0xFF1565C0),
-                                        fontWeight = FontWeight.Medium
-                                    )
-                                }
+                                Text(
+                                    text = "+",
+                                    color = if (isDarkMode) Color(0xFF87CEEB) else Color(0xFF1565C0),
+                                    fontSize = 24.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = if (friends.isEmpty()) "Find Friends to Tag" else "Tag Friends (${taggedFriends.size})",
+                                    color = if (isDarkMode) Color(0xFF87CEEB) else Color(0xFF1565C0)
+                                )
                             }
                             
-                            // Description/Caption Input Field - Wrapped in surface to cover background
-                            Surface(
-                                modifier = Modifier.fillMaxWidth(),
-                                color = if (isDarkMode) Color(0xFF1C1C1E) else PicFlickLightBackground
+                            // Description button
+                            TextButton(
+                                onClick = { showDescriptionSheet = true },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp)
                             ) {
-                                OutlinedTextField(
-                                    value = description,
-                                    onValueChange = { description = it },
-                                    placeholder = { Text(stringResource(R.string.filter_caption_placeholder), color = if (isDarkMode) Color.White.copy(alpha = 0.5f) else Color.Black.copy(alpha = 0.5f)) },
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(horizontal = 16.dp, vertical = 8.dp)
-                                        .windowInsetsPadding(WindowInsets.ime.only(WindowInsetsSides.Bottom)),
-                                    colors = OutlinedTextFieldDefaults.colors(
-                                        focusedTextColor = if (isDarkMode) Color.White else Color.Black,
-                                        unfocusedTextColor = if (isDarkMode) Color.White else Color.Black,
-                                        focusedBorderColor = if (isDarkMode) Color(0xFF87CEEB) else Color(0xFF1565C0),
-                                        unfocusedBorderColor = if (isDarkMode) Color.White.copy(alpha = 0.3f) else Color.Black.copy(alpha = 0.3f),
-                                        focusedContainerColor = if (isDarkMode) Color(0xFF2C2C2E) else PicFlickLightBackground,
-                                        unfocusedContainerColor = if (isDarkMode) Color(0xFF2C2C2E) else PicFlickLightBackground
-                                    ),
-                                    maxLines = 2,
-                                    singleLine = false
+                                Text(
+                                    text = if (description.isBlank()) "Add Description" else "Edit Description",
+                                    color = if (isDarkMode) Color(0xFF87CEEB) else Color(0xFF1565C0),
+                                    fontWeight = FontWeight.SemiBold
                                 )
                             }
                             
@@ -611,53 +476,49 @@ fun FilterScreen(
                             }
                         }
                     }
-
-                    if (isCropMode) {
-                        val cropBitmap = bmp
-                        FullScreenCropDialog(
-                            previewBitmap = cropBitmap,
-                            cropScale = cropScale,
-                            cropOffset = cropOffset,
-                            cropFrameRect = cropFrameRect,
-                            onCropFrameChange = { newFrame ->
-                                val imageBounds = computeVisibleImageBoundsNormalized(
-                                    previewSize = previewSize,
-                                    imageSize = IntSize(cropBitmap.width, cropBitmap.height),
-                                    scale = cropScale,
-                                    offset = cropOffset
-                                )
-                                cropFrameRect = clampFrameToBounds(newFrame, imageBounds)
-                                cropOffset = clampCropOffsetToFrame(
-                                    previewSize = previewSize,
-                                    imageSize = IntSize(cropBitmap.width, cropBitmap.height),
-                                    frameNormalized = cropFrameRect,
-                                    scale = cropScale,
-                                    offset = cropOffset
-                                )
-                            },
-                            onSetOrientation = { isVertical ->
-                                val imageBounds = computeVisibleImageBoundsNormalized(
-                                    previewSize = previewSize,
-                                    imageSize = IntSize(cropBitmap.width, cropBitmap.height),
-                                    scale = cropScale,
-                                    offset = cropOffset
-                                )
-                                val targetAspect = if (isVertical) 3f / 4f else 4f / 3f
-                                cropFrameRect = createAspectFrameInBounds(imageBounds, targetAspect)
-                            },
-                            onPreviewSizeChange = { previewSize = it },
-                            onDone = {
-                                cropApplied = true
-                                isCropMode = false
-                            },
-                            isDarkMode = isDarkMode
-                        )
-                    }
                 }
             }
         }
     }
-    
+
+    if (showDescriptionSheet) {
+        ModalBottomSheet(
+            onDismissRequest = { showDescriptionSheet = false },
+            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+            containerColor = if (isDarkMode) Color(0xFF1C1C1E) else PicFlickLightBackground,
+            contentColor = if (isDarkMode) Color.White else Color.Black
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 20.dp)
+            ) {
+                Text(
+                    text = "Description",
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(bottom = 12.dp)
+                )
+                OutlinedTextField(
+                    value = description,
+                    onValueChange = { description = it },
+                    placeholder = { Text(stringResource(R.string.filter_caption_placeholder)) },
+                    modifier = Modifier.fillMaxWidth(),
+                    minLines = 4,
+                    maxLines = 8,
+                    shape = RoundedCornerShape(12.dp)
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                Button(
+                    onClick = { showDescriptionSheet = false },
+                    modifier = Modifier.align(Alignment.End)
+                ) {
+                    Text("Save")
+                }
+            }
+        }
+    }
+
     // Friend Picker Dialog
     if (showFriendPicker) {
         FriendPickerDialog(
@@ -750,17 +611,35 @@ private fun TaggedFriendChip(
         modifier = Modifier
             .clip(RoundedCornerShape(16.dp))
             .background(if (isDarkMode) Color(0xFF87CEEB) else Color(0xFF1565C0))
-            .padding(start = 12.dp, end = 4.dp, top = 4.dp, bottom = 4.dp)
+            .padding(start = 6.dp, end = 4.dp, top = 4.dp, bottom = 4.dp)
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
-                text = friend.displayName.take(15),
-                color = if (isDarkMode) Color.Black else Color.White,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Medium
-            )
+            Box(
+                modifier = Modifier
+                    .size(22.dp)
+                    .clip(CircleShape)
+                    .background(if (isDarkMode) Color.Black.copy(alpha = 0.15f) else Color.White.copy(alpha = 0.2f)),
+                contentAlignment = Alignment.Center
+            ) {
+                if (friend.photoUrl.isNotBlank()) {
+                    AsyncImage(
+                        model = friend.photoUrl,
+                        contentDescription = null,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                } else {
+                    Text(
+                        text = friend.displayName.firstOrNull()?.uppercase() ?: "?",
+                        color = if (isDarkMode) Color.Black else Color.White,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+            Spacer(modifier = Modifier.width(4.dp))
             IconButton(
                 onClick = onRemove,
                 modifier = Modifier.size(20.dp)
@@ -925,148 +804,6 @@ private fun FilteredImage(
         contentDescription = "Filtered photo",
         modifier = modifier,
         contentScale = ContentScale.Fit
-    )
-}
-
-@Composable
-private fun FullScreenCropDialog(
-    previewBitmap: Bitmap,
-    cropScale: Float,
-    cropOffset: Offset,
-    cropFrameRect: Rect,
-    onCropFrameChange: (Rect) -> Unit,
-    onSetOrientation: (Boolean) -> Unit,
-    onPreviewSizeChange: (IntSize) -> Unit,
-    onDone: () -> Unit,
-    isDarkMode: Boolean
-) {
-    Dialog(
-        onDismissRequest = onDone,
-        properties = DialogProperties(usePlatformDefaultWidth = false)
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(if (isDarkMode) Color.Black else Color(0xFF111111))
-        ) {
-            var localPreviewSize by remember { mutableStateOf(IntSize.Zero) }
-            val imageBounds = remember(localPreviewSize, previewBitmap.width, previewBitmap.height, cropScale, cropOffset) {
-                computeVisibleImageBoundsNormalized(
-                    previewSize = localPreviewSize,
-                    imageSize = IntSize(previewBitmap.width, previewBitmap.height),
-                    scale = cropScale,
-                    offset = cropOffset
-                )
-            }
-
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = 8.dp, vertical = 16.dp)
-                    .onSizeChanged {
-                        localPreviewSize = it
-                        onPreviewSizeChange(it)
-                    }
-            ) {
-                Image(
-                    painter = BitmapPainter(previewBitmap.asImageBitmap()),
-                    contentDescription = "Crop preview",
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .graphicsLayer {
-                            scaleX = cropScale
-                            scaleY = cropScale
-                            translationX = cropOffset.x
-                            translationY = cropOffset.y
-                        },
-                    contentScale = ContentScale.Fit
-                )
-
-                CropOverlay(
-                    frameRect = clampFrameToBounds(cropFrameRect, imageBounds),
-                    boundsRect = imageBounds,
-                    overlayColor = Color.Black.copy(alpha = 0.52f),
-                    borderColor = Color.White,
-                    onFrameRectChange = onCropFrameChange
-                )
-            }
-
-            Row(
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .fillMaxWidth()
-                    .windowInsetsPadding(WindowInsets.navigationBars)
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
-                horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                OutlinedButton(onClick = { onSetOrientation(true) }) {
-                    Text("Vertical")
-                }
-                OutlinedButton(onClick = { onSetOrientation(false) }) {
-                    Text("Horizontal")
-                }
-                Button(onClick = onDone) {
-                    Text("Done Crop")
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun CropOverlay(
-    frameRect: Rect,
-    boundsRect: Rect,
-    overlayColor: Color,
-    borderColor: Color,
-    onFrameRectChange: (Rect) -> Unit
-) {
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .pointerInput(boundsRect) {
-                var startFrame = frameRect
-                var accumDx = 0f
-                var accumDy = 0f
-                detectDragGestures(
-                    onDragStart = {
-                        startFrame = clampFrameToBounds(frameRect, boundsRect)
-                        accumDx = 0f
-                        accumDy = 0f
-                    },
-                    onDrag = { change, dragAmount ->
-                        change.consume()
-                        accumDx += dragAmount.x / size.width
-                        accumDy += dragAmount.y / size.height
-                        val width = startFrame.right - startFrame.left
-                        val height = startFrame.bottom - startFrame.top
-
-                        val newLeft = (startFrame.left + accumDx).coerceIn(boundsRect.left, boundsRect.right - width)
-                        val newTop = (startFrame.top + accumDy).coerceIn(boundsRect.top, boundsRect.bottom - height)
-                        onFrameRectChange(Rect(newLeft, newTop, newLeft + width, newTop + height))
-                    }
-                )
-            }
-            .drawWithContent {
-                drawContent()
-                val left = frameRect.left * size.width
-                val top = frameRect.top * size.height
-                val right = frameRect.right * size.width
-                val bottom = frameRect.bottom * size.height
-
-                drawRect(overlayColor, topLeft = Offset(0f, 0f), size = Size(size.width, top))
-                drawRect(overlayColor, topLeft = Offset(0f, bottom), size = Size(size.width, size.height - bottom))
-                drawRect(overlayColor, topLeft = Offset(0f, top), size = Size(left, bottom - top))
-                drawRect(overlayColor, topLeft = Offset(right, top), size = Size(size.width - right, bottom - top))
-
-                drawRect(
-                    color = borderColor,
-                    topLeft = Offset(left, top),
-                    size = Size(right - left, bottom - top),
-                    style = Stroke(width = 3f)
-                )
-            }
     )
 }
 
@@ -1433,22 +1170,6 @@ private suspend fun loadBitmapFromUri(context: android.content.Context, uri: Uri
     }
 }
 
-private fun saveBitmapToTempUri(context: android.content.Context, bitmap: Bitmap): Uri {
-    val tempFile = File.createTempFile("crop_src", ".jpg", context.cacheDir)
-    java.io.FileOutputStream(tempFile).use { out ->
-        bitmap.compress(Bitmap.CompressFormat.JPEG, 100, out)
-    }
-    return FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", tempFile)
-}
-
-private fun createCropOutputUri(context: android.content.Context): Uri {
-    val outputFile = File(context.cacheDir, "crop_out_${System.currentTimeMillis()}.jpg")
-    return FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", outputFile)
-}
-
-/**
- * Apply filter and save to temp file
- */
 private suspend fun applyFilterAndSave(
     context: android.content.Context,
     bitmap: Bitmap,
@@ -1456,168 +1177,13 @@ private suspend fun applyFilterAndSave(
 ): Uri {
     return withContext(Dispatchers.IO) {
         val filteredBitmap = applyFilterToBitmap(bitmap, filter)
+
+        // Save to temp file at MAXIMUM QUALITY (100% JPEG)
         val tempFile = java.io.File.createTempFile("filtered_", ".jpg", context.cacheDir)
         java.io.FileOutputStream(tempFile).use { out ->
-            filteredBitmap.compress(Bitmap.CompressFormat.JPEG, 100, out)
+            filteredBitmap.compress(Bitmap.CompressFormat.JPEG, 100, out)  // MAX quality - was 95
         }
 
         Uri.fromFile(tempFile)
     }
-}
-
-private fun computeVisibleImageBoundsNormalized(
-    previewSize: IntSize,
-    imageSize: IntSize,
-    scale: Float,
-    offset: Offset
-): Rect {
-    if (previewSize.width <= 0 || previewSize.height <= 0 || imageSize.width <= 0 || imageSize.height <= 0) {
-        return Rect(0f, 0f, 1f, 1f)
-    }
-
-    val containerW = previewSize.width.toFloat()
-    val containerH = previewSize.height.toFloat()
-    val srcW = imageSize.width.toFloat()
-    val srcH = imageSize.height.toFloat()
-
-    val baseScale = min(containerW / srcW, containerH / srcH)
-    val baseW = srcW * baseScale
-    val baseH = srcH * baseScale
-    val baseOffsetX = (containerW - baseW) / 2f
-    val baseOffsetY = (containerH - baseH) / 2f
-    val cx = containerW / 2f
-    val cy = containerH / 2f
-
-    val left = cx + (baseOffsetX - cx) * scale + offset.x
-    val top = cy + (baseOffsetY - cy) * scale + offset.y
-    val width = baseW * scale
-    val height = baseH * scale
-
-    return Rect(
-        left = (left / containerW).coerceIn(0f, 1f),
-        top = (top / containerH).coerceIn(0f, 1f),
-        right = ((left + width) / containerW).coerceIn(0f, 1f),
-        bottom = ((top + height) / containerH).coerceIn(0f, 1f)
-    )
-}
-
-private fun clampFrameToBounds(frame: Rect, bounds: Rect, minSize: Float = 0.18f): Rect {
-    val boundsWidth = (bounds.right - bounds.left).coerceAtLeast(minSize)
-    val boundsHeight = (bounds.bottom - bounds.top).coerceAtLeast(minSize)
-    val width = (frame.right - frame.left).coerceAtMost(boundsWidth)
-    val height = (frame.bottom - frame.top).coerceAtMost(boundsHeight)
-
-    val left = frame.left.coerceIn(bounds.left, bounds.right - width)
-    val top = frame.top.coerceIn(bounds.top, bounds.bottom - height)
-    return Rect(left, top, left + width, top + height)
-}
-
-private fun createAspectFrameInBounds(bounds: Rect, targetAspect: Float): Rect {
-    val boundsWidth = bounds.right - bounds.left
-    val boundsHeight = bounds.bottom - bounds.top
-    val boundsAspect = boundsWidth / boundsHeight
-
-    val (frameW, frameH) = if (boundsAspect > targetAspect) {
-        val h = boundsHeight * 0.92f
-        Pair(h * targetAspect, h)
-    } else {
-        val w = boundsWidth * 0.92f
-        Pair(w, w / targetAspect)
-    }
-
-    val left = bounds.left + (boundsWidth - frameW) / 2f
-    val top = bounds.top + (boundsHeight - frameH) / 2f
-    return Rect(left, top, left + frameW, top + frameH)
-}
-
-private fun cropBitmapByFrameAndTransform(
-    source: Bitmap,
-    frameRectNormalized: Rect,
-    scale: Float,
-    offsetPx: Offset,
-    previewSize: IntSize
-): Bitmap {
-    if (previewSize.width <= 0 || previewSize.height <= 0) return source
-
-    val containerW = previewSize.width.toFloat()
-    val containerH = previewSize.height.toFloat()
-    val srcW = source.width.toFloat()
-    val srcH = source.height.toFloat()
-
-    val baseScale = min(containerW / srcW, containerH / srcH)
-    val baseW = srcW * baseScale
-    val baseH = srcH * baseScale
-    val baseOffsetX = (containerW - baseW) / 2f
-    val baseOffsetY = (containerH - baseH) / 2f
-
-    val cx = containerW / 2f
-    val cy = containerH / 2f
-
-    fun screenToSourceX(x: Float): Float {
-        val beforeScale = ((x - offsetPx.x - cx) / scale) + cx
-        return (beforeScale - baseOffsetX) / baseScale
-    }
-
-    fun screenToSourceY(y: Float): Float {
-        val beforeScale = ((y - offsetPx.y - cy) / scale) + cy
-        return (beforeScale - baseOffsetY) / baseScale
-    }
-
-    val leftPx = frameRectNormalized.left * containerW
-    val topPx = frameRectNormalized.top * containerH
-    val rightPx = frameRectNormalized.right * containerW
-    val bottomPx = frameRectNormalized.bottom * containerH
-
-    val srcLeft = screenToSourceX(leftPx).roundToInt().coerceIn(0, source.width - 1)
-    val srcTop = screenToSourceY(topPx).roundToInt().coerceIn(0, source.height - 1)
-    val srcRight = screenToSourceX(rightPx).roundToInt().coerceIn(srcLeft + 1, source.width)
-    val srcBottom = screenToSourceY(bottomPx).roundToInt().coerceIn(srcTop + 1, source.height)
-
-    return Bitmap.createBitmap(source, srcLeft, srcTop, srcRight - srcLeft, srcBottom - srcTop)
-}
-
-private fun clampCropOffsetToFrame(
-    previewSize: IntSize,
-    imageSize: IntSize,
-    frameNormalized: Rect,
-    scale: Float,
-    offset: Offset
-): Offset {
-    if (previewSize.width == 0 || previewSize.height == 0 || imageSize.width == 0 || imageSize.height == 0) {
-        return offset
-    }
-
-    val containerW = previewSize.width.toFloat()
-    val containerH = previewSize.height.toFloat()
-    val srcW = imageSize.width.toFloat()
-    val srcH = imageSize.height.toFloat()
-
-    val baseScale = min(containerW / srcW, containerH / srcH)
-    val baseW = srcW * baseScale
-    val baseH = srcH * baseScale
-
-    val cx = containerW / 2f
-    val cy = containerH / 2f
-    val baseOffsetX = (containerW - baseW) / 2f
-    val baseOffsetY = (containerH - baseH) / 2f
-
-    val transformedBaseLeft = cx + (baseOffsetX - cx) * scale
-    val transformedBaseTop = cy + (baseOffsetY - cy) * scale
-    val transformedW = baseW * scale
-    val transformedH = baseH * scale
-
-    val frameLeft = frameNormalized.left * containerW
-    val frameTop = frameNormalized.top * containerH
-    val frameRight = frameNormalized.right * containerW
-    val frameBottom = frameNormalized.bottom * containerH
-
-    val minX = frameRight - transformedBaseLeft - transformedW
-    val maxX = frameLeft - transformedBaseLeft
-    val minY = frameBottom - transformedBaseTop - transformedH
-    val maxY = frameTop - transformedBaseTop
-
-    val clampedX = if (minX > maxX) (minX + maxX) / 2f else offset.x.coerceIn(minX, maxX)
-    val clampedY = if (minY > maxY) (minY + maxY) / 2f else offset.y.coerceIn(minY, maxY)
-
-    return Offset(clampedX, clampedY)
 }
