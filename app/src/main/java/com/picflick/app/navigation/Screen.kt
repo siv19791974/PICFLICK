@@ -26,6 +26,7 @@ sealed class Screen {
     data object ManageStorage : Screen()           // Storage management
     data object SubscriptionStatus : Screen()      // Subscription details
     data object PlanOptions : Screen()              // Plan comparison and purchase
+    data object StreakAchievements : Screen()       // Streak and achievements screen
     data object PrivacyPolicy : Screen()              // Privacy Policy screen
     data object Philosophy : Screen()               // Our Philosophy screen
     data object Legal : Screen()                    // Legal/Terms screen

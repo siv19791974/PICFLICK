@@ -14,6 +14,8 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -41,6 +43,7 @@ import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.CachePolicy
+import kotlinx.coroutines.launch
 import com.picflick.app.data.Flick
 import com.picflick.app.data.ReactionType
 import com.picflick.app.data.UserProfile
@@ -72,6 +75,7 @@ fun ProfileScreen(
     onRefresh: () -> Unit = {},
     onPlanOptions: () -> Unit = {},
     onFriendsClick: () -> Unit = {},
+    onStreakClick: () -> Unit = {},
     onReaction: (Flick, ReactionType?) -> Unit = { _, _ -> },
     isLoading: Boolean = false
 ) {
@@ -106,6 +110,8 @@ fun ProfileScreen(
     val friendsCount = remember(userProfile.followers, userProfile.following) {
         userProfile.followers.intersect(userProfile.following.toSet()).size
     }
+    val scope = rememberCoroutineScope()
+    val photosSectionBringIntoViewRequester = remember { BringIntoViewRequester() }
 
     // Keep bio stable - don't clear when profile temporarily reloads
     var cachedBio by remember { mutableStateOf(userProfile.bio) }
@@ -319,7 +325,12 @@ fun ProfileScreen(
             ModernStatItem(
                 value = photoCount.toString(),
                 label = "Posts",
-                isDarkMode = isDarkMode
+                isDarkMode = isDarkMode,
+                onClick = {
+                    scope.launch {
+                        photosSectionBringIntoViewRequester.bringIntoView()
+                    }
+                }
             )
             ModernStatItem(
                 value = formatNumber(totalReactions),
@@ -335,7 +346,8 @@ fun ProfileScreen(
             ModernStatItem(
                 value = currentStreak.toString(),
                 label = "Streak",
-                isDarkMode = isDarkMode
+                isDarkMode = isDarkMode,
+                onClick = onStreakClick
             )
             // SIXTH ITEM - Subscription Tier Badge
             TierBadgeStatItem(
@@ -348,6 +360,11 @@ fun ProfileScreen(
         Spacer(modifier = Modifier.height(32.dp))
 
         // MY PHOTOS GRID - 3 column grid matching home feed style
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .bringIntoViewRequester(photosSectionBringIntoViewRequester)
+        ) {
         if (photos.isNotEmpty()) {
             Text(
                 text = "My Photos ($photoCount)",
@@ -432,6 +449,7 @@ fun ProfileScreen(
                     )
                 }
             }
+        }
         }
 
         }
@@ -856,10 +874,8 @@ private fun TierBadgeStatItem(
     onClick: () -> Unit = {}
 ) {
     val tierColor = tier.getColor()
-    val textColor = if (isDarkMode) Color.White else Color.Black
     val subtitleColor = if (isDarkMode) Color.Gray else Color.DarkGray
-    
-    // Get tier display name
+
     val tierName = when (tier) {
         com.picflick.app.data.SubscriptionTier.FREE -> "Free"
         com.picflick.app.data.SubscriptionTier.STANDARD -> "Standard"
@@ -867,22 +883,21 @@ private fun TierBadgeStatItem(
         com.picflick.app.data.SubscriptionTier.PRO -> "Pro"
         com.picflick.app.data.SubscriptionTier.ULTRA -> "Ultra"
     }
-    
+
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier
             .wrapContentWidth()
             .clickable { onClick() }
     ) {
-        // Fixed height container matching ModernStatItem (30.dp for badge)
+        // Match ModernStatItem value zone exactly
         Box(
             modifier = Modifier.height(30.dp),
             contentAlignment = Alignment.Center
         ) {
-            // Colored tier badge - no letter inside, just the colored dot
             Box(
                 modifier = Modifier
-                    .size(26.dp)
+                    .size(22.dp) // same visual footprint as numeric value height
                     .clip(CircleShape)
                     .background(
                         brush = Brush.sweepGradient(

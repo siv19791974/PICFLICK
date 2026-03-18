@@ -88,6 +88,13 @@ class FlickRepository private constructor() {
                 }
             }
 
+            // Update upload streak after a successful photo creation.
+            // Do not fail the upload if streak update fails.
+            when (val streakResult = updateStreak(flick.userId)) {
+                is Result.Error -> android.util.Log.w("FlickRepository", "Failed to update streak for ${flick.userId}: ${streakResult.message}")
+                else -> Unit
+            }
+
             Result.Success(Unit)
         } catch (e: Exception) {
             Result.Error(e, "Failed to create flick")
