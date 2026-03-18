@@ -116,6 +116,9 @@ dependencies {
     // Firebase Analytics - Track user engagement and app usage
     implementation(libs.firebase.analytics)
 
+    // CanHub cropper
+    implementation("com.github.CanHub:Android-Image-Cropper:4.3.2")
+
     // Testing
     testImplementation(libs.junit)
     testImplementation(libs.mockk)

@@ -2,6 +2,8 @@ package com.picflick.app.ui.screens
 
 import android.graphics.Bitmap
 import android.graphics.ColorMatrix
+import androidx.activity.compose.rememberLauncherForActivityResult
+
 import android.graphics.ColorMatrixColorFilter
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -38,6 +40,10 @@ import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.allowHardware
 import coil3.toBitmap
+import com.canhub.cropper.CropImageContract
+import com.canhub.cropper.CropImageContractOptions
+import com.canhub.cropper.CropImageOptions
+import com.canhub.cropper.CropImageView
 import com.picflick.app.data.Flick
 import com.picflick.app.data.PhotoFilter
 import com.google.firebase.firestore.FirebaseFirestore
@@ -73,6 +79,7 @@ fun EditPhotoScreen(
     var bitmap by remember { mutableStateOf<Bitmap?>(null) }
     var isLoading by remember { mutableStateOf(true) }
     var isSaving by remember { mutableStateOf(false) }
+    var isCropping by remember { mutableStateOf(false) }
     var description by remember { mutableStateOf(flick.description) }
     var showDescriptionSheet by remember { mutableStateOf(false) }
     var taggedFriendIds by remember { mutableStateOf(flick.taggedFriends) }
@@ -122,6 +129,54 @@ withContext(Dispatchers.Main) {
 
     val taggedFriends = remember(taggedFriendIds, followingUsers) {
         followingUsers.filter { it.uid in taggedFriendIds }
+    }
+
+    val cropLauncher = rememberLauncherForActivityResult(CropImageContract()) { result ->
+        isCropping = false
+        val croppedUri = result.uriContent
+        if (croppedUri != null) {
+            scope.launch(Dispatchers.IO) {
+                val croppedBitmap = loadBitmapFromUri(context, croppedUri)
+                withContext(Dispatchers.Main) {
+                    if (croppedBitmap != null) {
+                        bitmap = croppedBitmap
+                        selectedFilter = PhotoFilter.ORIGINAL
+                    } else {
+                        android.widget.Toast.makeText(context, "Failed to load cropped photo", android.widget.Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
+        }
+    }
+
+    fun launchCrop() {
+        val currentBitmap = bitmap ?: return
+        isCropping = true
+        scope.launch(Dispatchers.IO) {
+            try {
+                val sourceUri = saveBitmapToTempUri(context, currentBitmap)
+                withContext(Dispatchers.Main) {
+                    cropLauncher.launch(
+                        CropImageContractOptions(
+                            uri = sourceUri,
+                            cropImageOptions = CropImageOptions().apply {
+                                activityTitle = "Crop Photo"
+                                cropMenuCropButtonTitle = "Save"
+                                guidelines = CropImageView.Guidelines.ON
+                                fixAspectRatio = false
+                                allowFlipping = false
+                                allowRotation = true
+                            }
+                        )
+                    )
+                }
+            } catch (_: Exception) {
+                withContext(Dispatchers.Main) {
+                    isCropping = false
+                    android.widget.Toast.makeText(context, "Unable to start crop", android.widget.Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
     }
 
     // Local filters list - all 16 filters (removed non-working blur filters)
@@ -270,8 +325,8 @@ withContext(Dispatchers.Main) {
                     Column(
                         modifier = Modifier.fillMaxSize()
                     ) {
-                        // Saving Overlay
-                        if (isSaving) {
+                        // Saving/Cropping Overlay
+                        if (isSaving || isCropping) {
                             Box(
                                 modifier = Modifier
                                     .fillMaxSize()
@@ -288,7 +343,7 @@ withContext(Dispatchers.Main) {
                                     )
                                     Spacer(modifier = Modifier.height(12.dp))
                                     Text(
-                                        text = "Saving...",
+                                        text = if (isCropping) "Cropping..." else "Saving...",
                                         color = if (isDarkMode) Color.White else Color.Black,
                                         fontSize = 16.sp,
                                         fontWeight = FontWeight.Medium
@@ -366,35 +421,60 @@ withContext(Dispatchers.Main) {
                                 }
                             }
 
-                            TextButton(
-                                onClick = { showTagDialog = true },
+                            Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(horizontal = 16.dp)
+                                    .padding(horizontal = 16.dp),
+                                horizontalArrangement = Arrangement.spacedBy(10.dp)
                             ) {
-                                Icon(
-                                    imageVector = Icons.Default.PersonAdd,
-                                    contentDescription = null,
-                                    tint = if (isDarkMode) Color(0xFF87CEEB) else Color(0xFF1565C0)
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(
-                                    text = if (followingUsers.isEmpty()) {
-                                        "No friends to tag"
-                                    } else {
-                                        "Tag Friends (${taggedFriendIds.size})"
-                                    },
-                                    color = if (isDarkMode) Color(0xFF87CEEB) else Color(0xFF1565C0)
-                                )
+                                TextButton(
+                                    onClick = { showTagDialog = true },
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .height(44.dp)
+                                        .clip(RoundedCornerShape(12.dp))
+                                        .background(if (isDarkMode) Color.White.copy(alpha = 0.08f) else Color.White.copy(alpha = 0.65f))
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.PersonAdd,
+                                        contentDescription = null,
+                                        tint = if (isDarkMode) Color(0xFF87CEEB) else Color(0xFF1565C0)
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        text = if (followingUsers.isEmpty()) "No friends" else "Tag Friends (${taggedFriendIds.size})",
+                                        color = if (isDarkMode) Color(0xFF87CEEB) else Color(0xFF1565C0),
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                }
+
+                                TextButton(
+                                    onClick = { launchCrop() },
+                                    enabled = bitmap != null && !isCropping && !isSaving,
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .height(44.dp)
+                                        .clip(RoundedCornerShape(12.dp))
+                                        .background(if (isDarkMode) Color.White.copy(alpha = 0.08f) else Color.White.copy(alpha = 0.65f))
+                                ) {
+                                    Text(
+                                        text = "Crop",
+                                        color = if (isDarkMode) Color(0xFF87CEEB) else Color(0xFF1565C0),
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                }
                             }
 
-                            Spacer(modifier = Modifier.height(8.dp))
+                            Spacer(modifier = Modifier.height(10.dp))
 
                             TextButton(
                                 onClick = { showDescriptionSheet = true },
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .padding(horizontal = 16.dp)
+                                    .height(44.dp)
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(if (isDarkMode) Color.White.copy(alpha = 0.08f) else Color.White.copy(alpha = 0.65f))
                             ) {
                                 Text(
                                     text = if (description.isBlank()) "Add Description" else "Edit Description",
@@ -971,6 +1051,33 @@ private fun applyFilterToBitmap(bitmap: Bitmap, filter: PhotoFilter, thumbnailSi
     }
 
     return result
+}
+
+private suspend fun saveBitmapToTempUri(context: android.content.Context, bitmap: Bitmap): android.net.Uri {
+    return withContext(Dispatchers.IO) {
+        val tempFile = java.io.File.createTempFile("crop_source_", ".jpg", context.cacheDir)
+        java.io.FileOutputStream(tempFile).use { out ->
+            bitmap.compress(Bitmap.CompressFormat.JPEG, 100, out)
+        }
+        android.net.Uri.fromFile(tempFile)
+    }
+}
+
+private suspend fun loadBitmapFromUri(context: android.content.Context, uri: android.net.Uri): Bitmap? {
+    return try {
+        val request = ImageRequest.Builder(context)
+            .data(uri)
+            .allowHardware(false)
+            .size(coil3.size.Dimension.Undefined, coil3.size.Dimension.Undefined)
+            .build()
+
+        val imageLoader = ImageLoader.Builder(context).build()
+        val result = imageLoader.execute(request)
+        result.image?.toBitmap()
+    } catch (e: Exception) {
+        android.util.Log.e("EditPhotoScreen", "Failed to load bitmap from URI", e)
+        null
+    }
 }
 
 /**

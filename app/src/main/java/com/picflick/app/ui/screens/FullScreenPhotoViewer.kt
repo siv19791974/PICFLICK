@@ -830,11 +830,7 @@ val canDeleteCurrent = currentFlick.userId == currentUser.uid
                                     .build(),
                                 contentDescription = null,
                                 modifier = Modifier.fillMaxSize(),
-                                contentScale = if (isLandscape && currentPhotoIsLandscape) {
-                                    ContentScale.Crop
-                                } else {
-                                    ContentScale.Fit
-                                }
+                                contentScale = ContentScale.Fit
                             )
 
                             // Like animation overlay for current photo
@@ -857,48 +853,8 @@ val canDeleteCurrent = currentFlick.userId == currentUser.uid
                         )
                     }
                     
-                    if (!isLandscape) {
-                        // 2. NEXT at RIGHT (for horizontal swipe)
-                        if (currentPageIndex + 1 < validPhotos.size) {
-                            PhotoAtPosition(
-                                photo = validPhotos[currentPageIndex + 1],
-                                isCurrent = false,
-                                baseX = screenWidthPx,
-                                baseY = 0f
-                            )
-                        }
-
-                        // 3. PREV at LEFT (for horizontal swipe)
-                        if (currentPageIndex - 1 >= 0) {
-                            PhotoAtPosition(
-                                photo = validPhotos[currentPageIndex - 1],
-                                isCurrent = false,
-                                baseX = -screenWidthPx,
-                                baseY = 0f
-                            )
-                        }
-
-                        // 4. NEXT at BOTTOM (for vertical swipe) - SAME photo as RIGHT
-                        if (currentPageIndex + 1 < validPhotos.size) {
-                            PhotoAtPosition(
-                                photo = validPhotos[currentPageIndex + 1],
-                                isCurrent = false,
-                                baseX = 0f,
-                                baseY = screenHeightPx
-                            )
-                        }
-
-                        // 5. PREV at TOP (for vertical swipe) - SAME photo as LEFT
-                        if (currentPageIndex - 1 >= 0) {
-                            PhotoAtPosition(
-                                photo = validPhotos[currentPageIndex - 1],
-                                isCurrent = false,
-                                baseX = 0f,
-                                baseY = -screenHeightPx
-                            )
-                        }
-                    }
-}
+                    // Keep only the current photo rendered to avoid side-strip artifacts in landscape.
+                }
                 
                 // UI OVERLAY - Shows on tap (back button + right menu)
                 AnimatedVisibility(
@@ -2447,18 +2403,21 @@ private fun ShareFriendsDialog(
     val repository = remember { FlickRepository.getInstance() }
     var friendsList by remember { mutableStateOf<List<UserProfile>>(emptyList()) }
     var isLoadingFriends by remember { mutableStateOf(true) }
-    
+
     // Load friends when dialog opens
     LaunchedEffect(Unit) {
         if (currentUser.following.isNotEmpty()) {
             val loadedFriends = mutableListOf<UserProfile>()
             var loadedCount = 0
-            
+
             currentUser.following.forEach { userId ->
                 repository.getUserProfile(userId) { result ->
                     when (result) {
                         is com.picflick.app.data.Result.Success -> {
-                            loadedFriends.add(result.data)
+                            // Share-to-chat only works between mutual friends.
+                            if (currentUser.isMutualFriend(result.data.uid)) {
+                                loadedFriends.add(result.data)
+                            }
                         }
                         else -> { /* Skip failed loads */ }
                     }
@@ -2576,7 +2535,7 @@ private fun ShareFriendsDialog(
                                 )
                                 Spacer(modifier = Modifier.height(8.dp))
                                 Text(
-                                    text = "No friends yet",
+                                    text = "No mutual friends to message",
                                     color = Color.White.copy(alpha = 0.6f),
                                     fontSize = 14.sp
                                 )
@@ -2653,7 +2612,6 @@ private fun ShareFriendsDialog(
                                     Button(
                                         onClick = {
                                             onShareToFriend(flick.id, friend.uid)
-                                            showPicFlickToast("Shared with ${friend.displayName}")
                                             onDismiss()
                                         },
                                         colors = ButtonDefaults.buttonColors(
@@ -2835,7 +2793,7 @@ private fun TagFriendsDialog(
                                 )
                                 Spacer(modifier = Modifier.height(8.dp))
                                 Text(
-                                    text = "No friends yet",
+                                    text = "No mutual friends to message",
                                     color = Color.White.copy(alpha = 0.6f),
                                     fontSize = 14.sp
                                 )
