@@ -62,16 +62,15 @@ class ChatRepository {
                         )
                     } ?: emptyList()
 
-                    // Defensive filtering: hide chats where users are no longer mutual friends.
-                    val filteredSessions = rawSessions.filter { session ->
+                    // Keep existing 1:1 chats visible even if friendship status changed,
+                    // otherwise delivered messages can appear "missing" from recipient inbox.
+                    val visibleSessions = rawSessions.filter { session ->
                         val otherUserId = session.participants.firstOrNull { it != userId }
-                        otherUserId != null &&
-                                session.participants.size == 2 &&
-                                flickRepository.areFriends(userId, otherUserId)
+                        otherUserId != null && session.participants.size == 2
                     }
 
                     // Sort client-side by lastTimestamp descending
-                    val sortedSessions = filteredSessions.sortedByDescending { it.lastTimestamp }
+                    val sortedSessions = visibleSessions.sortedByDescending { it.lastTimestamp }
                     trySend(sortedSessions)
                 }
 }
