@@ -1,5 +1,6 @@
 package com.picflick.app.service
 
+import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
@@ -21,7 +22,8 @@ import com.google.firebase.messaging.RemoteMessage
 class PicFlickMessagingService : FirebaseMessagingService() {
 
     companion object {
-        const val CHANNEL_ID = "picflick_important"  // Must match Firebase Function
+        // Use a versioned channel ID so upgraded installs get fresh HIGH-importance behavior.
+        const val CHANNEL_ID = "picflick_important_v2"
         const val CHANNEL_NAME = "PicFlick Important"
     }
 
@@ -71,9 +73,12 @@ class PicFlickMessagingService : FirebaseMessagingService() {
             val channel = NotificationChannel(
                 CHANNEL_ID,
                 CHANNEL_NAME,
-                NotificationManager.IMPORTANCE_HIGH  // Changed to HIGH for important messages
+                NotificationManager.IMPORTANCE_HIGH
             ).apply {
                 description = "Important notifications for messages, friend requests, and activity"
+                enableVibration(true)
+                enableLights(true)
+                lockscreenVisibility = Notification.VISIBILITY_PUBLIC
             }
             notificationManager.createNotificationChannel(channel)
         }
@@ -122,7 +127,10 @@ class PicFlickMessagingService : FirebaseMessagingService() {
             .setSmallIcon(R.drawable.ic_launcher_foreground)
             .setContentTitle(title)
             .setContentText(message)
-            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+            .setCategory(NotificationCompat.CATEGORY_MESSAGE)
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setDefaults(NotificationCompat.DEFAULT_ALL)
             .setAutoCancel(true)
             .setContentIntent(pendingIntent)
             .build()
