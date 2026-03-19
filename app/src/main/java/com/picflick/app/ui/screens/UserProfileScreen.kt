@@ -232,7 +232,11 @@ val primaryTextColor = if (isDarkMode) Color.White else Color.Black
                             ),
                             userScrollEnabled = false
                         ) {
-                            items(photos) { photo ->
+                            items(
+                                items = photos,
+                                key = { it.id },
+                                contentType = { "photo" }
+                            ) { photo ->
                                 ProfilePhotoCard(
                                     flick = photo,
                                     rowHeight = homeLikeRowHeight,

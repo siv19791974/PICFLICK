@@ -117,6 +117,7 @@ fun FullScreenPhotoViewer(
     onNavigateToFindFriends: () -> Unit = {},
     onEditPhotoClick: (Flick) -> Unit = {},
     friendProfiles: Map<String, UserProfile> = emptyMap(), // Map of userId -> UserProfile for looking up profile pics
+    openCommentPanelInitially: Boolean = false,
 ) {
     val context = LocalContext.current
     val configuration = LocalConfiguration.current
@@ -226,7 +227,7 @@ val canDeleteCurrent = currentFlick.userId == currentUser.uid
     var showReactionPicker by remember { mutableStateOf(false) }
     
     // Show comment panel state
-    var showCommentPanel by remember { mutableStateOf(false) }
+    var showCommentPanel by remember(openCommentPanelInitially) { mutableStateOf(openCommentPanelInitially) }
     var canonicalCommentFlickId by remember(currentFlick.id, currentFlick.imageUrl) {
         mutableStateOf(if (currentFlick.id.startsWith("chat_photo_")) null else currentFlick.id)
     }
@@ -685,34 +686,47 @@ val canDeleteCurrent = currentFlick.userId == currentUser.uid
                                     isDragging = false
                                     val shouldNavigateVertical = isDraggingVertically && kotlin.math.abs(rawDragY) > 150f
                                     val shouldNavigateHorizontal = !isDraggingVertically && kotlin.math.abs(rawDragX) > 150f
-                                    
+
+                                    var didNavigate = false
                                     when {
                                         // Vertical swipe - threshold 150f
                                         shouldNavigateVertical -> {
                                             if (rawDragY < 0 && currentPageIndex < validPhotos.size - 1) {
                                                 currentPageIndex++ // UP = NEXT
+                                                didNavigate = true
                                             } else if (rawDragY > 0 && currentPageIndex > 0) {
                                                 currentPageIndex-- // DOWN = PREV
+                                                didNavigate = true
                                             }
                                         }
                                         // Horizontal swipe - threshold 150f
                                         shouldNavigateHorizontal -> {
                                             if (rawDragX < 0 && currentPageIndex < validPhotos.size - 1) {
                                                 currentPageIndex++ // LEFT = NEXT
+                                                didNavigate = true
                                             } else if (rawDragX > 0 && currentPageIndex > 0) {
                                                 currentPageIndex-- // RIGHT = PREV
-                                            }
-                                        }
-                                        else -> {
-                                            // Simple snap back to center - no animation
-                                            coroutineScope.launch {
-                                                dragXAnim.snapTo(0f)
-                                            }
-                                            coroutineScope.launch {
-                                                dragYAnim.snapTo(0f)
+                                                didNavigate = true
                                             }
                                         }
                                     }
+
+                                    if (!didNavigate) {
+                                        // Small spring-back when user drags against first/last item boundaries
+                                        coroutineScope.launch {
+                                            dragXAnim.animateTo(
+                                                targetValue = 0f,
+                                                animationSpec = spring(stiffness = Spring.StiffnessLow)
+                                            )
+                                        }
+                                        coroutineScope.launch {
+                                            dragYAnim.animateTo(
+                                                targetValue = 0f,
+                                                animationSpec = spring(stiffness = Spring.StiffnessLow)
+                                            )
+                                        }
+                                    }
+
                                     rawDragX = 0f
                                     rawDragY = 0f
                                 },
@@ -735,11 +749,11 @@ val canDeleteCurrent = currentFlick.userId == currentUser.uid
                                         val goingDown = amount.y > 0
                                         val goingUp = amount.y < 0
                                         
-                                        if (!(atTop && goingDown) && !(atBottom && goingUp)) {
-                                            rawDragY += amount.y
-                                            coroutineScope.launch {
-                                                dragYAnim.snapTo(rawDragY)
-                                            }
+                                        val blockedAtEdge = (atTop && goingDown) || (atBottom && goingUp)
+                                        val effectiveY = if (blockedAtEdge) amount.y * 0.22f else amount.y
+                                        rawDragY += effectiveY
+                                        coroutineScope.launch {
+                                            dragYAnim.snapTo(rawDragY)
                                         }
                                     } else {
                                         val atLeft = currentPageIndex == 0
@@ -749,11 +763,11 @@ val canDeleteCurrent = currentFlick.userId == currentUser.uid
                                         val goingRight = amount.x > 0
                                         val goingLeft = amount.x < 0
                                         
-                                        if (!(atLeft && goingRight) && !(atRight && goingLeft)) {
-                                            rawDragX += amount.x
-                                            coroutineScope.launch {
-                                                dragXAnim.snapTo(rawDragX)
-                                            }
+                                        val blockedAtEdge = (atLeft && goingRight) || (atRight && goingLeft)
+                                        val effectiveX = if (blockedAtEdge) amount.x * 0.22f else amount.x
+                                        rawDragX += effectiveX
+                                        coroutineScope.launch {
+                                            dragXAnim.snapTo(rawDragX)
                                         }
                                     }
                                     change.consume()

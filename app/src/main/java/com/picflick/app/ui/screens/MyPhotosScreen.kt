@@ -190,7 +190,11 @@ private fun PhotoGrid(
             userScrollEnabled = true // Enable scrolling for pull-to-refresh
         ) {
             // Show all items (scrollable)
-            items(photos) { photo ->
+            items(
+                items = photos,
+                key = { it.id },
+                contentType = { "photo" }
+            ) { photo ->
                 PhotoCard(
                     photo = photo,
                     onPhotoClick = { onPhotoClick(photo) },

@@ -812,7 +812,11 @@ private fun NewChatDialog(
                         .fillMaxWidth()
                         .weight(1f)
                 ) {
-                    items(friends) { friend ->
+                    items(
+                        items = friends,
+                        key = { it.uid },
+                        contentType = { "friend" }
+                    ) { friend ->
                         FullScreenFriendItem(
                             friend = friend,
                             isDarkMode = isDarkMode,

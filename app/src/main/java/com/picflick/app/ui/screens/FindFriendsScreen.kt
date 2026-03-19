@@ -269,7 +269,11 @@ private fun DiscoverTab(
                 LazyColumn(
                     state = listState
                 ) {
-                    items(filteredSuggestedUsers) { user ->
+                    items(
+                        items = filteredSuggestedUsers,
+                        key = { it.uid },
+                        contentType = { "suggested_user" }
+                    ) { user ->
                         UserResultItem(
                             user = user,
                             isFollowing = false, // Already filtered out followed users
@@ -383,7 +387,11 @@ private fun DiscoverTab(
                     EmptySearchState()
                 } else {
                     LazyColumn {
-                        items(viewModel.searchResults) { user ->
+                        items(
+                            items = viewModel.searchResults,
+                            key = { it.uid },
+                            contentType = { "search_user" }
+                        ) { user ->
                             UserResultItem(
                                 user = user,
                                 isFollowing = userProfile.following.contains(user.uid),
@@ -524,7 +532,11 @@ private fun ContactsTab(
                         LazyColumn(
                             state = listState
                         ) {
-                            items(filteredContacts) { user ->
+                            items(
+                                items = filteredContacts,
+                                key = { it.uid },
+                                contentType = { "contact_user" }
+                            ) { user ->
                                 UserResultItem(
                                     user = user,
                                     isFollowing = false, // Already filtered

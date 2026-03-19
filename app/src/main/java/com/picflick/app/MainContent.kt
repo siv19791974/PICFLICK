@@ -96,6 +96,7 @@ fun AuthenticatedContent(
     onPhotoSelected: (Uri) -> Unit,
     onOpenUploadSourceDialog: () -> Unit,
     pushPhoto: Flick? = null,
+    pushPhotoOpenComments: Boolean = false,
     onPushPhotoConsumed: () -> Unit = {}
 ) {
     val context = LocalContext.current
@@ -362,7 +363,8 @@ fun AuthenticatedContent(
                 onShareClick = { },
                 onDeleteClick = { onPushPhotoConsumed() },
                 canDelete = flick.userId == userProfile.uid,
-                onCaptionUpdated = { _, _ -> }
+                onCaptionUpdated = { _, _ -> },
+                openCommentPanelInitially = pushPhotoOpenComments
             )
         }
     }
@@ -1304,7 +1306,8 @@ selectedPhoto: Flick?,
     canDelete: Boolean,
     onCaptionUpdated: (Flick, String) -> Unit,
     friendProfiles: Map<String, UserProfile> = emptyMap(), // Map of userId -> UserProfile for looking up profile pics
-    onEditPhotoClick: (Flick) -> Unit = {} // Navigate to edit photo screen
+    onEditPhotoClick: (Flick) -> Unit = {}, // Navigate to edit photo screen
+    openCommentPanelInitially: Boolean = false
 ) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
@@ -1395,7 +1398,8 @@ onReaction = { reactionType ->
                 }
             },
             friendProfiles = friendProfiles, // Pass friend profiles for User B profile pics
-            onEditPhotoClick = onEditPhotoClick // Pass edit photo callback
+            onEditPhotoClick = onEditPhotoClick, // Pass edit photo callback
+            openCommentPanelInitially = openCommentPanelInitially
         )
 }
 }

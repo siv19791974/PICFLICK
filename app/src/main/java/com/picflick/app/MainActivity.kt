@@ -137,11 +137,17 @@ class MainActivity : ComponentActivity() {
             ?: if (deepLinkHost == "profile") deepLinkLastSegment else null
         val senderName = extras.getFirstString("senderName", "sender_name", "fromUserName", "userName")
         val notificationType = extras.getFirstString("type", "notificationType")
+        val notificationTypeLower = notificationType?.lowercase().orEmpty()
+        val isCommentNotification = notificationTypeLower.contains("comment")
+        val isFriendRequestNotification =
+            (notificationTypeLower.contains("friend") || notificationTypeLower.contains("follow")) &&
+                notificationTypeLower.contains("request")
+
         val explicitTargetScreen = extras.getFirstString("targetScreen", "screen", "destination")
-            ?: when (deepLinkHost) {
-                "photo" -> "photo"
-                "chat" -> "chat"
-                "profile" -> "profile"
+            ?: when {
+                deepLinkHost == "photo" || isCommentNotification -> "photo"
+                deepLinkHost == "chat" -> "chat"
+                deepLinkHost == "profile" || isFriendRequestNotification -> "profile"
                 else -> null
             }
 
@@ -149,18 +155,23 @@ class MainActivity : ComponentActivity() {
             !chatId.isNullOrBlank() ||
             !senderId.isNullOrBlank() ||
             !notificationType.isNullOrBlank() ||
-            !explicitTargetScreen.isNullOrBlank()
+            !explicitTargetScreen.isNullOrBlank() ||
+            isCommentNotification ||
+            isFriendRequestNotification
 
         if (!hasPushRoutingData) {
             return
         }
 
-        val targetScreen = explicitTargetScreen
-            ?: when {
-                !flickId.isNullOrBlank() -> "photo"
-                !chatId.isNullOrBlank() -> "chat"
-                else -> "notifications"
-            }
+        val targetScreen = when {
+            isCommentNotification -> "photo"
+            isFriendRequestNotification -> "profile"
+            !explicitTargetScreen.isNullOrBlank() -> explicitTargetScreen
+            !flickId.isNullOrBlank() -> "photo"
+            !chatId.isNullOrBlank() -> "chat"
+            !senderId.isNullOrBlank() -> "profile"
+            else -> "notifications"
+        }
 
         android.util.Log.d(
             "MainActivity",
@@ -174,6 +185,7 @@ class MainActivity : ComponentActivity() {
             putString("senderId", senderId ?: "")
             putString("senderName", senderName ?: "")
             putString("type", notificationType ?: "")
+            putBoolean("openComments", isCommentNotification)
         }
 
         pendingPushData = normalizedExtras
@@ -234,6 +246,7 @@ fun MainScreen(
 
     // State for push notification photo (opens FullScreenPhotoViewer directly)
     var pushPhoto by remember { mutableStateOf<Flick?>(null) }
+    var pushPhotoOpenComments by remember { mutableStateOf(false) }
 
     // State for selected chat (for navigation to ChatDetail)
     var selectedChatSession by remember { mutableStateOf<ChatSession?>(null) }
@@ -297,7 +310,8 @@ fun MainScreen(
                 }
                 "photo" -> {
                     val flickId = pushData.getString("flickId")
-                    android.util.Log.d("MainActivity", "Opening photo from push: flickId=$flickId")
+                    val openComments = pushData.getBoolean("openComments", false)
+                    android.util.Log.d("MainActivity", "Opening photo from push: flickId=$flickId, openComments=$openComments")
                     if (!flickId.isNullOrBlank()) {
                         // Load the flick and open FullScreenPhotoViewer
                         val repository = FlickRepository.getInstance()
@@ -305,6 +319,7 @@ fun MainScreen(
                             when (result) {
                                 is com.picflick.app.data.Result.Success -> {
                                     android.util.Log.d("MainActivity", "Photo loaded: ${result.data.imageUrl}")
+                                    pushPhotoOpenComments = openComments
                                     pushPhoto = result.data
                                 }
                                 is com.picflick.app.data.Result.Error -> {
@@ -830,7 +845,11 @@ fun MainScreen(
                         showUploadSourceDialog = true
                     },
                     pushPhoto = pushPhoto,
-                    onPushPhotoConsumed = { pushPhoto = null }
+                    pushPhotoOpenComments = pushPhotoOpenComments,
+                    onPushPhotoConsumed = {
+                        pushPhoto = null
+                        pushPhotoOpenComments = false
+                    }
                 )
             } else {
                 // Loading state - profile not loaded yet
