@@ -60,6 +60,7 @@ import com.picflick.app.util.withCacheBust
 import com.picflick.app.viewmodel.HomeViewModel
 import java.io.File
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 
 /**
@@ -202,7 +203,6 @@ fun HomeScreen(
                 else -> FlickGrid(
                     flicks = viewModel.flicks,
                     userProfile = userProfile,
-                    onLikeClick = { flick -> viewModel.toggleLike(flick, userProfile.uid, userProfile.displayName, currentUserWithLivePhoto.photoUrl) },
                     onPhotoClick = { flick ->
                         selectedFlick = flick
                         selectedFlickIndex = viewModel.flicks.indexOf(flick)
@@ -621,7 +621,6 @@ private fun UploadOverlay(
 private fun FlickGrid(
     flicks: List<Flick>,
     userProfile: UserProfile,
-    onLikeClick: (Flick) -> Unit,
     onPhotoClick: (Flick) -> Unit,
     onLongPress: (Flick) -> Unit,
     isLoadingMore: Boolean = false,
@@ -643,19 +642,33 @@ private fun FlickGrid(
 
         // Track scroll position for infinite scroll
         val listState = rememberLazyGridState()
-        
-        // Detect when user scrolls to bottom
-        LaunchedEffect(listState) {
-            snapshotFlow { 
-                listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index 
-            }.collect { lastVisibleIndex ->
-                if (lastVisibleIndex != null && 
-                    lastVisibleIndex >= flicks.size - 5 && // 5 items from bottom
-                    !isLoadingMore && 
-                    canLoadMore) {
-                    onLoadMore()
-                }
+        var hasRequestedForCurrentSize by remember { mutableStateOf(false) }
+
+        // Reset load-more request guard when item count changes (new page appended/refreshed)
+        LaunchedEffect(flicks.size) {
+            hasRequestedForCurrentSize = false
+        }
+
+        // Detect near-bottom with debounce + distinct change to reduce trigger churn while flinging
+        LaunchedEffect(listState, flicks.size, isLoadingMore, canLoadMore) {
+            snapshotFlow {
+                val lastVisibleIndex = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: -1
+                val thresholdIndex = (flicks.size - 5).coerceAtLeast(0)
+                lastVisibleIndex >= thresholdIndex
             }
+                .distinctUntilChanged()
+                .collect { isNearBottom ->
+                    if (isNearBottom && !isLoadingMore && canLoadMore && !hasRequestedForCurrentSize) {
+                        delay(120)
+                        val latestLastVisibleIndex = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: -1
+                        val latestThreshold = (flicks.size - 5).coerceAtLeast(0)
+                        val stillNearBottom = latestLastVisibleIndex >= latestThreshold
+                        if (stillNearBottom && !hasRequestedForCurrentSize) {
+                            hasRequestedForCurrentSize = true
+                            onLoadMore()
+                        }
+                    }
+                }
         }
 
         LazyVerticalGrid(
@@ -714,11 +727,14 @@ private fun FlickCard(
     onLongPress: () -> Unit,
     rowHeight: androidx.compose.ui.unit.Dp
 ) {
-    // Get the top reaction (highest count) to display on thumbnail
-    val reactionCounts = flick.getReactionCounts()
-    val topReaction = reactionCounts.maxByOrNull { it.value }
-    val topReactionCount = topReaction?.value ?: 0
-    val topReactionEmoji = topReaction?.key?.toEmoji() ?: "❤️"
+    // Keep derived reaction display stable per reaction map change
+    val topReactionDisplay = remember(flick.reactions) {
+        val reactionCounts = flick.getReactionCounts()
+        val topReaction = reactionCounts.maxByOrNull { it.value }
+        (topReaction?.key?.toEmoji() ?: "❤️") to (topReaction?.value ?: 0)
+    }
+    val topReactionEmoji = topReactionDisplay.first
+    val topReactionCount = topReactionDisplay.second
 
     Card(
         modifier = Modifier
