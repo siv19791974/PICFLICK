@@ -295,7 +295,11 @@ fun CommentsScreen(
                         contentPadding = PaddingValues(16.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        items(comments, key = { it.id }) { comment ->
+                        items(
+                            items = comments,
+                            key = { it.id },
+                            contentType = { "comment" }
+                        ) { comment ->
                             CommentItem(
                                 comment = comment,
                                 currentUserId = currentUser.uid,

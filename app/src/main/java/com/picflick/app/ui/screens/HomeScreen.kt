@@ -671,7 +671,11 @@ private fun FlickGrid(
             userScrollEnabled = true // Enable scrolling for pull-to-refresh
         ) {
             // Show all items (scrollable)
-            items(flicks, key = { it.id }) { flick ->
+            items(
+                items = flicks,
+                key = { it.id },
+                contentType = { "flick" }
+            ) { flick ->
                 FlickCard(
                     flick = flick,
                     userId = userProfile.uid,

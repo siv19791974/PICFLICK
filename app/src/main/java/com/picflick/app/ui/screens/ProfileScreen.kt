@@ -424,7 +424,11 @@ fun ProfileScreen(
                     ),
                     userScrollEnabled = false
                 ) {
-                    items(photos, key = { it.id }) { flick ->
+                    items(
+                        items = photos,
+                        key = { it.id },
+                        contentType = { "photo" }
+                    ) { flick ->
                         MyPhotoCard(
                             flick = flick,
                             userProfile = userProfile,
