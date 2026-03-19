@@ -27,6 +27,7 @@ enum class NotificationType {
     FRIEND_REQUEST, // Someone sent friend request
     MESSAGE,        // Someone sent you a message
     PHOTO_ADDED,    // Someone you follow added a photo
+    PROFILE_PHOTO_UPDATED, // A friend updated their profile photo
     MENTION,        // Someone mentioned you in comment
     STREAK_REMINDER,// Reminder to maintain streak
     ACHIEVEMENT,    // Achievement unlocked

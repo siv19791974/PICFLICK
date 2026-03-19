@@ -1,7 +1,10 @@
 package com.picflick.app.ui.screens
 
 import android.content.res.Configuration
+import android.graphics.Bitmap
 import android.net.Uri
+import android.os.Build
+import android.provider.MediaStore
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -9,7 +12,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -31,15 +34,17 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -47,7 +52,9 @@ import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.CachePolicy
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import com.picflick.app.data.Flick
 import com.picflick.app.data.ReactionType
 import com.picflick.app.data.UserProfile
@@ -59,6 +66,11 @@ import com.picflick.app.ui.components.AnimatedReactionPicker
 import com.picflick.app.ui.theme.ThemeManager
 import com.picflick.app.util.withCacheBust
 import com.picflick.app.ui.theme.isDarkModeBackground
+import java.io.File
+import java.io.FileOutputStream
+import kotlin.math.max
+import kotlin.math.min
+import kotlin.math.roundToInt
 
 /**
  * Modern Profile screen with enhanced UI
@@ -104,20 +116,22 @@ fun ProfileScreen(
     // Use cached photo URL for display (falls back to userProfile.photoUrl if empty)
     val displayPhotoUrl = cachedPhotoUrl.takeIf { it.isNotEmpty() } ?: userProfile.photoUrl
 
+    var pendingProfilePhotoUri by remember { mutableStateOf<Uri?>(null) }
+    var showCropDialog by remember { mutableStateOf(false) }
+
     // Image picker launcher
     val imagePicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
-        uri?.let { onPhotoSelected(it) }
+        if (uri != null) {
+            pendingProfilePhotoUri = uri
+            showCropDialog = true
+        }
     }
-    
+
     val friendsCount = remember(userProfile.followers, userProfile.following) {
         userProfile.followers.intersect(userProfile.following.toSet()).size
     }
-    val density = LocalDensity.current
-    val maxProfileDragPx = with(density) { 18.dp.toPx() }
-    var profilePhotoOffsetX by remember(displayPhotoUrl) { mutableFloatStateOf(0f) }
-    var profilePhotoOffsetY by remember(displayPhotoUrl) { mutableFloatStateOf(0f) }
     val scope = rememberCoroutineScope()
     val photosSectionBringIntoViewRequester = remember { BringIntoViewRequester() }
 
@@ -250,25 +264,9 @@ fun ProfileScreen(
                             .diskCachePolicy(CachePolicy.ENABLED)
                             .build(),
                         contentDescription = "Profile photo",
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .graphicsLayer {
-                                translationX = profilePhotoOffsetX
-                                translationY = profilePhotoOffsetY
-                            }
-                            .pointerInput(displayPhotoUrl) {
-                                if (displayPhotoUrl.isNotEmpty()) {
-                                    detectDragGestures { change, dragAmount ->
-                                        profilePhotoOffsetX = (profilePhotoOffsetX + dragAmount.x)
-                                            .coerceIn(-maxProfileDragPx, maxProfileDragPx)
-                                        profilePhotoOffsetY = (profilePhotoOffsetY + dragAmount.y)
-                                            .coerceIn(-maxProfileDragPx, maxProfileDragPx)
-                                        change.consume()
-                                    }
-                                }
-                            },
+                        modifier = Modifier.fillMaxSize(),
                         error = painterResource(id = android.R.drawable.ic_menu_myplaces),
-                        contentScale = androidx.compose.ui.layout.ContentScale.Crop
+                        contentScale = ContentScale.Crop
                     )
 
                     // Edit icon overlay
@@ -510,6 +508,217 @@ fun ProfileScreen(
             },
             currentReaction = flickForReaction?.getUserReaction(userProfile.uid)
         )
+    }
+
+    if (showCropDialog && pendingProfilePhotoUri != null) {
+        ProfilePhotoCropDialog(
+            imageUri = pendingProfilePhotoUri!!,
+            onDismiss = {
+                showCropDialog = false
+                pendingProfilePhotoUri = null
+            },
+            onConfirm = { croppedUri ->
+                showCropDialog = false
+                pendingProfilePhotoUri = null
+                croppedUri?.let(onPhotoSelected)
+            }
+        )
+    }
+}
+
+@Composable
+private fun ProfilePhotoCropDialog(
+    imageUri: Uri,
+    onDismiss: () -> Unit,
+    onConfirm: (Uri?) -> Unit
+) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var sourceBitmap by remember(imageUri) { mutableStateOf<Bitmap?>(null) }
+    var viewportSize by remember { mutableStateOf(IntSize.Zero) }
+    var scale by remember { mutableFloatStateOf(1f) }
+    var offset by remember { mutableStateOf(Offset.Zero) }
+    var isSaving by remember { mutableStateOf(false) }
+
+    LaunchedEffect(imageUri) {
+        sourceBitmap = withContext(Dispatchers.IO) {
+            loadBitmapFromUri(context, imageUri)
+        }
+        scale = 1f
+        offset = Offset.Zero
+    }
+
+    AlertDialog(
+        onDismissRequest = {
+            if (!isSaving) onDismiss()
+        },
+        confirmButton = {
+            TextButton(
+                enabled = sourceBitmap != null && !isSaving && viewportSize.width > 0 && viewportSize.height > 0,
+                onClick = {
+                    val bitmap = sourceBitmap ?: return@TextButton
+                    isSaving = true
+                    scope.launch {
+                        val croppedUri = withContext(Dispatchers.IO) {
+                            createCroppedProfileImageUri(
+                                context = context,
+                                sourceBitmap = bitmap,
+                                viewportSize = viewportSize,
+                                zoomScale = scale,
+                                panOffset = offset
+                            )
+                        }
+                        isSaving = false
+                        onConfirm(croppedUri)
+                    }
+                }
+            ) {
+                Text(if (isSaving) "Saving..." else "Save")
+            }
+        },
+        dismissButton = {
+            TextButton(enabled = !isSaving, onClick = onDismiss) {
+                Text("Cancel")
+            }
+        },
+        title = { Text("Adjust profile photo") },
+        text = {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(
+                    text = "Pinch to zoom and drag to position",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color.Gray
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .aspectRatio(1f)
+                        .clip(CircleShape)
+                        .background(Color.Black)
+                        .onSizeChanged { viewportSize = it }
+                        .pointerInput(sourceBitmap, viewportSize) {
+                            detectTransformGestures { _, pan, zoom, _ ->
+                                val bitmap = sourceBitmap ?: return@detectTransformGestures
+                                val nextScale = (scale * zoom).coerceIn(1f, 6f)
+                                val clampedOffset = clampPanOffset(
+                                    viewportSize = viewportSize,
+                                    imageWidth = bitmap.width,
+                                    imageHeight = bitmap.height,
+                                    scale = nextScale,
+                                    currentOffset = offset + pan
+                                )
+                                scale = nextScale
+                                offset = clampedOffset
+                            }
+                        },
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (sourceBitmap == null) {
+                        CircularProgressIndicator()
+                    } else {
+                        AsyncImage(
+                            model = sourceBitmap,
+                            contentDescription = "Crop profile photo",
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .graphicsLayer {
+                                    scaleX = scale
+                                    scaleY = scale
+                                    translationX = offset.x
+                                    translationY = offset.y
+                                }
+                        )
+                    }
+                }
+            }
+        }
+    )
+}
+
+private fun clampPanOffset(
+    viewportSize: IntSize,
+    imageWidth: Int,
+    imageHeight: Int,
+    scale: Float,
+    currentOffset: Offset
+): Offset {
+    if (viewportSize.width <= 0 || viewportSize.height <= 0 || imageWidth <= 0 || imageHeight <= 0) {
+        return Offset.Zero
+    }
+
+    val baseScale = max(
+        viewportSize.width.toFloat() / imageWidth.toFloat(),
+        viewportSize.height.toFloat() / imageHeight.toFloat()
+    )
+    val scaledWidth = imageWidth * baseScale * scale
+    val scaledHeight = imageHeight * baseScale * scale
+
+    val maxOffsetX = max(0f, (scaledWidth - viewportSize.width) / 2f)
+    val maxOffsetY = max(0f, (scaledHeight - viewportSize.height) / 2f)
+
+    return Offset(
+        x = currentOffset.x.coerceIn(-maxOffsetX, maxOffsetX),
+        y = currentOffset.y.coerceIn(-maxOffsetY, maxOffsetY)
+    )
+}
+
+private fun createCroppedProfileImageUri(
+    context: android.content.Context,
+    sourceBitmap: Bitmap,
+    viewportSize: IntSize,
+    zoomScale: Float,
+    panOffset: Offset
+): Uri? {
+    if (viewportSize.width <= 0 || viewportSize.height <= 0) return null
+
+    val baseScale = max(
+        viewportSize.width.toFloat() / sourceBitmap.width.toFloat(),
+        viewportSize.height.toFloat() / sourceBitmap.height.toFloat()
+    )
+    val totalScale = (baseScale * zoomScale).coerceAtLeast(0.0001f)
+
+    val cropWidth = (viewportSize.width / totalScale).roundToInt().coerceIn(1, sourceBitmap.width)
+    val cropHeight = (viewportSize.height / totalScale).roundToInt().coerceIn(1, sourceBitmap.height)
+
+    val centerX = sourceBitmap.width / 2f - (panOffset.x / totalScale)
+    val centerY = sourceBitmap.height / 2f - (panOffset.y / totalScale)
+
+    val left = (centerX - cropWidth / 2f).roundToInt().coerceIn(0, sourceBitmap.width - cropWidth)
+    val top = (centerY - cropHeight / 2f).roundToInt().coerceIn(0, sourceBitmap.height - cropHeight)
+
+    val cropped = Bitmap.createBitmap(sourceBitmap, left, top, cropWidth, cropHeight)
+    val outputSize = min(1024, min(cropped.width, cropped.height)).coerceAtLeast(256)
+    val normalized = Bitmap.createScaledBitmap(cropped, outputSize, outputSize, true)
+
+    val outputFile = File(context.cacheDir, "profile_crop_${System.currentTimeMillis()}.jpg")
+    FileOutputStream(outputFile).use { stream ->
+        normalized.compress(Bitmap.CompressFormat.JPEG, 92, stream)
+        stream.flush()
+    }
+
+    if (normalized != cropped) {
+        cropped.recycle()
+    }
+
+    return Uri.fromFile(outputFile)
+}
+
+private fun loadBitmapFromUri(context: android.content.Context, uri: Uri): Bitmap? {
+    return try {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            val source = android.graphics.ImageDecoder.createSource(context.contentResolver, uri)
+            android.graphics.ImageDecoder.decodeBitmap(source) { decoder, _, _ ->
+                decoder.isMutableRequired = false
+            }
+        } else {
+            @Suppress("DEPRECATION")
+            MediaStore.Images.Media.getBitmap(context.contentResolver, uri)
+        }
+    } catch (_: Exception) {
+        null
     }
 }
 
@@ -819,7 +1028,7 @@ private fun ProfilePhotoGridItem(
         modifier = Modifier
             .height(rowHeight)
             .combinedClickable(onClick = onPhotoClick),
-        shape = androidx.compose.ui.graphics.RectangleShape,
+        shape = RectangleShape,
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         colors = CardDefaults.cardColors(containerColor = Color.Transparent)
     ) {

@@ -286,7 +286,8 @@ fun NotificationsScreen(
                                                         onPhotoClick(fallbackId, notification.flickImageUrl, notification.senderId)
                                                     }
                                                 }
-                                                NotificationType.FOLLOW -> onUserProfileClick(notification.senderId)
+                                                NotificationType.FOLLOW,
+                                                NotificationType.PROFILE_PHOTO_UPDATED -> onUserProfileClick(notification.senderId)
                                                 NotificationType.MESSAGE -> onChatClick("", notification.senderId, notification.senderName, notification.senderPhotoUrl)
                                                 else -> Unit
                                             }
@@ -343,7 +344,8 @@ fun NotificationsScreen(
                                                         onPhotoClick(fallbackId, notification.flickImageUrl, notification.senderId)
                                                     }
                                                 }
-                                                NotificationType.FOLLOW -> onUserProfileClick(notification.senderId)
+                                                NotificationType.FOLLOW,
+                                                NotificationType.PROFILE_PHOTO_UPDATED -> onUserProfileClick(notification.senderId)
                                                 NotificationType.MESSAGE -> onChatClick("", notification.senderId, notification.senderName, notification.senderPhotoUrl)
                                                 else -> Unit
                                             }
@@ -456,6 +458,7 @@ private fun NotificationItem(
             "New message: $body"
         }
         NotificationType.PHOTO_ADDED -> "New flick uploaded"
+        NotificationType.PROFILE_PHOTO_UPDATED -> "$senderName updated their profile photo"
         NotificationType.MENTION -> "You're tagged in a photo"
         NotificationType.FRIEND_REQUEST -> "$senderName has requested to be your friend"
         else -> notification.message.ifBlank { notification.title.ifBlank { "Notification" } }
@@ -580,7 +583,7 @@ private fun NotificationItem(
                         }
                     }
                 }
-                notification.type == NotificationType.FOLLOW -> {
+                notification.type == NotificationType.FOLLOW || notification.type == NotificationType.PROFILE_PHOTO_UPDATED -> {
                     Button(
                         onClick = { onUserProfileClick(notification.senderId) },
                         shape = RoundedCornerShape(20.dp),
@@ -683,6 +686,7 @@ private fun getNotificationIcon(type: NotificationType) = when (type) {
     NotificationType.FRIEND_REQUEST -> Icons.Default.Person
     NotificationType.MESSAGE -> Icons.Default.Email
     NotificationType.PHOTO_ADDED -> Icons.Default.Info
+    NotificationType.PROFILE_PHOTO_UPDATED -> Icons.Default.Person
     NotificationType.MENTION -> Icons.Default.Email
     NotificationType.STREAK_REMINDER -> Icons.Default.Notifications
     NotificationType.ACHIEVEMENT -> Icons.Default.Notifications
@@ -698,6 +702,7 @@ private fun getNotificationColor(type: NotificationType) = when (type) {
     NotificationType.FRIEND_REQUEST -> Color(0xFF9C27B0) // Purple
     NotificationType.MESSAGE -> Color(0xFFFF9800) // Orange
     NotificationType.PHOTO_ADDED -> Color(0xFF00BCD4) // Cyan
+    NotificationType.PROFILE_PHOTO_UPDATED -> Color(0xFF3F51B5) // Indigo
     NotificationType.MENTION -> Color(0xFFFF5722) // Deep Orange
     NotificationType.STREAK_REMINDER -> Color(0xFFFFD700) // Gold
     NotificationType.ACHIEVEMENT -> Color(0xFFFFD700) // Gold
