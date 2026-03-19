@@ -43,7 +43,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.FileProvider
+import coil3.ImageLoader
 import coil3.compose.AsyncImage
+import coil3.request.CachePolicy
+import coil3.request.ImageRequest
 import com.picflick.app.data.ChatMessage
 import com.picflick.app.data.Flick
 import com.picflick.app.data.ReactionType
@@ -171,6 +174,7 @@ fun HomeScreen(
     }
 
     val isDarkMode = ThemeManager.isDarkMode.value
+    var isFeedAtTop by remember { mutableStateOf(true) }
 
     // Column WITHOUT verticalScroll (because LazyVerticalGrid has its own scroll)
     // NO BANNER HERE - banner is now in MainActivity's Scaffold topBar!
@@ -191,7 +195,10 @@ fun HomeScreen(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .pullRefresh(pullRefreshState)
+                .pullRefresh(
+                    state = pullRefreshState,
+                    enabled = isFeedAtTop && !viewModel.isLoadingMore
+                )
         ) {
             when {
                 viewModel.isLoading && viewModel.flicks.isEmpty() -> PhotoGridShimmer()
@@ -216,7 +223,10 @@ fun HomeScreen(
                     },
                     isLoadingMore = viewModel.isLoadingMore,
                     canLoadMore = viewModel.canLoadMore,
-                    onLoadMore = { viewModel.loadMoreFlicks() }
+                    onLoadMore = { viewModel.loadMoreFlicks() },
+                    onIsAtTopChanged = { isAtTop ->
+                        isFeedAtTop = isAtTop
+                    }
                 )
             }
 
@@ -625,7 +635,8 @@ private fun FlickGrid(
     onLongPress: (Flick) -> Unit,
     isLoadingMore: Boolean = false,
     canLoadMore: Boolean = true,
-    onLoadMore: () -> Unit = {}
+    onLoadMore: () -> Unit = {},
+    onIsAtTopChanged: (Boolean) -> Unit = {}
 ) {
     BoxWithConstraints(
         modifier = Modifier.fillMaxSize()
@@ -642,11 +653,51 @@ private fun FlickGrid(
 
         // Track scroll position for infinite scroll
         val listState = rememberLazyGridState()
+        val context = LocalContext.current
+        val prefetchImageLoader = remember(context) { ImageLoader.Builder(context).build() }
+        val prefetchedFlickIds = remember { mutableSetOf<String>() }
         var hasRequestedForCurrentSize by remember { mutableStateOf(false) }
 
         // Reset load-more request guard when item count changes (new page appended/refreshed)
         LaunchedEffect(flicks.size) {
             hasRequestedForCurrentSize = false
+            if (prefetchedFlickIds.size > flicks.size + 60) {
+                prefetchedFlickIds.clear()
+            }
+        }
+
+        // Notify parent whether feed is exactly at top (for top-only pull-to-refresh)
+        LaunchedEffect(listState) {
+            snapshotFlow {
+                listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset == 0
+            }
+                .distinctUntilChanged()
+                .collect { atTop -> onIsAtTopChanged(atTop) }
+        }
+
+        // Prefetch upcoming images just beyond current viewport
+        LaunchedEffect(listState, flicks) {
+            snapshotFlow { listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: -1 }
+                .distinctUntilChanged()
+                .collect { lastVisibleIndex ->
+                    if (lastVisibleIndex < 0 || flicks.isEmpty()) return@collect
+
+                    val start = (lastVisibleIndex + 1).coerceAtMost(flicks.lastIndex)
+                    val end = (lastVisibleIndex + 9).coerceAtMost(flicks.lastIndex)
+                    if (start > end) return@collect
+
+                    for (index in start..end) {
+                        val flick = flicks[index]
+                        if (!prefetchedFlickIds.add(flick.id)) continue
+
+                        val request = ImageRequest.Builder(context)
+                            .data(withCacheBust(flick.imageUrl, flick.timestamp))
+                            .memoryCachePolicy(CachePolicy.ENABLED)
+                            .diskCachePolicy(CachePolicy.ENABLED)
+                            .build()
+                        prefetchImageLoader.enqueue(request)
+                    }
+                }
         }
 
         // Detect near-bottom with debounce + distinct change to reduce trigger churn while flinging
