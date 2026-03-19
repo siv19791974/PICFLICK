@@ -1,4 +1,4 @@
-<resources>
+<resources xmlns:tools="http://schemas.android.com/tools">
     <string name="app_name">PICFLICK</string>
     
     <!-- Web Client ID for Google Sign-In - Should be moved to local.properties in production -->
@@ -146,7 +146,7 @@
     <string name="about_description">Share photos with friends in a private, ad-free space.</string>
     <string name="about_privacy_policy">Privacy Policy</string>
     <string name="about_terms">Terms of Service</string>
-    <string name="about_contact">Contact Us</string>
+    <string name="about_contact" tools:ignore="MissingTranslation">Contact Us</string>
     <string name="storage_photos_stored">Photos stored</string>
     <string name="storage_avg_photo_size">Average photo size</string>
     <string name="storage_current_quality">Current quality</string>
@@ -201,16 +201,16 @@
     <string name="error_unknown">Unknown error</string>
     
     <!-- ==================== ACCESSIBILITY CONTENT DESCRIPTIONS ==================== -->
-    <string name="content_desc_back">Go back</string>
-    <string name="content_desc_email">Send email</string>
-    <string name="content_desc_person">Person</string>
-    <string name="content_desc_add_friend">Add friend</string>
-    <string name="content_desc_storage">Storage</string>
-    <string name="content_desc_upgrade">Upgrade</string>
-    <string name="content_desc_warning">Warning</string>
-    <string name="content_desc_info">Information</string>
-    <string name="content_desc_check">Checkmark</string>
-    <string name="content_desc_photo">Photo</string>
-    <string name="content_desc_next">Next</string>
+    <string name="content_desc_back" tools:ignore="MissingTranslation">Go back</string>
+    <string name="content_desc_email" tools:ignore="MissingTranslation">Send email</string>
+    <string name="content_desc_person" tools:ignore="MissingTranslation">Person</string>
+    <string name="content_desc_add_friend" tools:ignore="MissingTranslation">Add friend</string>
+    <string name="content_desc_storage" tools:ignore="MissingTranslation">Storage</string>
+    <string name="content_desc_upgrade" tools:ignore="MissingTranslation">Upgrade</string>
+    <string name="content_desc_warning" tools:ignore="MissingTranslation">Warning</string>
+    <string name="content_desc_info" tools:ignore="MissingTranslation">Information</string>
+    <string name="content_desc_check" tools:ignore="MissingTranslation">Checkmark</string>
+    <string name="content_desc_photo" tools:ignore="MissingTranslation">Photo</string>
+    <string name="content_desc_next" tools:ignore="MissingTranslation">Next</string>
     
 </resources>
