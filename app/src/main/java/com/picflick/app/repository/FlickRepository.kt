@@ -1416,6 +1416,51 @@ class FlickRepository private constructor() {
     }
 
     /**
+     * Notify mutual friends that a user updated their profile photo.
+     */
+    suspend fun createProfilePhotoUpdatedNotifications(
+        userId: String,
+        userName: String,
+        userPhotoUrl: String
+    ): Result<Unit> {
+        return try {
+            val userDoc = db.collection("users").document(userId).get().await()
+            val profile = userDoc.toObject(UserProfile::class.java)
+            val followers = profile?.followers ?: emptyList()
+            val following = profile?.following ?: emptyList()
+            val mutualFriends = followers.intersect(following.toSet())
+
+            if (mutualFriends.isEmpty()) {
+                return Result.Success(Unit)
+            }
+
+            val now = System.currentTimeMillis()
+            for (friendId in mutualFriends) {
+                if (friendId == userId) continue
+
+                val notification = hashMapOf(
+                    "id" to UUID.randomUUID().toString(),
+                    "userId" to friendId,
+                    "senderId" to userId,
+                    "senderName" to userName,
+                    "senderPhotoUrl" to userPhotoUrl,
+                    "type" to "PROFILE_PHOTO_UPDATED",
+                    "title" to "$userName updated their profile picture",
+                    "message" to "Tap to view profile",
+                    "isRead" to false,
+                    "timestamp" to now
+                )
+
+                db.collection("notifications").add(notification).await()
+            }
+
+            Result.Success(Unit)
+        } catch (e: Exception) {
+            Result.Error(e, "Failed to create profile photo update notifications")
+        }
+    }
+
+    /**
      * Listen to notifications in real-time with safe type parsing
      * REMOVED: orderBy and limit to avoid Firestore composite index requirement
      * Now using client-side sorting instead

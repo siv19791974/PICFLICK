@@ -66,6 +66,7 @@ data class NotificationPreferences(
             NotificationType.FRIEND_REQUEST -> pushFollows
             NotificationType.MESSAGE -> pushMessages
             NotificationType.PHOTO_ADDED -> pushNewPhotos
+            NotificationType.PROFILE_PHOTO_UPDATED -> pushFollows
             NotificationType.MENTION -> pushMentions
             NotificationType.STREAK_REMINDER -> pushStreakReminders
             NotificationType.ACHIEVEMENT -> pushAchievements
@@ -87,6 +88,7 @@ data class NotificationPreferences(
             NotificationType.FRIEND_REQUEST -> follows
             NotificationType.MESSAGE -> messages
             NotificationType.PHOTO_ADDED -> newPhotos
+            NotificationType.PROFILE_PHOTO_UPDATED -> follows
             NotificationType.MENTION -> mentions
             NotificationType.STREAK_REMINDER -> streakReminders
             NotificationType.ACHIEVEMENT -> achievements

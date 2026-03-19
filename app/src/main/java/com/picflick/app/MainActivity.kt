@@ -447,6 +447,20 @@ fun MainScreen(
                             is com.picflick.app.data.Result.Success -> {
                                 // Update profile with new photo URL
                                 authViewModel.updateProfilePhoto(result.data)
+
+                                // Notify mutual friends that profile photo changed
+                                val notificationResult = repository.createProfilePhotoUpdatedNotifications(
+                                    userId = profile.uid,
+                                    userName = profile.displayName,
+                                    userPhotoUrl = result.data
+                                )
+                                if (notificationResult is com.picflick.app.data.Result.Error) {
+                                    android.util.Log.w(
+                                        "ProfilePhotoNotification",
+                                        "Failed to create profile-photo update notifications: ${notificationResult.message}"
+                                    )
+                                }
+
                                 Toast.makeText(context, "Profile photo updated!", Toast.LENGTH_SHORT).show()
                             }
                             is com.picflick.app.data.Result.Error -> {
