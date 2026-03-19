@@ -3,9 +3,14 @@ package com.picflick.app.viewmodel
 import com.picflick.app.data.Flick
 import com.picflick.app.data.Result
 import com.picflick.app.repository.FlickRepository
+import com.picflick.app.utils.Analytics
+import io.mockk.Runs
+import io.mockk.coEvery
 import io.mockk.every
+import io.mockk.just
 import io.mockk.mockk
 import io.mockk.mockkObject
+import io.mockk.mockkStatic
 import io.mockk.slot
 import io.mockk.unmockkAll
 import io.mockk.verify
@@ -57,6 +62,11 @@ class HomeViewModelTest {
         // Mock the repository singleton
         mockRepository = mockk(relaxed = true)
         mockkObject(FlickRepository)
+        mockkObject(Analytics)
+        mockkStatic("android.util.Log")
+        every { android.util.Log.d(any(), any()) } returns 0
+        every { android.util.Log.e(any(), any()) } returns 0
+        every { Analytics.trackReactionSent(any()) } just Runs
         every { FlickRepository.getInstance() } returns mockRepository
 
         viewModel = HomeViewModel()
@@ -100,13 +110,19 @@ class HomeViewModelTest {
     fun `loadFlicks should populate flicks on success`() {
         // Given
         val userId = "test_user"
-        val callbackSlot = slot<(Result<List<Flick>>) -> Unit>()
-        every { mockRepository.getFlicksForUser(userId, capture(callbackSlot)) } answers {
-            callbackSlot.captured(Result.Success(testFlicks))
-        }
+        coEvery {
+            mockRepository.getFlicksForUserPaginated(
+                userId = userId,
+                lastTimestamp = null,
+                lastFlickId = null,
+                pageSize = any(),
+                excludeIds = any()
+            )
+        } returns Result.Success(testFlicks)
 
         // When - use overload that accepts userId
         viewModel.loadFlicks(userId)
+        testDispatcher.scheduler.advanceUntilIdle()
 
         // Then
         assertEquals(2, viewModel.flicks.size)
@@ -121,13 +137,19 @@ class HomeViewModelTest {
         // Given
         val userId = "test_user"
         val errorMessage = "Network error"
-        val callbackSlot = slot<(Result<List<Flick>>) -> Unit>()
-        every { mockRepository.getFlicksForUser(userId, capture(callbackSlot)) } answers {
-            callbackSlot.captured(Result.Error(Exception(errorMessage), errorMessage))
-        }
+        coEvery {
+            mockRepository.getFlicksForUserPaginated(
+                userId = userId,
+                lastTimestamp = null,
+                lastFlickId = null,
+                pageSize = any(),
+                excludeIds = any()
+            )
+        } returns Result.Error(Exception(errorMessage), errorMessage)
 
         // When - use overload that accepts userId
         viewModel.loadFlicks(userId)
+        testDispatcher.scheduler.advanceUntilIdle()
 
         // Then
         assertTrue(viewModel.flicks.isEmpty())

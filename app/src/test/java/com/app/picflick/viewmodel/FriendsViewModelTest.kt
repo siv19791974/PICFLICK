@@ -3,11 +3,16 @@ package com.picflick.app.viewmodel
 import com.picflick.app.data.Result
 import com.picflick.app.data.UserProfile
 import com.picflick.app.repository.FlickRepository
+import com.picflick.app.repository.SocialRepository
+import com.picflick.app.utils.Analytics
 import io.mockk.coEvery
 import io.mockk.coVerify
+import io.mockk.Runs
 import io.mockk.every
+import io.mockk.just
 import io.mockk.mockk
 import io.mockk.mockkObject
+import io.mockk.mockkStatic
 import io.mockk.slot
 import io.mockk.unmockkAll
 import kotlinx.coroutines.Dispatchers
@@ -29,6 +34,7 @@ class FriendsViewModelTest {
 
     private lateinit var viewModel: FriendsViewModel
     private lateinit var mockRepository: FlickRepository
+    private lateinit var mockSocialRepository: SocialRepository
     private val testDispatcher = StandardTestDispatcher()
 
     private val testUsers = listOf(
@@ -75,10 +81,20 @@ class FriendsViewModelTest {
     fun setup() {
         Dispatchers.setMain(testDispatcher)
         
-        // Mock the repository singleton
+        // Mock repository singletons
         mockRepository = mockk(relaxed = true)
+        mockSocialRepository = mockk(relaxed = true)
         mockkObject(FlickRepository)
+        mockkObject(SocialRepository)
+        mockkObject(Analytics)
+        mockkStatic("android.util.Log")
         every { FlickRepository.getInstance() } returns mockRepository
+        every { SocialRepository.getInstance() } returns mockSocialRepository
+        every { Analytics.trackSearch(any()) } just Runs
+        every { Analytics.trackFriendRequestSent() } just Runs
+        every { Analytics.trackUnfollow() } just Runs
+        every { android.util.Log.d(any(), any()) } returns 0
+        every { android.util.Log.e(any(), any()) } returns 0
 
         viewModel = FriendsViewModel()
     }
@@ -202,13 +218,20 @@ class FriendsViewModelTest {
     }
 
     @Test
-    fun `followUser should call repository followUser method`() = runTest {
+    fun `sendFollowRequest should call repository sendFollowRequest method`() = runTest {
         // Given
         val currentUserId = "user1"
         val targetUser = testUsers[0] // user2
-        
-        coEvery { mockRepository.followUser(currentUserId, targetUser.uid, currentUser.displayName) } returns Result.Success(Unit)
-        
+
+        coEvery {
+            mockSocialRepository.sendFollowRequest(
+                currentUserId = currentUserId,
+                targetUserId = targetUser.uid,
+                currentUserName = currentUser.displayName,
+                currentUserPhotoUrl = currentUser.photoUrl
+            )
+        } returns Result.Success(Unit)
+
         // Setup search results to contain target user
         val query = "User"
         val callbackSlot = slot<(Result<List<UserProfile>>) -> Unit>()
@@ -218,21 +241,31 @@ class FriendsViewModelTest {
         viewModel.searchUsers(query, currentUserId)
 
         // When
-        viewModel.followUser(currentUserId, targetUser, currentUser)
+        viewModel.sendFollowRequest(currentUserId, targetUser, currentUser)
         testDispatcher.scheduler.advanceUntilIdle()
 
         // Then
-        coVerify { mockRepository.followUser(currentUserId, targetUser.uid, currentUser.displayName) }
+        coVerify {
+            mockSocialRepository.sendFollowRequest(
+                currentUserId = currentUserId,
+                targetUserId = targetUser.uid,
+                currentUserName = currentUser.displayName,
+                currentUserPhotoUrl = currentUser.photoUrl
+            )
+        }
     }
 
     @Test
-    fun `unfollowUser should call repository unfollowUser method`() = runTest {
+    fun `unfollowUser should call repository unfollowUser callback method`() = runTest {
         // Given
         val currentUserId = "user1"
         val targetUserId = "user3"
-        
-        coEvery { mockRepository.unfollowUser(currentUserId, targetUserId) } returns Result.Success(Unit)
-        
+
+        val unfollowCallback = slot<(Result<Unit>) -> Unit>()
+        every { mockSocialRepository.unfollowUser(currentUserId, targetUserId, capture(unfollowCallback)) } answers {
+            unfollowCallback.captured(Result.Success(Unit))
+        }
+
         // Setup search results
         val query = "User"
         val callbackSlot = slot<(Result<List<UserProfile>>) -> Unit>()
@@ -246,7 +279,7 @@ class FriendsViewModelTest {
         testDispatcher.scheduler.advanceUntilIdle()
 
         // Then
-        coVerify { mockRepository.unfollowUser(currentUserId, targetUserId) }
+        io.mockk.verify { mockSocialRepository.unfollowUser(currentUserId, targetUserId, any()) }
     }
 
     @Test
