@@ -39,6 +39,7 @@ import com.picflick.app.data.UserProfile
 import com.picflick.app.ui.components.FullScreenLoading
 import com.picflick.app.ui.theme.isDarkModeBackground
 import com.picflick.app.ui.theme.ThemeManager
+import com.picflick.app.util.rememberLiveUserPhotoUrl
 import com.picflick.app.viewmodel.FriendsViewModel
 
 /**
@@ -803,6 +804,7 @@ private fun UserResultItem(
     subtitle: String? = null
 ) {
     val isDarkMode = ThemeManager.isDarkMode.value
+    val liveUserPhoto = rememberLiveUserPhotoUrl(user.uid, user.photoUrl)
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -819,9 +821,9 @@ private fun UserResultItem(
             verticalAlignment = Alignment.CenterVertically
         ) {
             // Profile photo - clickable
-            if (user.photoUrl.isNotEmpty()) {
+            if (liveUserPhoto.isNotEmpty()) {
                 AsyncImage(
-                    model = user.photoUrl,
+                    model = liveUserPhoto,
                     contentDescription = null,
                     modifier = Modifier
                         .size(56.dp)

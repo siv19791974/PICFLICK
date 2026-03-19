@@ -36,6 +36,7 @@ import com.picflick.app.data.UserProfile
 import com.picflick.app.ui.components.ListItemShimmer
 import com.picflick.app.ui.theme.isDarkModeBackground
 import com.picflick.app.ui.theme.ThemeManager
+import com.picflick.app.util.rememberLiveUserPhotoUrl
 import com.picflick.app.viewmodel.FriendsViewModel
 
 /**
@@ -206,6 +207,8 @@ private fun FriendListItem(
     isRemoving: Boolean = false,
     onDeleteFriend: () -> Unit = {}
 ) {
+    val liveFriendPhoto = rememberLiveUserPhotoUrl(friend.uid, friend.photoUrl)
+
     // Use Row like ChatListItem - no card
 Row(
         modifier = Modifier
@@ -219,9 +222,9 @@ Row(
                 .size(56.dp)
                 .clickable { onProfilePhotoClick() }
         ) {
-            if (friend.photoUrl.isNotEmpty()) {
+            if (liveFriendPhoto.isNotEmpty()) {
                 AsyncImage(
-                    model = friend.photoUrl,
+                    model = liveFriendPhoto,
                     contentDescription = friend.displayName,
                     modifier = Modifier
                         .fillMaxSize()

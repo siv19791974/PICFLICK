@@ -43,6 +43,7 @@ import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.allowHardware
 import coil3.toBitmap
+import com.picflick.app.util.rememberLiveUserPhotoUrl
 import com.canhub.cropper.CropImageContract
 import com.canhub.cropper.CropImageContractOptions
 import com.canhub.cropper.CropImageOptions
@@ -585,6 +586,8 @@ private fun EditTaggedFriendChip(
     isDarkMode: Boolean,
     onRemove: () -> Unit
 ) {
+    val liveFriendPhoto = rememberLiveUserPhotoUrl(friend.uid, friend.photoUrl)
+
     Box(
         modifier = Modifier
             .clip(RoundedCornerShape(16.dp))
@@ -599,9 +602,9 @@ private fun EditTaggedFriendChip(
                     .background(if (isDarkMode) Color.Black.copy(alpha = 0.15f) else Color.White.copy(alpha = 0.2f)),
                 contentAlignment = Alignment.Center
             ) {
-                if (friend.photoUrl.isNotBlank()) {
+                if (liveFriendPhoto.isNotBlank()) {
                     AsyncImage(
-                        model = friend.photoUrl,
+                        model = liveFriendPhoto,
                         contentDescription = null,
                         modifier = Modifier.fillMaxSize(),
                         contentScale = ContentScale.Crop
@@ -634,6 +637,8 @@ private fun EditFriendPickerItem(
     isTagged: Boolean,
     onClick: () -> Unit
 ) {
+    val liveFriendPhoto = rememberLiveUserPhotoUrl(friend.uid, friend.photoUrl)
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -648,9 +653,9 @@ private fun EditFriendPickerItem(
                 .background(Color.Gray.copy(alpha = 0.3f)),
             contentAlignment = Alignment.Center
         ) {
-            if (friend.photoUrl.isNotBlank()) {
+            if (liveFriendPhoto.isNotBlank()) {
                 AsyncImage(
-                    model = friend.photoUrl,
+                    model = liveFriendPhoto,
                     contentDescription = null,
                     modifier = Modifier.fillMaxSize(),
                     contentScale = ContentScale.Crop

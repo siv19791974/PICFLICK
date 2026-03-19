@@ -47,6 +47,7 @@ import com.picflick.app.ui.theme.isDarkModeBackground
 import com.picflick.app.data.getStorageLimitBytes
 import com.picflick.app.data.getStorageLimitGB
 import com.picflick.app.utils.LocaleHelper
+import com.picflick.app.util.rememberLiveUserPhotoUrl
 
 /**
  * Settings screen with user preferences and account options
@@ -674,6 +675,7 @@ private fun ProfileHeaderWithStorage(
     val tierColor = tier.getColor()
     val storageUsed = userProfile.storageUsedBytes
     val storageLimit = tier.getStorageLimitBytes()
+    val liveUserPhoto = rememberLiveUserPhotoUrl(userProfile.uid, userProfile.photoUrl)
     val storagePercent = if (storageLimit > 0) {
         (storageUsed * 100 / storageLimit).toInt()
     } else 0
@@ -721,9 +723,9 @@ private fun ProfileHeaderWithStorage(
                             .background(Color(0xFF2C2C2E)),
                         contentAlignment = Alignment.Center
                     ) {
-                        if (userProfile.photoUrl.isNotEmpty()) {
+                        if (liveUserPhoto.isNotEmpty()) {
                             AsyncImage(
-                                model = userProfile.photoUrl,
+                                model = liveUserPhoto,
                                 contentDescription = "Profile",
                                 modifier = Modifier.fillMaxSize(),
                                 contentScale = androidx.compose.ui.layout.ContentScale.Crop
