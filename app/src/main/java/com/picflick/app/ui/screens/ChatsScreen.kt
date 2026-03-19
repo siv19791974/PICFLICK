@@ -870,6 +870,8 @@ private fun FullScreenFriendItem(
     onClick: () -> Unit,
     onProfilePhotoClick: () -> Unit
 ) {
+    val liveFriendPhoto = rememberLiveUserPhotoUrl(friend.uid, friend.photoUrl)
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -883,9 +885,9 @@ private fun FullScreenFriendItem(
                 .size(56.dp)
                 .clickable { onProfilePhotoClick() }
         ) {
-            if (friend.photoUrl.isNotEmpty()) {
+            if (liveFriendPhoto.isNotEmpty()) {
                 AsyncImage(
-                    model = friend.photoUrl,
+                    model = liveFriendPhoto,
                     contentDescription = friend.displayName,
                     modifier = Modifier
                         .fillMaxSize()
@@ -961,6 +963,8 @@ private fun FriendListItem(
     onClick: () -> Unit,
     onProfilePhotoClick: () -> Unit
 ) {
+    val liveFriendPhoto = rememberLiveUserPhotoUrl(friend.uid, friend.photoUrl)
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -973,7 +977,7 @@ private fun FriendListItem(
             modifier = Modifier.clickable { onProfilePhotoClick() }
         ) {
             AsyncImage(
-                model = friend.photoUrl,
+                model = liveFriendPhoto,
                 contentDescription = null,
                 modifier = Modifier
                     .size(50.dp)

@@ -27,6 +27,7 @@ import com.picflick.app.repository.FlickRepository
 import com.picflick.app.ui.theme.ThemeManager
 import com.picflick.app.ui.theme.isDarkModeBackground
 import com.picflick.app.ui.theme.isDarkModeSurface
+import com.picflick.app.util.rememberLiveUserPhotoUrl
 
 /**
  * Privacy Settings Screen - Privacy by Default
@@ -549,6 +550,7 @@ private fun BlockedUserItem(
     val textColor = if (isDarkMode) Color.White else Color.Black
     val subtitleColor = if (isDarkMode) Color.Gray else Color.DarkGray
     val cardBackground = if (isDarkMode) Color(0xFF1C1C1E) else Color.White
+    val liveUserPhoto = rememberLiveUserPhotoUrl(user.uid, user.photoUrl)
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -564,9 +566,9 @@ private fun BlockedUserItem(
             verticalAlignment = Alignment.CenterVertically
         ) {
             // Profile Photo
-            if (user.photoUrl.isNotEmpty()) {
+            if (liveUserPhoto.isNotEmpty()) {
                 AsyncImage(
-                    model = user.photoUrl,
+                    model = liveUserPhoto,
                     contentDescription = null,
                     modifier = Modifier
                         .size(48.dp)
