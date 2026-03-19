@@ -7,6 +7,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.picflick.app.Constants
 import com.picflick.app.data.FeedFilter
 import com.picflick.app.data.Flick
 import com.picflick.app.data.FriendGroup
@@ -54,6 +55,13 @@ class HomeViewModel : ViewModel() {
     var errorMessage by mutableStateOf<String?>(null)
         private set
 
+    /** One-shot signal for load-more failures (used for toast in fullscreen) */
+    var loadMoreFailureMessage by mutableStateOf<String?>(null)
+        private set
+
+    var loadMoreFailureVersion by mutableIntStateOf(0)
+        private set
+
     /** Number of photos uploaded today (for daily limits) */
     var todayUploadCount by mutableIntStateOf(0)
         private set
@@ -61,6 +69,11 @@ class HomeViewModel : ViewModel() {
     /** Current user ID for filtering */
     var currentUserId by mutableStateOf<String?>(null)
         private set
+
+    // Deterministic pagination cursor for AllFriends feed
+    private var paginationCursorTimestamp: Long? = null
+    private var paginationCursorId: String? = null
+    private var consecutiveEmptyPages = 0
 
     /** Available friend groups for filtering */
     var friendGroups = mutableStateListOf<FriendGroup>()
@@ -87,17 +100,29 @@ class HomeViewModel : ViewModel() {
         errorMessage = null
         isLoadingMore = false
         canLoadMore = true
+        paginationCursorTimestamp = null
+        paginationCursorId = null
+        consecutiveEmptyPages = 0
 
         when (val filter = selectedFilter) {
             is FeedFilter.AllFriends -> {
                 // Load all friends' flicks (first page)
                 viewModelScope.launch {
-                    when (val result = repository.getFlicksForUserPaginated(userId, null, 20)) {
+                    when (val result = repository.getFlicksForUserPaginated(
+                        userId = userId,
+                        lastTimestamp = null,
+                        lastFlickId = null,
+                        pageSize = Constants.Pagination.FLICKS_PER_PAGE,
+                        excludeIds = emptySet()
+                    )) {
                         is Result.Success -> {
                             flicks.clear()
                             flicks.addAll(result.data)
+                            paginationCursorTimestamp = result.data.lastOrNull()?.timestamp
+                            paginationCursorId = result.data.lastOrNull()?.id
+                            consecutiveEmptyPages = 0
                             isLoading = false
-                            canLoadMore = result.data.size >= 20
+                            canLoadMore = result.data.isNotEmpty()
                         }
                         is Result.Error -> {
                             errorMessage = result.message
@@ -134,31 +159,47 @@ class HomeViewModel : ViewModel() {
      */
     fun loadMoreFlicks() {
         val userId = currentUserId
-        if (userId == null || isLoadingMore || !canLoadMore) return
+        if (userId == null || isLoadingMore) return
 
-        // Get last flick timestamp for pagination
-        val lastFlick = flicks.lastOrNull() ?: return
-        val lastTimestamp = lastFlick.timestamp
+        // Use deterministic cursor state instead of deriving from current list tail
+        val cursorTimestamp = paginationCursorTimestamp ?: flicks.lastOrNull()?.timestamp
+        val cursorId = paginationCursorId ?: flicks.lastOrNull()?.id
+        if (cursorTimestamp == null) return
+
+        val existingIds = flicks.map { it.id }.filter { it.isNotBlank() }.toSet()
 
         isLoadingMore = true
 
         viewModelScope.launch {
-            when (val result = repository.getFlicksForUserPaginated(userId, lastTimestamp, 20)) {
+            when (val result = repository.getFlicksForUserPaginated(
+                userId = userId,
+                lastTimestamp = cursorTimestamp,
+                lastFlickId = cursorId,
+                pageSize = Constants.Pagination.FLICKS_PER_PAGE,
+                excludeIds = existingIds
+            )) {
                 is Result.Success -> {
                     val newFlicks = result.data
                     if (newFlicks.isNotEmpty()) {
-                        // Filter out duplicates
-                        val existingIds = flicks.map { it.id }.toSet()
-                        val uniqueNewFlicks = newFlicks.filter { it.id !in existingIds }
-                        flicks.addAll(uniqueNewFlicks)
+                        flicks.addAll(newFlicks)
+                        paginationCursorTimestamp = newFlicks.last().timestamp
+                        paginationCursorId = newFlicks.last().id
+                        consecutiveEmptyPages = 0
+                        canLoadMore = true
+                    } else {
+                        consecutiveEmptyPages += 1
+                        // Allow a few sparse windows before declaring true end of feed
+                        canLoadMore = consecutiveEmptyPages < 3
+                        paginationCursorTimestamp = (paginationCursorTimestamp ?: cursorTimestamp) - 1L
                     }
-                    canLoadMore = newFlicks.size >= 20
                     isLoadingMore = false
                 }
                 is Result.Error -> {
-                    // Don't show error for pagination - just stop loading
+                    // Keep UI responsive and expose one-shot signal for fullscreen toast diagnostics
                     isLoadingMore = false
                     canLoadMore = false
+                    loadMoreFailureMessage = result.message.ifBlank { "Failed to load more photos" }
+                    loadMoreFailureVersion += 1
                 }
                 is Result.Loading -> { }
             }
@@ -422,6 +463,10 @@ class HomeViewModel : ViewModel() {
      */
     fun clearError() {
         errorMessage = null
+    }
+
+    fun clearLoadMoreFailure() {
+        loadMoreFailureMessage = null
     }
 
     /**

@@ -110,6 +110,15 @@ fun HomeScreen(
         viewModel.loadFriendGroups(userProfile.uid)
     }
 
+    // Diagnostic toast: when fullscreen/list near-end load-more fails, surface it immediately
+    val loadMoreFailureVersion = viewModel.loadMoreFailureVersion
+    LaunchedEffect(loadMoreFailureVersion) {
+        val msg = viewModel.loadMoreFailureMessage
+        if (!msg.isNullOrBlank()) {
+            Toast.makeText(context, "Load-more failed: $msg", Toast.LENGTH_SHORT).show()
+            viewModel.clearLoadMoreFailure()
+        }
+    }
 
     LaunchedEffect(userProfile.uid) {
         viewModel.checkDailyUploads(userProfile.uid)
@@ -249,11 +258,8 @@ fun HomeScreen(
     }
 
     // Full-screen photo viewer with comments
-    // Use key to force recomposition when reactions change
-    val flicksHash = viewModel.flicks.sumOf { it.getTotalReactions() }
     selectedFlick?.let { flick ->
-        key(flicksHash) {
-            FullScreenPhotoViewer(
+        FullScreenPhotoViewer(
             flick = flick,
             currentUser = currentUserWithLivePhoto,
             onDismiss = { selectedFlick = null },
@@ -281,13 +287,19 @@ fun HomeScreen(
             allPhotos = viewModel.flicks,
             currentIndex = selectedFlickIndex,
             onNavigateToPhoto = { index ->
-                selectedFlickIndex = index
-                selectedFlick = viewModel.flicks.getOrNull(index)
-
                 // Keep loading more while swiping near the end so very long sessions continue.
                 val remaining = viewModel.flicks.size - 1 - index
-                if (remaining <= 2 && viewModel.canLoadMore && !viewModel.isLoadingMore) {
+                if (remaining <= 2 && !viewModel.isLoadingMore) {
                     viewModel.loadMoreFlicks()
+                }
+
+                // CRITICAL: never null-dismiss fullscreen when boundary index arrives before append.
+                if (index in viewModel.flicks.indices) {
+                    selectedFlickIndex = index
+                    selectedFlick = viewModel.flicks[index]
+                } else {
+                    // Keep current photo visible until the new page appends.
+                    selectedFlickIndex = index.coerceAtMost((viewModel.flicks.size - 1).coerceAtLeast(0))
                 }
             },
             onUserProfileClick = { userId ->
@@ -340,7 +352,6 @@ fun HomeScreen(
                 onEditPhotoClick(flick)
             }
         )
-        } // End key
     }
 
     if (showShareToChatDialog && flickToShare != null) {

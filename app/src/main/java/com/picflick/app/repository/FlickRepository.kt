@@ -109,10 +109,12 @@ class FlickRepository private constructor() {
     suspend fun getFlicksForUserPaginated(
         userId: String,
         lastTimestamp: Long? = null,
-        pageSize: Int = 50  // Increased from 20 to load more photos at once
+        lastFlickId: String? = null,
+        pageSize: Int = 50,  // Increased from 20 to load more photos at once
+        excludeIds: Set<String> = emptySet()
     ): Result<List<Flick>> {
         return try {
-            android.util.Log.d("FlickRepository", "Loading photos for user: $userId, lastTimestamp: $lastTimestamp, pageSize: $pageSize")
+            android.util.Log.d("FlickRepository", "Loading photos for user: $userId, lastTimestamp: $lastTimestamp, lastFlickId: $lastFlickId, pageSize: $pageSize, excludeIds: ${excludeIds.size}")
             
             // Get friends list
             val userDoc = db.collection("users").document(userId).get().await()
@@ -121,10 +123,12 @@ class FlickRepository private constructor() {
             
             android.util.Log.d("FlickRepository", "User has ${friends.size} friends: $friends")
 
+            val fetchPoolSize = maxOf(pageSize * 10, 300).toLong()
+
             // Query user's own photos (NO orderBy to avoid composite index requirement)
             val ownFlicksSnapshot = db.collection("flicks")
                 .whereEqualTo("userId", userId)
-                .limit(pageSize.toLong() * 2)  // Load more to account for merging
+                .limit(fetchPoolSize)
                 .get()
                 .await()
             
@@ -146,7 +150,7 @@ class FlickRepository private constructor() {
                         val friendsPrivacySnapshot = db.collection("flicks")
                             .whereIn("userId", friendBatch)
                             .whereEqualTo("privacy", "friends")
-                            .limit(pageSize.toLong() * 2)
+                            .limit(fetchPoolSize)
                             .get()
                             .await()
                         
@@ -162,7 +166,7 @@ class FlickRepository private constructor() {
                         val publicPrivacySnapshot = db.collection("flicks")
                             .whereIn("userId", friendBatch)
                             .whereEqualTo("privacy", "public")
-                            .limit(pageSize.toLong() * 2)
+                            .limit(fetchPoolSize)
                             .get()
                             .await()
                         
@@ -178,7 +182,7 @@ class FlickRepository private constructor() {
                         val privatePrivacySnapshot = db.collection("flicks")
                             .whereIn("userId", friendBatch)
                             .whereEqualTo("privacy", "private")
-                            .limit(pageSize.toLong() * 2)
+                            .limit(fetchPoolSize)
                             .get()
                             .await()
                         
@@ -228,12 +232,26 @@ class FlickRepository private constructor() {
             
             android.util.Log.d("FlickRepository", "After deduplication: ${allFlicks.size} photos")
             
-            // Manual pagination - filter out photos older than lastTimestamp
+            // Manual pagination with timestamp+id tie-breaker to prevent same-timestamp stalls.
+            // If boundary ids are blank/missing, fall back to inclusive timestamp window and rely on excludeIds.
             if (lastTimestamp != null) {
-                allFlicks = allFlicks.filter { it.timestamp < lastTimestamp }
-                android.util.Log.d("FlickRepository", "After pagination filter: ${allFlicks.size} photos")
+                allFlicks = allFlicks.filter { flick ->
+                    flick.timestamp < lastTimestamp ||
+                        (flick.timestamp == lastTimestamp && (
+                            lastFlickId == null ||
+                                flick.id.isBlank() ||
+                                flick.id < lastFlickId
+                            ))
+                }
+                android.util.Log.d("FlickRepository", "After pagination boundary filter: ${allFlicks.size} photos")
             }
-            
+
+            // Exclude already-loaded ids from caller to avoid duplicate-window loops
+            if (excludeIds.isNotEmpty()) {
+                allFlicks = allFlicks.filter { it.id !in excludeIds }
+                android.util.Log.d("FlickRepository", "After excludeIds filter: ${allFlicks.size} photos")
+            }
+
             // Take only the requested page size
             allFlicks = allFlicks.take(pageSize)
 
@@ -250,7 +268,12 @@ class FlickRepository private constructor() {
      */
     fun getFlicksForUser(userId: String, onResult: (Result<List<Flick>>) -> Unit) {
         repositoryScope.launch {
-            val result = getFlicksForUserPaginated(userId, null, Constants.Pagination.FLICKS_PER_PAGE)
+            val result = getFlicksForUserPaginated(
+                userId = userId,
+                lastTimestamp = null,
+                lastFlickId = null,
+                pageSize = Constants.Pagination.FLICKS_PER_PAGE
+            )
             onResult(result)
         }
     }
