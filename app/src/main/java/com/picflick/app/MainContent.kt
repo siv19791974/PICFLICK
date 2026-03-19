@@ -211,6 +211,10 @@ fun AuthenticatedContent(
 
         is Screen.StreakAchievements -> StreakAchievementsScreen(
             currentStreak = profileViewModel.currentStreak,
+            currentUserId = userProfile.uid,
+            photos = profileViewModel.photos,
+            totalReactionsReceived = profileViewModel.totalReactions,
+            followingCount = userProfile.following.size,
             onBack = { onScreenChange(Screen.Profile) }
         )
 
