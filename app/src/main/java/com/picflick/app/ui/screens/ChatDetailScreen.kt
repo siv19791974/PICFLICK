@@ -54,6 +54,7 @@ import com.picflick.app.repository.FlickRepository
 import com.picflick.app.ui.theme.PicFlickBannerBackground
 import com.picflick.app.ui.theme.ThemeManager
 import com.picflick.app.ui.theme.isDarkModeBackground
+import com.picflick.app.util.rememberChatImageModel
 import com.picflick.app.util.rememberLiveUserPhotoUrl
 import com.picflick.app.viewmodel.ChatViewModel
 import kotlinx.coroutines.delay
@@ -893,6 +894,7 @@ private fun ChatBubble(
         RoundedCornerShape(topStart = 4.dp, topEnd = 20.dp, bottomStart = 20.dp, bottomEnd = 20.dp)
     }
     val isPhotoOnly = message.imageUrl.isNotBlank() && message.text.isBlank() && !message.isReply()
+    val chatImageModel = rememberChatImageModel(message.imageUrl, message.timestamp)
     var swipeOffsetX by remember(message.id) { mutableStateOf(0f) }
     var imageAspectRatio by remember(message.id) { mutableFloatStateOf(1f) }
     val isPortraitPhoto = imageAspectRatio <= 1f
@@ -981,7 +983,7 @@ if (message.isReply()) {
                                 if (message.imageUrl.isNotBlank()) {
                                     Box(modifier = photoBoxModifier) {
                                         AsyncImage(
-                                            model = message.imageUrl,
+                                            model = chatImageModel,
                                             contentDescription = "Sent photo",
                                             modifier = Modifier
                                                 .matchParentSize()
@@ -1137,7 +1139,7 @@ modifier = Modifier
                                 if (message.imageUrl.isNotBlank()) {
                                     Box(modifier = photoBoxModifier) {
                                         AsyncImage(
-                                            model = message.imageUrl,
+                                            model = chatImageModel,
                                             contentDescription = "Sent photo",
                                             modifier = Modifier
                                                 .matchParentSize()
