@@ -74,6 +74,7 @@ class HomeViewModel : ViewModel() {
     private var paginationCursorTimestamp: Long? = null
     private var paginationCursorId: String? = null
     private var consecutiveEmptyPages = 0
+    private var lastLoadMoreRequestKey: String? = null
 
     /** Available friend groups for filtering */
     var friendGroups = mutableStateListOf<FriendGroup>()
@@ -103,6 +104,7 @@ class HomeViewModel : ViewModel() {
         paginationCursorTimestamp = null
         paginationCursorId = null
         consecutiveEmptyPages = 0
+        lastLoadMoreRequestKey = null
 
         when (val filter = selectedFilter) {
             is FeedFilter.AllFriends -> {
@@ -167,7 +169,10 @@ class HomeViewModel : ViewModel() {
         if (cursorTimestamp == null) return
 
         val existingIds = flicks.map { it.id }.filter { it.isNotBlank() }.toSet()
+        val requestKey = "$cursorTimestamp|${cursorId.orEmpty()}|${flicks.size}"
+        if (lastLoadMoreRequestKey == requestKey) return
 
+        lastLoadMoreRequestKey = requestKey
         isLoadingMore = true
 
         viewModelScope.launch {
@@ -181,6 +186,7 @@ class HomeViewModel : ViewModel() {
                 is Result.Success -> {
                     val newFlicks = result.data
                     if (newFlicks.isNotEmpty()) {
+                        lastLoadMoreRequestKey = null
                         flicks.addAll(newFlicks)
                         paginationCursorTimestamp = newFlicks.last().timestamp
                         paginationCursorId = newFlicks.last().id
