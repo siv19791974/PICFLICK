@@ -490,7 +490,8 @@ Column(modifier = Modifier.fillMaxSize()) {
                             ) {
                                 itemsIndexed(
                                     items = viewModel.messages,
-                                    key = { _, item -> item.id }
+                                    key = { _, item -> item.id },
+                                    contentType = { _, _ -> "chat_message" }
                                 ) { _, message ->
                                     val isMe = message.senderId == currentUser.uid
                                     ChatBubble(
@@ -758,7 +759,11 @@ Column(modifier = Modifier.fillMaxSize()) {
                                 horizontalArrangement = Arrangement.spacedBy(6.dp),
                                 verticalArrangement = Arrangement.spacedBy(6.dp)
                             ) {
-                                items(myFlicks, key = { it.id }) { flick ->
+                                items(
+                                    items = myFlicks,
+                                    key = { it.id },
+                                    contentType = { "flick" }
+                                ) { flick ->
                                     AsyncImage(
                                         model = flick.imageUrl,
                                         contentDescription = "My photo",

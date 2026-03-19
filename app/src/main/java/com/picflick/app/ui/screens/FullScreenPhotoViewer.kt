@@ -1383,7 +1383,11 @@ if (canDeleteCurrent) {
                                         contentPadding = PaddingValues(vertical = 4.dp),
                                         verticalArrangement = Arrangement.spacedBy(8.dp)
                                     ) {
-                                        items(topLevelComments, key = { it.id }) { comment ->
+                                        items(
+                                            items = topLevelComments,
+                                            key = { it.id },
+                                            contentType = { "comment" }
+                                        ) { comment ->
                                             Column {
                                                 // Main comment
                                                 CompactCommentItem(

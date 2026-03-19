@@ -135,7 +135,11 @@ modifier = Modifier.weight(1f),
                     LazyColumn(
                         contentPadding = PaddingValues(vertical = 8.dp)
                     ) {
-                        items(visibleFollowingUsers, key = { it.uid }) { friend ->
+                        items(
+                            items = visibleFollowingUsers,
+                            key = { it.uid },
+                            contentType = { "friend" }
+                        ) { friend ->
                             FriendListItem(
                                 friend = friend,
                                 onProfilePhotoClick = { onProfilePhotoClick(friend) },

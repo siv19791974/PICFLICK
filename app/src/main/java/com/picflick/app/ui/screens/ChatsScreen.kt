@@ -341,7 +341,8 @@ fun ChatsScreen(
                         ) {
                             items(
                                 items = filteredChatSessions,
-                                key = { it.id }
+                                key = { it.id },
+                                contentType = { "chat_session" }
                             ) { session ->
                                 val otherUserId = session.participants.find { it != userProfile.uid } ?: ""
                                 var otherUserName by remember(session.id, otherUserId) {

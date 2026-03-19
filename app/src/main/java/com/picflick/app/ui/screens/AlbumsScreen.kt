@@ -186,7 +186,11 @@ fun AlbumsScreen(
                         horizontalArrangement = Arrangement.spacedBy(16.dp),
                         verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
-                        items(albums, key = { it.id }) { album ->
+                        items(
+                            items = albums,
+                            key = { it.id },
+                            contentType = { "album" }
+                        ) { album ->
                             AlbumItem(
                                 album = album,
                                 isDarkMode = isDarkMode,
