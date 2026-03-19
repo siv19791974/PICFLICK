@@ -157,7 +157,12 @@ val listState = rememberLazyListState()
         isLoadingMyFlicks = true
         myFlickPickerError = null
         scope.launch {
-            when (val result = flickRepository.getFlicksForUserPaginated(currentUser.uid, null, 60)) {
+            when (val result = flickRepository.getFlicksForUserPaginated(
+                userId = currentUser.uid,
+                lastTimestamp = null,
+                lastFlickId = null,
+                pageSize = 60
+            )) {
                 is Result.Success -> {
                     val candidateFlicks = result.data.filter { it.imageUrl.isNotBlank() }
                     val ownerIdsToCheck = candidateFlicks
