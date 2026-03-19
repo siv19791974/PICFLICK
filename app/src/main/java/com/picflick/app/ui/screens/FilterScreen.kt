@@ -453,7 +453,11 @@ fun FilterScreen(
                                     .height(104.dp)
                                     .padding(bottom = 12.dp)
                             ) {
-                                items(filters) { filter ->
+                                items(
+                                    items = filters,
+                                    key = { it.name },
+                                    contentType = { "upload_filter" }
+                                ) { filter ->
                                     FilterIcon(
                                         filter = filter,
                                         isSelected = selectedFilter == filter,

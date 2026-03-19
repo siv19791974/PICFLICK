@@ -182,7 +182,11 @@ fun PrivacyScreen(
                     EmptyBlockedUsers(isDarkMode = isDarkMode)
                 }
             } else {
-                items(blockedUsers) { blockedUser ->
+                items(
+                    items = blockedUsers,
+                    key = { it.uid },
+                    contentType = { "blocked_user" }
+                ) { blockedUser ->
                     BlockedUserItem(
                         user = blockedUser,
                         onUnblock = { showUnblockDialog = blockedUser },

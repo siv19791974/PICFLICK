@@ -234,7 +234,11 @@ private fun TrendingContent(
         }
 
         // Photo grid for the rest
-        items(flicks.drop(1).chunked(2)) { rowFlicks ->
+        items(
+            items = flicks.drop(1).chunked(2),
+            key = { row -> row.joinToString("|") { it.id } },
+            contentType = { "photo_row" }
+        ) { rowFlicks ->
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -265,7 +269,11 @@ private fun PopularContent(
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        items(flicks.take(20)) { flick ->
+        items(
+            items = flicks.take(20),
+            key = { it.id },
+            contentType = { "popular_photo" }
+        ) { flick ->
             PopularPhotoRow(
                 flick = flick,
                 rank = flicks.indexOf(flick) + 1,
@@ -287,7 +295,11 @@ private fun NewContent(
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        items(flicks.take(50)) { flick ->
+        items(
+            items = flicks.take(50),
+            key = { it.id },
+            contentType = { "new_photo" }
+        ) { flick ->
             NewPhotoCard(
                 flick = flick,
                 onPhotoClick = onPhotoClick,
@@ -331,7 +343,11 @@ private fun ForYouContent(
                 )
             }
 
-            items(friendFlicks) { flick ->
+            items(
+                items = friendFlicks,
+                key = { it.id },
+                contentType = { "friend_photo" }
+            ) { flick ->
                 ExplorePhotoCard(
                     flick = flick,
                     onPhotoClick = onPhotoClick

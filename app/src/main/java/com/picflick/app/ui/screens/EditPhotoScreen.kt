@@ -397,7 +397,11 @@ withContext(Dispatchers.Main) {
                                     .height(104.dp)
                                     .padding(bottom = 12.dp)
                             ) {
-                                items(localFilters) { filter ->
+                                items(
+                                    items = localFilters,
+                                    key = { it.name },
+                                    contentType = { "edit_filter" }
+                                ) { filter ->
                                     EditFilterIcon(
                                         filter = filter,
                                         isSelected = selectedFilter == filter,
