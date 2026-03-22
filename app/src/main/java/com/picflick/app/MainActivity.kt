@@ -10,18 +10,27 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.Badge
+import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
@@ -31,6 +40,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -38,7 +48,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
@@ -243,6 +255,14 @@ fun MainScreen(
 ) {
     var currentScreen by remember { mutableStateOf<Screen>(Screen.Home) }
     var wasPreviouslyLoggedOut by remember { mutableStateOf(true) }
+    val appContext = LocalContext.current
+
+    val onboardingPrefs = remember {
+        appContext.getSharedPreferences("picflick_onboarding", android.content.Context.MODE_PRIVATE)
+    }
+    var hasSeenOnboarding by remember {
+        mutableStateOf(onboardingPrefs.getBoolean("has_seen_onboarding", false))
+    }
 
     // State for push notification photo (opens FullScreenPhotoViewer directly)
     var pushPhoto by remember { mutableStateOf<Flick?>(null) }
@@ -253,7 +273,7 @@ fun MainScreen(
     var selectedOtherUserId by remember { mutableStateOf<String>("") }
 
     // Track login state for analytics
-    val activity = LocalContext.current as? MainActivity
+    val activity = appContext as? MainActivity
     val currentUser = authViewModel.currentUser
 
     val pushEventVersion = activity?.pushEventVersion ?: 0
@@ -825,11 +845,24 @@ fun MainScreen(
                 )
         ) {
             if (currentUser == null) {
-                // Not authenticated - show login
-                LoginScreen(
-                    authViewModel = authViewModel,
-                    onLoginSuccess = {}
-                )
+                if (!hasSeenOnboarding) {
+                    OnboardingScreen(
+                        onSkip = {
+                            onboardingPrefs.edit().putBoolean("has_seen_onboarding", true).apply()
+                            hasSeenOnboarding = true
+                        },
+                        onFinish = {
+                            onboardingPrefs.edit().putBoolean("has_seen_onboarding", true).apply()
+                            hasSeenOnboarding = true
+                        }
+                    )
+                } else {
+                    // Not authenticated - show login
+                    LoginScreen(
+                        authViewModel = authViewModel,
+                        onLoginSuccess = {}
+                    )
+                }
             } else if (userProfile != null) {
                 // Authenticated - show main content with navigation
                 AuthenticatedContent(
@@ -877,5 +910,81 @@ fun MainScreen(
                 }
             }
         }
+    }
+}
+
+private data class OnboardingStep(
+    val title: String,
+    val body: String
+)
+
+@Composable
+private fun OnboardingScreen(
+    onSkip: () -> Unit,
+    onFinish: () -> Unit
+) {
+    val steps = remember {
+        listOf(
+            OnboardingStep("Welcome to PicFlick", "Private photo sharing for real friends."),
+            OnboardingStep("Add friends fast", "Find people you trust and build your circle."),
+            OnboardingStep("Share your first moment", "Post, react, and chat in one place.")
+        )
+    }
+    var index by remember { mutableIntStateOf(0) }
+    val step = steps[index]
+    val isLast = index == steps.lastIndex
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(24.dp),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(
+            text = step.title,
+            style = MaterialTheme.typography.headlineMedium,
+            fontWeight = FontWeight.Bold
+        )
+        Spacer(modifier = Modifier.height(12.dp))
+        Text(
+            text = step.body,
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+
+        Spacer(modifier = Modifier.height(24.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            repeat(steps.size) { dot ->
+                Box(
+                    modifier = Modifier
+                        .padding(horizontal = 4.dp)
+                        .size(if (dot == index) 10.dp else 8.dp)
+                        .background(
+                            color = if (dot == index) MaterialTheme.colorScheme.primary else Color.Gray,
+                            shape = androidx.compose.foundation.shape.CircleShape
+                        )
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(28.dp))
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            OutlinedButton(onClick = onSkip) {
+                Text("Skip")
+            }
+            Button(onClick = {
+                if (isLast) onFinish() else index += 1
+            }) {
+                Text(if (isLast) "Get Started" else "Next")
+            }
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = "${index + 1}/${steps.size}",
+            fontSize = 12.sp,
+            color = Color.Gray
+        )
     }
 }
