@@ -185,16 +185,31 @@ class ChatRepository {
                 .await()
 
             // Update session last message
-            db.collection("chatSessions").document(chatId)
-                .update(
-                    mapOf(
-                        "lastMessage" to if (message.text.isBlank() && message.imageUrl.isNotEmpty()) "📷 Photo" else message.text,
-                        "lastTimestamp" to message.timestamp,
-                        "lastSenderId" to message.senderId,
-                        "lastMessageRead" to false  // Reset to unread when sending
-                    )
-                )
-                .await()
+            val sessionDoc = db.collection("chatSessions").document(chatId)
+            val participantsSnapshot = sessionDoc.get().await()
+            val participants = (participantsSnapshot.get("participants") as? List<*>)
+                ?.filterIsInstance<String>()
+                ?: emptyList()
+            val senderId = message.senderId
+
+            val updates = mutableMapOf<String, Any>(
+                "lastMessage" to if (message.text.isBlank() && message.imageUrl.isNotEmpty()) "📷 Photo" else message.text,
+                "lastTimestamp" to message.timestamp,
+                "lastSenderId" to senderId,
+                "lastMessageRead" to false  // Reset to unread when sending
+            )
+
+            participants.forEach { participantId ->
+                if (participantId == senderId) {
+                    updates["unreadCount_$participantId"] = 0
+                    updates["unreadCount.$participantId"] = 0
+                } else {
+                    updates["unreadCount_$participantId"] = FieldValue.increment(1)
+                    updates["unreadCount.$participantId"] = FieldValue.increment(1)
+                }
+            }
+
+            sessionDoc.update(updates).await()
 
             // Create notification for recipient
             val notificationMessage = when {
@@ -263,6 +278,9 @@ class ChatRepository {
                 "participants" to listOf(userId1, userId2),
                 "participantNames" to mapOf(userId1 to user1Name, userId2 to user2Name),
                 "participantPhotos" to mapOf(userId1 to user1Photo, userId2 to user2Photo),
+                "unreadCount" to mapOf(userId1 to 0, userId2 to 0),
+                "unreadCount_$userId1" to 0,
+                "unreadCount_$userId2" to 0,
                 "lastMessage" to "",
                 "lastTimestamp" to System.currentTimeMillis(),
                 "createdAt" to System.currentTimeMillis()
@@ -361,9 +379,15 @@ class ChatRepository {
                 batch.commit().await()
                 android.util.Log.d("ChatRepository", "Batch commit SUCCESS - marked ${messagesToUpdate.size} messages as read")
                 
-                // Update chat session to mark last message as read
+                // Update chat session to mark last message as read + clear unread count for current user
                 db.collection("chatSessions").document(chatId)
-                    .update("lastMessageRead", true)
+                    .update(
+                        mapOf(
+                            "lastMessageRead" to true,
+                            "unreadCount_$userId" to 0,
+                            "unreadCount.$userId" to 0
+                        )
+                    )
                     .await()
             } else {
                 android.util.Log.d("ChatRepository", "No messages to update")

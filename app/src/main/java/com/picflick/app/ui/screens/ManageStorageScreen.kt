@@ -54,6 +54,8 @@ import com.picflick.app.viewmodel.BillingViewModel
 import com.picflick.app.viewmodel.SubscriptionProduct
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ListenerRegistration
+import com.google.firebase.storage.FirebaseStorage
+import com.google.firebase.storage.StorageReference
 import kotlinx.coroutines.tasks.await
 
 /**
@@ -83,8 +85,7 @@ fun ManageStorageScreen(
 
     // Live storage sync from user profile document.
     DisposableEffect(userProfile.uid) {
-        var registration: ListenerRegistration? = null
-        registration = FirebaseFirestore.getInstance()
+        val registration: ListenerRegistration = FirebaseFirestore.getInstance()
             .collection("users")
             .document(userProfile.uid)
             .addSnapshotListener { snapshot, _ ->
@@ -93,7 +94,23 @@ fun ManageStorageScreen(
             }
 
         onDispose {
-            registration?.remove()
+            registration.remove()
+        }
+    }
+
+    // One-time backfill for legacy users who have photos but no storageUsedBytes tracked yet.
+    LaunchedEffect(userProfile.uid) {
+        if (storageUsed > 0L) return@LaunchedEffect
+        val recalculatedBytes = runCatching { calculateStorageUsedBytesFromFiles(userProfile.uid) }.getOrNull() ?: return@LaunchedEffect
+        if (recalculatedBytes > 0L) {
+            storageUsed = recalculatedBytes
+            runCatching {
+                FirebaseFirestore.getInstance()
+                    .collection("users")
+                    .document(userProfile.uid)
+                    .update("storageUsedBytes", recalculatedBytes)
+                    .await()
+            }
         }
     }
     
@@ -584,6 +601,26 @@ private fun UpgradeOptionsCard(
             }
         }
     }
+}
+
+private suspend fun calculateStorageUsedBytesFromFiles(userId: String): Long {
+    val root = FirebaseStorage.getInstance().reference.child("photos").child(userId)
+    return calculateFolderBytesRecursive(root)
+}
+
+private suspend fun calculateFolderBytesRecursive(folderRef: StorageReference): Long {
+    val listResult = folderRef.listAll().await()
+    var total = 0L
+
+    listResult.items.forEach { itemRef ->
+        total += itemRef.metadata.await().sizeBytes
+    }
+
+    listResult.prefixes.forEach { childFolder ->
+        total += calculateFolderBytesRecursive(childFolder)
+    }
+
+    return total
 }
 
 @Composable

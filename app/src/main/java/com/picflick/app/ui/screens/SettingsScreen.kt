@@ -50,6 +50,9 @@ import com.picflick.app.utils.LocaleHelper
 import com.picflick.app.util.rememberLiveUserPhotoUrl
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ListenerRegistration
+import com.google.firebase.storage.FirebaseStorage
+import com.google.firebase.storage.StorageReference
+import kotlinx.coroutines.tasks.await
 
 /**
  * Settings screen with user preferences and account options
@@ -725,6 +728,22 @@ private fun ProfileHeaderWithStorage(
             registration.remove()
         }
     }
+
+    // One-time backfill for legacy users who have photos but no storageUsedBytes tracked yet.
+    LaunchedEffect(userProfile.uid) {
+        if (storageUsed > 0L) return@LaunchedEffect
+        val recalculatedBytes = runCatching { calculateStorageUsedBytesFromFiles(userProfile.uid) }.getOrNull() ?: return@LaunchedEffect
+        if (recalculatedBytes > 0L) {
+            storageUsed = recalculatedBytes
+            runCatching {
+                FirebaseFirestore.getInstance()
+                    .collection("users")
+                    .document(userProfile.uid)
+                    .update("storageUsedBytes", recalculatedBytes)
+                    .await()
+            }
+        }
+    }
     
     Column(
         modifier = Modifier
@@ -1292,6 +1311,26 @@ private fun LanguageOption(
             Text("✓", color = Color(0xFF00D09C))
         }
     }
+}
+
+private suspend fun calculateStorageUsedBytesFromFiles(userId: String): Long {
+    val root = FirebaseStorage.getInstance().reference.child("photos").child(userId)
+    return calculateFolderBytesRecursive(root)
+}
+
+private suspend fun calculateFolderBytesRecursive(folderRef: StorageReference): Long {
+    val listResult = folderRef.listAll().await()
+    var total = 0L
+
+    listResult.items.forEach { itemRef ->
+        total += itemRef.metadata.await().sizeBytes
+    }
+
+    listResult.prefixes.forEach { childFolder ->
+        total += calculateFolderBytesRecursive(childFolder)
+    }
+
+    return total
 }
 
 
