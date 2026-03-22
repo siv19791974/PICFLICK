@@ -173,22 +173,27 @@ class AuthViewModel : ViewModel() {
             repository.getUserProfile(user.uid) { existingResult ->
                 when (existingResult) {
                     is Result.Success -> {
-                        // Profile exists - use existing data, only update if needed
+                        // Profile exists - preserve user-edited profile data (especially custom profile photo).
                         val existingProfile = existingResult.data
-                        
-                        // Only update if Firebase has newer display name or photo
-                        val needsUpdate = (user.displayName != null && user.displayName != existingProfile.displayName) ||
-                                         (user.photoUrl != null && user.photoUrl.toString() != existingProfile.photoUrl)
-                        
-                        if (needsUpdate) {
-                            // Update only changed fields, preserve bio and other data
+
+                        // Only update display name from Firebase when changed.
+                        val needsDisplayNameUpdate =
+                            (user.displayName != null && user.displayName != existingProfile.displayName)
+
+                        // Only seed photo from Firebase if app profile photo is currently empty.
+                        val shouldSeedPhoto =
+                            existingProfile.photoUrl.isBlank() && user.photoUrl != null
+
+                        if (needsDisplayNameUpdate || shouldSeedPhoto) {
                             val updatedProfile = existingProfile.copy(
                                 displayName = user.displayName ?: existingProfile.displayName,
-                                photoUrl = if (user.photoUrl != null) user.photoUrl.toString() else existingProfile.photoUrl
+                                photoUrl = if (shouldSeedPhoto) user.photoUrl.toString() else existingProfile.photoUrl
                             )
                             repository.saveUserProfile(user.uid, updatedProfile) { result ->
                                 if (result is Result.Success) {
                                     userProfile = updatedProfile
+                                } else {
+                                    userProfile = existingProfile
                                 }
                             }
                         } else {
@@ -197,8 +202,14 @@ class AuthViewModel : ViewModel() {
                         }
                     }
                     is Result.Error -> {
-                        // Profile doesn't exist - create new one
-                        createNewProfile(user, context)
+                        // Only create a new profile when truly missing; don't overwrite on transient read errors.
+                        val msg = existingResult.message.lowercase()
+                        if (msg.contains("not found")) {
+                            createNewProfile(user, context)
+                        } else {
+                            errorMessage = existingResult.message
+                            loadUserProfile(user.uid)
+                        }
                     }
                     is Result.Loading -> { }
                 }
