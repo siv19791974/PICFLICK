@@ -883,7 +883,7 @@ fun MainScreen(
                         selectedChatSession = session
                         selectedOtherUserId = userId
                     },
-                    onSignOut = { authViewModel.signOut() },
+                    onSignOut = { authViewModel.signOut(appContext) },
                     selectedPhotoUri = selectedPhotoUri,
                     onPhotoSelected = { uri ->
                         profilePhotoToUpload = uri
