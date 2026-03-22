@@ -867,7 +867,7 @@ private fun SettingsScreenContent(
         onBack = { onScreenChange(Screen.Home) },
         onSignOut = onSignOut,
         onDeleteAccount = {
-            authViewModel.deleteAccount { success, error ->
+            authViewModel.deleteAccount(context) { success, error ->
                 if (success) {
                     onSignOut()
                 } else {
