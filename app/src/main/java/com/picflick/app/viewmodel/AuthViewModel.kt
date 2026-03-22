@@ -8,6 +8,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.core.content.ContextCompat
+import androidx.credentials.ClearCredentialStateRequest
+import androidx.credentials.CredentialManager
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.picflick.app.data.Result
@@ -297,9 +299,21 @@ class AuthViewModel : ViewModel() {
     /**
      * Sign out the current user
      */
-    fun signOut() {
+    fun signOut(context: Context? = null) {
         profileListener?.remove()
         profileListener = null
+
+        // Clear credential manager session when available (Google sign-in state)
+        context?.let { ctx ->
+            viewModelScope.launch {
+                runCatching {
+                    CredentialManager.create(ctx).clearCredentialState(ClearCredentialStateRequest())
+                }.onFailure {
+                    android.util.Log.w("AuthViewModel", "CredentialManager clear state failed: ${it.message}")
+                }
+            }
+        }
+
         auth.signOut()
         userProfile = null
         currentUser = null
