@@ -9,6 +9,7 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -46,8 +47,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -260,9 +266,10 @@ fun MainScreen(
     val onboardingPrefs = remember {
         appContext.getSharedPreferences("picflick_onboarding", android.content.Context.MODE_PRIVATE)
     }
-    var hasSeenOnboarding by remember {
-        mutableStateOf(onboardingPrefs.getBoolean("has_seen_onboarding", false))
+    var hasSeenPostLoginCoach by remember {
+        mutableStateOf(onboardingPrefs.getBoolean("has_seen_post_login_coach", false))
     }
+    var coachStep by remember { mutableIntStateOf(0) }
 
     // State for push notification photo (opens FullScreenPhotoViewer directly)
     var pushPhoto by remember { mutableStateOf<Flick?>(null) }
@@ -275,6 +282,14 @@ fun MainScreen(
     // Track login state for analytics
     val activity = appContext as? MainActivity
     val currentUser = authViewModel.currentUser
+
+    val userIsNew = (authViewModel.userProfile?.following?.isEmpty() == true)
+
+    LaunchedEffect(currentUser?.uid, userIsNew, hasSeenPostLoginCoach) {
+        if (currentUser != null && userIsNew && !hasSeenPostLoginCoach) {
+            coachStep = 1
+        }
+    }
 
     val pushEventVersion = activity?.pushEventVersion ?: 0
 
@@ -845,24 +860,11 @@ fun MainScreen(
                 )
         ) {
             if (currentUser == null) {
-                if (!hasSeenOnboarding) {
-                    OnboardingScreen(
-                        onSkip = {
-                            onboardingPrefs.edit().putBoolean("has_seen_onboarding", true).apply()
-                            hasSeenOnboarding = true
-                        },
-                        onFinish = {
-                            onboardingPrefs.edit().putBoolean("has_seen_onboarding", true).apply()
-                            hasSeenOnboarding = true
-                        }
-                    )
-                } else {
-                    // Not authenticated - show login
-                    LoginScreen(
-                        authViewModel = authViewModel,
-                        onLoginSuccess = {}
-                    )
-                }
+                // Not authenticated - show login
+                LoginScreen(
+                    authViewModel = authViewModel,
+                    onLoginSuccess = {}
+                )
             } else if (userProfile != null) {
                 // Authenticated - show main content with navigation
                 AuthenticatedContent(
@@ -909,82 +911,106 @@ fun MainScreen(
                     )
                 }
             }
+
+            if (coachStep > 0 && currentUser != null && userProfile != null) {
+                PostLoginCoachOverlay(
+                    step = coachStep,
+                    onSkip = {
+                        onboardingPrefs.edit().putBoolean("has_seen_post_login_coach", true).apply()
+                        hasSeenPostLoginCoach = true
+                        coachStep = 0
+                    },
+                    onNext = {
+                        coachStep = if (coachStep >= 2) 0 else coachStep + 1
+                        if (coachStep == 0) {
+                            onboardingPrefs.edit().putBoolean("has_seen_post_login_coach", true).apply()
+                            hasSeenPostLoginCoach = true
+                        }
+                    },
+                    onGoFriends = {
+                        currentScreen = Screen.Friends
+                        onboardingPrefs.edit().putBoolean("has_seen_post_login_coach", true).apply()
+                        hasSeenPostLoginCoach = true
+                        coachStep = 0
+                    }
+                )
+            }
         }
     }
 }
 
-private data class OnboardingStep(
-    val title: String,
-    val body: String
-)
-
 @Composable
-private fun OnboardingScreen(
+private fun PostLoginCoachOverlay(
+    step: Int,
     onSkip: () -> Unit,
-    onFinish: () -> Unit
+    onNext: () -> Unit,
+    onGoFriends: () -> Unit
 ) {
-    val steps = remember {
-        listOf(
-            OnboardingStep("Welcome to PicFlick", "Private photo sharing for real friends."),
-            OnboardingStep("Add friends fast", "Find people you trust and build your circle."),
-            OnboardingStep("Share your first moment", "Post, react, and chat in one place.")
-        )
-    }
-    var index by remember { mutableIntStateOf(0) }
-    val step = steps[index]
-    val isLast = index == steps.lastIndex
+    val accent = Color(0xFF00D09C)
 
-    Column(
+    Box(
         modifier = Modifier
             .fillMaxSize()
-            .padding(24.dp),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally
+            .background(Color.Black.copy(alpha = 0.58f))
     ) {
-        Text(
-            text = step.title,
-            style = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.Bold
-        )
-        Spacer(modifier = Modifier.height(12.dp))
-        Text(
-            text = step.body,
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            val w = size.width
+            val h = size.height
 
-        Spacer(modifier = Modifier.height(24.dp))
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            repeat(steps.size) { dot ->
-                Box(
-                    modifier = Modifier
-                        .padding(horizontal = 4.dp)
-                        .size(if (dot == index) 10.dp else 8.dp)
-                        .background(
-                            color = if (dot == index) MaterialTheme.colorScheme.primary else Color.Gray,
-                            shape = androidx.compose.foundation.shape.CircleShape
-                        )
-                )
+            if (step == 1) {
+                val start = Offset(w * 0.20f, h * 0.62f)
+                val mid = Offset(w * 0.42f, h * 0.72f)
+                val end = Offset(w * 0.50f, h * 0.88f)
+                val path = Path().apply {
+                    moveTo(start.x, start.y)
+                    quadraticTo(mid.x, mid.y - 40f, end.x, end.y)
+                }
+                drawPath(path, color = accent, style = Stroke(width = 8f, cap = StrokeCap.Round))
+                drawCircle(color = accent, radius = 10f, center = end)
+            } else {
+                val start = Offset(w * 0.78f, h * 0.60f)
+                val mid = Offset(w * 0.74f, h * 0.72f)
+                val end = Offset(w * 0.70f, h * 0.88f)
+                val path = Path().apply {
+                    moveTo(start.x, start.y)
+                    quadraticTo(mid.x + 30f, mid.y - 30f, end.x, end.y)
+                }
+                drawPath(path, color = accent, style = Stroke(width = 8f, cap = StrokeCap.Round))
+                drawCircle(color = accent, radius = 10f, center = end)
             }
         }
 
-        Spacer(modifier = Modifier.height(28.dp))
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            OutlinedButton(onClick = onSkip) {
-                Text("Skip")
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(20.dp),
+            verticalArrangement = Arrangement.SpaceBetween
+        ) {
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                OutlinedButton(onClick = onSkip) { Text("Skip") }
             }
-            Button(onClick = {
-                if (isLast) onFinish() else index += 1
-            }) {
-                Text(if (isLast) "Get Started" else "Next")
+
+            Text(
+                text = if (step == 1) {
+                    "Upload your 1st photo here ✨"
+                } else {
+                    "Tap Friends here, then hit Find Friends 👀"
+                },
+                color = Color.White,
+                fontFamily = FontFamily.Cursive,
+                fontSize = 30.sp,
+                lineHeight = 34.sp,
+                modifier = Modifier.padding(horizontal = 12.dp)
+            )
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End
+            ) {
+                Button(onClick = if (step == 1) onNext else onGoFriends) {
+                    Text(if (step == 1) "Next" else "Take me there")
+                }
             }
         }
-
-        Spacer(modifier = Modifier.height(8.dp))
-        Text(
-            text = "${index + 1}/${steps.size}",
-            fontSize = 12.sp,
-            color = Color.Gray
-        )
     }
 }

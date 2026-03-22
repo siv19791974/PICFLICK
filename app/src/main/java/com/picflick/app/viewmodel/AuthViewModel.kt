@@ -323,7 +323,7 @@ class AuthViewModel : ViewModel() {
      * Delete user account and all associated data
      * This permanently removes the user from Firebase Auth and Firestore
      */
-    fun deleteAccount(onComplete: (Boolean, String?) -> Unit) {
+    fun deleteAccount(context: Context? = null, onComplete: (Boolean, String?) -> Unit) {
         viewModelScope.launch {
             try {
                 val user = auth.currentUser
@@ -332,21 +332,39 @@ class AuthViewModel : ViewModel() {
                     return@launch
                 }
 
+                // Avoid partial deletion when Firebase requires recent login.
+                val lastSignInAt = user.metadata?.lastSignInTimestamp ?: 0L
+                val isPotentiallyStaleSession = lastSignInAt > 0L &&
+                    (System.currentTimeMillis() - lastSignInAt) > (10 * 60 * 1000)
+                if (isPotentiallyStaleSession) {
+                    onComplete(
+                        false,
+                        "For security, please sign out and sign in again, then delete your account."
+                    )
+                    return@launch
+                }
+
                 val userId = user.uid
 
-                // 1. Delete user data from Firestore
+                // 1) Delete user data from Firestore (best-effort cleanup in repository)
                 when (val result = repository.deleteUserData(userId)) {
                     is Result.Success -> {
-                        // 2. Delete Firebase Auth user
+                        // 2) Delete Firebase Auth user
                         user.delete()
                             .addOnSuccessListener {
-                                // Clear local state
-                                userProfile = null
-                                currentUser = null
+                                signOut(context)
                                 onComplete(true, null)
                             }
                             .addOnFailureListener { e ->
-                                onComplete(false, "Failed to delete account: ${e.message}")
+                                val msg = e.message?.lowercase().orEmpty()
+                                if (msg.contains("recent") || msg.contains("credential") || msg.contains("login")) {
+                                    onComplete(
+                                        false,
+                                        "Please sign out, sign in again, then retry Delete Account."
+                                    )
+                                } else {
+                                    onComplete(false, "Failed to delete account: ${e.message}")
+                                }
                             }
                     }
                     is Result.Error -> {
