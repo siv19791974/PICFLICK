@@ -48,6 +48,10 @@ import com.picflick.app.data.getStorageLimitBytes
 import com.picflick.app.data.getStorageLimitGB
 import com.picflick.app.utils.LocaleHelper
 import com.picflick.app.util.rememberLiveUserPhotoUrl
+import com.google.firebase.storage.FirebaseStorage
+import com.google.firebase.storage.StorageReference
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.tasks.await
 
 /**
  * Settings screen with user preferences and account options
@@ -703,12 +707,19 @@ private fun ProfileHeaderWithStorage(
 ) {
     val tier = userProfile.subscriptionTier
     val tierColor = tier.getColor()
-    val storageUsed = userProfile.storageUsedBytes
+    var storageUsed by remember(userProfile.uid) { mutableStateOf(userProfile.storageUsedBytes) }
     val storageLimit = tier.getStorageLimitBytes()
     val liveUserPhoto = rememberLiveUserPhotoUrl(userProfile.uid, userProfile.photoUrl)
     val storagePercent = if (storageLimit > 0) {
         (storageUsed * 100 / storageLimit).toInt()
     } else 0
+
+    LaunchedEffect(userProfile.uid) {
+        while (true) {
+            storageUsed = loadUserStorageUsedBytes(userProfile.uid)
+            delay(60_000)
+        }
+    }
     
     Column(
         modifier = Modifier
@@ -911,20 +922,21 @@ private fun StorageProgressBar(
                 .background(Color(0xFF2C2C2E))
         ) {
             // Progress Fill
-            Box(
-                modifier = Modifier
-                    .fillMaxHeight()
-                    .fillMaxWidth(percent / 100f)
-                    .clip(RoundedCornerShape(4.dp))
-                    .background(
-                        brush = Brush.horizontalGradient(
-                            colors = listOf(
-                                tierColor.copy(alpha = 0.7f),
-                                tierColor
+                            val progressFraction = (percent / 100f).coerceIn(0f, 1f)
+                Box(
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .fillMaxWidth(progressFraction)
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(
+                            brush = Brush.horizontalGradient(
+                                colors = listOf(
+                                    tierColor.copy(alpha = 0.7f),
+                                    tierColor
+                                )
                             )
                         )
-                    )
-            )
+                )
         }
         
         // Percentage Text
@@ -932,14 +944,15 @@ private fun StorageProgressBar(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
+            val displayPercent = percent.coerceAtMost(100)
             Text(
-                text = "$percent% full",
-                color = if (percent > 90) Color.Red else Color.Gray,
+                text = "$displayPercent% full",
+                color = if (percent >= 90) Color.Red else Color.Gray,
                 fontSize = 12.sp
             )
-            if (percent > 80) {
+            if (percent >= 90) {
                 Text(
-                    text = "Upgrade for more",
+                    text = if (percent >= 110) "Delete or upgrade" else "Warning at 90%",
                     color = Color(0xFF00D09C),
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Medium
@@ -1008,7 +1021,7 @@ private fun ManageStorageButton(
     modifier: Modifier = Modifier,
     isDarkMode: Boolean
 ) {
-    // Color coding: Green (0-60%), Yellow (60-80%), Orange (80-90%), Red (90-100%)
+    // Color coding: Green (0-60%), Yellow (60-80%), Orange (80-90%), Red (90%+)
     val barColor = when {
         percent < 60 -> Color(0xFF00C853)  // Green
         percent < 80 -> Color(0xFFFFD600)  // Yellow
@@ -1068,10 +1081,11 @@ private fun ManageStorageButton(
                     .clip(RoundedCornerShape(2.dp))
                     .background(Color(0xFFE0E0E0))
             ) {
+                val progressFraction = (percent / 100f).coerceIn(0f, 1f)
                 Box(
                     modifier = Modifier
                         .fillMaxHeight()
-                        .fillMaxWidth(percent / 100f)
+                        .fillMaxWidth(progressFraction)
                         .clip(RoundedCornerShape(2.dp))
                         .background(barColor)
                 )
@@ -1260,18 +1274,39 @@ private fun LanguageOption(
             fontSize = 24.sp,
             modifier = Modifier.padding(end = 12.dp)
         )
-        
+
         // Language name
         Text(
             text = name,
             modifier = Modifier.weight(1f),
             color = if (isDarkMode) Color.White else Color.Black
         )
-        
+
         // Checkmark if selected
         if (isSelected) {
             Text("✓", color = Color(0xFF00D09C))
         }
     }
+}
+
+private suspend fun loadUserStorageUsedBytes(userId: String): Long {
+    val root = FirebaseStorage.getInstance().reference.child("photos").child(userId)
+    return sumStorageFolderBytes(root)
+}
+
+private suspend fun sumStorageFolderBytes(folderRef: StorageReference): Long {
+    val listResult = folderRef.listAll().await()
+    var total = 0L
+
+    listResult.items.forEach { itemRef ->
+        val meta = itemRef.metadata.await()
+        total += meta.sizeBytes
+    }
+
+    listResult.prefixes.forEach { childFolder ->
+        total += sumStorageFolderBytes(childFolder)
+    }
+
+    return total
 }
 

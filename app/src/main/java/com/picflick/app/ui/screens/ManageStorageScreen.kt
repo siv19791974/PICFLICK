@@ -52,6 +52,9 @@ import com.picflick.app.ui.theme.isDarkModeBackground
 import com.picflick.app.viewmodel.BillingViewModel
 import com.picflick.app.viewmodel.SubscriptionProduct
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.storage.FirebaseStorage
+import com.google.firebase.storage.StorageReference
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.tasks.await
 
 /**
@@ -68,15 +71,25 @@ fun ManageStorageScreen(
 ) {
     val tier = userProfile.subscriptionTier
     val tierColor = tier.getColor()
-    val storageUsed = userProfile.storageUsedBytes
+    var storageUsed by remember(userProfile.uid) { mutableStateOf(userProfile.storageUsedBytes) }
     val storageLimit = tier.getStorageLimitBytes()
     val storagePercent = if (storageLimit > 0) {
         (storageUsed * 100 / storageLimit).toInt()
     } else 0
+    val displayPercent = storagePercent.coerceAtMost(100)
     val usedGB = storageUsed / (1024.0 * 1024.0 * 1024.0)
     val totalGB = storageLimit / (1024.0 * 1024.0 * 1024.0)
     val remainingGB = totalGB - usedGB
     val isDarkMode = ThemeManager.isDarkMode.value
+
+    // Live storage refresh to keep running total current while screen is open.
+    LaunchedEffect(userProfile.uid) {
+        while (true) {
+            val liveBytes = loadUserStorageUsedBytes(userProfile.uid)
+            storageUsed = liveBytes
+            delay(60_000)
+        }
+    }
     
     // Calculate actual photo count from Firestore
     var actualPhotoCount by remember { mutableIntStateOf(userProfile.totalPhotos) }
@@ -146,7 +159,7 @@ fun ManageStorageScreen(
                 usedGB = usedGB,
                 totalGB = totalGB,
                 remainingGB = remainingGB,
-                percent = storagePercent,
+                percent = displayPercent,
                 tier = tier,
                 tierColor = tierColor,
                 isDarkMode = isDarkMode
@@ -268,6 +281,7 @@ private fun StorageMeterCard(
                 else -> Color.Red                   // Red
             }
             
+            val progressFraction = (percent / 100f).coerceIn(0f, 1f)
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -278,7 +292,7 @@ private fun StorageMeterCard(
                 Box(
                     modifier = Modifier
                         .fillMaxHeight()
-                        .fillMaxWidth(percent / 100f)
+                        .fillMaxWidth(progressFraction)
                         .clip(RoundedCornerShape(6.dp))
                         .background(barColor)
                 )
@@ -574,9 +588,9 @@ private fun StorageTipsCard(percent: Int, isDarkMode: Boolean) {
             .padding(horizontal = 16.dp),
         colors = CardDefaults.cardColors(
             containerColor = when {
-                percent > 90 -> if (isDarkMode) Color(0xFF3D1F1F) else Color(0xFFFFEBEE) // Dark red / Light red
-                percent > 75 -> if (isDarkMode) Color(0xFF3D2E1F) else Color(0xFFFFF3E0) // Dark orange / Light orange
-                else -> if (isDarkMode) Color(0xFF1F3D1F) else Color(0xFFE8F5E9) // Dark green / Light green
+                percent >= 110 -> if (isDarkMode) Color(0xFF3D1F1F) else Color(0xFFFFEBEE)
+                percent >= 90 -> if (isDarkMode) Color(0xFF3D2E1F) else Color(0xFFFFF3E0)
+                else -> if (isDarkMode) Color(0xFF1F3D1F) else Color(0xFFE8F5E9)
             }
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
@@ -587,48 +601,49 @@ private fun StorageTipsCard(percent: Int, isDarkMode: Boolean) {
         ) {
             Icon(
                 imageVector = when {
-                    percent > 90 -> Icons.Default.Warning
-                    percent > 75 -> Icons.Default.Info
+                    percent >= 110 -> Icons.Default.Warning
+                    percent >= 90 -> Icons.Default.Info
                     else -> Icons.Default.Check
                 },
                 contentDescription = when {
-                    percent > 90 -> stringResource(R.string.content_desc_warning)
-                    percent > 75 -> stringResource(R.string.content_desc_info)
+                    percent >= 110 -> stringResource(R.string.content_desc_warning)
+                    percent >= 90 -> stringResource(R.string.content_desc_info)
                     else -> stringResource(R.string.content_desc_check)
                 },
                 tint = when {
-                    percent > 90 -> Color.Red
-                    percent > 75 -> Color(0xFFFF8F00)
+                    percent >= 110 -> Color.Red
+                    percent >= 90 -> Color(0xFFFF8F00)
                     else -> Color(0xFF00C853)
                 },
                 modifier = Modifier.size(24.dp)
             )
-            
+
             Spacer(modifier = Modifier.width(12.dp))
-            
+
             Column {
                 Text(
                     text = when {
-                        percent > 90 -> "Storage almost full!"
-                        percent > 75 -> "Running low on space"
+                        percent >= 110 -> "Storage max reached (110%)"
+                        percent >= 90 -> "Storage warning (90%+)"
                         else -> "Storage looking good"
                     },
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Medium,
                     color = when {
-                        percent > 90 -> Color.Red
-                        percent > 75 -> Color(0xFFFF8F00)
+                        percent >= 110 -> Color.Red
+                        percent >= 90 -> Color(0xFFFF8F00)
                         else -> Color(0xFF00C853)
                     }
                 )
-                
+
                 Spacer(modifier = Modifier.height(4.dp))
-                
+
                 Text(
                     text = when {
-                        percent > 90 -> "Upgrade your plan or delete old photos to free up space."
-                        percent > 75 -> "Consider upgrading soon to get more storage for your memories."
-                        else -> "You have plenty of space for more photos. Keep capturing moments!"
+                        percent >= 110 -> "Uploads are paused. Delete photos or upgrade your plan to continue."
+                        percent >= 100 -> "Storage appears full. Grace uploads may still complete until 110%."
+                        percent >= 90 -> "You are close to full storage."
+                        else -> "You have plenty of space for more photos."
                     },
                     fontSize = 13.sp,
                     color = if (isDarkMode) Color.Gray else Color.DarkGray
@@ -636,4 +651,25 @@ private fun StorageTipsCard(percent: Int, isDarkMode: Boolean) {
             }
         }
     }
+}
+
+private suspend fun loadUserStorageUsedBytes(userId: String): Long {
+    val root = FirebaseStorage.getInstance().reference.child("photos").child(userId)
+    return sumStorageFolderBytes(root)
+}
+
+private suspend fun sumStorageFolderBytes(folderRef: StorageReference): Long {
+    val listResult = folderRef.listAll().await()
+    var total = 0L
+
+    listResult.items.forEach { itemRef ->
+        val meta = itemRef.metadata.await()
+        total += meta.sizeBytes
+    }
+
+    listResult.prefixes.forEach { childFolder ->
+        total += sumStorageFolderBytes(childFolder)
+    }
+
+    return total
 }
