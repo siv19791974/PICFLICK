@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.picflick.app",
+      "sha256_cert_fingerprints": [
+        "44:3E:C8:0D:1D:F1:B8:21:CD:9F:C6:FE:1E:D1:48:10:0C:7C:1A:3F:24:66:DE:57:BD:19:B0:86:05:0F:4A:52"
+      ]
+    }
+  }
+]
