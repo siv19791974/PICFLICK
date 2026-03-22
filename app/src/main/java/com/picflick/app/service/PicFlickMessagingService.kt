@@ -90,8 +90,19 @@ class PicFlickMessagingService : FirebaseMessagingService() {
         val senderName = data.firstNonBlank("senderName", "sender_name", "fromUserName", "userName") ?: ""
         val type = data.firstNonBlank("type", "notificationType") ?: ""
 
+        val typeLower = type.lowercase()
+        val contentHintLower = "$title $message".lowercase()
+        val isFindFriendsIntent =
+            typeLower.contains("friend_request") ||
+            (typeLower.contains("friend") && typeLower.contains("request")) ||
+            typeLower.contains("welcome") ||
+            typeLower.contains("onboarding") ||
+            contentHintLower.contains("find friends") ||
+            contentHintLower.contains("tap to find")
+
         val resolvedTargetScreen = data.firstNonBlank("targetScreen", "screen", "destination")
             ?: when {
+                isFindFriendsIntent -> "find_friends"
                 flickId.isNotBlank() -> "photo"
                 chatId.isNotBlank() -> "chat"
                 else -> "notifications"

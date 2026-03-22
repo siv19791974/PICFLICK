@@ -40,6 +40,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -61,6 +62,9 @@ import androidx.compose.ui.unit.sp
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.picflick.app.data.ChatSession
 import com.picflick.app.navigation.Screen
@@ -156,11 +160,19 @@ class MainActivity : ComponentActivity() {
             ?: if (deepLinkHost == "profile") deepLinkLastSegment else null
         val senderName = extras.getFirstString("senderName", "sender_name", "fromUserName", "userName")
         val notificationType = extras.getFirstString("type", "notificationType")
+        val titleHint = extras.getFirstString("title", "notificationTitle", "gcm.notification.title")
+        val bodyHint = extras.getFirstString("message", "body", "notificationBody", "gcm.notification.body")
         val notificationTypeLower = notificationType?.lowercase().orEmpty()
+        val textHintLower = "${titleHint.orEmpty()} ${bodyHint.orEmpty()}".lowercase()
         val isCommentNotification = notificationTypeLower.contains("comment")
         val isFriendRequestNotification =
             (notificationTypeLower.contains("friend") || notificationTypeLower.contains("follow")) &&
                 notificationTypeLower.contains("request")
+        val isWelcomeFindFriendsNotification =
+            notificationTypeLower.contains("welcome") ||
+                notificationTypeLower.contains("onboarding") ||
+                textHintLower.contains("find friends") ||
+                textHintLower.contains("tap to find")
 
         val explicitTargetScreen = extras.getFirstString("targetScreen", "screen", "destination")
             ?: when {
@@ -168,7 +180,7 @@ class MainActivity : ComponentActivity() {
                 deepLinkHost == "chat" -> "chat"
                 deepLinkHost == "find_friends" || deepLinkHost == "friends" -> "find_friends"
                 deepLinkHost == "profile" -> "profile"
-                isFriendRequestNotification -> "find_friends"
+                isFriendRequestNotification || isWelcomeFindFriendsNotification -> "find_friends"
                 else -> null
             }
 
@@ -178,7 +190,8 @@ class MainActivity : ComponentActivity() {
             !notificationType.isNullOrBlank() ||
             !explicitTargetScreen.isNullOrBlank() ||
             isCommentNotification ||
-            isFriendRequestNotification
+            isFriendRequestNotification ||
+            isWelcomeFindFriendsNotification
 
         if (!hasPushRoutingData) {
             return
@@ -186,7 +199,7 @@ class MainActivity : ComponentActivity() {
 
         val targetScreen = when {
             isCommentNotification -> "photo"
-            isFriendRequestNotification -> "find_friends"
+            isFriendRequestNotification || isWelcomeFindFriendsNotification -> "find_friends"
             !explicitTargetScreen.isNullOrBlank() -> explicitTargetScreen
             !flickId.isNullOrBlank() -> "photo"
             !chatId.isNullOrBlank() -> "chat"
@@ -221,6 +234,8 @@ class MainActivity : ComponentActivity() {
         pendingPushData = null
         return data
     }
+
+    fun hasPendingPushData(): Boolean = pendingPushData != null
 
     /**
      * Get current user ID from Firebase Auth
@@ -269,11 +284,10 @@ fun MainScreen(
     val onboardingPrefs = remember {
         appContext.getSharedPreferences("picflick_onboarding", android.content.Context.MODE_PRIVATE)
     }
-    var hasCoachOptOut by remember {
-        mutableStateOf(onboardingPrefs.getBoolean("has_opted_out_post_login_coach", false))
-    }
+    var hasCoachOptOut by remember { mutableStateOf(false) }
     var coachStep by remember { mutableIntStateOf(0) }
     var coachShownThisSession by remember { mutableStateOf(false) }
+    var forceHomeResetVersion by remember { mutableIntStateOf(0) }
 
     // State for push notification photo (opens FullScreenPhotoViewer directly)
     var pushPhoto by remember { mutableStateOf<Flick?>(null) }
@@ -286,24 +300,46 @@ fun MainScreen(
     // Track login state for analytics
     val activity = appContext as? MainActivity
     val currentUser = authViewModel.currentUser
+    val lifecycleOwner = LocalLifecycleOwner.current
 
-    val hasUploadedFirstPhoto = (authViewModel.userProfile?.totalPhotos ?: 0) > 0
-    val hasFoundFirstFriend = authViewModel.userProfile?.following?.isNotEmpty() == true
-    val isActivatedUser = hasUploadedFirstPhoto || hasFoundFirstFriend
-
-    // Reset session-only coach tracking on logout.
+    // Per-account onboarding opt-out (prevents one user preference from hiding onboarding for all users on device)
     LaunchedEffect(currentUser?.uid) {
+        hasCoachOptOut = currentUser?.uid?.let { uid ->
+            onboardingPrefs.getBoolean("has_opted_out_post_login_coach_$uid", false)
+        } ?: false
+
         if (currentUser == null) {
             coachShownThisSession = false
             coachStep = 0
         }
     }
 
+    val hasUploadedFirstPhoto = (authViewModel.userProfile?.totalPhotos ?: 0) > 0
+    val hasFoundFirstFriend = authViewModel.userProfile?.following?.isNotEmpty() == true
+    val isActivatedUser = hasUploadedFirstPhoto || hasFoundFirstFriend
+
     // Show coach once per login session until activation is reached, unless user opted out.
     LaunchedEffect(currentUser?.uid, isActivatedUser, hasCoachOptOut, coachShownThisSession) {
         if (currentUser != null && !isActivatedUser && !hasCoachOptOut && !coachShownThisSession) {
             coachStep = 1
             coachShownThisSession = true
+        }
+    }
+
+    // On app foreground, default back to Home + reset feed top unless a push route is pending.
+    DisposableEffect(lifecycleOwner, currentUser) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_START && currentUser != null) {
+                val hasPushPending = activity?.hasPendingPushData() == true
+                if (!hasPushPending) {
+                    currentScreen = Screen.Home
+                    forceHomeResetVersion += 1
+                }
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
         }
     }
 
@@ -910,6 +946,7 @@ fun MainScreen(
                     chatViewModel = chatViewModel,
                     uploadViewModel = uploadViewModel,
                     authViewModel = authViewModel,
+                    homeResetVersion = forceHomeResetVersion,
                     selectedChatSession = selectedChatSession,
                     selectedOtherUserId = selectedOtherUserId,
                     onSetSelectedChat = { session, userId ->
@@ -945,18 +982,16 @@ fun MainScreen(
 
             if (coachStep > 0 && currentUser != null && userProfile != null) {
                 PostLoginCoachOverlay(
-                    step = coachStep,
                     onSkip = {
                         // Dismiss for this login session only.
                         coachStep = 0
                     },
                     onNeverShowAgain = {
-                        onboardingPrefs.edit().putBoolean("has_opted_out_post_login_coach", true).apply()
+                        currentUser?.uid?.let { uid ->
+                            onboardingPrefs.edit().putBoolean("has_opted_out_post_login_coach_$uid", true).apply()
+                        }
                         hasCoachOptOut = true
                         coachStep = 0
-                    },
-                    onNext = {
-                        coachStep = if (coachStep >= 2) 0 else coachStep + 1
                     },
                     onGoFriends = {
                         currentScreen = Screen.Friends
@@ -970,81 +1005,120 @@ fun MainScreen(
 
 @Composable
 private fun PostLoginCoachOverlay(
-    step: Int,
     onSkip: () -> Unit,
     onNeverShowAgain: () -> Unit,
-    onNext: () -> Unit,
     onGoFriends: () -> Unit
 ) {
-    val accent = Color(0xFF00D09C)
+    val sketchBlue = Color(0xFF3AA7FF)
 
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.Black.copy(alpha = 0.58f))
+            .background(Color(0xFF2F333A))
     ) {
         Canvas(modifier = Modifier.fillMaxSize()) {
             val w = size.width
             val h = size.height
 
-            if (step == 1) {
-                val start = Offset(w * 0.20f, h * 0.62f)
-                val mid = Offset(w * 0.42f, h * 0.72f)
-                val end = Offset(w * 0.50f, h * 0.88f)
-                val path = Path().apply {
-                    moveTo(start.x, start.y)
-                    quadraticTo(mid.x, mid.y - 40f, end.x, end.y)
-                }
-                drawPath(path, color = accent, style = Stroke(width = 8f, cap = StrokeCap.Round))
-                drawCircle(color = accent, radius = 10f, center = end)
-            } else {
-                val start = Offset(w * 0.78f, h * 0.60f)
-                val mid = Offset(w * 0.74f, h * 0.72f)
-                val end = Offset(w * 0.70f, h * 0.88f)
-                val path = Path().apply {
-                    moveTo(start.x, start.y)
-                    quadraticTo(mid.x + 30f, mid.y - 30f, end.x, end.y)
-                }
-                drawPath(path, color = accent, style = Stroke(width = 8f, cap = StrokeCap.Round))
-                drawCircle(color = accent, radius = 10f, center = end)
+            val settings = Offset(w * 0.08f, h * 0.08f)
+            val notifications = Offset(w * 0.92f, h * 0.08f)
+            val messages = Offset(w * 0.30f, h * 0.88f)
+            val add = Offset(w * 0.50f, h * 0.88f)
+            val friends = Offset(w * 0.70f, h * 0.88f)
+
+            fun drawSketchCircle(center: Offset, radius: Float) {
+                drawCircle(color = sketchBlue, radius = radius, center = center, style = Stroke(width = 6f))
+                drawCircle(color = sketchBlue.copy(alpha = 0.5f), radius = radius + 6f, center = center, style = Stroke(width = 2f))
             }
+
+            fun drawSketchArrow(from: Offset, to: Offset) {
+                val path = Path().apply {
+                    moveTo(from.x, from.y)
+                    quadraticTo((from.x + to.x) / 2f, (from.y + to.y) / 2f - 40f, to.x, to.y)
+                }
+                drawPath(path, color = sketchBlue, style = Stroke(width = 7f, cap = StrokeCap.Round))
+                drawCircle(color = sketchBlue, radius = 8f, center = to)
+            }
+
+            drawSketchCircle(settings, 34f)
+            drawSketchCircle(notifications, 34f)
+            drawSketchCircle(messages, 34f)
+            drawSketchCircle(add, 34f)
+            drawSketchCircle(friends, 34f)
+
+            drawSketchArrow(Offset(w * 0.23f, h * 0.20f), settings)
+            drawSketchArrow(Offset(w * 0.78f, h * 0.20f), notifications)
+            drawSketchArrow(Offset(w * 0.20f, h * 0.72f), messages)
+            drawSketchArrow(Offset(w * 0.48f, h * 0.67f), add)
+            drawSketchArrow(Offset(w * 0.80f, h * 0.70f), friends)
         }
 
-        Column(
+        Text(
+            text = "SETTINGS",
+            color = Color.White,
+            fontFamily = FontFamily.Cursive,
+            fontSize = 28.sp,
             modifier = Modifier
-                .fillMaxSize()
-                .padding(20.dp),
-            verticalArrangement = Arrangement.SpaceBetween
+                .align(Alignment.TopStart)
+                .padding(start = 20.dp, top = 130.dp)
+        )
+
+        Text(
+            text = "NOTIFIS",
+            color = Color.White,
+            fontFamily = FontFamily.Cursive,
+            fontSize = 28.sp,
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(end = 16.dp, top = 130.dp)
+        )
+
+        Text(
+            text = "MESSAGES",
+            color = Color.White,
+            fontFamily = FontFamily.Cursive,
+            fontSize = 30.sp,
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .padding(start = 16.dp, bottom = 150.dp)
+        )
+
+        Text(
+            text = "ADD",
+            color = Color.White,
+            fontFamily = FontFamily.Cursive,
+            fontSize = 30.sp,
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = 165.dp)
+        )
+
+        Text(
+            text = "FRIENDS",
+            color = Color.White,
+            fontFamily = FontFamily.Cursive,
+            fontSize = 30.sp,
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(end = 12.dp, bottom = 150.dp)
+        )
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .align(Alignment.BottomCenter)
+                .padding(horizontal = 12.dp, vertical = 18.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                OutlinedButton(onClick = onSkip) { Text("Not now") }
+            OutlinedButton(onClick = onSkip) {
+                Text("Not now")
             }
-
-            Text(
-                text = if (step == 1) {
-                    "Upload your 1st photo here ✨"
-                } else {
-                    "Tap Friends here, then hit Find Friends 👀"
-                },
-                color = Color.White,
-                fontFamily = FontFamily.Cursive,
-                fontSize = 30.sp,
-                lineHeight = 34.sp,
-                modifier = Modifier.padding(horizontal = 12.dp)
-            )
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                TextButton(onClick = onNeverShowAgain) {
-                    Text("Don't show again")
-                }
-
-                Button(onClick = if (step == 1) onNext else onGoFriends) {
-                    Text(if (step == 1) "Next" else "Take me there")
-                }
+            TextButton(onClick = onNeverShowAgain) {
+                Text("Don't show again")
+            }
+            Button(onClick = onGoFriends) {
+                Text("Got it")
             }
         }
     }
