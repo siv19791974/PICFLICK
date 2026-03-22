@@ -24,14 +24,14 @@ exports.sendPushNotification = functions.firestore
     
     // ONLY send push for IMPORTANT notification types
     const IMPORTANT_TYPES = ['FRIEND_REQUEST', 'MESSAGE', 'FOLLOW_ACCEPTED', 'MENTION', 'COMMENT'];
-    
+
     if (!IMPORTANT_TYPES.includes(notification.type)) {
-      console.log('Skipping push - type not important enough:', notification.type, 
+      console.log('Skipping push - type not important enough:', notification.type,
                   '| Important types:', IMPORTANT_TYPES.join(', '));
       // Still create in-app notification, just no push
       return null;
     }
-    
+
     console.log('Sending push for important type:', notification.type);
     
     // Get recipient's FCM token
@@ -87,14 +87,19 @@ exports.sendPushNotification = functions.firestore
           click_action: 'FLUTTER_NOTIFICATION_CLICK',
         },
         android: {
+          // HIGH delivery priority helps wake device from doze for urgent friend requests/messages.
+          priority: 'high',
           notification: {
-            channelId: 'picflick_important',
-            priority: 'high',
+            // Must match app-created channel ID (PicFlickMessagingService.CHANNEL_ID)
+            channelId: 'picflick_important_v2',
             sound: 'default',
             clickAction: 'FLUTTER_NOTIFICATION_CLICK',
           },
         },
         apns: {
+          headers: {
+            'apns-priority': '10',
+          },
           payload: {
             aps: {
               sound: 'default',
@@ -174,6 +179,9 @@ exports.sendWelcomeNotification = functions.firestore
       return null;
     }
     
+    // Use deterministic numeric timestamps (app model expects Long) and batch write both notifications.
+    const baseTs = Date.now();
+
     // Create first onboarding notification (Find Friends)
     const welcomeFindFriendsNotif = {
       userId: context.params.userId,
@@ -183,7 +191,7 @@ exports.sendWelcomeNotification = functions.firestore
       title: 'Welcome to PicFlick! 📸',
       message: 'Start sharing photos and connecting with friends. Tap Find Friends to get started!',
       targetScreen: 'find_friends',
-      timestamp: admin.firestore.FieldValue.serverTimestamp(),
+      timestamp: baseTs,
       isRead: false,
     };
 
@@ -196,16 +204,24 @@ exports.sendWelcomeNotification = functions.firestore
       title: 'Welcome to PicFlick! 📸',
       message: 'Add your 1st photo to PicFlick. Tap to get started!',
       targetScreen: 'upload',
-      timestamp: admin.firestore.FieldValue.serverTimestamp(),
+      timestamp: baseTs + 1,
       isRead: false,
     };
 
-    const notificationsRef = admin.firestore().collection('notifications');
-    await Promise.all([
-      notificationsRef.add(welcomeFindFriendsNotif),
-      notificationsRef.add(welcomeFirstPhotoNotif),
-    ]);
-    console.log('Welcome onboarding notifications created for user:', context.params.userId);
+    const db = admin.firestore();
+    const notificationsRef = db.collection('notifications');
+    const firstRef = notificationsRef.doc();
+    const secondRef = notificationsRef.doc();
+
+    const batch = db.batch();
+    batch.set(firstRef, welcomeFindFriendsNotif);
+    batch.set(secondRef, welcomeFirstPhotoNotif);
+    await batch.commit();
+
+    console.log('Welcome onboarding notifications created for user:', context.params.userId, {
+      firstId: firstRef.id,
+      secondId: secondRef.id,
+    });
 
     return null;
   });
