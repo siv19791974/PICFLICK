@@ -1,0 +1,71 @@
+PICFLICK — 30-Day Improvement Roadmap
+
+Overall Goal:
+Increase activation, retention, and reliability while keeping the app lightweight and fast.
+
+WEEK 1: Activation (First 60 seconds)
+1) Tighten onboarding:
+   - Add a 2–3 screen intro: what PicFlick is, why it’s different, what to do first.
+   - Immediately guide users to: Add 3 friends -> Upload first photo.
+2) Empty-state upgrades:
+   - Home, Friends, and Notifications screens should each explain next best action.
+3) Sign-in resilience:
+   - Better fallback/error copy for login issues.
+   - Retry buttons and safer handling of stale local app state.
+
+Success metrics:
+- Install -> Sign-in conversion up
+- Sign-in -> First upload conversion up
+
+WEEK 2: Retention loops
+1) Lightweight habit loop:
+   - Daily/weekly prompt: “Post one moment today.”
+2) Social pull:
+   - Better friend activity highlights in feed/notifications.
+3) Comeback hooks:
+   - Weekly recap card (new photos, reactions, comments).
+
+Success metrics:
+- Day 1 and Day 7 retention up
+- Returning users posting at least 1 photo/week up
+
+WEEK 3: Reliability + performance hardening
+1) Startup stability:
+   - Guard all startup data reads and listeners.
+   - Handle no-network and stale-cache states gracefully.
+2) Feed reliability:
+   - Improve “Failed to load photos” fallback UX with clear retry and diagnostics.
+3) Device QA sweep:
+   - Test low-end devices, slow network, and cold start repeatedly.
+
+Success metrics:
+- Crash-free users up
+- ANR rate down
+- Fewer startup/feed failure reports
+
+WEEK 4: Store conversion + trust
+1) Play Store upgrades:
+   - Better screenshots (social proof + core flow + privacy angle).
+   - Strong short description with clear value proposition.
+2) Trust surface:
+   - Ensure privacy policy and delete-account pages are always accessible.
+   - Keep in-app deletion flow obvious and smooth.
+3) Listing experiments:
+   - A/B test icon/title/short description if available.
+
+Success metrics:
+- Store listing conversion rate up
+- Install quality (sign-ins per install) up
+
+Top 5 High-Impact Priorities (if time is limited)
+1) Onboarding + first-upload flow
+2) Startup crash/no-data hardening
+3) Retention prompts + weekly recap
+4) Feed load fallback + retry UX
+5) Play Store screenshot and copy refresh
+
+North-star funnel to track weekly
+Install -> Sign-in -> Add friend -> First upload -> First reaction/comment -> Day 7 return
+
+Final note:
+You already have strong product execution and release discipline. These improvements are mostly optimization layers to push PicFlick from “very good” to standout.
