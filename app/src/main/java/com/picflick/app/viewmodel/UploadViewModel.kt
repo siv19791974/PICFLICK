@@ -17,13 +17,19 @@ import com.google.firebase.storage.FirebaseStorage
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import java.util.Calendar
+import java.util.Locale
 import java.util.UUID
 import com.picflick.app.data.getDailyUploadLimit
+import com.picflick.app.data.getStorageLimitBytes
 
 /**
  * ViewModel for handling photo upload with filters and daily limits
  */
 class UploadViewModel : ViewModel() {
+
+    companion object {
+        private const val STORAGE_HARD_STOP_THRESHOLD = 1.10
+    }
 
     private val storage = FirebaseStorage.getInstance()
     private val firestore = FirebaseFirestore.getInstance()
@@ -131,9 +137,12 @@ class UploadViewModel : ViewModel() {
         userProfile: UserProfile,
         filter: PhotoFilter,
         taggedFriends: List<String> = emptyList(),
-        description: String = ""
+        description: String = "",
+        onOptimisticAdd: ((Flick) -> Unit)? = null,
+        onOptimisticRemove: ((String, Boolean) -> Unit)? = null
     ) {
         viewModelScope.launch {
+            var optimisticFlickId: String? = null
             try {
                 // Check daily limit based on subscription tier
                 val dailyLimit = userProfile.subscriptionTier.getDailyUploadLimit()
@@ -141,10 +150,37 @@ class UploadViewModel : ViewModel() {
                     uploadError = "Daily upload limit reached (${dailyUploadCount}/${dailyLimit}). Try again tomorrow!"
                     return@launch
                 }
-                
+
+                // Storage policy: warn from 90%, allow uploads up to 110%, hard-stop beyond 110%.
+                val tierStorageLimit = userProfile.subscriptionTier.getStorageLimitBytes()
+                val hardStorageLimit = (tierStorageLimit * STORAGE_HARD_STOP_THRESHOLD).toLong()
+                val estimatedUploadSize = estimatePhotoSizeBytes(context, photoUri)
+                val projectedStorageUsed = userProfile.storageUsedBytes + estimatedUploadSize
+                if (projectedStorageUsed > hardStorageLimit) {
+                    val hardLimitGb = hardStorageLimit / (1024.0 * 1024.0 * 1024.0)
+                    uploadError = "Storage limit reached (${String.format(Locale.getDefault(), "%.1f", hardLimitGb)} GB max). Delete photos or upgrade your plan to keep uploading."
+                    return@launch
+                }
+
                 isUploading = true
                 uploadError = null
                 uploadSuccess = false
+
+                val optimisticFlick = Flick(
+                    id = "optimistic_${UUID.randomUUID()}",
+                    userId = userProfile.uid,
+                    userName = userProfile.displayName,
+                    userPhotoUrl = userProfile.photoUrl,
+                    imageUrl = photoUri.toString(),
+                    description = description,
+                    timestamp = System.currentTimeMillis(),
+                    reactions = emptyMap(),
+                    commentCount = 0,
+                    privacy = "friends",
+                    taggedFriends = taggedFriends
+                )
+                optimisticFlickId = optimisticFlick.id
+                onOptimisticAdd?.invoke(optimisticFlick)
 
                 // 1. Upload image to Firebase Storage
                 val imageUrl = uploadImageToStorage(context, photoUri, userProfile.uid)
@@ -178,9 +214,11 @@ class UploadViewModel : ViewModel() {
                 // Increment total photos count
                 incrementTotalPhotos(userProfile.uid)
 
+                optimisticFlickId?.let { onOptimisticRemove?.invoke(it, true) }
                 uploadSuccess = true
-                
+
             } catch (e: Exception) {
+                optimisticFlickId?.let { onOptimisticRemove?.invoke(it, false) }
                 uploadError = e.message ?: "Upload failed"
             } finally {
                 isUploading = false
@@ -194,6 +232,24 @@ class UploadViewModel : ViewModel() {
     fun resetUploadState() {
         uploadSuccess = false
         uploadError = null
+    }
+
+    private fun estimatePhotoSizeBytes(context: Context, photoUri: Uri): Long {
+        return try {
+            val sizeFromCursor = context.contentResolver.query(photoUri, null, null, null, null)?.use { cursor ->
+                val sizeColumn = cursor.getColumnIndex(android.provider.OpenableColumns.SIZE)
+                if (sizeColumn >= 0 && cursor.moveToFirst()) cursor.getLong(sizeColumn) else -1L
+            } ?: -1L
+
+            if (sizeFromCursor > 0L) return sizeFromCursor
+
+            context.contentResolver.openAssetFileDescriptor(photoUri, "r")?.use { afd ->
+                val len = afd.length
+                if (len > 0L) len else 0L
+            } ?: 0L
+        } catch (_: Exception) {
+            0L
+        }
     }
 
     /**
