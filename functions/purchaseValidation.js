@@ -1,6 +1,6 @@
 const functions = require('firebase-functions');
 const admin = require('firebase-admin');
-const { google } = require('googleapis');
+let googleApi = null;
 
 // Initialize Firebase Admin
 if (!admin.apps.length) {
@@ -20,7 +20,7 @@ exports.validatePurchase = functions.https.onCall(async (data, context) => {
     throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated');
   }
 
-  const { purchaseToken, productId, packageName = 'com.example.picflick' } = data;
+  const { purchaseToken, productId, packageName = 'com.picflick.app' } = data;
   const userId = context.auth.uid;
 
   if (!purchaseToken || !productId) {
@@ -28,6 +28,10 @@ exports.validatePurchase = functions.https.onCall(async (data, context) => {
   }
 
   try {
+    if (!googleApi) {
+      googleApi = require('googleapis').google;
+    }
+
     // Get service account credentials from Firebase config
     const serviceAccount = functions.config().googleplay.service_account;
     
@@ -39,7 +43,7 @@ exports.validatePurchase = functions.https.onCall(async (data, context) => {
     }
 
     // Create JWT client for Google Play API
-    const jwtClient = new google.auth.JWT(
+    const jwtClient = new googleApi.auth.JWT(
       serviceAccount.client_email,
       null,
       serviceAccount.private_key,
@@ -49,7 +53,7 @@ exports.validatePurchase = functions.https.onCall(async (data, context) => {
     await jwtClient.authorize();
 
     // Call Google Play Developer API
-    const androidpublisher = google.androidpublisher({
+    const androidpublisher = googleApi.androidpublisher({
       version: 'v3',
       auth: jwtClient
     });

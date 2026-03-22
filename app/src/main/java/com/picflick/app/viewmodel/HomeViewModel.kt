@@ -476,6 +476,27 @@ class HomeViewModel : ViewModel() {
     }
 
     /**
+     * Optimistically add a newly uploading photo to the top of Home feed.
+     */
+    fun addOptimisticFlick(flick: Flick) {
+        val existingIndex = flicks.indexOfFirst { it.id == flick.id }
+        if (existingIndex >= 0) {
+            flicks.removeAt(existingIndex)
+        }
+        flicks.add(0, flick)
+    }
+
+    /**
+     * Remove optimistic photo once upload either succeeds or fails.
+     */
+    fun removeOptimisticFlick(flickId: String) {
+        val index = flicks.indexOfFirst { it.id == flickId }
+        if (index >= 0) {
+            flicks.removeAt(index)
+        }
+    }
+
+    /**
      * Upload a new flick
      */
     fun uploadFlick(

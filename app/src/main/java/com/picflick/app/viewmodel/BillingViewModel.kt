@@ -332,7 +332,7 @@ class BillingViewModel : ViewModel() {
                 val data = hashMapOf(
                     "purchaseToken" to purchase.purchaseToken,
                     "productId" to purchase.products.firstOrNull(),
-                    "packageName" to "com.example.picflick"
+                    "packageName" to "com.picflick.app"
                 )
                 
                 val result = functions

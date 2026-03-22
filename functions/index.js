@@ -58,17 +58,32 @@ exports.sendPushNotification = functions.firestore
       
       // Build notification message
       // Determine which screen to open when user taps the notification
-      let targetScreen = 'notifications'; // Default
-      if (notification.type === 'FRIEND_REQUEST') {
-        targetScreen = 'notifications'; // Opens notifications to Accept/Decline
-      } else if (notification.type === 'MESSAGE') {
-        targetScreen = 'chat'; // Opens chat with sender
-      } else if (notification.type === 'FOLLOW_ACCEPTED') {
-        targetScreen = 'profile'; // Opens sender's profile
-      } else if (notification.type === 'MENTION' || notification.type === 'COMMENT') {
-        targetScreen = 'photo'; // Opens the photo
+      const type = (notification.type || '').toUpperCase();
+      const explicitTarget = (notification.targetScreen || '').toLowerCase();
+      let targetScreen = explicitTarget || 'notifications'; // Default
+
+      if (!explicitTarget) {
+        if (type === 'MESSAGE') {
+          targetScreen = 'chat'; // Opens message thread
+        } else if (
+          type === 'MENTION' ||
+          type === 'COMMENT' ||
+          type === 'LIKE' ||
+          type === 'REACTION' ||
+          type === 'PHOTO_ADDED'
+        ) {
+          targetScreen = 'photo'; // Opens picture
+        } else if (
+          type === 'FOLLOW_ACCEPTED' ||
+          type === 'FOLLOW' ||
+          type === 'PROFILE_PHOTO_UPDATED'
+        ) {
+          targetScreen = 'profile'; // Opens sender profile
+        } else if (type === 'FRIEND_REQUEST') {
+          targetScreen = 'notifications'; // Opens request actions
+        }
       }
-      
+
       console.log('Push will open screen:', targetScreen, 'for type:', notification.type);
       
       const message = {
@@ -225,3 +240,6 @@ exports.sendWelcomeNotification = functions.firestore
 
     return null;
   });
+
+// Export purchase/subscription validation callables from the dedicated module.
+Object.assign(exports, require('./purchaseValidation'));

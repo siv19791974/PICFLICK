@@ -18,6 +18,7 @@ import androidx.compose.material.icons.filled.Upgrade
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -52,9 +53,7 @@ import com.picflick.app.ui.theme.isDarkModeBackground
 import com.picflick.app.viewmodel.BillingViewModel
 import com.picflick.app.viewmodel.SubscriptionProduct
 import com.google.firebase.firestore.FirebaseFirestore
-import com.google.firebase.storage.FirebaseStorage
-import com.google.firebase.storage.StorageReference
-import kotlinx.coroutines.delay
+import com.google.firebase.firestore.ListenerRegistration
 import kotlinx.coroutines.tasks.await
 
 /**
@@ -82,12 +81,19 @@ fun ManageStorageScreen(
     val remainingGB = totalGB - usedGB
     val isDarkMode = ThemeManager.isDarkMode.value
 
-    // Live storage refresh to keep running total current while screen is open.
-    LaunchedEffect(userProfile.uid) {
-        while (true) {
-            val liveBytes = loadUserStorageUsedBytes(userProfile.uid)
-            storageUsed = liveBytes
-            delay(60_000)
+    // Live storage sync from user profile document.
+    DisposableEffect(userProfile.uid) {
+        var registration: ListenerRegistration? = null
+        registration = FirebaseFirestore.getInstance()
+            .collection("users")
+            .document(userProfile.uid)
+            .addSnapshotListener { snapshot, _ ->
+                val liveBytes = snapshot?.getLong("storageUsedBytes") ?: return@addSnapshotListener
+                storageUsed = liveBytes
+            }
+
+        onDispose {
+            registration?.remove()
         }
     }
     
@@ -653,23 +659,3 @@ private fun StorageTipsCard(percent: Int, isDarkMode: Boolean) {
     }
 }
 
-private suspend fun loadUserStorageUsedBytes(userId: String): Long {
-    val root = FirebaseStorage.getInstance().reference.child("photos").child(userId)
-    return sumStorageFolderBytes(root)
-}
-
-private suspend fun sumStorageFolderBytes(folderRef: StorageReference): Long {
-    val listResult = folderRef.listAll().await()
-    var total = 0L
-
-    listResult.items.forEach { itemRef ->
-        val meta = itemRef.metadata.await()
-        total += meta.sizeBytes
-    }
-
-    listResult.prefixes.forEach { childFolder ->
-        total += sumStorageFolderBytes(childFolder)
-    }
-
-    return total
-}
