@@ -2661,62 +2661,88 @@ android.util.Log.e("FlickRepository", "Failed to submit feedback", e)
      */
     suspend fun deleteUserData(userId: String): Result<Unit> {
         return try {
-            // 1. Delete all user's photos (flicks)
+            fun canIgnore(e: Exception): Boolean {
+                val msg = e.message?.lowercase().orEmpty()
+                return msg.contains("permission") || msg.contains("denied")
+            }
+
+            suspend fun safeDelete(action: suspend () -> Unit) {
+                try {
+                    action()
+                } catch (e: Exception) {
+                    if (!canIgnore(e)) throw e
+                    android.util.Log.w("DeleteAccount", "Ignored permission-limited delete step: ${e.message}")
+                }
+            }
+
+            // 1) Delete user's own flick documents
             val flicksSnapshot = db.collection(Constants.FirebaseCollections.FLICKS)
                 .whereEqualTo("userId", userId)
                 .get()
                 .await()
-            
             flicksSnapshot.documents.forEach { doc ->
-                doc.reference.delete().await()
+                safeDelete { doc.reference.delete().await() }
             }
 
-            // 2. Delete user's chats and messages
+            // 2) Delete/cleanup chats that include this user
             val chatSessions = db.collection(Constants.FirebaseCollections.CHAT_SESSIONS)
                 .whereArrayContains("participants", userId)
                 .get()
                 .await()
-            
             chatSessions.documents.forEach { doc ->
-                // Delete all messages in the chat
-                val messages = doc.reference.collection("messages").get().await()
-                messages.documents.forEach { msg ->
-                    msg.reference.delete().await()
+                safeDelete {
+                    val messages = doc.reference.collection("messages").get().await()
+                    messages.documents.forEach { msg ->
+                        safeDelete { msg.reference.delete().await() }
+                    }
+                    doc.reference.delete().await()
                 }
-                // Delete the chat session
-                doc.reference.delete().await()
             }
 
-            // 3. Delete user's notifications
+            // 3) Delete notifications addressed to this user
             val notifications = db.collection(Constants.FirebaseCollections.NOTIFICATIONS)
                 .whereEqualTo("userId", userId)
                 .get()
                 .await()
-            
             notifications.documents.forEach { doc ->
-                doc.reference.delete().await()
+                safeDelete { doc.reference.delete().await() }
             }
 
-            // 4. Remove user from others' followers/following lists
+            // 4) Remove this user from other users' relationship arrays (best effort)
             val allUsers = db.collection(Constants.FirebaseCollections.USERS).get().await()
             allUsers.documents.forEach { userDoc ->
-                val userData = userDoc.toObject(UserProfile::class.java)
-                if (userData != null && (userData.followers.contains(userId) || userData.following.contains(userId))) {
-                    val updatedFollowers = userData.followers.filter { it != userId }
-                    val updatedFollowing = userData.following.filter { it != userId }
-                    userDoc.reference.update(
-                        mapOf(
-                            "followers" to updatedFollowers,
-                            "following" to updatedFollowing
-                        )
-                    ).await()
+                if (userDoc.id != userId) {
+                    safeDelete {
+                        userDoc.reference.update(
+                            mapOf(
+                                "followers" to FieldValue.arrayRemove(userId),
+                                "following" to FieldValue.arrayRemove(userId),
+                                "pendingFollowRequests" to FieldValue.arrayRemove(userId),
+                                "sentFollowRequests" to FieldValue.arrayRemove(userId)
+                            )
+                        ).await()
+                    }
                 }
             }
 
-            // 5. Delete user profile
-            db.collection(Constants.FirebaseCollections.USERS).document(userId)
-                .delete()
-                .await()
+            // 5) Delete user's own subcollections (friend groups, etc.)
+            safeDelete {
+                val friendGroups = db.collection(Constants.FirebaseCollections.USERS)
+                    .document(userId)
+                    .collection("friendGroups")
+                    .get()
+                    .await()
+                friendGroups.documents.forEach { groupDoc ->
+                    safeDelete { groupDoc.reference.delete().await() }
+                }
+            }
+
+            // 6) Finally delete user profile document
+            safeDelete {
+                db.collection(Constants.FirebaseCollections.USERS).document(userId)
+                    .delete()
+                    .await()
+            }
 
             Result.Success(Unit)
         } catch (e: Exception) {
