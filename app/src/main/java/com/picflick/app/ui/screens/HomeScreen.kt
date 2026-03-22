@@ -74,6 +74,7 @@ import kotlinx.coroutines.launch
 fun HomeScreen(
     userProfile: UserProfile,
     viewModel: HomeViewModel,
+    resetToTopVersion: Int = 0,
     onNavigate: (String) -> Unit,
     onSignOut: () -> Unit,
     onUserProfileClick: (String) -> Unit = {},
@@ -112,6 +113,13 @@ fun HomeScreen(
     LaunchedEffect(userProfile.uid) {
         viewModel.loadFlicks(userProfile.uid)
         viewModel.loadFriendGroups(userProfile.uid)
+    }
+
+    // External reset trigger (e.g., app foreground): refresh newest feed and return to top.
+    LaunchedEffect(resetToTopVersion) {
+        if (resetToTopVersion > 0) {
+            viewModel.loadFlicks(userProfile.uid)
+        }
     }
 
     // Diagnostic toast: when fullscreen/list near-end load-more fails, surface it immediately
@@ -210,6 +218,7 @@ fun HomeScreen(
                 else -> FlickGrid(
                     flicks = viewModel.flicks,
                     userProfile = userProfile,
+                    resetToTopVersion = resetToTopVersion,
                     onPhotoClick = { flick ->
                         selectedFlick = flick
                         selectedFlickIndex = viewModel.flicks.indexOf(flick)
@@ -631,6 +640,7 @@ private fun UploadOverlay(
 private fun FlickGrid(
     flicks: List<Flick>,
     userProfile: UserProfile,
+    resetToTopVersion: Int = 0,
     onPhotoClick: (Flick) -> Unit,
     onLongPress: (Flick) -> Unit,
     isLoadingMore: Boolean = false,
@@ -673,6 +683,14 @@ private fun FlickGrid(
             }
                 .distinctUntilChanged()
                 .collect { atTop -> onIsAtTopChanged(atTop) }
+        }
+
+        // External reset: snap to first (newest) photo.
+        LaunchedEffect(resetToTopVersion) {
+            if (resetToTopVersion > 0) {
+                listState.scrollToItem(0)
+                onIsAtTopChanged(true)
+            }
         }
 
         // Prefetch upcoming images just beyond current viewport

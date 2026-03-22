@@ -88,6 +88,7 @@ fun AuthenticatedContent(
     chatViewModel: ChatViewModel,
     uploadViewModel: UploadViewModel,
     authViewModel: AuthViewModel,
+    homeResetVersion: Int = 0,
     selectedChatSession: ChatSession?,
     selectedOtherUserId: String,
     onSetSelectedChat: (ChatSession, String) -> Unit,
@@ -113,7 +114,8 @@ fun AuthenticatedContent(
             homeViewModel = homeViewModel,
             friendsViewModel = friendsViewModel,
             onScreenChange = onScreenChange,
-            onSignOut = onSignOut
+            onSignOut = onSignOut,
+            homeResetVersion = homeResetVersion
         )
 
         is Screen.Profile -> ProfileScreenContent(
@@ -378,11 +380,13 @@ private fun HomeScreenContent(
     homeViewModel: HomeViewModel,
     friendsViewModel: FriendsViewModel,
     onScreenChange: (Screen) -> Unit,
-    onSignOut: () -> Unit
+    onSignOut: () -> Unit,
+    homeResetVersion: Int = 0
 ) {
     HomeScreen(
         userProfile = userProfile,
         viewModel = homeViewModel,
+        resetToTopVersion = homeResetVersion,
         onNavigate = { route ->
             val targetScreen = when (route) {
                 "profile" -> Screen.Profile

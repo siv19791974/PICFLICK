@@ -72,6 +72,7 @@ fun SettingsScreen(
     val context = LocalContext.current
     var showSignOutDialog by remember { mutableStateOf(false) }
     var showDeleteAccountDialog by remember { mutableStateOf(false) }
+    var showDeleteAccountFinalDialog by remember { mutableStateOf(false) }
     var showClearCacheDialog by remember { mutableStateOf(false) }
     var showAppearanceDialog by remember { mutableStateOf(false) }
     var showLanguageDialog by remember { mutableStateOf(false) }
@@ -310,27 +311,56 @@ fun SettingsScreen(
         )
     }
 
-    // Delete Account Confirmation Dialog
+                // Delete Account - Step 1 Confirmation Dialog
     if (showDeleteAccountDialog) {
         AlertDialog(
             onDismissRequest = { showDeleteAccountDialog = false },
             title = { Text("Delete Account?") },
-            text = { 
-                Text("This will permanently delete all your photos, friends, and data. This action cannot be undone.")
+            text = {
+                Text("This action is permanent and cannot be undone.")
             },
             confirmButton = {
                 TextButton(
                     onClick = {
                         showDeleteAccountDialog = false
-                        onDeleteAccount()
+                        showDeleteAccountFinalDialog = true
                     }
                 ) {
-                    Text("Delete", color = Color.Red)
+                    Text("Continue", color = Color.Red)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showDeleteAccountDialog = false }) {
                     Text("Cancel")
+                }
+            },
+            containerColor = if (isDarkMode) Color(0xFF1C1C1E) else Color.White,
+            titleContentColor = if (isDarkMode) Color.White else Color.Black,
+            textContentColor = if (isDarkMode) Color.White else Color.Black
+        )
+    }
+
+    // Delete Account - Final Explicit Confirmation
+    if (showDeleteAccountFinalDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteAccountFinalDialog = false },
+            title = { Text("Final confirmation") },
+            text = {
+                Text("Delete account permanently? All photos, friends, chats, and app data will be removed.")
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showDeleteAccountFinalDialog = false
+                        onDeleteAccount()
+                    }
+                ) {
+                    Text("Delete permanently", color = Color.Red)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteAccountFinalDialog = false }) {
+                    Text("Go back")
                 }
             },
             containerColor = if (isDarkMode) Color(0xFF1C1C1E) else Color.White,
