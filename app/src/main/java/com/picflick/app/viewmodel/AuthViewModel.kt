@@ -367,14 +367,20 @@ class AuthViewModel : ViewModel() {
                                 onComplete(true, null)
                             }
                             .addOnFailureListener { e ->
+                                // Data cleanup already happened; always sign out to avoid staying on a broken in-app state.
+                                signOut(context)
+
                                 val msg = e.message?.lowercase().orEmpty()
                                 if (msg.contains("recent") || msg.contains("credential") || msg.contains("login")) {
                                     onComplete(
                                         false,
-                                        "Please sign out, sign in again, then retry Delete Account."
+                                        "Account data was removed. Please sign in again once, then retry Delete Account to fully remove auth."
                                     )
                                 } else {
-                                    onComplete(false, "Failed to delete account: ${e.message}")
+                                    onComplete(
+                                        false,
+                                        "Account data was removed, but auth deletion failed. You were signed out safely."
+                                    )
                                 }
                             }
                     }
