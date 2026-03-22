@@ -69,6 +69,8 @@ fun NotificationsScreen(
     onUserProfileClick: (String) -> Unit = {},
     onPhotoClick: (flickId: String, imageUrl: String?, userId: String) -> Unit = { _, _, _ -> },
     onChatClick: (chatId: String, otherUserId: String, otherUserName: String, otherUserPhoto: String) -> Unit = { _, _, _, _ -> },
+    onFindFriendsClick: () -> Unit = {},
+    onAddFirstPhotoClick: () -> Unit = {},
     viewModel: NotificationViewModel = viewModel()
 ) {
     val notifications = viewModel.notifications
@@ -289,6 +291,21 @@ fun NotificationsScreen(
                                                 NotificationType.FOLLOW,
                                                 NotificationType.PROFILE_PHOTO_UPDATED -> onUserProfileClick(notification.senderId)
                                                 NotificationType.MESSAGE -> onChatClick("", notification.senderId, notification.senderName, notification.senderPhotoUrl)
+                                                NotificationType.SYSTEM -> {
+                                                    val target = notification.targetScreen?.lowercase().orEmpty()
+                                                    val hint = "${notification.title} ${notification.message}".lowercase()
+                                                    when {
+                                                        target == "upload" ||
+                                                            hint.contains("add your 1st photo") ||
+                                                            hint.contains("add your first photo") ||
+                                                            hint.contains("upload your first photo") -> onAddFirstPhotoClick()
+                                                        target == "find_friends" ||
+                                                            hint.contains("find friends") ||
+                                                            hint.contains("tap to find") ||
+                                                            hint.contains("welcome") ||
+                                                            hint.contains("onboarding") -> onFindFriendsClick()
+                                                    }
+                                                }
                                                 else -> Unit
                                             }
                                         }
@@ -347,6 +364,21 @@ fun NotificationsScreen(
                                                 NotificationType.FOLLOW,
                                                 NotificationType.PROFILE_PHOTO_UPDATED -> onUserProfileClick(notification.senderId)
                                                 NotificationType.MESSAGE -> onChatClick("", notification.senderId, notification.senderName, notification.senderPhotoUrl)
+                                                NotificationType.SYSTEM -> {
+                                                    val target = notification.targetScreen?.lowercase().orEmpty()
+                                                    val hint = "${notification.title} ${notification.message}".lowercase()
+                                                    when {
+                                                        target == "upload" ||
+                                                            hint.contains("add your 1st photo") ||
+                                                            hint.contains("add your first photo") ||
+                                                            hint.contains("upload your first photo") -> onAddFirstPhotoClick()
+                                                        target == "find_friends" ||
+                                                            hint.contains("find friends") ||
+                                                            hint.contains("tap to find") ||
+                                                            hint.contains("welcome") ||
+                                                            hint.contains("onboarding") -> onFindFriendsClick()
+                                                    }
+                                                }
                                                 else -> Unit
                                             }
                                         }

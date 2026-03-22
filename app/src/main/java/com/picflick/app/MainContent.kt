@@ -181,7 +181,8 @@ fun AuthenticatedContent(
         is Screen.Notifications -> NotificationsScreenContent(
             userProfile = userProfile,
             homeViewModel = homeViewModel,
-            onScreenChange = onScreenChange
+            onScreenChange = onScreenChange,
+            onOpenUploadSourceDialog = onOpenUploadSourceDialog
         )
 
         is Screen.Settings -> SettingsScreenContent(
@@ -226,6 +227,7 @@ fun AuthenticatedContent(
             userProfile = userProfile,
             friendsViewModel = friendsViewModel,
             uploadViewModel = uploadViewModel,
+            homeViewModel = homeViewModel,
             context = context,
             onScreenChange = onScreenChange
         )
@@ -779,7 +781,8 @@ private fun FindFriendsScreenContent(
 private fun NotificationsScreenContent(
     userProfile: UserProfile,
     homeViewModel: HomeViewModel,
-    onScreenChange: (Screen) -> Unit
+    onScreenChange: (Screen) -> Unit,
+    onOpenUploadSourceDialog: () -> Unit
 ) {
     var selectedNotificationPhoto by remember { mutableStateOf<Flick?>(null) }
 
@@ -821,6 +824,13 @@ private fun NotificationsScreenContent(
         },
         onChatClick = { _, _, _, _ ->
             onScreenChange(Screen.Chats)
+        },
+        onFindFriendsClick = {
+            onScreenChange(Screen.FindFriends)
+        },
+        onAddFirstPhotoClick = {
+            onScreenChange(Screen.Home)
+            onOpenUploadSourceDialog()
         }
     )
 
@@ -975,6 +985,7 @@ private fun FilterScreenContent(
     userProfile: UserProfile,
     friendsViewModel: FriendsViewModel,
     uploadViewModel: UploadViewModel,
+    homeViewModel: HomeViewModel,
     context: android.content.Context,
     onScreenChange: (Screen) -> Unit
 ) {
@@ -996,7 +1007,16 @@ private fun FilterScreenContent(
                     userProfile = userProfile,
                     filter = filter,
                     taggedFriends = taggedFriends,
-                    description = description
+                    description = description,
+                    onOptimisticAdd = { optimisticFlick ->
+                        homeViewModel.addOptimisticFlick(optimisticFlick)
+                    },
+                    onOptimisticRemove = { flickId, uploadSucceeded ->
+                        homeViewModel.removeOptimisticFlick(flickId)
+                        if (uploadSucceeded) {
+                            homeViewModel.loadFlicks(userProfile.uid)
+                        }
+                    }
                 )
             },
             onNavigateToFindFriends = { onScreenChange(Screen.FindFriends) },
