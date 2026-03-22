@@ -15,6 +15,7 @@ data class Notification(
     val flickId: String? = null,       // Related photo (if any)
     val flickImageUrl: String? = null,   // Thumbnail of related photo
     val chatId: String? = null,          // Related chat (for MESSAGE notifications)
+    val targetScreen: String? = null,    // Optional destination hint for onboarding/system notifications
     val isRead: Boolean = false,
     val timestamp: Long = System.currentTimeMillis()
 )

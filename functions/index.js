@@ -174,20 +174,38 @@ exports.sendWelcomeNotification = functions.firestore
       return null;
     }
     
-    // Create welcome notification
-    const welcomeNotif = {
+    // Create first onboarding notification (Find Friends)
+    const welcomeFindFriendsNotif = {
       userId: context.params.userId,
       senderId: 'system',
       senderName: 'PicFlick',
       type: 'SYSTEM',
       title: 'Welcome to PicFlick! 📸',
       message: 'Start sharing photos and connecting with friends. Tap Find Friends to get started!',
+      targetScreen: 'find_friends',
       timestamp: admin.firestore.FieldValue.serverTimestamp(),
       isRead: false,
     };
-    
-    await admin.firestore().collection('notifications').add(welcomeNotif);
-    console.log('Welcome notification created for user:', context.params.userId);
-    
+
+    // Create second onboarding notification (Add first photo)
+    const welcomeFirstPhotoNotif = {
+      userId: context.params.userId,
+      senderId: 'system',
+      senderName: 'PicFlick',
+      type: 'SYSTEM',
+      title: 'Welcome to PicFlick! 📸',
+      message: 'Add your 1st photo to PicFlick. Tap to get started!',
+      targetScreen: 'upload',
+      timestamp: admin.firestore.FieldValue.serverTimestamp(),
+      isRead: false,
+    };
+
+    const notificationsRef = admin.firestore().collection('notifications');
+    await Promise.all([
+      notificationsRef.add(welcomeFindFriendsNotif),
+      notificationsRef.add(welcomeFirstPhotoNotif),
+    ]);
+    console.log('Welcome onboarding notifications created for user:', context.params.userId);
+
     return null;
   });
