@@ -38,6 +38,7 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -165,7 +166,9 @@ class MainActivity : ComponentActivity() {
             ?: when {
                 deepLinkHost == "photo" || isCommentNotification -> "photo"
                 deepLinkHost == "chat" -> "chat"
-                deepLinkHost == "profile" || isFriendRequestNotification -> "profile"
+                deepLinkHost == "find_friends" || deepLinkHost == "friends" -> "find_friends"
+                deepLinkHost == "profile" -> "profile"
+                isFriendRequestNotification -> "find_friends"
                 else -> null
             }
 
@@ -183,7 +186,7 @@ class MainActivity : ComponentActivity() {
 
         val targetScreen = when {
             isCommentNotification -> "photo"
-            isFriendRequestNotification -> "profile"
+            isFriendRequestNotification -> "find_friends"
             !explicitTargetScreen.isNullOrBlank() -> explicitTargetScreen
             !flickId.isNullOrBlank() -> "photo"
             !chatId.isNullOrBlank() -> "chat"
@@ -266,10 +269,11 @@ fun MainScreen(
     val onboardingPrefs = remember {
         appContext.getSharedPreferences("picflick_onboarding", android.content.Context.MODE_PRIVATE)
     }
-    var hasSeenPostLoginCoach by remember {
-        mutableStateOf(onboardingPrefs.getBoolean("has_seen_post_login_coach", false))
+    var hasCoachOptOut by remember {
+        mutableStateOf(onboardingPrefs.getBoolean("has_opted_out_post_login_coach", false))
     }
     var coachStep by remember { mutableIntStateOf(0) }
+    var coachShownThisSession by remember { mutableStateOf(false) }
 
     // State for push notification photo (opens FullScreenPhotoViewer directly)
     var pushPhoto by remember { mutableStateOf<Flick?>(null) }
@@ -283,11 +287,23 @@ fun MainScreen(
     val activity = appContext as? MainActivity
     val currentUser = authViewModel.currentUser
 
-    val userIsNew = (authViewModel.userProfile?.following?.isEmpty() == true)
+    val hasUploadedFirstPhoto = (authViewModel.userProfile?.totalPhotos ?: 0) > 0
+    val hasFoundFirstFriend = authViewModel.userProfile?.following?.isNotEmpty() == true
+    val isActivatedUser = hasUploadedFirstPhoto || hasFoundFirstFriend
 
-    LaunchedEffect(currentUser?.uid, userIsNew, hasSeenPostLoginCoach) {
-        if (currentUser != null && userIsNew && !hasSeenPostLoginCoach) {
+    // Reset session-only coach tracking on logout.
+    LaunchedEffect(currentUser?.uid) {
+        if (currentUser == null) {
+            coachShownThisSession = false
+            coachStep = 0
+        }
+    }
+
+    // Show coach once per login session until activation is reached, unless user opted out.
+    LaunchedEffect(currentUser?.uid, isActivatedUser, hasCoachOptOut, coachShownThisSession) {
+        if (currentUser != null && !isActivatedUser && !hasCoachOptOut && !coachShownThisSession) {
             coachStep = 1
+            coachShownThisSession = true
         }
     }
 
@@ -342,6 +358,9 @@ fun MainScreen(
                     if (senderId != null) {
                         currentScreen = Screen.UserProfile(senderId)
                     }
+                }
+                "find_friends" -> {
+                    currentScreen = Screen.FindFriends
                 }
                 "photo" -> {
                     val flickId = pushData.getString("flickId")
@@ -928,21 +947,19 @@ fun MainScreen(
                 PostLoginCoachOverlay(
                     step = coachStep,
                     onSkip = {
-                        onboardingPrefs.edit().putBoolean("has_seen_post_login_coach", true).apply()
-                        hasSeenPostLoginCoach = true
+                        // Dismiss for this login session only.
+                        coachStep = 0
+                    },
+                    onNeverShowAgain = {
+                        onboardingPrefs.edit().putBoolean("has_opted_out_post_login_coach", true).apply()
+                        hasCoachOptOut = true
                         coachStep = 0
                     },
                     onNext = {
                         coachStep = if (coachStep >= 2) 0 else coachStep + 1
-                        if (coachStep == 0) {
-                            onboardingPrefs.edit().putBoolean("has_seen_post_login_coach", true).apply()
-                            hasSeenPostLoginCoach = true
-                        }
                     },
                     onGoFriends = {
                         currentScreen = Screen.Friends
-                        onboardingPrefs.edit().putBoolean("has_seen_post_login_coach", true).apply()
-                        hasSeenPostLoginCoach = true
                         coachStep = 0
                     }
                 )
@@ -955,6 +972,7 @@ fun MainScreen(
 private fun PostLoginCoachOverlay(
     step: Int,
     onSkip: () -> Unit,
+    onNeverShowAgain: () -> Unit,
     onNext: () -> Unit,
     onGoFriends: () -> Unit
 ) {
@@ -999,7 +1017,7 @@ private fun PostLoginCoachOverlay(
             verticalArrangement = Arrangement.SpaceBetween
         ) {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                OutlinedButton(onClick = onSkip) { Text("Skip") }
+                OutlinedButton(onClick = onSkip) { Text("Not now") }
             }
 
             Text(
@@ -1017,8 +1035,13 @@ private fun PostLoginCoachOverlay(
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.End
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
+                TextButton(onClick = onNeverShowAgain) {
+                    Text("Don't show again")
+                }
+
                 Button(onClick = if (step == 1) onNext else onGoFriends) {
                     Text(if (step == 1) "Next" else "Take me there")
                 }
