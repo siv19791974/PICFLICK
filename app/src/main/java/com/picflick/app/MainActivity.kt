@@ -712,22 +712,34 @@ fun MainScreen(
         if (currentUser != null && wasPreviouslyLoggedOut) {
             Analytics.trackLogin()
         }
+
+        // On logout, clear any stale errors so we don't show permission-denied snackbars/toasts.
+        if (currentUser == null) {
+            homeViewModel.clearError()
+            chatViewModel.clearError()
+            notificationViewModel.clearError()
+            friendsViewModel.clearError()
+        }
     }
 
     // Collect errors from all ViewModels and show in Snackbar + track analytics
     LaunchedEffect(
+        currentUser,
         homeViewModel.errorMessage,
         chatViewModel.errorMessage,
         notificationViewModel.errorMessage,
         friendsViewModel.errorMessage
     ) {
+        // Ignore transient background errors while signed out.
+        if (currentUser == null) return@LaunchedEffect
+
         val errors = listOfNotNull(
             homeViewModel.errorMessage,
             chatViewModel.errorMessage,
             notificationViewModel.errorMessage,
             friendsViewModel.errorMessage
         )
-        
+
         errors.firstOrNull()?.let { error ->
             snackbarHostState.showSnackbar(
                 message = error,
