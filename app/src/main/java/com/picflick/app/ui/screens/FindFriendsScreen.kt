@@ -656,7 +656,7 @@ private fun InviteTab(
 Check out PicFlick - a cool photo sharing app I've been using!
 
 Join me and share your best shots: 
-https://play.google.com/store/apps/details?id=com.example.picflick
+https://play.google.com/store/apps/details?id=com.picflick.app
 
 My username: ${userProfile.displayName}"""
 

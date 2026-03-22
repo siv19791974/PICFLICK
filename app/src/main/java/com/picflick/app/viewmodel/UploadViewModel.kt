@@ -123,6 +123,20 @@ class UploadViewModel : ViewModel() {
     }
 
     /**
+     * Increment storage usage bytes for running total UI.
+     */
+    private suspend fun incrementStorageUsedBytes(userId: String, uploadedBytes: Long) {
+        if (uploadedBytes <= 0L) return
+        try {
+            firestore.collection("users").document(userId)
+                .update("storageUsedBytes", com.google.firebase.firestore.FieldValue.increment(uploadedBytes))
+                .await()
+        } catch (e: Exception) {
+            android.util.Log.w("UploadViewModel", "Failed to update storageUsedBytes", e)
+        }
+    }
+
+    /**
      * Upload a photo to Firebase Storage and create a Flick
      *
      * @param photoUri URI of the filtered photo
@@ -183,7 +197,7 @@ class UploadViewModel : ViewModel() {
                 onOptimisticAdd?.invoke(optimisticFlick)
 
                 // 1. Upload image to Firebase Storage
-                val imageUrl = uploadImageToStorage(context, photoUri, userProfile.uid)
+                val (imageUrl, uploadedBytes) = uploadImageToStorage(context, photoUri, userProfile.uid)
 
                 // 2. Create Flick using repository (sends notifications to followers & tagged friends)
                 val flick = Flick(
@@ -213,6 +227,7 @@ class UploadViewModel : ViewModel() {
 
                 // Increment total photos count
                 incrementTotalPhotos(userProfile.uid)
+                incrementStorageUsedBytes(userProfile.uid, uploadedBytes)
 
                 optimisticFlickId?.let { onOptimisticRemove?.invoke(it, true) }
                 uploadSuccess = true
@@ -259,7 +274,7 @@ class UploadViewModel : ViewModel() {
         context: Context,
         photoUri: Uri,
         userId: String
-    ): String {
+    ): Pair<String, Long> {
         val storageRef = storage.reference
         val imageName = "photos/${userId}/${UUID.randomUUID()}.jpg"
         val imageRef = storageRef.child(imageName)
@@ -269,7 +284,9 @@ class UploadViewModel : ViewModel() {
             imageRef.putStream(inputStream).await()
         } ?: throw IllegalStateException("Cannot open photo stream")
 
-        // Get download URL
-        return imageRef.downloadUrl.await().toString()
+        // Get exact uploaded size + download URL
+        val uploadedBytes = imageRef.metadata.await().sizeBytes
+        val downloadUrl = imageRef.downloadUrl.await().toString()
+        return downloadUrl to uploadedBytes
     }
 }

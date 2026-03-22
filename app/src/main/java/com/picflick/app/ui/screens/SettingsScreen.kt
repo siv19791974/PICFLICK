@@ -48,10 +48,8 @@ import com.picflick.app.data.getStorageLimitBytes
 import com.picflick.app.data.getStorageLimitGB
 import com.picflick.app.utils.LocaleHelper
 import com.picflick.app.util.rememberLiveUserPhotoUrl
-import com.google.firebase.storage.FirebaseStorage
-import com.google.firebase.storage.StorageReference
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.tasks.await
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.ListenerRegistration
 
 /**
  * Settings screen with user preferences and account options
@@ -714,10 +712,17 @@ private fun ProfileHeaderWithStorage(
         (storageUsed * 100 / storageLimit).toInt()
     } else 0
 
-    LaunchedEffect(userProfile.uid) {
-        while (true) {
-            storageUsed = loadUserStorageUsedBytes(userProfile.uid)
-            delay(60_000)
+    DisposableEffect(userProfile.uid) {
+        val registration: ListenerRegistration = FirebaseFirestore.getInstance()
+            .collection("users")
+            .document(userProfile.uid)
+            .addSnapshotListener { snapshot, _ ->
+                val liveBytes = snapshot?.getLong("storageUsedBytes") ?: return@addSnapshotListener
+                storageUsed = liveBytes
+            }
+
+        onDispose {
+            registration.remove()
         }
     }
     
@@ -1289,24 +1294,4 @@ private fun LanguageOption(
     }
 }
 
-private suspend fun loadUserStorageUsedBytes(userId: String): Long {
-    val root = FirebaseStorage.getInstance().reference.child("photos").child(userId)
-    return sumStorageFolderBytes(root)
-}
-
-private suspend fun sumStorageFolderBytes(folderRef: StorageReference): Long {
-    val listResult = folderRef.listAll().await()
-    var total = 0L
-
-    listResult.items.forEach { itemRef ->
-        val meta = itemRef.metadata.await()
-        total += meta.sizeBytes
-    }
-
-    listResult.prefixes.forEach { childFolder ->
-        total += sumStorageFolderBytes(childFolder)
-    }
-
-    return total
-}
 
