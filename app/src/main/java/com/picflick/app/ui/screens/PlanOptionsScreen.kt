@@ -458,7 +458,7 @@ private fun getTierPrice(tier: SubscriptionTier, products: List<SubscriptionProd
                 product.price
             } else {
                 val price = tier.getMonthlyPrice()
-                if (price > 0) "$$price" else "N/A"
+                if (price > 0) "€$price" else "N/A"
             }
         }
     }

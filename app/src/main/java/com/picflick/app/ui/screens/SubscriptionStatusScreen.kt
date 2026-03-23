@@ -282,7 +282,7 @@ private fun CurrentSubscriptionCard(
                         )
                     } else if (tier != SubscriptionTier.FREE) {
                         // Use actual product price if available
-                        val price = currentProduct?.price ?: "$${tier.getMonthlyPrice()}"
+                        val price = currentProduct?.price ?: "€${tier.getMonthlyPrice()}"
                         Text(
                             text = "$price/month",
                             fontSize = 16.sp,
