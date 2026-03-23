@@ -147,7 +147,7 @@ fun SubscriptionTier.getMonthlyPrice(): Double {
     return when (this) {
         SubscriptionTier.FREE -> 0.0
         SubscriptionTier.STANDARD -> 2.99
-        SubscriptionTier.PLUS -> 4.99
+        SubscriptionTier.PLUS -> 5.99
         SubscriptionTier.PRO -> 9.99      // Increased from 8.99
         SubscriptionTier.ULTRA -> 17.99   // Reduced from 19.99
     }
