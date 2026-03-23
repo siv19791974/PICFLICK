@@ -1,5 +1,6 @@
 package com.picflick.app.ui.screens
 
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -16,12 +17,14 @@ import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Upgrade
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -34,6 +37,7 @@ import com.picflick.app.data.getMonthlyPrice
 import com.picflick.app.data.getStorageLimitGB
 import com.picflick.app.ui.theme.ThemeManager
 import com.picflick.app.ui.theme.isDarkModeBackground
+import com.picflick.app.viewmodel.BillingEvent
 import com.picflick.app.viewmodel.BillingViewModel
 import com.picflick.app.viewmodel.SubscriptionProduct
 
@@ -47,11 +51,37 @@ fun PlanOptionsScreen(
     userProfile: UserProfile,
     billingViewModel: BillingViewModel,
     onBack: () -> Unit,
-    onPurchase: (SubscriptionTier) -> Unit
+    onPurchase: (SubscriptionTier) -> Unit,
+    onRestorePurchases: () -> Unit = {}
 ) {
     val isDarkMode = ThemeManager.isDarkMode.value
+    val context = LocalContext.current
     val products: List<SubscriptionProduct> by billingViewModel.products.collectAsState()
+    val billingEvent: BillingEvent? by billingViewModel.billingEvent.collectAsState()
     val currentTier = userProfile.subscriptionTier
+
+    LaunchedEffect(billingEvent) {
+        when (val event = billingEvent) {
+            is BillingEvent.PurchasesRestored -> {
+                val message = if (event.tier == SubscriptionTier.FREE) {
+                    "No active purchases found"
+                } else {
+                    "Purchases restored: ${event.tier.getDisplayName()}"
+                }
+                Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+                billingViewModel.clearBillingEvent()
+            }
+            is BillingEvent.PurchaseError -> {
+                Toast.makeText(context, event.message, Toast.LENGTH_LONG).show()
+                billingViewModel.clearBillingEvent()
+            }
+            null,
+            is BillingEvent.PurchaseSuccess,
+            is BillingEvent.PurchaseCancelled,
+            is BillingEvent.AlreadyOwned,
+            is BillingEvent.PurchaseInitiated -> Unit
+        }
+    }
     
     // All tiers to display
     val allTiers = listOf(
@@ -122,8 +152,17 @@ fun PlanOptionsScreen(
                 text = "Upgrade for more storage and daily uploads",
                 fontSize = 14.sp,
                 color = if (isDarkMode) Color.Gray else Color.DarkGray,
-                modifier = Modifier.padding(bottom = 24.dp)
+                modifier = Modifier.padding(bottom = 12.dp)
             )
+
+            OutlinedButton(
+                onClick = onRestorePurchases,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Restore purchases")
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
             
             // Current Plan indicator
             if (currentTier != SubscriptionTier.FREE) {

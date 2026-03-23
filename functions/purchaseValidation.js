@@ -1,6 +1,10 @@
 const functions = require('firebase-functions');
 const admin = require('firebase-admin');
+const crypto = require('crypto');
 let googleApi = null;
+
+const VALIDATE_PURCHASE_RATE_LIMIT_WINDOW_MS = 60 * 1000;
+const VALIDATE_PURCHASE_RATE_LIMIT_MAX = 10;
 
 // Initialize Firebase Admin
 if (!admin.apps.length) {
@@ -27,6 +31,8 @@ exports.validatePurchase = functions.https.onCall(async (data, context) => {
     throw new functions.https.HttpsError('invalid-argument', 'Missing purchase token or product ID');
   }
 
+  await enforceValidatePurchaseRateLimit(userId);
+
   try {
     if (!googleApi) {
       googleApi = require('googleapis').google;
@@ -37,9 +43,10 @@ exports.validatePurchase = functions.https.onCall(async (data, context) => {
     
     if (!serviceAccount) {
       console.error('Google Play service account not configured');
-      // For development: skip validation but log warning
-      // In production, this should fail
-      return await handleValidationBypass(userId, purchaseToken, productId);
+      throw new functions.https.HttpsError(
+        'failed-precondition',
+        'Google Play validation is not configured on the server'
+      );
     }
 
     // Create JWT client for Google Play API
@@ -166,26 +173,23 @@ exports.checkExpiredSubscriptions = functions.pubsub
         .where('subscriptionTier', '!=', 'FREE')
         .get();
 
-      const batch = db.batch();
       let expiredCount = 0;
 
+      const downgradePromises = [];
       expiredUsers.forEach(doc => {
         const userData = doc.data();
-        
+
         // Don't downgrade if auto-renewing (Google Play handles renewal)
         if (!userData.autoRenewing) {
-          batch.update(doc.ref, {
-            subscriptionTier: 'FREE',
-            subscriptionDowngradedAt: admin.firestore.FieldValue.serverTimestamp()
-          });
+          downgradePromises.push(downgradeToFree({ userId: doc.id }));
           expiredCount++;
-          
+
           // Send notification to user
-          sendExpiryNotification(doc.id, userData);
+          downgradePromises.push(sendExpiryNotification(doc.id, userData));
         }
       });
 
-      await batch.commit();
+      await Promise.all(downgradePromises);
       console.log(`Processed ${expiredCount} expired subscriptions`);
       
       return null;
@@ -201,42 +205,44 @@ exports.checkExpiredSubscriptions = functions.pubsub
  */
 exports.handleRealtimeNotification = functions.https.onRequest(async (req, res) => {
   try {
-    const notification = req.body;
-    
-    // Verify notification signature (implement proper security)
-    // For now, just log it
-    console.log('Received realtime notification:', notification);
-    
+    if (req.method !== 'POST') {
+      return res.status(405).send('Method not allowed');
+    }
+
+    if (!verifyRealtimeNotificationRequest(req)) {
+      console.error('Realtime notification signature verification failed');
+      return res.status(401).send('Unauthorized');
+    }
+
+    const notification = parseRealtimeNotification(req.body);
+    if (!notification) {
+      return res.status(400).send('Invalid payload');
+    }
+
+    console.log('Received realtime notification:', JSON.stringify(notification));
+
     // Handle different notification types
     switch (notification.notificationType) {
-      case 'SUBSCRIPTION_RECOVERED':
-        // Payment was recovered, reactivate subscription
+      case 1: // SUBSCRIPTION_RECOVERED
         await reactivateSubscription(notification);
         break;
-        
-      case 'SUBSCRIPTION_RENEWED':
-        // Subscription renewed, update expiry
+      case 2: // SUBSCRIPTION_RENEWED
         await updateSubscriptionExpiry(notification);
         break;
-        
-      case 'SUBSCRIPTION_CANCELED':
-        // User cancelled, mark for downgrade at expiry
+      case 3: // SUBSCRIPTION_CANCELED
         await markCancellation(notification);
         break;
-        
-      case 'SUBSCRIPTION_EXPIRED':
-        // Subscription expired, downgrade to free
+      case 13: // SUBSCRIPTION_EXPIRED
         await downgradeToFree(notification);
         break;
-        
       default:
         console.log('Unhandled notification type:', notification.notificationType);
     }
-    
-    res.status(200).send('OK');
+
+    return res.status(200).send('OK');
   } catch (error) {
     console.error('Failed to handle realtime notification:', error);
-    res.status(500).send('Error');
+    return res.status(500).send('Error');
   }
 });
 
@@ -304,59 +310,134 @@ async function sendExpiryNotification(userId, userData) {
   }
 }
 
-/**
- * Development helper: Bypass validation (DANGEROUS - remove in production!)
- */
-async function handleValidationBypass(userId, purchaseToken, productId) {
-  console.warn(`VALIDATION BYPASSED for user ${userId}. This should only happen in development!`);
-  
-  const tier = getTierFromProductId(productId);
-  const isYearly = productId.includes('yearly');
-  
-  // Set expiry to 1 year from now for development
-  const expiryDate = new Date();
-  expiryDate.setFullYear(expiryDate.getFullYear() + 1);
-  
-  await updateUserSubscription(userId, {
-    tier: tier,
-    isYearly: isYearly,
-    purchaseToken: purchaseToken,
-    productId: productId,
-    expiryDate: expiryDate,
-    orderId: 'DEV_BYPASS',
-    autoRenewing: true,
-    validatedAt: admin.firestore.FieldValue.serverTimestamp()
-  });
-  
-  return {
-    success: true,
-    tier: tier,
-    isYearly: isYearly,
-    expiryDate: expiryDate.toISOString(),
-    autoRenewing: true,
-    warning: 'Development mode - validation bypassed'
-  };
-}
 
 /**
  * Helper functions for realtime notifications
  */
+function verifyRealtimeNotificationRequest(req) {
+  const sharedSecret = functions.config().googleplay?.rtdn_secret;
+  if (!sharedSecret) {
+    console.error('Missing googleplay.rtdn_secret for RTDN verification');
+    return false;
+  }
+
+  const provided = req.get('x-picflick-rtdn-signature') || '';
+  if (!provided) return false;
+
+  const payload = typeof req.body === 'string' ? req.body : JSON.stringify(req.body || {});
+  const expected = crypto
+    .createHmac('sha256', sharedSecret)
+    .update(payload)
+    .digest('hex');
+
+  if (provided.length !== expected.length) return false;
+  return crypto.timingSafeEqual(Buffer.from(provided), Buffer.from(expected));
+}
+
+function parseRealtimeNotification(body) {
+  const messageData = body?.message?.data;
+  if (!messageData) return null;
+
+  const decoded = Buffer.from(messageData, 'base64').toString('utf8');
+  const parsed = JSON.parse(decoded);
+  const sub = parsed?.subscriptionNotification;
+  if (!sub) return null;
+
+  return {
+    notificationType: sub.notificationType,
+    purchaseToken: sub.purchaseToken,
+    productId: sub.subscriptionId,
+    packageName: parsed.packageName
+  };
+}
+
+async function resolveUserIdForNotification(notification) {
+  if (notification.userId) return notification.userId;
+
+  const token = notification.purchaseToken;
+  if (!token) return null;
+
+  const snapshot = await db.collection('users')
+    .where('purchaseToken', '==', token)
+    .limit(1)
+    .get();
+
+  if (snapshot.empty) return null;
+  return snapshot.docs[0].id;
+}
+
 async function reactivateSubscription(notification) {
-  // Implementation for subscription recovery
-  console.log('Reactivating subscription:', notification);
+  const userId = await resolveUserIdForNotification(notification);
+  if (!userId) return;
+
+  await db.collection('users').doc(userId).update({
+    subscriptionActive: true,
+    autoRenewing: true,
+    subscriptionRecoveredAt: admin.firestore.FieldValue.serverTimestamp()
+  });
 }
 
 async function updateSubscriptionExpiry(notification) {
-  // Update expiry date based on renewal
-  console.log('Updating subscription expiry:', notification);
+  const userId = await resolveUserIdForNotification(notification);
+  if (!userId) return;
+
+  // Expiry refresh should still be handled by validatePurchase; here we mark renewal receipt.
+  await db.collection('users').doc(userId).update({
+    autoRenewing: true,
+    subscriptionRenewedAt: admin.firestore.FieldValue.serverTimestamp(),
+    productId: notification.productId || admin.firestore.FieldValue.delete(),
+    purchaseToken: notification.purchaseToken || admin.firestore.FieldValue.delete()
+  });
 }
 
 async function markCancellation(notification) {
-  // Mark subscription for future downgrade
-  console.log('Marking subscription for cancellation:', notification);
+  const userId = await resolveUserIdForNotification(notification);
+  if (!userId) return;
+
+  await db.collection('users').doc(userId).update({
+    autoRenewing: false,
+    cancellationMarkedAt: admin.firestore.FieldValue.serverTimestamp()
+  });
 }
 
 async function downgradeToFree(notification) {
-  // Downgrade user to free tier
-  console.log('Downgrading to free:', notification);
+  const userId = await resolveUserIdForNotification(notification);
+  if (!userId) return;
+
+  await db.collection('users').doc(userId).update({
+    subscriptionTier: 'FREE',
+    subscriptionActive: false,
+    subscriptionExpiryDate: null,
+    purchaseToken: null,
+    productId: null,
+    autoRenewing: false,
+    subscriptionDowngradedAt: admin.firestore.FieldValue.serverTimestamp()
+  });
+}
+
+async function enforceValidatePurchaseRateLimit(userId) {
+  const now = Date.now();
+  const ref = db.collection('billingRateLimits').doc(userId);
+
+  await db.runTransaction(async tx => {
+    const doc = await tx.get(ref);
+    const current = doc.exists ? doc.data() : { windowStartMs: now, attempts: 0 };
+
+    const elapsed = now - (current.windowStartMs || now);
+    const withinWindow = elapsed < VALIDATE_PURCHASE_RATE_LIMIT_WINDOW_MS;
+    const attempts = withinWindow ? (current.attempts || 0) : 0;
+
+    if (attempts >= VALIDATE_PURCHASE_RATE_LIMIT_MAX) {
+      throw new functions.https.HttpsError(
+        'resource-exhausted',
+        'Too many purchase validations. Please try again shortly.'
+      );
+    }
+
+    tx.set(ref, {
+      windowStartMs: withinWindow ? current.windowStartMs : now,
+      attempts: attempts + 1,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp()
+    }, { merge: true });
+  });
 }
