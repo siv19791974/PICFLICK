@@ -31,6 +31,42 @@ class ChatRepository {
         return get(field).toIntOrNullSafe()
     }
 
+    private fun com.google.firebase.firestore.DocumentSnapshot.getStringMap(field: String): Map<String, String> {
+        return (get(field) as? Map<*, *>)
+            ?.mapNotNull { (k, v) ->
+                val key = k as? String ?: return@mapNotNull null
+                val value = v as? String ?: return@mapNotNull null
+                key to value
+            }
+            ?.toMap()
+            ?: emptyMap()
+    }
+
+    private fun com.google.firebase.firestore.DocumentSnapshot.toChatSessionSafe(userId: String): ChatSession {
+        val participants = (get("participants") as? List<*>)
+            ?.filterIsInstance<String>()
+            ?: emptyList()
+
+        val unreadFromDirectField = getIntFromAny("unreadCount_$userId")
+        val unreadFromMap = (get("unreadCount") as? Map<*, *>)
+            ?.get(userId)
+            .toIntOrNullSafe()
+
+        val resolvedUnread = unreadFromDirectField ?: unreadFromMap ?: 0
+
+        return ChatSession(
+            id = getString("id").orEmpty().ifBlank { id },
+            participants = participants,
+            participantNames = getStringMap("participantNames"),
+            participantPhotos = getStringMap("participantPhotos"),
+            lastMessage = getString("lastMessage").orEmpty(),
+            lastTimestamp = getLong("lastTimestamp") ?: 0L,
+            lastSenderId = getString("lastSenderId").orEmpty(),
+            lastMessageRead = getBoolean("lastMessageRead") ?: false,
+            unreadCount = resolvedUnread
+        )
+    }
+
     /**
      * Get all chat sessions for a user
      */
@@ -46,19 +82,7 @@ class ChatRepository {
                 }
                 launch {
                     val rawSessions = snapshot?.documents?.mapNotNull { doc ->
-                        val base = doc.toObject(ChatSession::class.java) ?: return@mapNotNull null
-                        val unreadFromDirectField = doc.getIntFromAny("unreadCount_$userId")
-                        val unreadFromMap = (doc.get("unreadCount") as? Map<*, *>)
-                            ?.get(userId)
-                            .toIntOrNullSafe()
-                        val resolvedUnread = unreadFromDirectField
-                            ?: unreadFromMap
-                            ?: base.unreadCount
-
-                        base.copy(
-                            id = if (base.id.isBlank()) doc.id else base.id,
-                            unreadCount = resolvedUnread
-                        )
+                        runCatching { doc.toChatSessionSafe(userId) }.getOrNull()
                     } ?: emptyList()
 
                     // Keep valid 1:1 chat sessions visible even if friendship changes later.

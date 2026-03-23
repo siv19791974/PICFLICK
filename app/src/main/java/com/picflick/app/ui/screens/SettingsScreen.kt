@@ -48,6 +48,7 @@ import com.picflick.app.data.getStorageLimitBytes
 import com.picflick.app.data.getStorageLimitGB
 import com.picflick.app.utils.LocaleHelper
 import com.picflick.app.util.rememberLiveUserPhotoUrl
+import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ListenerRegistration
 import com.google.firebase.storage.FirebaseStorage
@@ -711,16 +712,17 @@ private fun ProfileHeaderWithStorage(
     var storageUsed by remember(userProfile.uid) { mutableStateOf(userProfile.storageUsedBytes) }
     val storageLimit = tier.getStorageLimitBytes()
     val liveUserPhoto = rememberLiveUserPhotoUrl(userProfile.uid, userProfile.photoUrl)
-    val storagePercent = if (storageLimit > 0) {
+    val rawStoragePercent = if (storageLimit > 0) {
         (storageUsed * 100 / storageLimit).toInt()
     } else 0
+    val storagePercent = if (storageUsed > 0L && rawStoragePercent == 0) 1 else rawStoragePercent
 
     DisposableEffect(userProfile.uid) {
         val registration: ListenerRegistration = FirebaseFirestore.getInstance()
             .collection("users")
             .document(userProfile.uid)
             .addSnapshotListener { snapshot, _ ->
-                val liveBytes = snapshot?.getLong("storageUsedBytes") ?: return@addSnapshotListener
+                val liveBytes = snapshot?.getNumericLong("storageUsedBytes") ?: return@addSnapshotListener
                 storageUsed = liveBytes
             }
 
@@ -869,19 +871,6 @@ private fun ProfileHeaderWithStorage(
         }
         
         Spacer(modifier = Modifier.height(16.dp))
-        
-        // Storage Progress Bar
-        if (tier != SubscriptionTier.FREE || storageUsed > 0) {
-            StorageProgressBar(
-                usedBytes = storageUsed,
-                totalBytes = storageLimit,
-                percent = storagePercent,
-                tierColor = tierColor,
-                onClick = onManageStorage
-            )
-            
-            Spacer(modifier = Modifier.height(12.dp))
-        }
         
         // Quick Actions Row
         Row(
@@ -1310,6 +1299,15 @@ private fun LanguageOption(
         if (isSelected) {
             Text("✓", color = Color(0xFF00D09C))
         }
+    }
+}
+
+private fun DocumentSnapshot.getNumericLong(field: String): Long? {
+    val value = get(field) ?: return null
+    return when (value) {
+        is Number -> value.toLong()
+        is String -> value.toLongOrNull()
+        else -> null
     }
 }
 

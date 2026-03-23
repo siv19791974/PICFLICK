@@ -52,6 +52,7 @@ import com.picflick.app.ui.theme.ThemeManager
 import com.picflick.app.ui.theme.isDarkModeBackground
 import com.picflick.app.viewmodel.BillingViewModel
 import com.picflick.app.viewmodel.SubscriptionProduct
+import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ListenerRegistration
 import com.google.firebase.storage.FirebaseStorage
@@ -74,9 +75,10 @@ fun ManageStorageScreen(
     val tierColor = tier.getColor()
     var storageUsed by remember(userProfile.uid) { mutableStateOf(userProfile.storageUsedBytes) }
     val storageLimit = tier.getStorageLimitBytes()
-    val storagePercent = if (storageLimit > 0) {
+    val rawStoragePercent = if (storageLimit > 0) {
         (storageUsed * 100 / storageLimit).toInt()
     } else 0
+    val storagePercent = if (storageUsed > 0L && rawStoragePercent == 0) 1 else rawStoragePercent
     val displayPercent = storagePercent.coerceAtMost(100)
     val usedGB = storageUsed / (1024.0 * 1024.0 * 1024.0)
     val totalGB = storageLimit / (1024.0 * 1024.0 * 1024.0)
@@ -89,7 +91,7 @@ fun ManageStorageScreen(
             .collection("users")
             .document(userProfile.uid)
             .addSnapshotListener { snapshot, _ ->
-                val liveBytes = snapshot?.getLong("storageUsedBytes") ?: return@addSnapshotListener
+                val liveBytes = snapshot?.getNumericLong("storageUsedBytes") ?: return@addSnapshotListener
                 storageUsed = liveBytes
             }
 
@@ -600,6 +602,15 @@ private fun UpgradeOptionsCard(
                 )
             }
         }
+    }
+}
+
+private fun DocumentSnapshot.getNumericLong(field: String): Long? {
+    val value = get(field) ?: return null
+    return when (value) {
+        is Number -> value.toLong()
+        is String -> value.toLongOrNull()
+        else -> null
     }
 }
 

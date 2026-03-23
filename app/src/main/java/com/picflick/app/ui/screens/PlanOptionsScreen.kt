@@ -335,9 +335,9 @@ private fun PlanCard(
                     isDarkMode = isDarkMode
                 )
                 
-                // Photos (estimated at medium quality)
-                // Formula: GB × 1024 MB ÷ 1.5 MB per photo
-                val estimatedPhotos = ((storageGB * 1024.0) / 1.5).toInt()
+                // Photos (estimated average at ~3 MB per photo)
+                // Formula: GB × 1024 MB ÷ 3 MB per photo
+                val estimatedPhotos = ((storageGB * 1024.0) / 3.0).toInt()
                 val displayPhotos = when {
                     estimatedPhotos >= 1000 -> "${estimatedPhotos / 1000}K"
                     else -> "$estimatedPhotos"
