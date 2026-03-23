@@ -6,6 +6,10 @@ import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 import com.google.firebase.storage.FirebaseStorage
 import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 import java.util.UUID
 
 /**
@@ -17,6 +21,7 @@ class PhotoRepository private constructor() {
     private val db = FirebaseFirestore.getInstance()
     private val storage = FirebaseStorage.getInstance()
     private val notificationRepository = NotificationRepository.getInstance()
+    private val repositoryScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     companion object {
         @Volatile
@@ -91,53 +96,58 @@ class PhotoRepository private constructor() {
      * @param onResult Callback with result
      */
     fun deleteFlick(flickId: String, onResult: (Result<Unit>) -> Unit) {
-        db.collection("flicks").document(flickId)
-            .get()
-            .addOnSuccessListener { snapshot ->
+        repositoryScope.launch {
+            try {
+                val flickRef = db.collection("flicks").document(flickId)
+                val snapshot = flickRef.get().await()
                 val flick = snapshot.toObject(Flick::class.java)
                 val ownerId = flick?.userId.orEmpty()
                 val imageUrl = flick?.imageUrl.orEmpty()
 
-                fun finalizeDelete(deletedBytes: Long) {
-                    db.collection("flicks").document(flickId)
-                        .delete()
-                        .addOnSuccessListener {
-                            if (ownerId.isNotBlank() && deletedBytes > 0L) {
-                                val userRef = db.collection("users").document(ownerId)
-                                db.runTransaction { tx ->
-                                    val userSnap = tx.get(userRef)
-                                    val currentRaw = userSnap.get("storageUsedBytes")
-                                    val currentBytes = when (currentRaw) {
-                                        is Number -> currentRaw.toLong()
-                                        is String -> currentRaw.toLongOrNull() ?: 0L
-                                        else -> 0L
-                                    }
-                                    tx.update(userRef, "storageUsedBytes", maxOf(0L, currentBytes - deletedBytes))
-                                }
-                                    .addOnSuccessListener { onResult(Result.Success(Unit)) }
-                                    .addOnFailureListener { onResult(Result.Success(Unit)) }
-                            } else {
-                                onResult(Result.Success(Unit))
-                            }
-                        }
-                        .addOnFailureListener { e -> onResult(Result.Error(e, "Failed to delete flick")) }
+                if (imageUrl.isNotBlank()) {
+                    runCatching {
+                        storage.getReferenceFromUrl(imageUrl).delete().await()
+                    }
                 }
 
-                if (imageUrl.isNotBlank()) {
-                    val imageRef = storage.getReferenceFromUrl(imageUrl)
-                    imageRef.metadata
-                        .addOnSuccessListener { metadata ->
-                            val deletedBytes = metadata.sizeBytes
-                            imageRef.delete()
-                                .addOnSuccessListener { finalizeDelete(deletedBytes) }
-                                .addOnFailureListener { finalizeDelete(0L) }
-                        }
-                        .addOnFailureListener { finalizeDelete(0L) }
-                } else {
-                    finalizeDelete(0L)
+                flickRef.delete().await()
+
+                if (ownerId.isNotBlank()) {
+                    recalculateStorageUsedBytes(ownerId)
                 }
+
+                onResult(Result.Success(Unit))
+            } catch (e: Exception) {
+                onResult(Result.Error(e, "Failed to delete flick"))
             }
-            .addOnFailureListener { e -> onResult(Result.Error(e, "Failed to delete flick")) }
+        }
+    }
+
+    private suspend fun recalculateStorageUsedBytes(userId: String) {
+        try {
+            val root = storage.reference.child("photos").child(userId)
+            val totalBytes = calculateFolderBytesRecursive(root)
+            db.collection("users").document(userId)
+                .update("storageUsedBytes", totalBytes)
+                .await()
+        } catch (e: Exception) {
+            android.util.Log.w("PhotoRepository", "Failed to recalculate storageUsedBytes for user=$userId", e)
+        }
+    }
+
+    private suspend fun calculateFolderBytesRecursive(folderRef: com.google.firebase.storage.StorageReference): Long {
+        val listResult = folderRef.listAll().await()
+        var total = 0L
+
+        listResult.items.forEach { itemRef ->
+            total += itemRef.metadata.await().sizeBytes
+        }
+
+        listResult.prefixes.forEach { childFolder ->
+            total += calculateFolderBytesRecursive(childFolder)
+        }
+
+        return total
     }
 
     /**

@@ -460,12 +460,10 @@ class FlickRepository private constructor() {
 
                 val ownerId = flick?.userId.orEmpty()
                 val imageUrl = flick?.imageUrl.orEmpty()
-                var deletedBytes = 0L
 
                 if (imageUrl.isNotBlank()) {
                     try {
                         val imageRef = storage.getReferenceFromUrl(imageUrl)
-                        deletedBytes = imageRef.metadata.await().sizeBytes
                         imageRef.delete().await()
                     } catch (e: Exception) {
                         android.util.Log.w("FlickRepository", "Failed to delete storage object for flick=$flickId", e)
@@ -474,22 +472,8 @@ class FlickRepository private constructor() {
 
                 flickRef.delete().await()
 
-                if (ownerId.isNotBlank() && deletedBytes > 0L) {
-                    try {
-                        val userRef = db.collection("users").document(ownerId)
-                        db.runTransaction { tx ->
-                            val userSnap = tx.get(userRef)
-                            val currentRaw = userSnap.get("storageUsedBytes")
-                            val currentBytes = when (currentRaw) {
-                                is Number -> currentRaw.toLong()
-                                is String -> currentRaw.toLongOrNull() ?: 0L
-                                else -> 0L
-                            }
-                            tx.update(userRef, "storageUsedBytes", maxOf(0L, currentBytes - deletedBytes))
-                        }.await()
-                    } catch (e: Exception) {
-                        android.util.Log.w("FlickRepository", "Failed to decrement storageUsedBytes for user=$ownerId", e)
-                    }
+                if (ownerId.isNotBlank()) {
+                    recalculateStorageUsedBytes(ownerId)
                 }
 
                 onResult(Result.Success(Unit))
@@ -497,6 +481,33 @@ class FlickRepository private constructor() {
                 onResult(Result.Error(e, "Failed to delete photo"))
             }
         }
+    }
+
+    private suspend fun recalculateStorageUsedBytes(userId: String) {
+        try {
+            val root = storage.reference.child("photos").child(userId)
+            val totalBytes = calculateFolderBytesRecursive(root)
+            db.collection("users").document(userId)
+                .update("storageUsedBytes", totalBytes)
+                .await()
+        } catch (e: Exception) {
+            android.util.Log.w("FlickRepository", "Failed to recalculate storageUsedBytes for user=$userId", e)
+        }
+    }
+
+    private suspend fun calculateFolderBytesRecursive(folderRef: com.google.firebase.storage.StorageReference): Long {
+        val listResult = folderRef.listAll().await()
+        var total = 0L
+
+        listResult.items.forEach { itemRef ->
+            total += itemRef.metadata.await().sizeBytes
+        }
+
+        listResult.prefixes.forEach { childFolder ->
+            total += calculateFolderBytesRecursive(childFolder)
+        }
+
+        return total
     }
 
     /**
