@@ -168,6 +168,7 @@ fun PlanOptionsScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
             
+            val selectedToggleBlue = Color(0xFF1565C0)
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -176,13 +177,21 @@ fun PlanOptionsScreen(
                     selected = !isYearly,
                     onClick = { isYearly = false },
                     label = { Text("Monthly") },
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.weight(1f),
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = selectedToggleBlue,
+                        selectedLabelColor = Color.White
+                    )
                 )
                 FilterChip(
                     selected = isYearly,
                     onClick = { isYearly = true },
-                    label = { Text("Save 20% annual") },
-                    modifier = Modifier.weight(1f)
+                    label = { Text("Yearly (Save 20%)") },
+                    modifier = Modifier.weight(1f),
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = selectedToggleBlue,
+                        selectedLabelColor = Color.White
+                    )
                 )
             }
 
