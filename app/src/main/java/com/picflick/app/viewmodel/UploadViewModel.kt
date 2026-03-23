@@ -14,6 +14,7 @@ import com.picflick.app.data.UserProfile
 import com.picflick.app.repository.FlickRepository
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.storage.FirebaseStorage
+import com.google.firebase.storage.StorageReference
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import java.util.Calendar
@@ -123,41 +124,33 @@ class UploadViewModel : ViewModel() {
     }
 
     /**
-     * Increment storage usage bytes for running total UI.
+     * Recalculate precise storage usage from Firebase Storage and persist to Firestore.
      */
-    private suspend fun incrementStorageUsedBytes(userId: String, uploadedBytes: Long) {
-        if (uploadedBytes <= 0L) return
-        val userRef = firestore.collection("users").document(userId)
-
+    private suspend fun recalculateStorageUsedBytes(userId: String) {
         try {
-            // Fast path: atomic increment for normal numeric fields.
-            userRef
-                .update("storageUsedBytes", com.google.firebase.firestore.FieldValue.increment(uploadedBytes))
+            val root = storage.reference.child("photos").child(userId)
+            val totalBytes = calculateFolderBytesRecursive(root)
+            firestore.collection("users").document(userId)
+                .update("storageUsedBytes", totalBytes)
                 .await()
-            return
         } catch (e: Exception) {
-            android.util.Log.w("UploadViewModel", "Increment path failed for storageUsedBytes, retrying with fallback", e)
+            android.util.Log.w("UploadViewModel", "Failed to recalculate storageUsedBytes", e)
+        }
+    }
+
+    private suspend fun calculateFolderBytesRecursive(folderRef: StorageReference): Long {
+        val listResult = folderRef.listAll().await()
+        var total = 0L
+
+        listResult.items.forEach { itemRef ->
+            total += itemRef.metadata.await().sizeBytes
         }
 
-        try {
-            // Fallback path: tolerate legacy/non-numeric field values and still write immediately.
-            firestore.runTransaction { tx ->
-                val snapshot = tx.get(userRef)
-                val currentRaw = snapshot.get("storageUsedBytes")
-                val current = when (currentRaw) {
-                    is Number -> currentRaw.toLong()
-                    is String -> currentRaw.toLongOrNull() ?: 0L
-                    else -> 0L
-                }
-                tx.set(
-                    userRef,
-                    mapOf("storageUsedBytes" to (current + uploadedBytes)),
-                    com.google.firebase.firestore.SetOptions.merge()
-                )
-            }.await()
-        } catch (e: Exception) {
-            android.util.Log.w("UploadViewModel", "Failed fallback update for storageUsedBytes", e)
+        listResult.prefixes.forEach { childFolder ->
+            total += calculateFolderBytesRecursive(childFolder)
         }
+
+        return total
     }
 
     /**
@@ -235,7 +228,8 @@ class UploadViewModel : ViewModel() {
                     reactions = emptyMap(),
                     commentCount = 0,
                     privacy = "friends",
-                    taggedFriends = taggedFriends
+                    taggedFriends = taggedFriends,
+                    imageSizeBytes = uploadedBytes
                 )
 
                 // Use repository to create flick - this sends notifications!
@@ -251,7 +245,7 @@ class UploadViewModel : ViewModel() {
 
                 // Increment total photos count
                 incrementTotalPhotos(userProfile.uid)
-                incrementStorageUsedBytes(userProfile.uid, uploadedBytes)
+                recalculateStorageUsedBytes(userProfile.uid)
 
                 optimisticFlickId?.let { onOptimisticRemove?.invoke(it, true) }
                 uploadSuccess = true
