@@ -159,7 +159,7 @@ fun PlanOptionsScreen(
                 onClick = onRestorePurchases,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text("Restore purchases")
+                Text("Check & sync subscription")
             }
 
             Spacer(modifier = Modifier.height(16.dp))

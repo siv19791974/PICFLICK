@@ -63,8 +63,7 @@ fun SubscriptionStatusScreen(
     onBack: () -> Unit,
     onUpgrade: (SubscriptionTier) -> Unit = {},
     onDowngrade: (SubscriptionTier) -> Unit = {},
-    onManagePayment: () -> Unit = {},
-    onRestorePurchases: () -> Unit = {}
+    onManagePayment: () -> Unit = {}
 ) {
     val tier = userProfile.subscriptionTier
     val tierColor = tier.getColor()
@@ -181,16 +180,6 @@ fun SubscriptionStatusScreen(
                     onManagePayment = onManagePayment,
                     products = products
                 )
-
-                OutlinedButton(
-                    onClick = onRestorePurchases,
-                    enabled = !isLoading,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp)
-                ) {
-                    Text("Restore purchases")
-                }
 
                 Spacer(modifier = Modifier.height(16.dp))
 
