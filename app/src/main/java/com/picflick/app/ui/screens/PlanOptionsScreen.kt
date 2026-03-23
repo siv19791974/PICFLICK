@@ -174,7 +174,7 @@ fun PlanOptionsScreen(
                 modifier = Modifier.fillMaxWidth()
             )
             
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(0.dp))
         }
     }
 }
