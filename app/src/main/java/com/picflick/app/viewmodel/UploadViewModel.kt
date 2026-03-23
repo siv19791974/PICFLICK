@@ -127,12 +127,36 @@ class UploadViewModel : ViewModel() {
      */
     private suspend fun incrementStorageUsedBytes(userId: String, uploadedBytes: Long) {
         if (uploadedBytes <= 0L) return
+        val userRef = firestore.collection("users").document(userId)
+
         try {
-            firestore.collection("users").document(userId)
+            // Fast path: atomic increment for normal numeric fields.
+            userRef
                 .update("storageUsedBytes", com.google.firebase.firestore.FieldValue.increment(uploadedBytes))
                 .await()
+            return
         } catch (e: Exception) {
-            android.util.Log.w("UploadViewModel", "Failed to update storageUsedBytes", e)
+            android.util.Log.w("UploadViewModel", "Increment path failed for storageUsedBytes, retrying with fallback", e)
+        }
+
+        try {
+            // Fallback path: tolerate legacy/non-numeric field values and still write immediately.
+            firestore.runTransaction { tx ->
+                val snapshot = tx.get(userRef)
+                val currentRaw = snapshot.get("storageUsedBytes")
+                val current = when (currentRaw) {
+                    is Number -> currentRaw.toLong()
+                    is String -> currentRaw.toLongOrNull() ?: 0L
+                    else -> 0L
+                }
+                tx.set(
+                    userRef,
+                    mapOf("storageUsedBytes" to (current + uploadedBytes)),
+                    com.google.firebase.firestore.SetOptions.merge()
+                )
+            }.await()
+        } catch (e: Exception) {
+            android.util.Log.w("UploadViewModel", "Failed fallback update for storageUsedBytes", e)
         }
     }
 

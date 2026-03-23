@@ -58,6 +58,7 @@ import com.google.firebase.firestore.ListenerRegistration
 import com.google.firebase.storage.FirebaseStorage
 import com.google.firebase.storage.StorageReference
 import kotlinx.coroutines.tasks.await
+import java.util.Locale
 
 /**
  * Manage Storage Screen - Full storage dashboard
@@ -332,19 +333,19 @@ private fun StorageMeterCard(
             ) {
                 StorageStat(
                     label = "Used",
-                    value = String.format("%.1f GB", usedGB),
+                    value = String.format(Locale.US, "%.2f GB", usedGB),
                     color = tierColor,
                     isDarkMode = isDarkMode
                 )
                 StorageStat(
                     label = "Total",
-                    value = String.format("%.0f GB", totalGB),
+                    value = String.format(Locale.US, "%.0f GB", totalGB),
                     color = if (isDarkMode) Color.Gray else Color.DarkGray,
                     isDarkMode = isDarkMode
                 )
                 StorageStat(
                     label = "Remaining",
-                    value = String.format("%.1f GB", remainingGB),
+                    value = String.format(Locale.US, "%.2f GB", remainingGB),
                     color = if (remainingGB < 5) Color.Red else Color(0xFF00C853),
                     isDarkMode = isDarkMode
                 )
