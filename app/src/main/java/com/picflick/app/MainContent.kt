@@ -188,6 +188,7 @@ fun AuthenticatedContent(
         is Screen.Settings -> SettingsScreenContent(
             userProfile = userProfile,
             authViewModel = authViewModel,
+            billingViewModel = bvm,
             onScreenChange = onScreenChange,
             onSignOut = onSignOut
         )
@@ -870,6 +871,7 @@ private fun NotificationsScreenContent(
 private fun SettingsScreenContent(
     userProfile: UserProfile,
     authViewModel: AuthViewModel,
+    billingViewModel: BillingViewModel,
     onScreenChange: (Screen) -> Unit,
     onSignOut: () -> Unit
 ) {
@@ -892,6 +894,10 @@ private fun SettingsScreenContent(
         onPrivacySettings = { onScreenChange(Screen.Privacy) },
         onNotificationsSettings = { onScreenChange(Screen.NotificationSettings) },
         onPlanOptions = { onScreenChange(Screen.PlanOptions) },
+        onRestorePurchases = {
+            billingViewModel.restorePurchases()
+            Toast.makeText(context, "Restoring purchases...", Toast.LENGTH_SHORT).show()
+        },
         onHelpSupport = { onScreenChange(Screen.Contact) },
         onAbout = { onScreenChange(Screen.About) },
         onPhilosophy = { onScreenChange(Screen.Philosophy) },
@@ -954,6 +960,10 @@ private fun SubscriptionStatusScreenContent(
         },
         onManagePayment = {
             Toast.makeText(context, "Payment management coming soon!", Toast.LENGTH_SHORT).show()
+        },
+        onRestorePurchases = {
+            bvm.restorePurchases()
+            Toast.makeText(context, "Restoring purchases...", Toast.LENGTH_SHORT).show()
         }
     )
 }
@@ -974,6 +984,10 @@ private fun PlanOptionsScreenContent(
         onBack = { onScreenChange(Screen.Settings) },
         onPurchase = { tier: SubscriptionTier ->
             handlePurchase(context, act = activity, bvm = bvm, tier = tier)
+        },
+        onRestorePurchases = {
+            bvm.restorePurchases()
+            Toast.makeText(context, "Restoring purchases...", Toast.LENGTH_SHORT).show()
         }
     )
 }

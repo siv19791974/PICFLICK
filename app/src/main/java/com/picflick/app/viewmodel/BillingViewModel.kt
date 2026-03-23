@@ -35,6 +35,7 @@ sealed class BillingEvent {
     data class PurchaseError(val errorCode: Int, val message: String) : BillingEvent()
     data object PurchaseCancelled : BillingEvent()
     data object AlreadyOwned : BillingEvent()
+    data class PurchasesRestored(val count: Int, val tier: SubscriptionTier) : BillingEvent()
 }
 
 /**
@@ -192,17 +193,42 @@ class BillingViewModel : ViewModel() {
     /**
      * Query existing purchases
      */
-    private fun queryPurchases() {
+    private fun queryPurchases(emitRestoredEvent: Boolean = false) {
         billingClient?.queryPurchasesAsync(
             QueryPurchasesParams.newBuilder()
                 .setProductType(BillingClient.ProductType.SUBS)
                 .build()
         ) { billingResult, purchasesList ->
+            _isLoading.value = false
             if (billingResult.responseCode == BillingClient.BillingResponseCode.OK) {
                 _purchases.value = purchasesList
                 updateCurrentTier(purchasesList)
+                if (emitRestoredEvent) {
+                    _billingEvent.value = BillingEvent.PurchasesRestored(
+                        purchasesList.size,
+                        _currentTier.value
+                    )
+                }
+            } else if (emitRestoredEvent) {
+                _billingEvent.value = BillingEvent.PurchaseError(
+                    billingResult.responseCode,
+                    billingResult.debugMessage.ifBlank { "Failed to restore purchases" }
+                )
             }
         }
+    }
+
+    fun restorePurchases() {
+        if (_isConnected.value.not()) {
+            _billingEvent.value = BillingEvent.PurchaseError(
+                BillingClient.BillingResponseCode.SERVICE_DISCONNECTED,
+                "Billing service is not connected yet"
+            )
+            return
+        }
+
+        _isLoading.value = true
+        queryPurchases(emitRestoredEvent = true)
     }
 
     /**

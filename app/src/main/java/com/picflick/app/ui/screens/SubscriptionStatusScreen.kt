@@ -1,5 +1,6 @@
 package com.picflick.app.ui.screens
 
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -29,6 +30,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -61,12 +63,14 @@ fun SubscriptionStatusScreen(
     onBack: () -> Unit,
     onUpgrade: (SubscriptionTier) -> Unit = {},
     onDowngrade: (SubscriptionTier) -> Unit = {},
-    onManagePayment: () -> Unit = {}
+    onManagePayment: () -> Unit = {},
+    onRestorePurchases: () -> Unit = {}
 ) {
     val tier = userProfile.subscriptionTier
     val tierColor = tier.getColor()
     val isDarkMode = ThemeManager.isDarkMode.value
-    
+    val context = LocalContext.current
+
     // Collect billing state with explicit types
     val products: List<SubscriptionProduct> by billingViewModel.products.collectAsState()
     val isLoading: Boolean by billingViewModel.isLoading.collectAsState()
@@ -88,18 +92,36 @@ fun SubscriptionStatusScreen(
     }
     
     // Handle billing events
-    billingEvent?.let { event: BillingEvent ->
-        when (event) {
+    LaunchedEffect(billingEvent) {
+        when (val event = billingEvent) {
             is BillingEvent.PurchaseSuccess -> {
-                // Show success message
-                // Could use a Snackbar here
+                Toast.makeText(context, "Purchase successful", Toast.LENGTH_SHORT).show()
+                billingViewModel.clearBillingEvent()
             }
             is BillingEvent.PurchaseError -> {
-                // Show error message
+                Toast.makeText(context, event.message, Toast.LENGTH_LONG).show()
+                billingViewModel.clearBillingEvent()
             }
-            else -> {}
+            is BillingEvent.PurchaseCancelled -> {
+                Toast.makeText(context, "Purchase cancelled", Toast.LENGTH_SHORT).show()
+                billingViewModel.clearBillingEvent()
+            }
+            is BillingEvent.AlreadyOwned -> {
+                Toast.makeText(context, "You already own this subscription", Toast.LENGTH_SHORT).show()
+                billingViewModel.clearBillingEvent()
+            }
+            is BillingEvent.PurchasesRestored -> {
+                val message = if (event.tier == SubscriptionTier.FREE) {
+                    "No active purchases found"
+                } else {
+                    "Purchases restored: ${event.tier.getDisplayName()}"
+                }
+                Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+                billingViewModel.clearBillingEvent()
+            }
+            is BillingEvent.PurchaseInitiated -> Unit
+            null -> Unit
         }
-        billingViewModel.clearBillingEvent()
     }
     
     Scaffold(
@@ -159,6 +181,16 @@ fun SubscriptionStatusScreen(
                     onManagePayment = onManagePayment,
                     products = products
                 )
+
+                OutlinedButton(
+                    onClick = onRestorePurchases,
+                    enabled = !isLoading,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp)
+                ) {
+                    Text("Restore purchases")
+                }
 
                 Spacer(modifier = Modifier.height(16.dp))
 
