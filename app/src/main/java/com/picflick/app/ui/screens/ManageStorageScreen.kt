@@ -78,7 +78,7 @@ fun ManageStorageScreen(
     val rawStoragePercent = if (storageLimit > 0) {
         (storageUsed * 100 / storageLimit).toInt()
     } else 0
-    val storagePercent = if (storageUsed > 0L && rawStoragePercent == 0) 1 else rawStoragePercent
+    val storagePercent = rawStoragePercent
     val displayPercent = storagePercent.coerceAtMost(100)
     val usedGB = storageUsed / (1024.0 * 1024.0 * 1024.0)
     val totalGB = storageLimit / (1024.0 * 1024.0 * 1024.0)

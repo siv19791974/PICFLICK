@@ -715,7 +715,7 @@ private fun ProfileHeaderWithStorage(
     val rawStoragePercent = if (storageLimit > 0) {
         (storageUsed * 100 / storageLimit).toInt()
     } else 0
-    val storagePercent = if (storageUsed > 0L && rawStoragePercent == 0) 1 else rawStoragePercent
+    val storagePercent = rawStoragePercent
 
     DisposableEffect(userProfile.uid) {
         val registration: ListenerRegistration = FirebaseFirestore.getInstance()
