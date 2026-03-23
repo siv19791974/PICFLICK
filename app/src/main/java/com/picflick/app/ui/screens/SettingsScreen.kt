@@ -54,6 +54,7 @@ import com.google.firebase.firestore.ListenerRegistration
 import com.google.firebase.storage.FirebaseStorage
 import com.google.firebase.storage.StorageReference
 import kotlinx.coroutines.tasks.await
+import java.util.Locale
 
 /**
  * Settings screen with user preferences and account options
@@ -99,9 +100,9 @@ fun SettingsScreen(
         val cacheDir = context.cacheDir
         val size = calculateDirSize(cacheDir)
         return when {
-            size > 1024 * 1024 * 1024 -> String.format(java.util.Locale.US, "%.1f GB", size / (1024.0 * 1024.0 * 1024.0))
-            size > 1024 * 1024 -> String.format(java.util.Locale.US, "%.1f MB", size / (1024.0 * 1024.0))
-            size > 1024 -> String.format(java.util.Locale.US, "%.1f KB", size / 1024.0)
+            size > 1024 * 1024 * 1024 -> String.format(Locale.US, "%.1f GB", size / (1024.0 * 1024.0 * 1024.0))
+            size > 1024 * 1024 -> String.format(Locale.US, "%.1f MB", size / (1024.0 * 1024.0))
+            size > 1024 -> String.format(Locale.US, "%.1f KB", size / 1024.0)
             else -> "$size B"
         }
     }
@@ -917,7 +918,7 @@ private fun StorageProgressBar(
                 fontSize = 13.sp
             )
             Text(
-                text = String.format("%.1f GB / %.0f GB", usedGB, totalGB),
+                text = String.format(Locale.US, "%.2f GB / %.0f GB", usedGB, totalGB),
                 color = Color.White,
                 fontSize = 13.sp,
                 fontWeight = FontWeight.Medium
@@ -1108,7 +1109,7 @@ private fun ManageStorageButton(
             
             // GB used / total
             Text(
-                text = String.format("%.1f / %.0f GB", usedGB, totalGB),
+                text = String.format(Locale.US, "%.2f / %.0f GB", usedGB, totalGB),
                 color = if (isDarkMode) Color.Gray else Color.DarkGray,
                 fontSize = 11.sp
             )
