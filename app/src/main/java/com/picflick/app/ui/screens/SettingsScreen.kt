@@ -70,7 +70,6 @@ fun SettingsScreen(
     onPrivacySettings: () -> Unit = {},
     onNotificationsSettings: () -> Unit = {},
     onPlanOptions: () -> Unit = {},
-    onRestorePurchases: () -> Unit = {},
     onHelpSupport: () -> Unit = {},
     onAbout: () -> Unit = {},
     onPhilosophy: () -> Unit = {},
@@ -201,12 +200,6 @@ fun SettingsScreen(
                     title = "Plan Options",
                     subtitle = "View all plans and upgrade",
                     onClick = onPlanOptions
-                )
-                SettingsItem(
-                    icon = Icons.Default.Cloud,
-                    title = "Restore Purchases",
-                    subtitle = "Sync Google Play subscriptions",
-                    onClick = onRestorePurchases
                 )
                 SettingsItem(
                     icon = Icons.Default.Notifications,

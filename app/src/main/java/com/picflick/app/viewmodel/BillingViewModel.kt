@@ -2,6 +2,7 @@ package com.picflick.app.viewmodel
 
 import android.app.Activity
 import android.content.Context
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.android.billingclient.api.*
@@ -199,21 +200,48 @@ class BillingViewModel : ViewModel() {
                 .setProductType(BillingClient.ProductType.SUBS)
                 .build()
         ) { billingResult, purchasesList ->
-            _isLoading.value = false
             if (billingResult.responseCode == BillingClient.BillingResponseCode.OK) {
                 _purchases.value = purchasesList
                 updateCurrentTier(purchasesList)
+
                 if (emitRestoredEvent) {
-                    _billingEvent.value = BillingEvent.PurchasesRestored(
-                        purchasesList.size,
-                        _currentTier.value
+                    viewModelScope.launch {
+                        syncActivePurchasesWithServer(purchasesList)
+                        _billingEvent.value = BillingEvent.PurchasesRestored(
+                            purchasesList.size,
+                            _currentTier.value
+                        )
+                        _isLoading.value = false
+                    }
+                } else {
+                    _isLoading.value = false
+                }
+            } else {
+                _isLoading.value = false
+                if (emitRestoredEvent) {
+                    _billingEvent.value = BillingEvent.PurchaseError(
+                        billingResult.responseCode,
+                        billingResult.debugMessage.ifBlank { "Failed to restore purchases" }
                     )
                 }
-            } else if (emitRestoredEvent) {
-                _billingEvent.value = BillingEvent.PurchaseError(
-                    billingResult.responseCode,
-                    billingResult.debugMessage.ifBlank { "Failed to restore purchases" }
+            }
+        }
+    }
+
+    private suspend fun syncActivePurchasesWithServer(purchasesList: List<Purchase>) {
+        val activePurchases = purchasesList.filter { it.purchaseState == Purchase.PurchaseState.PURCHASED }
+
+        activePurchases.forEach { purchase ->
+            val productId = purchase.products.firstOrNull() ?: return@forEach
+            try {
+                val data = hashMapOf(
+                    "purchaseToken" to purchase.purchaseToken,
+                    "productId" to productId,
+                    "packageName" to "com.picflick.app"
                 )
+                functions.getHttpsCallable("validatePurchase").call(data).await()
+            } catch (e: Exception) {
+                Log.w("BillingViewModel", "Restore sync validation failed for $productId", e)
             }
         }
     }
