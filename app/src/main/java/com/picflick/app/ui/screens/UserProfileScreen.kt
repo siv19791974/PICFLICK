@@ -34,6 +34,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -398,6 +399,11 @@ private fun ProfilePhotoCard(
                     .padding(horizontal = 4.dp, vertical = 1.dp),
                 contentAlignment = Alignment.CenterStart
             ) {
+                val overlayTextStyle = MaterialTheme.typography.labelSmall.copy(
+                    fontSize = 10.sp,
+                    platformStyle = PlatformTextStyle(includeFontPadding = false)
+                )
+
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -406,10 +412,7 @@ private fun ProfilePhotoCard(
                     Text(
                         text = flick.userName,
                         color = Color.White,
-                        fontSize = 10.sp,
-                        style = MaterialTheme.typography.labelSmall.copy(
-                            fontWeight = FontWeight.SemiBold
-                        ),
+                        style = overlayTextStyle.copy(fontWeight = FontWeight.SemiBold),
                         maxLines = 1,
                         modifier = Modifier.weight(1f)
                     )
@@ -421,7 +424,7 @@ private fun ProfilePhotoCard(
                         if (topReactionCount > 0) {
                             Text(
                                 text = "$topReactionEmoji $topReactionCount",
-                                fontSize = 10.sp,
+                                style = overlayTextStyle,
                                 color = Color.White
                             )
                         }
