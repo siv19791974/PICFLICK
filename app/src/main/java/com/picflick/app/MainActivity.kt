@@ -771,6 +771,18 @@ fun MainScreen(
     }
 
     val isChatDetailScreen = currentScreen is Screen.ChatDetail
+    val isSettingsStackScreen = when (currentScreen) {
+        is Screen.Settings,
+        is Screen.ManageStorage,
+        is Screen.PlanOptions,
+        is Screen.NotificationSettings,
+        is Screen.Privacy,
+        is Screen.PrivacyPolicy,
+        is Screen.Philosophy,
+        is Screen.Legal,
+        is Screen.About -> true
+        else -> false
+    }
 
     Box(modifier = Modifier.fillMaxSize()) {
         // Outer Scaffold with bottom navigation for non-chat screens
@@ -880,10 +892,16 @@ fun MainScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .then(
-                    if (isChatDetailScreen) {
-                        Modifier.padding(top = padding.calculateTopPadding())
-                    } else {
-                        Modifier.padding(padding)
+                    when {
+                        isChatDetailScreen -> {
+                            Modifier.padding(top = padding.calculateTopPadding())
+                        }
+                        isSettingsStackScreen -> {
+                            Modifier.padding(top = padding.calculateTopPadding())
+                        }
+                        else -> {
+                            Modifier.padding(padding)
+                        }
                     }
                 )
         ) {

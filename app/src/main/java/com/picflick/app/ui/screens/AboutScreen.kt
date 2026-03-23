@@ -220,7 +220,7 @@ fun AboutScreen(
 
             // Bottom spacing removed
             item {
-                Spacer(modifier = Modifier.height(0.dp))
+                Spacer(modifier = Modifier.height(80.dp))
             }
         }
     }

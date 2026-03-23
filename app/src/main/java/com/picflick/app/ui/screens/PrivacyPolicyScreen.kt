@@ -1,14 +1,11 @@
 package com.picflick.app.ui.screens
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.ArrowForward
-import androidx.compose.material.icons.filled.Email
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -27,13 +24,10 @@ import com.picflick.app.ui.theme.isDarkModeBackground
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PrivacyPolicyScreen(
-    onBack: () -> Unit,
-    onContactUs: () -> Unit = {}
+    onBack: () -> Unit
 ) {
     val isDarkMode = ThemeManager.isDarkMode.value
-    val textColor = if (isDarkMode) Color.White else Color.Black
     val subtitleColor = if (isDarkMode) Color.Gray else Color.DarkGray
-    val accentColor = Color(0xFF1565C0)
 
     Scaffold(
         topBar = {
@@ -76,7 +70,7 @@ fun PrivacyPolicyScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding),
-            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 20.dp),
+            contentPadding = PaddingValues(start = 16.dp, top = 20.dp, end = 16.dp, bottom = 0.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             // Header
@@ -199,56 +193,10 @@ Continued use of PicFlick after changes constitutes acceptance of the revised po
                 )
             }
 
-            // Contact - Link to Contact Us in Settings
-            item {
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { onContactUs() },
-                    colors = CardDefaults.cardColors(
-                        containerColor = accentColor.copy(alpha = 0.1f)
-                    ),
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Email,
-                            contentDescription = null,
-                            tint = accentColor,
-                            modifier = Modifier.size(24.dp)
-                        )
-                        Spacer(modifier = Modifier.width(12.dp))
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = "Questions? Contact Us",
-                                color = textColor,
-                                fontWeight = FontWeight.Medium,
-                                fontSize = 16.sp
-                            )
-                            Text(
-                                text = "Go to Settings > Contact Us",
-                                color = subtitleColor,
-                                fontSize = 14.sp
-                            )
-                        }
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                            contentDescription = null,
-                            tint = subtitleColor,
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
-                }
-            }
 
-            // Bottom spacing
+            // Bottom spacing for nav-bar-safe scroll reach
             item {
-                Spacer(modifier = Modifier.height(32.dp))
+                Spacer(modifier = Modifier.height(80.dp))
             }
         }
     }
@@ -278,7 +226,6 @@ private fun PolicySection(
     isDarkMode: Boolean
 ) {
     val textColor = if (isDarkMode) Color.White else Color.Black
-    val subtitleColor = if (isDarkMode) Color.Gray else Color.DarkGray
     val cardBackground = if (isDarkMode) Color(0xFF1C1C1E) else Color.White
 
     Card(

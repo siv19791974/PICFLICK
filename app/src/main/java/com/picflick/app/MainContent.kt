@@ -262,8 +262,7 @@ fun AuthenticatedContent(
         )
 
         is Screen.PrivacyPolicy -> PrivacyPolicyScreen(
-            onBack = { onScreenChange(Screen.Privacy) },
-            onContactUs = { onScreenChange(Screen.Settings) }
+            onBack = { onScreenChange(Screen.Privacy) }
         )
 
         is Screen.Philosophy -> PhilosophyScreen(
