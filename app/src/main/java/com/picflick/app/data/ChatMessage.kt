@@ -20,6 +20,7 @@ data class ChatMessage(
     val replyToMessageId: String? = null, // ID of message being replied to
     val quotedText: String? = null, // Preview of quoted message text
     val quotedSenderName: String? = null, // Name of sender of quoted message
+    val quotedImageUrl: String? = null, // Optional quoted photo thumbnail
     // Reactions - map of userId to emoji
     val reactions: Map<String, String> = emptyMap()
 ) {

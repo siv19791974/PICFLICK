@@ -7,6 +7,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
@@ -14,10 +15,15 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Photo
 import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.pullrefresh.rememberPullRefreshState
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -39,6 +45,7 @@ import com.picflick.app.data.getStorageLimitGB
 import com.picflick.app.viewmodel.BillingEvent
 import com.picflick.app.viewmodel.BillingViewModel
 import com.picflick.app.viewmodel.SubscriptionProduct
+import com.picflick.app.ui.components.PullRefreshContainer
 import com.picflick.app.ui.theme.ThemeManager
 import com.picflick.app.ui.theme.isDarkModeBackground
 
@@ -46,7 +53,7 @@ import com.picflick.app.ui.theme.isDarkModeBackground
  * Subscription Status Screen - Financial/tier details
  * Shows current tier, upgrade/downgrade options, and billing info
  */
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterialApi::class)
 @Composable
 fun SubscriptionStatusScreen(
     userProfile: UserProfile,
@@ -64,6 +71,21 @@ fun SubscriptionStatusScreen(
     val products: List<SubscriptionProduct> by billingViewModel.products.collectAsState()
     val isLoading: Boolean by billingViewModel.isLoading.collectAsState()
     val billingEvent: BillingEvent? by billingViewModel.billingEvent.collectAsState()
+    var isRefreshing by remember { mutableStateOf(false) }
+
+    val pullRefreshState = rememberPullRefreshState(
+        refreshing = isRefreshing,
+        onRefresh = {
+            isRefreshing = true
+            billingViewModel.queryProducts()
+        }
+    )
+
+    LaunchedEffect(isLoading, isRefreshing) {
+        if (isRefreshing && !isLoading) {
+            isRefreshing = false
+        }
+    }
     
     // Handle billing events
     billingEvent?.let { event: BillingEvent ->
@@ -117,51 +139,56 @@ fun SubscriptionStatusScreen(
         },
         containerColor = isDarkModeBackground(isDarkMode)
     ) { padding ->
-        Column(
+        PullRefreshContainer(
+            refreshing = isRefreshing,
+            pullRefreshState = pullRefreshState,
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .verticalScroll(rememberScrollState())
         ) {
-            // Current Tier Card
-            CurrentSubscriptionCard(
-                userProfile = userProfile,
-                tier = tier,
-                tierColor = tierColor,
-                onManagePayment = onManagePayment,
-                products = products
-            )
-            
-            Spacer(modifier = Modifier.height(16.dp))
-            
-            // All Tiers Comparison
-            AllTiersCard(
-                currentTier = tier,
-                billingViewModel = billingViewModel,
-                products = products,
-                onUpgrade = onUpgrade,
-                onDowngrade = onDowngrade
-            )
-            
-            Spacer(modifier = Modifier.height(16.dp))
-            
-            // Founder Info (if applicable)
-            if (userProfile.isFounder) {
-                FounderCard(tier = tier)
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+            ) {
+                // Current Tier Card
+                CurrentSubscriptionCard(
+                    userProfile = userProfile,
+                    tier = tier,
+                    tierColor = tierColor,
+                    onManagePayment = onManagePayment,
+                    products = products
+                )
+
                 Spacer(modifier = Modifier.height(16.dp))
-            }
-            
-            // Loading indicator
-            if (isLoading) {
-                Box(
-                    modifier = Modifier.fillMaxWidth(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    CircularProgressIndicator()
+
+                // All Plans
+                AllTiersCard(
+                    currentTier = tier,
+                    products = products,
+                    onUpgrade = onUpgrade,
+                    onDowngrade = onDowngrade
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Founder info
+                if (userProfile.isFounder) {
+                    FounderCard(tier = tier)
+                    Spacer(modifier = Modifier.height(16.dp))
                 }
+
+                if (isLoading) {
+                    Box(
+                        modifier = Modifier.fillMaxWidth(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator()
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(32.dp))
             }
-            
-            Spacer(modifier = Modifier.height(32.dp))
         }
     }
 }
@@ -366,7 +393,6 @@ private fun BenefitRow(
 @Composable
 private fun AllTiersCard(
     currentTier: SubscriptionTier,
-    billingViewModel: BillingViewModel,
     products: List<SubscriptionProduct>,
     onUpgrade: (SubscriptionTier) -> Unit,
     onDowngrade: (SubscriptionTier) -> Unit

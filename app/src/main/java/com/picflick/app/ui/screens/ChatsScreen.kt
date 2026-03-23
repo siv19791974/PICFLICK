@@ -39,6 +39,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -669,6 +670,7 @@ private fun ChatListItem(
                     Box(
                         modifier = Modifier
                             .size(20.dp)
+                            .offset(y = (-1).dp)
                             .clip(CircleShape)
                             .background(Color(0xFF1565C0)),
                         contentAlignment = Alignment.Center
@@ -676,11 +678,14 @@ private fun ChatListItem(
                         Text(
                             text = if (unreadDisplayCount > 99) "99+" else unreadDisplayCount.toString(),
                             fontSize = 10.sp,
+                            lineHeight = 10.sp,
                             color = Color.White,
                             fontWeight = FontWeight.Bold,
                             maxLines = 1,
                             textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                            modifier = Modifier.fillMaxWidth()
+                            style = LocalTextStyle.current.copy(
+                                platformStyle = PlatformTextStyle(includeFontPadding = false)
+                            )
                         )
                     }
                 }

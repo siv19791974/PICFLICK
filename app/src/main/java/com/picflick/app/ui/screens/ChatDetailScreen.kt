@@ -977,10 +977,11 @@ Box(
                                     .padding(end = if (message.imageUrl.isNotBlank()) 4.dp else 44.dp, bottom = 2.dp),
                                 verticalArrangement = Arrangement.Top
                             ) {
-if (message.isReply()) {
+                                if (message.isReply()) {
                                     QuotedMessage(
                                         quotedSenderName = message.quotedSenderName ?: "Unknown",
                                         quotedText = message.quotedText ?: "",
+                                        quotedImageUrl = message.quotedImageUrl,
                                         isMe = isMe
                                     )
                                     Spacer(modifier = Modifier.height(2.dp))
@@ -1137,6 +1138,7 @@ modifier = Modifier
                                     QuotedMessage(
                                         quotedSenderName = message.quotedSenderName ?: "Unknown",
                                         quotedText = message.quotedText ?: "",
+                                        quotedImageUrl = message.quotedImageUrl,
                                         isMe = isMe
                                     )
                                     Spacer(modifier = Modifier.height(2.dp))
@@ -1298,12 +1300,29 @@ private fun ReplyPreview(
                 color = MaterialTheme.colorScheme.primary
             )
             Text(
-                text = message.text.take(50),
+                text = when {
+                    message.text.isNotBlank() -> message.text.take(50)
+                    message.imageUrl.isNotBlank() -> "📷 Photo"
+                    else -> "Message"
+                },
                 fontSize = 13.sp,
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
                 maxLines = 1
             )
         }
+
+        if (message.imageUrl.isNotBlank()) {
+            AsyncImage(
+                model = rememberChatImageModel(message.imageUrl, message.timestamp),
+                contentDescription = "Quoted photo preview",
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(RoundedCornerShape(8.dp)),
+                contentScale = ContentScale.Crop
+            )
+            Spacer(modifier = Modifier.width(4.dp))
+        }
+
         IconButton(onClick = onCancel) {
             Icon(
                 imageVector = Icons.Default.Close,
@@ -1318,6 +1337,7 @@ private fun ReplyPreview(
 private fun QuotedMessage(
     quotedSenderName: String,
     quotedText: String,
+    quotedImageUrl: String? = null,
     isMe: Boolean
 ) {
     val quoteColor = if (isMe) Color(0xFF8BC34A) else MaterialTheme.colorScheme.primary
@@ -1325,7 +1345,8 @@ private fun QuotedMessage(
         modifier = Modifier
             .fillMaxWidth()
             .background(color = Color.Black.copy(alpha = 0.05f), shape = RoundedCornerShape(4.dp))
-            .padding(6.dp)
+            .padding(6.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
         Box(
             modifier = Modifier
@@ -1334,7 +1355,7 @@ private fun QuotedMessage(
                 .background(quoteColor)
         )
         Spacer(modifier = Modifier.width(6.dp))
-        Column {
+        Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = quotedSenderName,
                 fontSize = 12.sp,
@@ -1346,6 +1367,17 @@ private fun QuotedMessage(
                 fontSize = 12.sp,
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
                 maxLines = 1
+            )
+        }
+
+        if (!quotedImageUrl.isNullOrBlank()) {
+            AsyncImage(
+                model = quotedImageUrl,
+                contentDescription = "Quoted photo preview",
+                modifier = Modifier
+                    .size(34.dp)
+                    .clip(RoundedCornerShape(6.dp)),
+                contentScale = ContentScale.Crop
             )
         }
     }
