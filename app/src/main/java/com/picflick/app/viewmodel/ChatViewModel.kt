@@ -206,8 +206,14 @@ class ChatViewModel : ViewModel() {
                 delivered = false,
                 // Reply functionality
                 replyToMessageId = replyToMessage?.id,
-                quotedText = replyToMessage?.text?.take(100), // First 100 chars
-                quotedSenderName = replyToMessage?.senderName
+                quotedText = when {
+                    replyToMessage == null -> null
+                    replyToMessage.text.isNotBlank() -> replyToMessage.text.take(100)
+                    replyToMessage.imageUrl.isNotBlank() -> "📷 Photo"
+                    else -> null
+                },
+                quotedSenderName = replyToMessage?.senderName,
+                quotedImageUrl = replyToMessage?.imageUrl?.takeIf { it.isNotBlank() }
             )
 
             when (val result = repository.sendMessage(chatId, message, recipientId)) {

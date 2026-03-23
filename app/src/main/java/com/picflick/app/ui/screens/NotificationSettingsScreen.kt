@@ -6,8 +6,10 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.pullrefresh.rememberPullRefreshState
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
@@ -22,6 +24,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.picflick.app.data.NotificationPreferences
 import com.picflick.app.data.UserProfile
+import com.picflick.app.ui.components.PullRefreshContainer
 import com.picflick.app.ui.theme.ThemeManager
 import com.picflick.app.ui.theme.isDarkModeBackground
 
@@ -29,7 +32,7 @@ import com.picflick.app.ui.theme.isDarkModeBackground
  * Simplified Notification Settings Screen
  * One toggle controls both push and in-app notifications
  */
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterialApi::class)
 @Composable
 fun NotificationSettingsScreen(
     userProfile: UserProfile,
@@ -37,15 +40,34 @@ fun NotificationSettingsScreen(
     onSavePreferences: (NotificationPreferences) -> Unit
 ) {
     var preferences by remember { mutableStateOf(userProfile.notificationPreferences) }
+    var isRefreshing by remember { mutableStateOf(false) }
     val isDarkMode = ThemeManager.isDarkMode.value
+
+    val pullRefreshState = rememberPullRefreshState(
+        refreshing = isRefreshing,
+        onRefresh = {
+            preferences = userProfile.notificationPreferences
+            isRefreshing = true
+        }
+    )
 
     fun updatePreferences(updated: NotificationPreferences) {
         preferences = updated
         onSavePreferences(updated)
     }
 
+    LaunchedEffect(userProfile.notificationPreferences) {
+        preferences = userProfile.notificationPreferences
+    }
+
     LaunchedEffect(preferences) {
         onSavePreferences(preferences)
+    }
+
+    LaunchedEffect(isRefreshing) {
+        if (isRefreshing) {
+            isRefreshing = false
+        }
     }
 
     Scaffold(
@@ -87,16 +109,22 @@ fun NotificationSettingsScreen(
         },
         containerColor = isDarkModeBackground(isDarkMode)
     ) { padding ->
-        Column(
+        PullRefreshContainer(
+            refreshing = isRefreshing,
+            pullRefreshState = pullRefreshState,
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .verticalScroll(rememberScrollState())
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            // In-app notification controls
-            SettingsSectionHeader(title = "IN-APP NOTIFICATIONS", isDarkMode = isDarkMode)
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                // In-app notification controls
+                SettingsSectionHeader(title = "In-app notifications", isDarkMode = isDarkMode)
 
             MasterToggle(
                 title = "Enable In-App Notifications",
@@ -109,7 +137,7 @@ fun NotificationSettingsScreen(
             )
 
             // Push selector controls
-            SettingsSectionHeader(title = "PUSH NOTIFICATIONS", isDarkMode = isDarkMode)
+            SettingsSectionHeader(title = "Push notifications", isDarkMode = isDarkMode)
             MasterToggle(
                 title = "Enable Push Notifications",
                 subtitle = "Receive alerts on your device",
@@ -124,7 +152,7 @@ fun NotificationSettingsScreen(
                 HorizontalDivider(color = if (isDarkMode) Color(0xFF2C2C2E) else Color.LightGray, thickness = 0.5.dp)
                 
                 // Notification Type Toggles
-                SettingsSectionHeader(title = "NOTIFY ME ABOUT (IN-APP)", isDarkMode = isDarkMode)
+                SettingsSectionHeader(title = "Notify me about (in-app)", isDarkMode = isDarkMode)
 
                 NotificationToggle(
                     title = "Likes",
@@ -209,7 +237,7 @@ fun NotificationSettingsScreen(
                 HorizontalDivider(color = if (isDarkMode) Color(0xFF2C2C2E) else Color.LightGray, thickness = 0.5.dp)
 
                 // Push Type Toggles
-                SettingsSectionHeader(title = "NOTIFY ME ABOUT (PUSH)", isDarkMode = isDarkMode)
+                SettingsSectionHeader(title = "Notify me about (push)", isDarkMode = isDarkMode)
 
                 NotificationToggle(
                     title = "Messages",
@@ -254,7 +282,7 @@ fun NotificationSettingsScreen(
                 HorizontalDivider(color = if (isDarkMode) Color(0xFF2C2C2E) else Color.LightGray, thickness = 0.5.dp)
 
                 // Quiet Hours
-                SettingsSectionHeader(title = "QUIET HOURS", isDarkMode = isDarkMode)
+                SettingsSectionHeader(title = "Quiet hours", isDarkMode = isDarkMode)
                 QuietHoursSection(
                     preferences = preferences,
                     onPreferencesChange = { preferences = it },
@@ -264,7 +292,7 @@ fun NotificationSettingsScreen(
                 HorizontalDivider(color = if (isDarkMode) Color(0xFF2C2C2E) else Color.LightGray, thickness = 0.5.dp)
 
                 // Display Settings
-                SettingsSectionHeader(title = "DISPLAY", isDarkMode = isDarkMode)
+                SettingsSectionHeader(title = "Display", isDarkMode = isDarkMode)
                 DisplaySettingsSection(
                     preferences = preferences,
                     onPreferencesChange = { preferences = it },
@@ -274,7 +302,7 @@ fun NotificationSettingsScreen(
                 HorizontalDivider(color = if (isDarkMode) Color(0xFF2C2C2E) else Color.LightGray, thickness = 0.5.dp)
 
                 // Email Notifications
-                SettingsSectionHeader(title = "EMAIL", isDarkMode = isDarkMode)
+                SettingsSectionHeader(title = "Email", isDarkMode = isDarkMode)
                 EmailSection(
                     preferences = preferences,
                     onPreferencesChange = { preferences = it },
@@ -282,7 +310,9 @@ fun NotificationSettingsScreen(
                 )
             }
 
-            Spacer(modifier = Modifier.height(32.dp))
+                Spacer(modifier = Modifier.height(32.dp))
+            }
+
         }
     }
 }
@@ -512,14 +542,13 @@ private fun QuietHoursSection(
 
                     Spacer(modifier = Modifier.height(12.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    val isDark = isDarkMode
-                    QuietPresetButton("Night (10PM-8AM)", preferences.quietHoursStart == 22, isDark) {
-                        onPreferencesChange(preferences.copy(quietHoursStart = 22, quietHoursEnd = 8))
+                        QuietPresetButton("Night (10PM-8AM)", preferences.quietHoursStart == 22, isDarkMode) {
+                            onPreferencesChange(preferences.copy(quietHoursStart = 22, quietHoursEnd = 8))
+                        }
+                        QuietPresetButton("Work (9AM-5PM)", preferences.quietHoursStart == 9, isDarkMode) {
+                            onPreferencesChange(preferences.copy(quietHoursStart = 9, quietHoursEnd = 17))
+                        }
                     }
-                    QuietPresetButton("Work (9AM-5PM)", preferences.quietHoursStart == 9, isDark) {
-                        onPreferencesChange(preferences.copy(quietHoursStart = 9, quietHoursEnd = 17))
-                    }
-                }
                 }
             }
         }

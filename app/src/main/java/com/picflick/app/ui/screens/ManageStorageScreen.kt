@@ -7,8 +7,10 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.pullrefresh.rememberPullRefreshState
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Info
@@ -23,6 +25,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -48,6 +51,7 @@ import com.picflick.app.data.getNextTier
 import com.picflick.app.data.getQualityDescription
 import com.picflick.app.data.getStorageLimitGB
 import com.picflick.app.data.getStorageLimitBytes
+import com.picflick.app.ui.components.PullRefreshContainer
 import com.picflick.app.ui.theme.ThemeManager
 import com.picflick.app.ui.theme.isDarkModeBackground
 import com.picflick.app.viewmodel.BillingViewModel
@@ -64,7 +68,7 @@ import java.util.Locale
  * Manage Storage Screen - Full storage dashboard
  * Shows storage usage, tier status, and upgrade options
  */
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterialApi::class)
 @Composable
 fun ManageStorageScreen(
     userProfile: UserProfile,
@@ -74,12 +78,11 @@ fun ManageStorageScreen(
 ) {
     val tier = userProfile.subscriptionTier
     val tierColor = tier.getColor()
-    var storageUsed by remember(userProfile.uid) { mutableStateOf(userProfile.storageUsedBytes) }
+    var storageUsed by remember(userProfile.uid) { mutableLongStateOf(userProfile.storageUsedBytes) }
     val storageLimit = tier.getStorageLimitBytes()
-    val rawStoragePercent = if (storageLimit > 0) {
+    val storagePercent = if (storageLimit > 0) {
         (storageUsed * 100 / storageLimit).toInt()
     } else 0
-    val storagePercent = rawStoragePercent
     val displayPercent = storagePercent.coerceAtMost(100)
     val usedGB = storageUsed / (1024.0 * 1024.0 * 1024.0)
     val totalGB = storageLimit / (1024.0 * 1024.0 * 1024.0)
@@ -119,9 +122,18 @@ fun ManageStorageScreen(
     
     // Calculate actual photo count from Firestore
     var actualPhotoCount by remember { mutableIntStateOf(userProfile.totalPhotos) }
-    var isLoadingCount by remember { mutableStateOf(true) }
-    
-    LaunchedEffect(userProfile.uid) {
+    var refreshNonce by remember { mutableIntStateOf(0) }
+    var isRefreshing by remember { mutableStateOf(false) }
+
+    val pullRefreshState = rememberPullRefreshState(
+        refreshing = isRefreshing,
+        onRefresh = {
+            isRefreshing = true
+            refreshNonce++
+        }
+    )
+
+    LaunchedEffect(userProfile.uid, refreshNonce) {
         try {
             val db = FirebaseFirestore.getInstance()
             val snapshot = db.collection("flicks")
@@ -129,11 +141,11 @@ fun ManageStorageScreen(
                 .get()
                 .await()
             actualPhotoCount = snapshot.size()
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             // Fallback to profile count if query fails
             actualPhotoCount = userProfile.totalPhotos
         } finally {
-            isLoadingCount = false
+            isRefreshing = false
         }
     }
     
@@ -174,57 +186,64 @@ fun ManageStorageScreen(
         },
         containerColor = isDarkModeBackground(isDarkMode)
     ) { padding ->
-        Column(
+        PullRefreshContainer(
+            refreshing = isRefreshing,
+            pullRefreshState = pullRefreshState,
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .verticalScroll(rememberScrollState())
         ) {
-            // Large Storage Meter Card
-            StorageMeterCard(
-                usedGB = usedGB,
-                totalGB = totalGB,
-                remainingGB = remainingGB,
-                percent = displayPercent,
-                tier = tier,
-                tierColor = tierColor,
-                isDarkMode = isDarkMode
-            )
-            
-            Spacer(modifier = Modifier.height(16.dp))
-            
-            // Current Tier Status
-            CurrentTierCard(
-                tier = tier,
-                tierColor = tierColor,
-                isFounder = userProfile.isFounder,
-                photosCount = actualPhotoCount,
-                dailyUploads = userProfile.dailyUploadsToday,
-                dailyLimit = tier.getDailyUploadLimit(),
-                isDarkMode = isDarkMode
-            )
-            
-            Spacer(modifier = Modifier.height(16.dp))
-            
-            // Upgrade Options
-            if (tier.getNextTier() != null) {
-                UpgradeOptionsCard(
-                    currentTier = tier,
-                    billingViewModel = billingViewModel,
-                    onUpgrade = onUpgrade,
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+            ) {
+                // Large Storage Meter Card
+                StorageMeterCard(
+                    usedGB = usedGB,
+                    totalGB = totalGB,
+                    remainingGB = remainingGB,
+                    percent = displayPercent,
+                    tier = tier,
+                    tierColor = tierColor,
                     isDarkMode = isDarkMode
                 )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Current Tier Status
+                CurrentTierCard(
+                    tier = tier,
+                    tierColor = tierColor,
+                    isFounder = userProfile.isFounder,
+                    photosCount = actualPhotoCount,
+                    dailyUploads = userProfile.dailyUploadsToday,
+                    dailyLimit = tier.getDailyUploadLimit(),
+                    isDarkMode = isDarkMode
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Upgrade Options
+                if (tier.getNextTier() != null) {
+                    UpgradeOptionsCard(
+                        currentTier = tier,
+                        billingViewModel = billingViewModel,
+                        onUpgrade = onUpgrade,
+                        isDarkMode = isDarkMode
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Storage Tips
+                StorageTipsCard(
+                    percent = storagePercent,
+                    isDarkMode = isDarkMode
+                )
+
+                Spacer(modifier = Modifier.height(32.dp))
             }
-            
-            Spacer(modifier = Modifier.height(16.dp))
-            
-            // Storage Tips
-            StorageTipsCard(
-                percent = storagePercent,
-                isDarkMode = isDarkMode
-            )
-            
-            Spacer(modifier = Modifier.height(32.dp))
         }
     }
 }
@@ -578,9 +597,8 @@ private fun UpgradeOptionsCard(
                 
                 Column(horizontalAlignment = Alignment.End) {
                     // Use actual product price if available, otherwise fallback
-                                        val priceText = nextTierProduct?.price
-                        ?: nextTier?.getMonthlyPrice()?.let { "$${it}" }
-                        ?: "N/A"
+                    val priceText = nextTierProduct?.price
+                        ?: nextTier.getMonthlyPrice().let { "\$it" }
                     Text(
                         text = priceText,
                         fontSize = 18.sp,
