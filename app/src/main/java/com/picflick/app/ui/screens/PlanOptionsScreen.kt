@@ -20,6 +20,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -51,7 +54,7 @@ fun PlanOptionsScreen(
     userProfile: UserProfile,
     billingViewModel: BillingViewModel,
     onBack: () -> Unit,
-    onPurchase: (SubscriptionTier) -> Unit,
+    onPurchase: (SubscriptionTier, Boolean) -> Unit,
     onRestorePurchases: () -> Unit = {}
 ) {
     val isDarkMode = ThemeManager.isDarkMode.value
@@ -59,6 +62,7 @@ fun PlanOptionsScreen(
     val products: List<SubscriptionProduct> by billingViewModel.products.collectAsState()
     val billingEvent: BillingEvent? by billingViewModel.billingEvent.collectAsState()
     val currentTier = userProfile.subscriptionTier
+    var isYearly by remember { mutableStateOf(false) }
 
     LaunchedEffect(billingEvent) {
         when (val event = billingEvent) {
@@ -164,6 +168,26 @@ fun PlanOptionsScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
             
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                FilterChip(
+                    selected = !isYearly,
+                    onClick = { isYearly = false },
+                    label = { Text("Monthly") },
+                    modifier = Modifier.weight(1f)
+                )
+                FilterChip(
+                    selected = isYearly,
+                    onClick = { isYearly = true },
+                    label = { Text("Save 20% annual") },
+                    modifier = Modifier.weight(1f)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
             // Current Plan indicator
             if (currentTier != SubscriptionTier.FREE) {
                 CurrentPlanCard(
@@ -171,20 +195,21 @@ fun PlanOptionsScreen(
                     modifier = Modifier.padding(bottom = 16.dp)
                 )
             }
-            
+
             // All Plan Cards
             allTiers.forEach { tier ->
                 val isCurrentPlan = tier == currentTier
-                val price = getTierPrice(tier, products)
-                
+                val price = getTierPrice(tier, products, isYearly)
+
                 PlanCard(
                     tier = tier,
                     price = price,
                     isCurrentPlan = isCurrentPlan,
                     isDarkMode = isDarkMode,
-                    onClick = { 
+                    isYearly = isYearly,
+                    onClick = {
                         if (!isCurrentPlan) {
-                            onPurchase(tier)
+                            onPurchase(tier, isYearly)
                         }
                     }
                 )
@@ -263,6 +288,7 @@ private fun PlanCard(
     price: String,
     isCurrentPlan: Boolean,
     isDarkMode: Boolean,
+    isYearly: Boolean,
     onClick: () -> Unit
 ) {
     val tierColor = tier.getColor()
@@ -335,7 +361,7 @@ private fun PlanCard(
                         )
                         if (tier != SubscriptionTier.FREE) {
                             Text(
-                                text = "/month",
+                                text = if (isYearly) "/year" else "/month",
                                 fontSize = 12.sp,
                                 color = if (isDarkMode) Color.Gray else Color.DarkGray
                             )
@@ -449,16 +475,32 @@ private fun FeatureItem(
     }
 }
 
-private fun getTierPrice(tier: SubscriptionTier, products: List<SubscriptionProduct>): String {
+private fun getTierPrice(
+    tier: SubscriptionTier,
+    products: List<SubscriptionProduct>,
+    isYearly: Boolean
+): String {
     return when (tier) {
         SubscriptionTier.FREE -> "FREE"
         else -> {
-            val product = products.find { it.tier == tier }
+            val product = products.find { product ->
+                product.tier == tier && if (isYearly) {
+                    product.productId.contains("yearly", ignoreCase = true)
+                } else {
+                    product.productId.contains("monthly", ignoreCase = true)
+                }
+            }
             if (product != null) {
                 product.price
             } else {
                 val price = tier.getMonthlyPrice()
-                if (price > 0) "€$price" else "N/A"
+                if (price <= 0) {
+                    "N/A"
+                } else if (isYearly) {
+                    "€${String.format("%.2f", price * 12 * 0.8)}"
+                } else {
+                    "€$price"
+                }
             }
         }
     }

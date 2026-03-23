@@ -972,8 +972,8 @@ private fun PlanOptionsScreenContent(
         userProfile = userProfile,
         billingViewModel = bvm,
         onBack = { onScreenChange(Screen.Settings) },
-        onPurchase = { tier: SubscriptionTier ->
-            handlePurchase(context, act = activity, bvm = bvm, tier = tier)
+        onPurchase = { tier: SubscriptionTier, yearly: Boolean ->
+            handlePurchase(context, act = activity, bvm = bvm, tier = tier, yearly = yearly)
         },
         onRestorePurchases = {
             bvm.restorePurchases()
@@ -1529,10 +1529,11 @@ private fun handlePurchase(
     context: android.content.Context,
     act: Activity?,
     bvm: BillingViewModel,
-    tier: SubscriptionTier
+    tier: SubscriptionTier,
+    yearly: Boolean = false
 ) {
     act?.let { activity ->
-        val product: SubscriptionProduct? = bvm.getProductForTier(tier)
+        val product: SubscriptionProduct? = bvm.getProductForTier(tier, yearly = yearly)
         if (product != null) {
             bvm.purchaseSubscription(activity, product)
         } else {
