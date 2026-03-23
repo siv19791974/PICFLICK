@@ -92,8 +92,51 @@ class PhotoRepository private constructor() {
      */
     fun deleteFlick(flickId: String, onResult: (Result<Unit>) -> Unit) {
         db.collection("flicks").document(flickId)
-            .delete()
-            .addOnSuccessListener { onResult(Result.Success(Unit)) }
+            .get()
+            .addOnSuccessListener { snapshot ->
+                val flick = snapshot.toObject(Flick::class.java)
+                val ownerId = flick?.userId.orEmpty()
+                val imageUrl = flick?.imageUrl.orEmpty()
+
+                fun finalizeDelete(deletedBytes: Long) {
+                    db.collection("flicks").document(flickId)
+                        .delete()
+                        .addOnSuccessListener {
+                            if (ownerId.isNotBlank() && deletedBytes > 0L) {
+                                val userRef = db.collection("users").document(ownerId)
+                                db.runTransaction { tx ->
+                                    val userSnap = tx.get(userRef)
+                                    val currentRaw = userSnap.get("storageUsedBytes")
+                                    val currentBytes = when (currentRaw) {
+                                        is Number -> currentRaw.toLong()
+                                        is String -> currentRaw.toLongOrNull() ?: 0L
+                                        else -> 0L
+                                    }
+                                    tx.update(userRef, "storageUsedBytes", maxOf(0L, currentBytes - deletedBytes))
+                                }
+                                    .addOnSuccessListener { onResult(Result.Success(Unit)) }
+                                    .addOnFailureListener { onResult(Result.Success(Unit)) }
+                            } else {
+                                onResult(Result.Success(Unit))
+                            }
+                        }
+                        .addOnFailureListener { e -> onResult(Result.Error(e, "Failed to delete flick")) }
+                }
+
+                if (imageUrl.isNotBlank()) {
+                    val imageRef = storage.getReferenceFromUrl(imageUrl)
+                    imageRef.metadata
+                        .addOnSuccessListener { metadata ->
+                            val deletedBytes = metadata.sizeBytes
+                            imageRef.delete()
+                                .addOnSuccessListener { finalizeDelete(deletedBytes) }
+                                .addOnFailureListener { finalizeDelete(0L) }
+                        }
+                        .addOnFailureListener { finalizeDelete(0L) }
+                } else {
+                    finalizeDelete(0L)
+                }
+            }
             .addOnFailureListener { e -> onResult(Result.Error(e, "Failed to delete flick")) }
     }
 

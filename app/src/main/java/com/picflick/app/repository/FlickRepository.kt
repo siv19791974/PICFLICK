@@ -452,9 +452,51 @@ class FlickRepository private constructor() {
      * Delete a flick
      */
     fun deleteFlick(flickId: String, onResult: (Result<Unit>) -> Unit) {
-        db.collection("flicks").document(flickId).delete()
-            .addOnSuccessListener { onResult(Result.Success(Unit)) }
-            .addOnFailureListener { e -> onResult(Result.Error(e, "Failed to delete photo")) }
+        repositoryScope.launch {
+            try {
+                val flickRef = db.collection("flicks").document(flickId)
+                val flickSnapshot = flickRef.get().await()
+                val flick = flickSnapshot.toObject(Flick::class.java)
+
+                val ownerId = flick?.userId.orEmpty()
+                val imageUrl = flick?.imageUrl.orEmpty()
+                var deletedBytes = 0L
+
+                if (imageUrl.isNotBlank()) {
+                    try {
+                        val imageRef = storage.getReferenceFromUrl(imageUrl)
+                        deletedBytes = imageRef.metadata.await().sizeBytes
+                        imageRef.delete().await()
+                    } catch (e: Exception) {
+                        android.util.Log.w("FlickRepository", "Failed to delete storage object for flick=$flickId", e)
+                    }
+                }
+
+                flickRef.delete().await()
+
+                if (ownerId.isNotBlank() && deletedBytes > 0L) {
+                    try {
+                        val userRef = db.collection("users").document(ownerId)
+                        db.runTransaction { tx ->
+                            val userSnap = tx.get(userRef)
+                            val currentRaw = userSnap.get("storageUsedBytes")
+                            val currentBytes = when (currentRaw) {
+                                is Number -> currentRaw.toLong()
+                                is String -> currentRaw.toLongOrNull() ?: 0L
+                                else -> 0L
+                            }
+                            tx.update(userRef, "storageUsedBytes", maxOf(0L, currentBytes - deletedBytes))
+                        }.await()
+                    } catch (e: Exception) {
+                        android.util.Log.w("FlickRepository", "Failed to decrement storageUsedBytes for user=$ownerId", e)
+                    }
+                }
+
+                onResult(Result.Success(Unit))
+            } catch (e: Exception) {
+                onResult(Result.Error(e, "Failed to delete photo"))
+            }
+        }
     }
 
     /**
