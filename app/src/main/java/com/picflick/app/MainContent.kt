@@ -950,10 +950,15 @@ private fun SubscriptionStatusScreenContent(
             handlePurchase(context, act = activity, bvm = bvm, tier = tier)
         },
         onDowngrade = { tier: SubscriptionTier ->
-            handlePurchase(context, act = activity, bvm = bvm, tier = tier)
+            if (tier == SubscriptionTier.FREE) {
+                openGooglePlaySubscriptionManagement(context)
+                Toast.makeText(context, "Manage cancellation in Google Play, then tap Check & sync subscription.", Toast.LENGTH_LONG).show()
+            } else {
+                handlePurchase(context, act = activity, bvm = bvm, tier = tier)
+            }
         },
         onManagePayment = {
-            Toast.makeText(context, "Payment management coming soon!", Toast.LENGTH_SHORT).show()
+            openGooglePlaySubscriptionManagement(context)
         }
     )
 }
@@ -973,7 +978,12 @@ private fun PlanOptionsScreenContent(
         billingViewModel = bvm,
         onBack = { onScreenChange(Screen.Settings) },
         onPurchase = { tier: SubscriptionTier, yearly: Boolean ->
-            handlePurchase(context, act = activity, bvm = bvm, tier = tier, yearly = yearly)
+            if (tier == SubscriptionTier.FREE) {
+                openGooglePlaySubscriptionManagement(context)
+                Toast.makeText(context, "Manage cancellation in Google Play, then tap Check & sync subscription.", Toast.LENGTH_LONG).show()
+            } else {
+                handlePurchase(context, act = activity, bvm = bvm, tier = tier, yearly = yearly)
+            }
         },
         onRestorePurchases = {
             bvm.restorePurchases()
@@ -1543,6 +1553,31 @@ private fun handlePurchase(
                 Toast.LENGTH_LONG
             ).show()
             bvm.queryProducts()
+        }
+    }
+}
+
+private fun openGooglePlaySubscriptionManagement(context: Context) {
+    val packageName = context.packageName
+    val webUri = Uri.parse("https://play.google.com/store/account/subscriptions?package=$packageName")
+    val marketUri = Uri.parse("market://details?id=$packageName")
+
+    val playIntent = Intent(Intent.ACTION_VIEW, webUri).apply {
+        setPackage("com.android.vending")
+        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+    }
+
+    try {
+        context.startActivity(playIntent)
+    } catch (_: Exception) {
+        try {
+            context.startActivity(
+                Intent(Intent.ACTION_VIEW, webUri).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            )
+        } catch (_: Exception) {
+            context.startActivity(
+                Intent(Intent.ACTION_VIEW, marketUri).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            )
         }
     }
 }

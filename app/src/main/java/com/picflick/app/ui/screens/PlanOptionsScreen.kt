@@ -163,7 +163,11 @@ fun PlanOptionsScreen(
                 onClick = onRestorePurchases,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text("Check & sync subscription")
+                Text(
+                    text = "Check & sync subscription",
+                    color = Color.Black,
+                    fontWeight = FontWeight.Bold
+                )
             }
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -284,8 +288,8 @@ private fun CurrentPlanCard(
             Text(
                 text = "Current Plan: ${tier.getDisplayName()}",
                 fontSize = 15.sp,
-                fontWeight = FontWeight.Medium,
-                color = tierColor
+                fontWeight = FontWeight.Bold,
+                color = Color.Black
             )
         }
     }
@@ -445,7 +449,8 @@ private fun PlanCard(
                     Text(
                         text = if (tier == SubscriptionTier.FREE) "Downgrade to Free" else "Choose ${tier.getDisplayName()}",
                         fontSize = 14.sp,
-                        fontWeight = FontWeight.Medium
+                        fontWeight = FontWeight.Bold,
+                        color = Color.Black
                     )
                 }
             }
@@ -493,11 +498,7 @@ private fun getTierPrice(
         SubscriptionTier.FREE -> "FREE"
         else -> {
             val product = products.find { product ->
-                product.tier == tier && if (isYearly) {
-                    product.productId.contains("yearly", ignoreCase = true)
-                } else {
-                    product.productId.contains("monthly", ignoreCase = true)
-                }
+                product.tier == tier && product.isYearly == isYearly
             }
             if (product != null) {
                 product.price

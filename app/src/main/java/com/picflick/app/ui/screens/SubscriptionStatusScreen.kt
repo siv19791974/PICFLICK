@@ -50,6 +50,9 @@ import com.picflick.app.viewmodel.SubscriptionProduct
 import com.picflick.app.ui.components.PullRefreshContainer
 import com.picflick.app.ui.theme.ThemeManager
 import com.picflick.app.ui.theme.isDarkModeBackground
+import com.google.firebase.Timestamp
+import java.text.DateFormat
+import java.util.Date
 
 /**
  * Subscription Status Screen - Financial/tier details
@@ -288,6 +291,15 @@ private fun CurrentSubscriptionCard(
                             fontSize = 16.sp,
                             color = Color.Gray
                         )
+
+                        getSubscriptionDateLabel(userProfile)?.let { dateLabel ->
+                            Text(
+                                text = dateLabel,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.Black
+                            )
+                        }
                     }
                 }
             }
@@ -382,6 +394,29 @@ private fun CurrentSubscriptionCard(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun getSubscriptionDateLabel(userProfile: UserProfile): String? {
+    val expiryMillis = when (val expiry = userProfile.subscriptionExpiryDate) {
+        null -> 0L
+        is Long -> expiry
+        is Int -> expiry.toLong()
+        is Double -> expiry.toLong()
+        is Timestamp -> expiry.toDate().time
+        is String -> expiry.toLongOrNull() ?: 0L
+        else -> 0L
+    }
+
+    if (!userProfile.subscriptionActive || userProfile.getEffectiveTier() == SubscriptionTier.FREE) return null
+    if (expiryMillis <= 0L) return "Active subscription"
+
+    val formattedDate = DateFormat.getDateInstance(DateFormat.MEDIUM).format(Date(expiryMillis))
+    return if (userProfile.autoRenewing) {
+        "Renews on $formattedDate"
+    } else {
+        "Expires on $formattedDate"
     }
 }
 
@@ -580,8 +615,8 @@ private fun TierComparisonRow(
                     Text(
                         text = "Downgrade",
                         fontSize = 12.sp,
-                        fontWeight = FontWeight.Medium,
-                        color = Color.Gray
+                        fontWeight = FontWeight.Bold,
+                        color = Color.Black
                     )
                 }
             }
