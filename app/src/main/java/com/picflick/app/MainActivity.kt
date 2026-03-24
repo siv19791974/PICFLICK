@@ -8,6 +8,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
+import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -49,9 +50,11 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.picflick.app.data.ChatSession
+import com.picflick.app.data.SubscriptionTier
 import com.picflick.app.navigation.Screen
 import com.picflick.app.repository.FlickRepository
 import com.picflick.app.data.Flick
+import com.picflick.app.data.getDailyUploadLimit
 import com.picflick.app.ui.components.BottomNavBar
 import com.picflick.app.ui.components.LogoImage
 import com.picflick.app.ui.components.UploadSourceDialog
@@ -631,12 +634,69 @@ fun MainScreen(
 
     // Image pickers for upload flow
     val galleryLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.GetContent()
-    ) { uri: Uri? ->
-        uri?.let {
-            selectedPhotoUri = it
+        contract = ActivityResultContracts.PickMultipleVisualMedia(100)
+    ) { uris: List<Uri> ->
+        val selectedUris = uris.distinct()
+        if (selectedUris.isEmpty()) return@rememberLauncherForActivityResult
+
+        if (selectedUris.size == 1) {
+            selectedPhotoUri = selectedUris.first()
             currentScreen = Screen.Filter
+            return@rememberLauncherForActivityResult
         }
+
+        val profile = userProfile
+        if (profile == null) {
+            Toast.makeText(context, "Profile not ready yet", Toast.LENGTH_SHORT).show()
+            return@rememberLauncherForActivityResult
+        }
+
+        val tier = profile.getEffectiveTier()
+        val dailyLimit = tier.getDailyUploadLimit()
+        val remainingDaily = if (dailyLimit == Int.MAX_VALUE) {
+            Int.MAX_VALUE
+        } else {
+            (dailyLimit - uploadViewModel.dailyUploadCount).coerceAtLeast(0)
+        }
+        val batchCap = if (tier == SubscriptionTier.ULTRA) 100 else remainingDaily
+
+        if (batchCap <= 0) {
+            Toast.makeText(context, "Daily upload limit reached", Toast.LENGTH_LONG).show()
+            return@rememberLauncherForActivityResult
+        }
+
+        val uploadUris = selectedUris.take(batchCap)
+        if (selectedUris.size > batchCap) {
+            Toast.makeText(
+                context,
+                "Selected ${selectedUris.size}. Uploading first $batchCap for your current limit.",
+                Toast.LENGTH_LONG
+            ).show()
+        }
+
+        Toast.makeText(
+            context,
+            "Batch upload uses original photos. You can edit/tag later in your profile.",
+            Toast.LENGTH_LONG
+        ).show()
+
+        uploadViewModel.uploadPhotosBatch(
+            context = context,
+            photoUris = uploadUris,
+            userProfile = profile,
+            onOptimisticAdd = { optimisticFlick ->
+                homeViewModel.addOptimisticFlick(optimisticFlick)
+            },
+            onOptimisticRemove = { flickId, uploadSucceeded ->
+                if (uploadSucceeded) {
+                    homeViewModel.loadFlicks(profile.uid)
+                } else {
+                    homeViewModel.removeOptimisticFlick(flickId)
+                }
+            }
+        )
+
+        currentScreen = Screen.Home
     }
 
     val cameraLauncher = rememberLauncherForActivityResult(
@@ -697,7 +757,11 @@ fun MainScreen(
             },
             onGalleryClick = {
                 showUploadSourceDialog = false
-                galleryLauncher.launch("image/*")
+                galleryLauncher.launch(
+                    PickVisualMediaRequest(
+                        ActivityResultContracts.PickVisualMedia.ImageOnly
+                    )
+                )
             }
         )
     }
