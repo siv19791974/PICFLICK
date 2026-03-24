@@ -246,6 +246,7 @@ fun ManageStorageScreen(
                     isDarkMode = isDarkMode
                 )
 
+                Spacer(modifier = Modifier.height(24.dp))
                 Spacer(modifier = Modifier.height(80.dp))
             }
         }
@@ -697,7 +698,7 @@ private fun StorageTipsCard(percent: Int, isDarkMode: Boolean) {
             .padding(horizontal = 16.dp),
         colors = CardDefaults.cardColors(
             containerColor = when {
-                percent >= 110 -> if (isDarkMode) Color(0xFF3D1F1F) else Color(0xFFFFEBEE)
+                percent >= 100 -> if (isDarkMode) Color(0xFF3D1F1F) else Color(0xFFFFEBEE)
                 percent >= 90 -> if (isDarkMode) Color(0xFF3D2E1F) else Color(0xFFFFF3E0)
                 else -> if (isDarkMode) Color(0xFF1F3D1F) else Color(0xFFE8F5E9)
             }
@@ -710,17 +711,17 @@ private fun StorageTipsCard(percent: Int, isDarkMode: Boolean) {
         ) {
             Icon(
                 imageVector = when {
-                    percent >= 110 -> Icons.Default.Warning
+                    percent >= 100 -> Icons.Default.Warning
                     percent >= 90 -> Icons.Default.Info
                     else -> Icons.Default.Check
                 },
                 contentDescription = when {
-                    percent >= 110 -> stringResource(R.string.content_desc_warning)
+                    percent >= 100 -> stringResource(R.string.content_desc_warning)
                     percent >= 90 -> stringResource(R.string.content_desc_info)
                     else -> stringResource(R.string.content_desc_check)
                 },
                 tint = when {
-                    percent >= 110 -> Color.Red
+                    percent >= 100 -> Color.Red
                     percent >= 90 -> Color(0xFFFF8F00)
                     else -> Color(0xFF00C853)
                 },
@@ -732,14 +733,14 @@ private fun StorageTipsCard(percent: Int, isDarkMode: Boolean) {
             Column {
                 Text(
                     text = when {
-                        percent >= 110 -> "Storage max reached (110%)"
+                        percent >= 100 -> "Storage max reached (100%)"
                         percent >= 90 -> "Storage warning (90%+)"
                         else -> "Storage looking good"
                     },
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Medium,
                     color = when {
-                        percent >= 110 -> Color.Red
+                        percent >= 100 -> Color.Red
                         percent >= 90 -> Color(0xFFFF8F00)
                         else -> Color(0xFF00C853)
                     }
@@ -749,8 +750,7 @@ private fun StorageTipsCard(percent: Int, isDarkMode: Boolean) {
 
                 Text(
                     text = when {
-                        percent >= 110 -> "Uploads are paused. Delete photos or upgrade your plan to continue."
-                        percent >= 100 -> "Storage appears full. Grace uploads may still complete until 110%."
+                        percent >= 100 -> "Storage appears full. Delete photos or upgrade your plan to continue."
                         percent >= 90 -> "You are close to full storage."
                         else -> "You have plenty of space for more photos."
                     },

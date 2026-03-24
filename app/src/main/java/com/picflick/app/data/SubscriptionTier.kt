@@ -160,11 +160,11 @@ fun SubscriptionTier.getYearlyPrice(): Double {
 
 fun SubscriptionTier.getImageQuality(): Int {
     return when (this) {
-        SubscriptionTier.FREE -> 90         // Increased from 80
-        SubscriptionTier.STANDARD -> 95      // Increased from 85
-        SubscriptionTier.PLUS -> 98          // Increased from 90
-        SubscriptionTier.PRO -> 99           // Increased from 95
-        SubscriptionTier.ULTRA -> 100        // Unchanged (maximum)
+        SubscriptionTier.FREE -> 92
+        SubscriptionTier.STANDARD -> 94
+        SubscriptionTier.PLUS -> 96
+        SubscriptionTier.PRO -> 98
+        SubscriptionTier.ULTRA -> 100
     }
 }
 

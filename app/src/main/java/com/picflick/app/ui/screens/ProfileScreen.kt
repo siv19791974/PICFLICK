@@ -59,6 +59,7 @@ import kotlinx.coroutines.withContext
 import com.picflick.app.data.Flick
 import com.picflick.app.data.ReactionType
 import com.picflick.app.data.UserProfile
+import com.picflick.app.data.getImageQuality
 import com.picflick.app.data.toEmoji
 import com.picflick.app.data.getColor
 import com.picflick.app.data.getDarkColor
@@ -514,6 +515,7 @@ fun ProfileScreen(
     if (showCropDialog && pendingProfilePhotoUri != null) {
         ProfilePhotoCropDialog(
             imageUri = pendingProfilePhotoUri!!,
+            imageQuality = userProfile.getEffectiveTier().getImageQuality(),
             onDismiss = {
                 showCropDialog = false
                 pendingProfilePhotoUri = null
@@ -530,6 +532,7 @@ fun ProfileScreen(
 @Composable
 private fun ProfilePhotoCropDialog(
     imageUri: Uri,
+    imageQuality: Int,
     onDismiss: () -> Unit,
     onConfirm: (Uri?) -> Unit
 ) {
@@ -566,7 +569,8 @@ private fun ProfilePhotoCropDialog(
                                 sourceBitmap = bitmap,
                                 viewportSize = viewportSize,
                                 zoomScale = scale,
-                                panOffset = offset
+                                panOffset = offset,
+                                imageQuality = imageQuality
                             )
                         }
                         isSaving = false
@@ -671,7 +675,8 @@ private fun createCroppedProfileImageUri(
     sourceBitmap: Bitmap,
     viewportSize: IntSize,
     zoomScale: Float,
-    panOffset: Offset
+    panOffset: Offset,
+    imageQuality: Int
 ): Uri? {
     if (viewportSize.width <= 0 || viewportSize.height <= 0) return null
 
@@ -696,7 +701,7 @@ private fun createCroppedProfileImageUri(
 
     val outputFile = File(context.cacheDir, "profile_crop_${System.currentTimeMillis()}.jpg")
     FileOutputStream(outputFile).use { stream ->
-        normalized.compress(Bitmap.CompressFormat.JPEG, 92, stream)
+        normalized.compress(Bitmap.CompressFormat.JPEG, imageQuality, stream)
         stream.flush()
     }
 
