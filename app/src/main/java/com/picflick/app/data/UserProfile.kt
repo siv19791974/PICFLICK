@@ -1,5 +1,7 @@
 package com.picflick.app.data
 
+import com.google.firebase.Timestamp
+
 /**
  * Data class representing a user profile in the PicFlick app
  */
@@ -22,7 +24,7 @@ data class UserProfile(
     val totalViews: Int = 0,
     // Subscription and Storage Management Fields
     val subscriptionTier: SubscriptionTier = SubscriptionTier.FREE,
-    val subscriptionExpiryDate: Long = 0, // Timestamp when subscription expires (0 = never/lifetime)
+    val subscriptionExpiryDate: Any? = 0L, // Supports Firestore Timestamp or legacy epoch millis
     val storageUsedBytes: Long = 0, // Current storage used in bytes
     val totalPhotos: Int = 0, // Total photos uploaded
     val dailyUploadsToday: Int = 0, // Uploads used today
@@ -78,8 +80,19 @@ data class UserProfile(
     fun hasActiveSubscription(): Boolean {
         if (isFounder) return true // Founders always have access
         if (subscriptionTier == SubscriptionTier.FREE) return false
-        if (subscriptionExpiryDate == 0L) return true // Lifetime
-        return System.currentTimeMillis() < subscriptionExpiryDate
+
+        val expiryMillis = when (val expiry = subscriptionExpiryDate) {
+            null -> 0L
+            is Long -> expiry
+            is Int -> expiry.toLong()
+            is Double -> expiry.toLong()
+            is Timestamp -> expiry.toDate().time
+            is String -> expiry.toLongOrNull() ?: 0L
+            else -> 0L
+        }
+
+        if (expiryMillis == 0L) return true // Lifetime/unspecified
+        return System.currentTimeMillis() < expiryMillis
     }
 }
 

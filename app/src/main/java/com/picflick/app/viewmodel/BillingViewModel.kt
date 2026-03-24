@@ -263,14 +263,15 @@ class BillingViewModel : ViewModel() {
      * Update current tier based on active purchases
      */
     private fun updateCurrentTier(purchases: List<Purchase>) {
-        val activePurchase = purchases.find { it.purchaseState == Purchase.PurchaseState.PURCHASED }
-        val tier = activePurchase?.let { purchase ->
-            purchase.products.firstOrNull()?.let { productId ->
-                getTierFromProductId(productId)
-            }
-        } ?: SubscriptionTier.FREE
+        val highestActiveTier = purchases
+            .asSequence()
+            .filter { it.purchaseState == Purchase.PurchaseState.PURCHASED }
+            .flatMap { purchase -> purchase.products.asSequence() }
+            .mapNotNull { productId -> getTierFromProductId(productId) }
+            .maxByOrNull { tier -> tier.ordinal }
+            ?: SubscriptionTier.FREE
 
-        _currentTier.value = tier
+        _currentTier.value = highestActiveTier
     }
 
     /**
