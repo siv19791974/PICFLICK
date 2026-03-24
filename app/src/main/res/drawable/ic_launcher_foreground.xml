@@ -1,20 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
-<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
-    <!-- Light blue background - matches PicFlickLightBackground -->
-    <item>
-        <color android:color="#D7ECFF" />
-    </item>
-    <!-- Your logo.png - correct aspect ratio like main logo -->
-    <item
-        android:width="72dp"
-        android:height="24dp"
-        android:left="18dp"
-        android:top="42dp"
-        android:right="18dp"
-        android:bottom="42dp"
-        android:gravity="center">
-        <bitmap
-            android:src="@drawable/logo"
-            android:gravity="fill" />
-    </item>
-</layer-list>
+<inset xmlns:android="http://schemas.android.com/apk/res/android"
+    android:drawable="@drawable/ic_launcher_phone_box"
+    android:insetLeft="8dp"
+    android:insetTop="8dp"
+    android:insetRight="8dp"
+    android:insetBottom="8dp" />

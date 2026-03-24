@@ -32,6 +32,7 @@ import com.picflick.app.data.Flick
 import com.picflick.app.data.ReactionType
 import com.picflick.app.data.SubscriptionTier
 import com.picflick.app.data.UserProfile
+import com.picflick.app.data.getImageQuality
 import com.picflick.app.navigation.Screen
 import com.picflick.app.repository.ChatRepository
 import com.picflick.app.repository.FlickRepository
@@ -287,7 +288,11 @@ fun AuthenticatedContent(
             onSave = { flick, filterType, description, taggedFriends, filteredBitmap ->
                 scope.launch {
                     val stream = java.io.ByteArrayOutputStream()
-                    filteredBitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG, 92, stream)
+                    filteredBitmap.compress(
+                        android.graphics.Bitmap.CompressFormat.JPEG,
+                        userProfile.getEffectiveTier().getImageQuality(),
+                        stream
+                    )
                     val bytes = stream.toByteArray()
 
                     val uploadResult = repository.uploadFlickImage(flick.userId, bytes)
@@ -1032,6 +1037,7 @@ private fun FilterScreenContent(
                     }
                 )
             },
+            onUploadQueued = { onScreenChange(Screen.Home) },
             onNavigateToFindFriends = { onScreenChange(Screen.FindFriends) },
             onNavigateToCamera = { onScreenChange(Screen.Home) }
         )

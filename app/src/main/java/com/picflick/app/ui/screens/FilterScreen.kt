@@ -53,11 +53,11 @@ import com.picflick.app.R
 import com.picflick.app.data.PhotoFilter
 import com.picflick.app.data.UserProfile
 import com.picflick.app.data.getDailyUploadLimit
+import com.picflick.app.data.getImageQuality
 import com.picflick.app.ui.theme.ThemeManager
 import com.picflick.app.ui.theme.isDarkModeBackground
 import com.picflick.app.ui.theme.PicFlickLightBackground
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -73,6 +73,7 @@ fun FilterScreen(
     dailyUploadCount: Int,
     onBack: () -> Unit,
     onUpload: (Uri, PhotoFilter, List<String>, String) -> Unit,
+    onUploadQueued: () -> Unit = {},
     onNavigateToFindFriends: () -> Unit = {},
     onNavigateToCamera: () -> Unit = {}
 ) {
@@ -85,6 +86,7 @@ fun FilterScreen(
     
     // Get daily upload limit from subscription tier
     val maxDailyUploads = currentUser.getEffectiveTier().getDailyUploadLimit()
+    val imageQuality = currentUser.getEffectiveTier().getImageQuality()
     
     // Friend tagging state
     var taggedFriends by remember { mutableStateOf<List<UserProfile>>(emptyList()) }
@@ -107,8 +109,9 @@ fun FilterScreen(
     }
     
     // Calculate remaining uploads using optimistic count
+    val isUnlimitedUploads = maxDailyUploads == Int.MAX_VALUE
     val remainingUploads = maxDailyUploads - optimisticDailyCount
-    val canUpload = remainingUploads > 0
+    val canUpload = isUnlimitedUploads || remainingUploads > 0
 
     val cropLauncher = rememberLauncherForActivityResult(CropImageContract()) { result ->
         isCropping = false
@@ -133,7 +136,7 @@ fun FilterScreen(
         isCropping = true
         scope.launch(Dispatchers.IO) {
             try {
-                val sourceUri = saveBitmapToTempUri(context, currentBitmap)
+                val sourceUri = saveBitmapToTempUri(context, currentBitmap, imageQuality)
                 withContext(Dispatchers.Main) {
                     cropLauncher.launch(
                         CropImageContractOptions(
@@ -206,11 +209,11 @@ fun FilterScreen(
             isUploading = true
             scope.launch {
                 try {
-                    val filteredUri = applyFilterAndSave(context, bitmap!!, selectedFilter)
+                    val filteredUri = applyFilterAndSave(context, bitmap!!, selectedFilter, imageQuality)
                     onUpload(filteredUri, selectedFilter, taggedFriends.map { it.uid }, description.trim())
-                    // Show success toast
                     withContext(Dispatchers.Main) {
-                        android.widget.Toast.makeText(context, context.getString(R.string.upload_complete), android.widget.Toast.LENGTH_SHORT).show()
+                        android.widget.Toast.makeText(context, "Upload started", android.widget.Toast.LENGTH_SHORT).show()
+                        onUploadQueued()
                     }
                 } catch (e: Exception) {
                     // On failure, revert the optimistic counter
@@ -220,8 +223,6 @@ fun FilterScreen(
                     }
                 } finally {
                     isUploading = false
-                    // Keep animation visible for a moment then hide
-                    delay(1000)
                     showCountdownAnimation = false
                 }
             }
@@ -313,6 +314,8 @@ fun FilterScreen(
                                 Text(
                                     text = if (isLimitReached) {
                                         "SEE YOU TOMORROW!"
+                                    } else if (isUnlimitedUploads) {
+                                        "NO LIMIT"
                                     } else {
                                         if (isAnimating) {
                                             "✓ $remainingUploads PHOTOS LEFT"
@@ -329,7 +332,7 @@ fun FilterScreen(
                     }
                     
                     // Upload tick button
-                    val canUpload = (maxDailyUploads - dailyUploadCount) > 0
+                    val canUpload = isUnlimitedUploads || (maxDailyUploads - dailyUploadCount) > 0
                     
                     IconButton(
                         onClick = { triggerUpload() },
@@ -1261,11 +1264,15 @@ private suspend fun loadBitmapFromUri(context: android.content.Context, uri: Uri
     }
 }
 
-private suspend fun saveBitmapToTempUri(context: android.content.Context, bitmap: Bitmap): Uri {
+private suspend fun saveBitmapToTempUri(
+    context: android.content.Context,
+    bitmap: Bitmap,
+    imageQuality: Int
+): Uri {
     return withContext(Dispatchers.IO) {
         val tempFile = java.io.File.createTempFile("crop_source_", ".jpg", context.cacheDir)
         java.io.FileOutputStream(tempFile).use { out ->
-            bitmap.compress(Bitmap.CompressFormat.JPEG, 100, out)
+            bitmap.compress(Bitmap.CompressFormat.JPEG, imageQuality, out)
         }
         Uri.fromFile(tempFile)
     }
@@ -1274,15 +1281,15 @@ private suspend fun saveBitmapToTempUri(context: android.content.Context, bitmap
 private suspend fun applyFilterAndSave(
     context: android.content.Context,
     bitmap: Bitmap,
-    filter: PhotoFilter
+    filter: PhotoFilter,
+    imageQuality: Int
 ): Uri {
     return withContext(Dispatchers.IO) {
         val filteredBitmap = applyFilterToBitmap(bitmap, filter)
 
-        // Save to temp file at MAXIMUM QUALITY (100% JPEG)
         val tempFile = java.io.File.createTempFile("filtered_", ".jpg", context.cacheDir)
         java.io.FileOutputStream(tempFile).use { out ->
-            filteredBitmap.compress(Bitmap.CompressFormat.JPEG, 100, out)  // MAX quality - was 95
+            filteredBitmap.compress(Bitmap.CompressFormat.JPEG, imageQuality, out)
         }
 
         Uri.fromFile(tempFile)

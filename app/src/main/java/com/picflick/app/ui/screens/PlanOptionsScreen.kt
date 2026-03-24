@@ -37,6 +37,7 @@ import com.picflick.app.data.getColor
 import com.picflick.app.data.getDailyUploadLimit
 import com.picflick.app.data.getDisplayName
 import com.picflick.app.data.getMonthlyPrice
+import com.picflick.app.data.getQualityDescription
 import com.picflick.app.data.getStorageLimitGB
 import com.picflick.app.ui.theme.ThemeManager
 import com.picflick.app.ui.theme.isDarkModeBackground
@@ -308,6 +309,7 @@ private fun PlanCard(
     val storageGB = tier.getStorageLimitGB()
     val dailyUploads = tier.getDailyUploadLimit()
     val uploadsText = if (dailyUploads == Int.MAX_VALUE) "Unlimited" else "$dailyUploads"
+    val qualityText = tier.getQualityDescription()
     
     Card(
         modifier = Modifier
@@ -358,8 +360,8 @@ private fun PlanCard(
                     ) {
                         Text(
                             text = "Current",
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Medium,
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.ExtraBold,
                             color = tierColor
                         )
                     }
@@ -425,6 +427,28 @@ private fun PlanCard(
                     value = "~$displayPhotos",
                     label = "Photos",
                     isDarkMode = isDarkMode
+                )
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Check,
+                    contentDescription = null,
+                    tint = if (isDarkMode) Color.Gray else Color.DarkGray,
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(
+                    text = "Photo Quality: $qualityText",
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = if (isDarkMode) Color.LightGray else Color(0xFF424242)
                 )
             }
             

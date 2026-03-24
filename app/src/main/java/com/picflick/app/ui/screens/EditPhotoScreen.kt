@@ -52,6 +52,7 @@ import com.picflick.app.data.Flick
 import com.picflick.app.data.PhotoFilter
 import com.google.firebase.firestore.FirebaseFirestore
 import com.picflick.app.data.UserProfile
+import com.picflick.app.data.getImageQuality
 import com.picflick.app.ui.theme.ThemeManager
 import com.picflick.app.ui.theme.isDarkModeBackground
 import com.picflick.app.ui.theme.PicFlickLightBackground
@@ -77,6 +78,7 @@ fun EditPhotoScreen(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val isDarkMode = ThemeManager.isDarkMode.value
+    val imageQuality = _currentUser.getEffectiveTier().getImageQuality()
     
     // Photo editing state
     var selectedFilter by remember { mutableStateOf(PhotoFilter.ORIGINAL) }
@@ -158,7 +160,7 @@ withContext(Dispatchers.Main) {
         isCropping = true
         scope.launch(Dispatchers.IO) {
             try {
-                val sourceUri = saveBitmapToTempUri(context, currentBitmap)
+                val sourceUri = saveBitmapToTempUri(context, currentBitmap, imageQuality)
                 withContext(Dispatchers.Main) {
                     cropLauncher.launch(
                         CropImageContractOptions(
@@ -1064,11 +1066,15 @@ private fun applyFilterToBitmap(bitmap: Bitmap, filter: PhotoFilter, thumbnailSi
     return result
 }
 
-private suspend fun saveBitmapToTempUri(context: android.content.Context, bitmap: Bitmap): android.net.Uri {
+private suspend fun saveBitmapToTempUri(
+    context: android.content.Context,
+    bitmap: Bitmap,
+    imageQuality: Int
+): android.net.Uri {
     return withContext(Dispatchers.IO) {
         val tempFile = java.io.File.createTempFile("crop_source_", ".jpg", context.cacheDir)
         java.io.FileOutputStream(tempFile).use { out ->
-            bitmap.compress(Bitmap.CompressFormat.JPEG, 100, out)
+            bitmap.compress(Bitmap.CompressFormat.JPEG, imageQuality, out)
         }
         android.net.Uri.fromFile(tempFile)
     }
