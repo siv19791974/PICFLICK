@@ -217,7 +217,7 @@ fun ProfileScreen(
         Spacer(modifier = Modifier.height(if (isLandscape) 12.dp else 24.dp))
 
         // Profile Photo with Tier Color Ring
-        val tier = userProfile.subscriptionTier
+        val tier = userProfile.getEffectiveTier()
         val tierColor = tier.getColor()
         
         val profileImageSize = if (isLandscape) 124.dp else 156.dp
@@ -374,7 +374,7 @@ fun ProfileScreen(
             )
             // SIXTH ITEM - Subscription Tier Badge
             TierBadgeStatItem(
-                tier = userProfile.subscriptionTier,
+                tier = userProfile.getEffectiveTier(),
                 isDarkMode = isDarkMode,
                 onClick = onPlanOptions
             )

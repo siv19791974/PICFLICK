@@ -150,7 +150,9 @@ We will NEVER:
 • Industry-standard security practices
 • Regular security audits and updates
 
-Your photos are stored in the cloud and remain accessible only to you and users you authorize based on your privacy settings.""",
+Your photos are stored in the cloud and remain accessible only to you and users you authorize based on your privacy settings.
+
+If your account is over storage limit after a downgrade, a 7-day grace period applies. During this period, you receive daily warnings. If storage remains over limit after grace, oldest photos may be deleted automatically until usage matches your active tier.""",
                     isDarkMode = isDarkMode
                 )
             }

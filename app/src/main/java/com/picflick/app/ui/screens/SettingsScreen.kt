@@ -21,7 +21,6 @@ import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Cloud
-import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Upgrade
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -37,7 +36,6 @@ import androidx.compose.ui.graphics.Brush
 import coil3.compose.AsyncImage
 import com.picflick.app.MainActivity
 import com.picflick.app.data.UserProfile
-import com.picflick.app.data.SubscriptionTier
 import com.picflick.app.data.getColor
 import com.picflick.app.data.getDarkColor
 import com.picflick.app.data.getDisplayName
@@ -708,7 +706,7 @@ private fun ProfileHeaderWithStorage(
     onProfileClick: () -> Unit,
     isDarkMode: Boolean
 ) {
-    val tier = userProfile.subscriptionTier
+    val tier = userProfile.getEffectiveTier()
     val tierColor = tier.getColor()
     var storageUsed by remember(userProfile.uid) { mutableStateOf(userProfile.storageUsedBytes) }
     val storageLimit = tier.getStorageLimitBytes()
@@ -1263,7 +1261,7 @@ private fun SettingsItem(
  */
 private fun getStorageSubtitle(userProfile: UserProfile): String {
     val usedGB = userProfile.calculateStorageUsedGB()
-    val totalGB = userProfile.getTier().getStorageLimitGB()
+    val totalGB = userProfile.getEffectiveTier().getStorageLimitGB()
     return "$usedGB GB / $totalGB GB used"
 }
 

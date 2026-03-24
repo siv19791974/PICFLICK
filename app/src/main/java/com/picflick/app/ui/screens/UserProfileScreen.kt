@@ -91,7 +91,7 @@ fun UserProfileScreen(
     val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
 val primaryTextColor = if (isDarkMode) Color.White else Color.Black
     val secondaryTextColor = if (isDarkMode) Color.Gray else Color.Black.copy(alpha = 0.7f)
-    val tierRingColor = userProfile.subscriptionTier.getColor()
+    val tierRingColor = userProfile.getEffectiveTier().getColor()
 
     Box(
         modifier = Modifier

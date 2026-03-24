@@ -61,7 +61,7 @@ fun PlanOptionsScreen(
     val context = LocalContext.current
     val products: List<SubscriptionProduct> by billingViewModel.products.collectAsState()
     val billingEvent: BillingEvent? by billingViewModel.billingEvent.collectAsState()
-    val currentTier = userProfile.subscriptionTier
+    val currentTier = userProfile.getEffectiveTier()
     var isYearly by remember { mutableStateOf(false) }
 
     LaunchedEffect(billingEvent) {

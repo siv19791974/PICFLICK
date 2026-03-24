@@ -233,6 +233,35 @@ fun LegalScreen(
                 }
             }
 
+            // Storage Overage & Downgrade Policy
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = cardBackground
+                    ),
+                    shape = RoundedCornerShape(16.dp)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(20.dp)
+                    ) {
+                        Text(
+                            text = "Storage Overage & Downgrade Policy",
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = accentColor,
+                            modifier = Modifier.padding(bottom = 12.dp)
+                        )
+                        Text(
+                            text = "If your subscription downgrades and your storage is above the new tier limit, PicFlick grants a 7-day grace period to delete photos and return within your plan limit. During grace, we send daily warnings. After grace ends, PicFlick may automatically delete oldest photos in batches until your account is back within the storage limit.\n\nTo avoid deletion, keep backups and reduce storage before grace ends.",
+                            fontSize = 14.sp,
+                            color = textColor,
+                            lineHeight = 22.sp
+                        )
+                    }
+                }
+            }
+
             // Account Termination
             item {
                 Card(

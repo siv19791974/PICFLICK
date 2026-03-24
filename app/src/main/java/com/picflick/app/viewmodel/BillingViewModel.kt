@@ -231,6 +231,19 @@ class BillingViewModel : ViewModel() {
     private suspend fun syncActivePurchasesWithServer(purchasesList: List<Purchase>) {
         val activePurchases = purchasesList.filter { it.purchaseState == Purchase.PurchaseState.PURCHASED }
 
+        if (activePurchases.isEmpty()) {
+            try {
+                functions.getHttpsCallable("handlePurchaseCancelled")
+                    .call(hashMapOf<String, Any>())
+                    .await()
+                _currentTier.value = SubscriptionTier.FREE
+                Log.d("BillingViewModel", "No active purchases found; server subscription state downgraded to FREE")
+            } catch (e: Exception) {
+                Log.w("BillingViewModel", "Failed to sync no-active-purchase state with server", e)
+            }
+            return
+        }
+
         activePurchases.forEach { purchase ->
             val productId = purchase.products.firstOrNull() ?: return@forEach
             try {
@@ -309,9 +322,26 @@ class BillingViewModel : ViewModel() {
             .setOfferToken(offerToken)
             .build()
 
-        val billingFlowParams = BillingFlowParams.newBuilder()
+        val billingFlowBuilder = BillingFlowParams.newBuilder()
             .setProductDetailsParamsList(listOf(productDetailsParams))
-            .build()
+
+        // Explicit upgrade/downgrade handling: tell Google Play this is a plan replacement
+        // so billing/proration is handled correctly and users are not double-charged.
+        val activePurchase = _purchases.value.firstOrNull {
+            it.purchaseState == Purchase.PurchaseState.PURCHASED && it.products.isNotEmpty()
+        }
+        val currentProductId = activePurchase?.products?.firstOrNull()
+        if (activePurchase != null && currentProductId != null && currentProductId != product.productId) {
+            val updateParams = BillingFlowParams.SubscriptionUpdateParams.newBuilder()
+                .setOldPurchaseToken(activePurchase.purchaseToken)
+                .setSubscriptionReplacementMode(
+                    BillingFlowParams.SubscriptionUpdateParams.ReplacementMode.WITH_TIME_PRORATION
+                )
+                .build()
+            billingFlowBuilder.setSubscriptionUpdateParams(updateParams)
+        }
+
+        val billingFlowParams = billingFlowBuilder.build()
 
         val billingResult = billingClient?.launchBillingFlow(activity, billingFlowParams)
 

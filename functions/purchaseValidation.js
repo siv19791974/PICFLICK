@@ -5,6 +5,9 @@ let googleApi = null;
 
 const VALIDATE_PURCHASE_RATE_LIMIT_WINDOW_MS = 60 * 1000;
 const VALIDATE_PURCHASE_RATE_LIMIT_MAX = 10;
+const OVERAGE_GRACE_PERIOD_MS = 7 * 24 * 60 * 60 * 1000;
+const OVERAGE_WARNING_INTERVAL_MS = 24 * 60 * 60 * 1000;
+const OVERAGE_PRUNE_BATCH_SIZE = 25;
 
 // Initialize Firebase Admin
 if (!admin.apps.length) {
@@ -174,9 +177,12 @@ exports.handlePurchaseCancelled = functions.https.onCall(async (data, context) =
     // Downgrade user to free tier
     await db.collection('users').doc(userId).update({
       subscriptionTier: 'FREE',
+      tier: 'FREE',
       subscriptionExpiryDate: null,
       purchaseToken: null,
       productId: null,
+      overageGraceEndsAt: admin.firestore.Timestamp.fromDate(new Date(Date.now() + OVERAGE_GRACE_PERIOD_MS)),
+      overageLastWarnedAt: admin.firestore.FieldValue.serverTimestamp(),
       cancelledAt: admin.firestore.FieldValue.serverTimestamp()
     });
 
@@ -298,6 +304,7 @@ async function updateUserSubscription(userId, subscriptionData) {
   
   await userRef.update({
     subscriptionTier: subscriptionData.tier,
+    tier: subscriptionData.tier,
     isYearly: subscriptionData.isYearly,
     purchaseToken: subscriptionData.purchaseToken,
     productId: subscriptionData.productId,
@@ -305,7 +312,9 @@ async function updateUserSubscription(userId, subscriptionData) {
     orderId: subscriptionData.orderId,
     autoRenewing: subscriptionData.autoRenewing,
     subscriptionValidatedAt: subscriptionData.validatedAt,
-    subscriptionActive: true
+    subscriptionActive: true,
+    overageGraceEndsAt: admin.firestore.FieldValue.delete(),
+    overageLastWarnedAt: admin.firestore.FieldValue.delete()
   });
 }
 
@@ -384,6 +393,16 @@ function parseRealtimeNotification(body) {
   };
 }
 
+function buildTierSyncFromProductId(productId) {
+  const tier = productId ? getTierFromProductId(productId) : null;
+  if (!tier) return {};
+
+  return {
+    subscriptionTier: tier,
+    tier: tier
+  };
+}
+
 async function resolveUserIdForNotification(notification) {
   if (notification.userId) return notification.userId;
 
@@ -404,6 +423,7 @@ async function reactivateSubscription(notification) {
   if (!userId) return;
 
   await db.collection('users').doc(userId).update({
+    ...buildTierSyncFromProductId(notification.productId),
     subscriptionActive: true,
     autoRenewing: true,
     subscriptionRecoveredAt: admin.firestore.FieldValue.serverTimestamp()
@@ -416,6 +436,7 @@ async function updateSubscriptionExpiry(notification) {
 
   // Expiry refresh should still be handled by validatePurchase; here we mark renewal receipt.
   await db.collection('users').doc(userId).update({
+    ...buildTierSyncFromProductId(notification.productId),
     autoRenewing: true,
     subscriptionRenewedAt: admin.firestore.FieldValue.serverTimestamp(),
     productId: notification.productId || admin.firestore.FieldValue.delete(),
@@ -439,13 +460,227 @@ async function downgradeToFree(notification) {
 
   await db.collection('users').doc(userId).update({
     subscriptionTier: 'FREE',
+    tier: 'FREE',
     subscriptionActive: false,
     subscriptionExpiryDate: null,
     purchaseToken: null,
     productId: null,
     autoRenewing: false,
+    overageGraceEndsAt: admin.firestore.Timestamp.fromDate(new Date(Date.now() + OVERAGE_GRACE_PERIOD_MS)),
+    overageLastWarnedAt: admin.firestore.FieldValue.serverTimestamp(),
     subscriptionDowngradedAt: admin.firestore.FieldValue.serverTimestamp()
   });
+}
+
+exports.enforceStorageOveragePolicy = functions.pubsub
+  .schedule('15 0 * * *')
+  .timeZone('UTC')
+  .onRun(async () => {
+    const usersSnapshot = await db.collection('users')
+      .where('storageUsedBytes', '>', 0)
+      .limit(500)
+      .get();
+
+    let processed = 0;
+    for (const userDoc of usersSnapshot.docs) {
+      // eslint-disable-next-line no-await-in-loop
+      await processUserStorageOverage(userDoc);
+      processed += 1;
+    }
+
+    console.log(`Storage overage policy processed users=${processed}`);
+    return null;
+  });
+
+async function processUserStorageOverage(userDoc) {
+  const userId = userDoc.id;
+  const user = userDoc.data() || {};
+
+  const tier = (user.subscriptionTier || user.tier || 'FREE').toString().toUpperCase();
+  const storageLimitBytes = getStorageLimitBytesForTier(tier);
+  const storageUsedBytes = Number(user.storageUsedBytes || 0);
+
+  if (storageUsedBytes <= storageLimitBytes) {
+    await userDoc.ref.update({
+      overageGraceEndsAt: admin.firestore.FieldValue.delete(),
+      overageLastWarnedAt: admin.firestore.FieldValue.delete()
+    });
+    return;
+  }
+
+  const nowMs = Date.now();
+  const graceEndsAtMs = toMillis(user.overageGraceEndsAt);
+
+  if (!graceEndsAtMs) {
+    const nextGrace = new Date(nowMs + OVERAGE_GRACE_PERIOD_MS);
+    await userDoc.ref.update({
+      overageGraceEndsAt: admin.firestore.Timestamp.fromDate(nextGrace),
+      overageLastWarnedAt: admin.firestore.FieldValue.serverTimestamp()
+    });
+
+    await sendStorageOverageWarning(userId, storageUsedBytes, storageLimitBytes, nextGrace);
+    return;
+  }
+
+  if (nowMs < graceEndsAtMs) {
+    const lastWarnedMs = toMillis(user.overageLastWarnedAt);
+    const shouldWarn = !lastWarnedMs || (nowMs - lastWarnedMs >= OVERAGE_WARNING_INTERVAL_MS);
+
+    if (shouldWarn) {
+      await userDoc.ref.update({ overageLastWarnedAt: admin.firestore.FieldValue.serverTimestamp() });
+      await sendStorageOverageWarning(userId, storageUsedBytes, storageLimitBytes, new Date(graceEndsAtMs));
+    }
+
+    return;
+  }
+
+  const bytesDeleted = await pruneOldestFlicksUntilWithinLimit(userId, storageLimitBytes);
+  const refreshedBytes = await recalculateStorageUsedBytesFromFlicks(userId);
+
+  await userDoc.ref.update({
+    storageUsedBytes: refreshedBytes,
+    overageLastWarnedAt: admin.firestore.FieldValue.serverTimestamp()
+  });
+
+  if (refreshedBytes <= storageLimitBytes) {
+    await userDoc.ref.update({
+      overageGraceEndsAt: admin.firestore.FieldValue.delete(),
+      overageLastWarnedAt: admin.firestore.FieldValue.delete()
+    });
+  }
+
+  if (bytesDeleted > 0) {
+    await db.collection('notifications').add({
+      userId,
+      senderId: 'system',
+      senderName: 'PicFlick',
+      type: 'STORAGE_PRUNE',
+      title: 'Storage over limit enforced',
+      message: 'Your grace period ended and oldest photos were removed to match your current plan storage limit.',
+      timestamp: Date.now(),
+      isRead: false,
+      targetScreen: 'manage_storage'
+    });
+  }
+}
+
+async function sendStorageOverageWarning(userId, storageUsedBytes, storageLimitBytes, graceEndDate) {
+  const usedGb = (storageUsedBytes / (1024 * 1024 * 1024)).toFixed(1);
+  const limitGb = (storageLimitBytes / (1024 * 1024 * 1024)).toFixed(1);
+
+  await db.collection('notifications').add({
+    userId,
+    senderId: 'system',
+    senderName: 'PicFlick',
+    type: 'STORAGE_OVERAGE_WARNING',
+    title: 'Storage over limit',
+    message: `You are using ${usedGb}GB on a ${limitGb}GB plan. Delete photos before ${graceEndDate.toISOString().slice(0, 10)} to avoid oldest-photo deletion.`,
+    timestamp: Date.now(),
+    isRead: false,
+    targetScreen: 'manage_storage'
+  });
+}
+
+async function pruneOldestFlicksUntilWithinLimit(userId, storageLimitBytes) {
+  let currentBytes = await recalculateStorageUsedBytesFromFlicks(userId);
+  let deletedBytes = 0;
+
+  while (currentBytes > storageLimitBytes) {
+    // eslint-disable-next-line no-await-in-loop
+    const snapshot = await db.collection('flicks')
+      .where('userId', '==', userId)
+      .orderBy('timestamp', 'asc')
+      .limit(OVERAGE_PRUNE_BATCH_SIZE)
+      .get();
+
+    if (snapshot.empty) break;
+
+    for (const doc of snapshot.docs) {
+      const flick = doc.data() || {};
+      const size = Number(flick.imageSizeBytes || 0);
+
+      // eslint-disable-next-line no-await-in-loop
+      await deleteStorageFileFromUrl(flick.imageUrl);
+      // eslint-disable-next-line no-await-in-loop
+      await doc.ref.delete();
+
+      deletedBytes += Math.max(0, size);
+      currentBytes -= Math.max(0, size);
+
+      if (currentBytes <= storageLimitBytes) break;
+    }
+
+    // If we deleted docs with unknown size, refresh exact value.
+    // eslint-disable-next-line no-await-in-loop
+    currentBytes = await recalculateStorageUsedBytesFromFlicks(userId);
+  }
+
+  return deletedBytes;
+}
+
+async function recalculateStorageUsedBytesFromFlicks(userId) {
+  let total = 0;
+  let lastDoc = null;
+
+  while (true) {
+    let query = db.collection('flicks')
+      .where('userId', '==', userId)
+      .orderBy('timestamp', 'asc')
+      .limit(500);
+
+    if (lastDoc) query = query.startAfter(lastDoc);
+
+    // eslint-disable-next-line no-await-in-loop
+    const snapshot = await query.get();
+    if (snapshot.empty) break;
+
+    snapshot.docs.forEach(doc => {
+      const flick = doc.data() || {};
+      total += Number(flick.imageSizeBytes || 0);
+    });
+
+    lastDoc = snapshot.docs[snapshot.docs.length - 1];
+  }
+
+  return total;
+}
+
+async function deleteStorageFileFromUrl(imageUrl) {
+  if (!imageUrl || typeof imageUrl !== 'string') return;
+
+  try {
+    const parsed = new URL(imageUrl);
+    const marker = '/o/';
+    const index = parsed.pathname.indexOf(marker);
+    if (index < 0) return;
+
+    const encodedPath = parsed.pathname.substring(index + marker.length);
+    const objectPath = decodeURIComponent(encodedPath);
+
+    await admin.storage().bucket().file(objectPath).delete({ ignoreNotFound: true });
+  } catch (error) {
+    console.warn('Failed to delete storage object from URL', { imageUrl, error: error.message });
+  }
+}
+
+function toMillis(value) {
+  if (!value) return 0;
+  if (typeof value.toMillis === 'function') return value.toMillis();
+  if (value instanceof Date) return value.getTime();
+  if (typeof value === 'number') return value;
+  return 0;
+}
+
+function getStorageLimitBytesForTier(tier) {
+  switch ((tier || 'FREE').toUpperCase()) {
+    case 'STANDARD': return 5 * 1024 * 1024 * 1024;
+    case 'PLUS': return 15 * 1024 * 1024 * 1024;
+    case 'PRO': return 30 * 1024 * 1024 * 1024;
+    case 'ULTRA': return 50 * 1024 * 1024 * 1024;
+    case 'FREE':
+    default:
+      return 1 * 1024 * 1024 * 1024;
+  }
 }
 
 async function enforceValidatePurchaseRateLimit(userId) {

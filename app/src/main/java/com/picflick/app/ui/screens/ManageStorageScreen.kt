@@ -76,7 +76,7 @@ fun ManageStorageScreen(
     onBack: () -> Unit,
     onUpgrade: (SubscriptionTier) -> Unit = {}
 ) {
-    val tier = userProfile.subscriptionTier
+    val tier = userProfile.getEffectiveTier()
     val tierColor = tier.getColor()
     var storageUsed by remember(userProfile.uid) { mutableLongStateOf(userProfile.storageUsedBytes) }
     val storageLimit = tier.getStorageLimitBytes()
