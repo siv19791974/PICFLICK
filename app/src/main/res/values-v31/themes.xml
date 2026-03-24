@@ -1,17 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-
-    <!-- Application theme - transparent status bar -->
     <style name="Theme.PICFLICK" parent="android:Theme.Material.Light.NoActionBar">
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
         <item name="android:windowTranslucentStatus">true</item>
         <item name="android:windowDrawsSystemBarBackgrounds">true</item>
-
-        <!-- Pre-Android 12 launch window -->
         <item name="android:windowBackground">@drawable/ic_splash</item>
 
-
+        <!-- Android 12+ launch splash override to avoid adaptive icon clipping -->
+        <item name="android:windowSplashScreenBackground">#D7ECFF</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/ic_splash_icon_inset</item>
+        <item name="android:windowSplashScreenIconBackgroundColor">@android:color/transparent</item>
     </style>
-
 </resources>

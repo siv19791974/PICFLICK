@@ -1,11 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item>
+        <color android:color="#D7ECFF" />
+    </item>
     <item
-        android:width="288dp"
-        android:height="96dp"
+        android:width="60dp"
+        android:height="60dp"
         android:gravity="center">
         <bitmap
-            android:src="@drawable/logo"
+            android:src="@drawable/ic_launcher_phone_box"
             android:gravity="center" />
     </item>
 </layer-list>
