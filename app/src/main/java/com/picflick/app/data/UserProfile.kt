@@ -1,6 +1,7 @@
 package com.picflick.app.data
 
 import com.google.firebase.Timestamp
+import com.google.firebase.firestore.PropertyName
 
 /**
  * Data class representing a user profile in the PicFlick app
@@ -24,6 +25,10 @@ data class UserProfile(
     val totalViews: Int = 0,
     // Subscription and Storage Management Fields
     val subscriptionTier: SubscriptionTier = SubscriptionTier.FREE,
+    val subscriptionActive: Boolean = false,
+    @get:PropertyName("tier")
+    @field:PropertyName("tier")
+    val legacyTier: SubscriptionTier? = null, // Legacy/mirrored field kept for backward compatibility
     val subscriptionExpiryDate: Any? = 0L, // Supports Firestore Timestamp or legacy epoch millis
     val storageUsedBytes: Long = 0, // Current storage used in bytes
     val totalPhotos: Int = 0, // Total photos uploaded
@@ -65,9 +70,17 @@ data class UserProfile(
      */
     fun isMutualFriend(userId: String): Boolean = following.contains(userId) && followers.contains(userId)
     /**
-     * Get the current subscription tier
+     * Get the current subscription tier (with legacy fallback)
      */
-    fun getTier(): SubscriptionTier = subscriptionTier
+    fun getEffectiveTier(): SubscriptionTier {
+        if (!subscriptionActive) return SubscriptionTier.FREE
+
+        return when {
+            subscriptionTier != SubscriptionTier.FREE -> subscriptionTier
+            legacyTier != null -> legacyTier
+            else -> SubscriptionTier.FREE
+        }
+    }
     
     /**
      * Calculate storage used in GB
@@ -79,7 +92,7 @@ data class UserProfile(
      */
     fun hasActiveSubscription(): Boolean {
         if (isFounder) return true // Founders always have access
-        if (subscriptionTier == SubscriptionTier.FREE) return false
+        if (getEffectiveTier() == SubscriptionTier.FREE) return false
 
         val expiryMillis = when (val expiry = subscriptionExpiryDate) {
             null -> 0L

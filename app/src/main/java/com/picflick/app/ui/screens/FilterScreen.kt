@@ -84,7 +84,7 @@ fun FilterScreen(
     val isDarkMode = ThemeManager.isDarkMode.value
     
     // Get daily upload limit from subscription tier
-    val maxDailyUploads = currentUser.subscriptionTier.getDailyUploadLimit()
+    val maxDailyUploads = currentUser.getEffectiveTier().getDailyUploadLimit()
     
     // Friend tagging state
     var taggedFriends by remember { mutableStateOf<List<UserProfile>>(emptyList()) }

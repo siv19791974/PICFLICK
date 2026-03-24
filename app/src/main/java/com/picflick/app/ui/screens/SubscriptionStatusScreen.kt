@@ -65,7 +65,7 @@ fun SubscriptionStatusScreen(
     onDowngrade: (SubscriptionTier) -> Unit = {},
     onManagePayment: () -> Unit = {}
 ) {
-    val tier = userProfile.subscriptionTier
+    val tier = userProfile.getEffectiveTier()
     val tierColor = tier.getColor()
     val isDarkMode = ThemeManager.isDarkMode.value
     val context = LocalContext.current

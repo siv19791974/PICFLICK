@@ -1,9 +1,18 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.gms)
     alias(libs.plugins.crashlytics)
+}
+
+val localProperties = Properties().apply {
+    val localPropertiesFile = rootProject.file("local.properties")
+    if (localPropertiesFile.exists()) {
+        localPropertiesFile.inputStream().use { load(it) }
+    }
 }
 
 android {
@@ -23,9 +32,9 @@ android {
     signingConfigs {
         create("release") {
             storeFile = file("keystore.jks")
-            storePassword = "picflick123"
-            keyAlias = "picflick"
-            keyPassword = "picflick123"
+            storePassword = localProperties.getProperty("STORE_PASSWORD", "")
+            keyAlias = localProperties.getProperty("KEY_ALIAS", "")
+            keyPassword = localProperties.getProperty("KEY_PASSWORD", "")
         }
     }
 

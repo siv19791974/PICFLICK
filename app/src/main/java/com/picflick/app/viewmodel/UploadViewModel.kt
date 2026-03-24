@@ -176,14 +176,14 @@ class UploadViewModel : ViewModel() {
             var optimisticFlickId: String? = null
             try {
                 // Check daily limit based on subscription tier
-                val dailyLimit = userProfile.subscriptionTier.getDailyUploadLimit()
+                val dailyLimit = userProfile.getEffectiveTier().getDailyUploadLimit()
                 if (dailyUploadCount >= dailyLimit) {
                     uploadError = "Daily upload limit reached (${dailyUploadCount}/${dailyLimit}). Try again tomorrow!"
                     return@launch
                 }
 
                 // Storage policy: warn from 90%, allow uploads up to 110%, hard-stop beyond 110%.
-                val tierStorageLimit = userProfile.subscriptionTier.getStorageLimitBytes()
+                val tierStorageLimit = userProfile.getEffectiveTier().getStorageLimitBytes()
                 val hardStorageLimit = (tierStorageLimit * STORAGE_HARD_STOP_THRESHOLD).toLong()
                 val estimatedUploadSize = estimatePhotoSizeBytes(context, photoUri)
                 val projectedStorageUsed = userProfile.storageUsedBytes + estimatedUploadSize
