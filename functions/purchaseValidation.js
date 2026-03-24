@@ -39,21 +39,54 @@ exports.validatePurchase = functions.https.onCall(async (data, context) => {
     }
 
     // Get service account credentials from Firebase config
-    const serviceAccount = functions.config().googleplay.service_account;
-    
-    if (!serviceAccount) {
-      console.error('Google Play service account not configured');
+    let serviceAccount = functions.config().googleplay.service_account;
+
+    if (typeof serviceAccount === 'string') {
+      if (serviceAccount.trim() === '-' || serviceAccount.trim().length === 0) {
+        serviceAccount = null;
+      } else {
+        try {
+          serviceAccount = JSON.parse(serviceAccount);
+        } catch (parseError) {
+          console.error('Failed to parse googleplay.service_account JSON:', parseError.message);
+          serviceAccount = null;
+        }
+      }
+    }
+
+    if (!serviceAccount || !serviceAccount.client_email || !serviceAccount.private_key) {
+      console.error('Google Play service account not configured correctly');
       throw new functions.https.HttpsError(
         'failed-precondition',
         'Google Play validation is not configured on the server'
       );
     }
 
+    const privateKey = String(serviceAccount.private_key)
+      .replace(/^"([\s\S]*)"$/, '$1')
+      .replace(/\\r/g, '')
+      .replace(/\\\\n/g, '\n')
+      .replace(/\\n/g, '\n')
+      .trim();
+
+    if (!privateKey.includes('BEGIN PRIVATE KEY')) {
+      throw new functions.https.HttpsError(
+        'failed-precondition',
+        'Google Play private key is malformed in server config'
+      );
+    }
+
+    console.log('Google Play key format check', {
+      hasBegin: privateKey.includes('BEGIN PRIVATE KEY'),
+      hasEnd: privateKey.includes('END PRIVATE KEY'),
+      newlineCount: (privateKey.match(/\n/g) || []).length
+    });
+
     // Create JWT client for Google Play API
     const jwtClient = new googleApi.auth.JWT(
       serviceAccount.client_email,
       null,
-      serviceAccount.private_key,
+      privateKey,
       ['https://www.googleapis.com/auth/androidpublisher']
     );
 
