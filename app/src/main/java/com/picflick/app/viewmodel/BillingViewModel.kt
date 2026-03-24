@@ -24,6 +24,11 @@ data class SubscriptionProduct(
     val description: String,
     val price: String,
     val billingPeriod: String,
+    val isYearly: Boolean,
+    val offerToken: String,
+    val basePlanId: String,
+    val offerId: String?,
+    val offerTags: List<String>,
     val productDetails: ProductDetails
 )
 
@@ -47,6 +52,7 @@ class BillingViewModel : ViewModel() {
 
     private var billingClient: BillingClient? = null
     private lateinit var functions: FirebaseFunctions
+    private val validatedTierByPurchaseToken = mutableMapOf<String, SubscriptionTier>()
 
     // Product IDs for each subscription tier
     companion object {
@@ -59,6 +65,9 @@ class BillingViewModel : ViewModel() {
         const val PRODUCT_PLUS_YEARLY = "picflick_plus_yearly"
         const val PRODUCT_PRO_YEARLY = "picflick_pro_yearly"
         const val PRODUCT_ULTRA_YEARLY = "picflick_ultra_yearly"
+
+        // Phase-1 migration support: unified product can coexist with legacy product IDs.
+        const val PRODUCT_UNIFIED = "picflick_premium"
     }
 
     // State flows
@@ -160,6 +169,10 @@ class BillingViewModel : ViewModel() {
             QueryProductDetailsParams.Product.newBuilder()
                 .setProductId(PRODUCT_ULTRA_YEARLY)
                 .setProductType(BillingClient.ProductType.SUBS)
+                .build(),
+            QueryProductDetailsParams.Product.newBuilder()
+                .setProductId(PRODUCT_UNIFIED)
+                .setProductType(BillingClient.ProductType.SUBS)
                 .build()
         )
 
@@ -169,22 +182,33 @@ class BillingViewModel : ViewModel() {
 
         billingClient?.queryProductDetailsAsync(params) { billingResult, productDetailsList ->
             if (billingResult.responseCode == BillingClient.BillingResponseCode.OK) {
-                val subscriptionProducts = productDetailsList.mapNotNull { productDetails ->
-                    val tier = getTierFromProductId(productDetails.productId)
-                    val offerDetails = productDetails.subscriptionOfferDetails?.firstOrNull()
-                    val pricingPhase = offerDetails?.pricingPhases?.pricingPhaseList?.firstOrNull()
+                val subscriptionProducts = productDetailsList.flatMap { productDetails ->
+                    val offers = productDetails.subscriptionOfferDetails.orEmpty()
 
-                    if (tier != null && pricingPhase != null) {
-                        SubscriptionProduct(
-                            productId = productDetails.productId,
-                            tier = tier,
-                            name = productDetails.name,
-                            description = productDetails.description,
-                            price = pricingPhase.formattedPrice,
-                            billingPeriod = pricingPhase.billingPeriod,
-                            productDetails = productDetails
-                        )
-                    } else null
+                    // Legacy SKUs typically expose one offer; unified product may expose many.
+                    offers.mapNotNull { offerDetails ->
+                        val pricingPhase = offerDetails.pricingPhases.pricingPhaseList
+                            .firstOrNull { it.recurrenceMode != ProductDetails.RecurrenceMode.NON_RECURRING }
+                            ?: offerDetails.pricingPhases.pricingPhaseList.firstOrNull()
+
+                        val tier = resolveTier(productDetails.productId, offerDetails)
+                        if (tier != null && pricingPhase != null) {
+                            SubscriptionProduct(
+                                productId = productDetails.productId,
+                                tier = tier,
+                                name = productDetails.name,
+                                description = productDetails.description,
+                                price = pricingPhase.formattedPrice,
+                                billingPeriod = pricingPhase.billingPeriod,
+                                isYearly = isYearlyCycle(pricingPhase.billingPeriod, offerDetails),
+                                offerToken = offerDetails.offerToken,
+                                basePlanId = offerDetails.basePlanId,
+                                offerId = offerDetails.offerId,
+                                offerTags = offerDetails.offerTags,
+                                productDetails = productDetails
+                            )
+                        } else null
+                    }
                 }
                 _products.value = subscriptionProducts
             }
@@ -247,12 +271,22 @@ class BillingViewModel : ViewModel() {
         activePurchases.forEach { purchase ->
             val productId = purchase.products.firstOrNull() ?: return@forEach
             try {
-                val data = hashMapOf(
+                val resolvedProduct = resolveProductForPurchase(purchase)
+                val data = hashMapOf<String, Any>(
                     "purchaseToken" to purchase.purchaseToken,
                     "productId" to productId,
                     "packageName" to "com.picflick.app"
-                )
-                functions.getHttpsCallable("validatePurchase").call(data).await()
+                ).apply {
+                    resolvedProduct?.let {
+                        this["tierHint"] = it.tier.name
+                        this["isYearlyHint"] = it.isYearly
+                        this["basePlanIdHint"] = it.basePlanId
+                        this["offerIdHint"] = it.offerId ?: ""
+                        this["offerTagsHint"] = it.offerTags
+                    }
+                }
+                val result = functions.getHttpsCallable("validatePurchase").call(data).await()
+                applyValidatedTierFromResult(purchase, result.getData())
             } catch (e: Exception) {
                 Log.w("BillingViewModel", "Restore sync validation failed for $productId", e)
             }
@@ -279,8 +313,13 @@ class BillingViewModel : ViewModel() {
         val highestActiveTier = purchases
             .asSequence()
             .filter { it.purchaseState == Purchase.PurchaseState.PURCHASED }
-            .flatMap { purchase -> purchase.products.asSequence() }
-            .mapNotNull { productId -> getTierFromProductId(productId) }
+            .mapNotNull { purchase ->
+                purchase.products
+                    .asSequence()
+                    .mapNotNull { productId -> getTierFromProductId(productId) }
+                    .maxByOrNull { it.ordinal }
+                    ?: validatedTierByPurchaseToken[purchase.purchaseToken]
+            }
             .maxByOrNull { tier -> tier.ordinal }
             ?: SubscriptionTier.FREE
 
@@ -300,6 +339,67 @@ class BillingViewModel : ViewModel() {
         }
     }
 
+    private fun resolveTier(
+        productId: String,
+        offer: ProductDetails.SubscriptionOfferDetails
+    ): SubscriptionTier? {
+        // Legacy product IDs keep working.
+        getTierFromProductId(productId)?.let { return it }
+
+        // Unified product path: infer tier from base plan / offer metadata.
+        val candidates = buildList {
+            add(offer.basePlanId)
+            offer.offerId?.let(::add)
+            addAll(offer.offerTags)
+        }.joinToString(" ").lowercase()
+
+        return when {
+            candidates.contains("standard") -> SubscriptionTier.STANDARD
+            candidates.contains("plus") -> SubscriptionTier.PLUS
+            candidates.contains("pro") -> SubscriptionTier.PRO
+            candidates.contains("ultra") -> SubscriptionTier.ULTRA
+            else -> null
+        }
+    }
+
+    private fun isYearlyCycle(
+        billingPeriod: String,
+        offer: ProductDetails.SubscriptionOfferDetails
+    ): Boolean {
+        if (billingPeriod.contains("P1Y", ignoreCase = true)) return true
+
+        val cycleHints = buildList {
+            add(offer.basePlanId)
+            offer.offerId?.let(::add)
+            addAll(offer.offerTags)
+        }.joinToString(" ").lowercase()
+
+        return cycleHints.contains("year") || cycleHints.contains("annual")
+    }
+
+    private fun resolveProductForPurchase(purchase: Purchase): SubscriptionProduct? {
+        val productId = purchase.products.firstOrNull() ?: return null
+        val matches = _products.value.filter { it.productId == productId }
+
+        return when {
+            matches.isEmpty() -> null
+            matches.size == 1 -> matches.first()
+            else -> null // ambiguous for unified product restore without extra purchase metadata
+        }
+    }
+
+    private fun applyValidatedTierFromResult(purchase: Purchase, resultData: Any?) {
+        @Suppress("UNCHECKED_CAST")
+        val data = resultData as? Map<String, Any?> ?: return
+        val tierName = data["tier"] as? String ?: return
+        val parsedTier = runCatching { SubscriptionTier.valueOf(tierName.uppercase()) }.getOrNull() ?: return
+
+        validatedTierByPurchaseToken[purchase.purchaseToken] = parsedTier
+        if (parsedTier.ordinal >= _currentTier.value.ordinal) {
+            _currentTier.value = parsedTier
+        }
+    }
+
     /**
      * Launch purchase flow
      */
@@ -307,15 +407,17 @@ class BillingViewModel : ViewModel() {
         _isLoading.value = true
         _billingEvent.value = BillingEvent.PurchaseInitiated
 
-        val offerToken = product.productDetails.subscriptionOfferDetails?.firstOrNull()?.offerToken
-            ?: run {
-                _isLoading.value = false
-                _billingEvent.value = BillingEvent.PurchaseError(
-                    BillingClient.BillingResponseCode.ERROR,
-                    "No offer token available"
-                )
-                return
-            }
+        val offerToken = product.offerToken.ifBlank {
+            product.productDetails.subscriptionOfferDetails?.firstOrNull()?.offerToken.orEmpty()
+        }
+        if (offerToken.isBlank()) {
+            _isLoading.value = false
+            _billingEvent.value = BillingEvent.PurchaseError(
+                BillingClient.BillingResponseCode.ERROR,
+                "No offer token available"
+            )
+            return
+        }
 
         val productDetailsParams = BillingFlowParams.ProductDetailsParams.newBuilder()
             .setProductDetails(product.productDetails)
@@ -414,12 +516,22 @@ class BillingViewModel : ViewModel() {
             try {
                 _isLoading.value = true
                 
-                val data = hashMapOf(
+                val productId = purchase.products.firstOrNull()
+                val resolvedProduct = resolveProductForPurchase(purchase)
+                val data = hashMapOf<String, Any>(
                     "purchaseToken" to purchase.purchaseToken,
-                    "productId" to purchase.products.firstOrNull(),
+                    "productId" to (productId ?: ""),
                     "packageName" to "com.picflick.app"
-                )
-                
+                ).apply {
+                    resolvedProduct?.let {
+                        this["tierHint"] = it.tier.name
+                        this["isYearlyHint"] = it.isYearly
+                        this["basePlanIdHint"] = it.basePlanId
+                        this["offerIdHint"] = it.offerId ?: ""
+                        this["offerTagsHint"] = it.offerTags
+                    }
+                }
+
                 val result = functions
                     .getHttpsCallable("validatePurchase")
                     .call(data)
@@ -430,6 +542,7 @@ class BillingViewModel : ViewModel() {
                 val resultData = result.getData() as? Map<String, Any>
                 
                 if (resultData?.get("success") == true) {
+                    applyValidatedTierFromResult(purchase, resultData)
                     _billingEvent.value = BillingEvent.PurchaseSuccess(purchase)
                     // Refresh purchases to get updated tier
                     queryPurchases()
@@ -462,14 +575,20 @@ class BillingViewModel : ViewModel() {
      * Get product for a specific tier
      */
     fun getProductForTier(tier: SubscriptionTier, yearly: Boolean = false): SubscriptionProduct? {
-        val productId = when (tier) {
+        if (tier == SubscriptionTier.FREE) return null
+
+        // First prefer explicit cycle match from parsed offers (works for unified + legacy).
+        _products.value.firstOrNull { it.tier == tier && it.isYearly == yearly }?.let { return it }
+
+        // Backward-compatible fallback by legacy product IDs.
+        val legacyProductId = when (tier) {
             SubscriptionTier.STANDARD -> if (yearly) PRODUCT_STANDARD_YEARLY else PRODUCT_STANDARD_MONTHLY
             SubscriptionTier.PLUS -> if (yearly) PRODUCT_PLUS_YEARLY else PRODUCT_PLUS_MONTHLY
             SubscriptionTier.PRO -> if (yearly) PRODUCT_PRO_YEARLY else PRODUCT_PRO_MONTHLY
             SubscriptionTier.ULTRA -> if (yearly) PRODUCT_ULTRA_YEARLY else PRODUCT_ULTRA_MONTHLY
             else -> return null
         }
-        return _products.value.find { it.productId == productId }
+        return _products.value.find { it.productId == legacyProductId }
     }
 
     /**

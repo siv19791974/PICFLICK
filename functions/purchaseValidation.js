@@ -27,7 +27,16 @@ exports.validatePurchase = functions.https.onCall(async (data, context) => {
     throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated');
   }
 
-  const { purchaseToken, productId, packageName = 'com.picflick.app' } = data;
+  const {
+    purchaseToken,
+    productId,
+    packageName = 'com.picflick.app',
+    tierHint,
+    isYearlyHint,
+    basePlanIdHint,
+    offerIdHint,
+    offerTagsHint
+  } = data;
   const userId = context.auth.uid;
 
   if (!purchaseToken || !productId) {
@@ -115,14 +124,29 @@ exports.validatePurchase = functions.https.onCall(async (data, context) => {
         `Invalid purchase state: ${purchaseData.paymentState}`);
     }
 
-    // Determine subscription tier from product ID
-    const tier = getTierFromProductId(productId);
-    if (!tier) {
-      throw new functions.https.HttpsError('invalid-argument', 'Unknown product ID');
+    // Determine subscription tier from product ID, with migration hints support.
+    const hintedTier = resolveTierFromHints({
+      tierHint,
+      basePlanIdHint,
+      offerIdHint,
+      offerTagsHint
+    });
+    let resolvedTier = hintedTier || getTierFromProductId(productId);
+    if (!resolvedTier) {
+      // Backward-compatible fallback for unified product restore where only productId may be available.
+      const existingTier = await getExistingUserTier(userId);
+      if (!existingTier) {
+        throw new functions.https.HttpsError('invalid-argument', 'Unknown product ID and missing tier hint');
+      }
+      console.warn(`Falling back to existing tier for user ${userId} during validation`, { productId, existingTier });
+      resolvedTier = existingTier;
     }
 
+
     // Check if this is a yearly subscription
-    const isYearly = productId.includes('yearly');
+    const isYearly = typeof isYearlyHint === 'boolean'
+      ? isYearlyHint
+      : inferYearlyFromHints({ productId, basePlanIdHint, offerIdHint, offerTagsHint });
 
     // Calculate expiry date
     const expiryMillis = parseInt(purchaseData.expiryTimeMillis);
@@ -130,7 +154,7 @@ exports.validatePurchase = functions.https.onCall(async (data, context) => {
 
     // Update user's subscription in Firestore
     await updateUserSubscription(userId, {
-      tier: tier,
+      tier: resolvedTier,
       isYearly: isYearly,
       purchaseToken: purchaseToken,
       productId: productId,
@@ -141,11 +165,11 @@ exports.validatePurchase = functions.https.onCall(async (data, context) => {
     });
 
     // Log successful validation
-    console.log(`Purchase validated for user ${userId}: ${productId}, expires ${expiryDate}`);
+    console.log(`Purchase validated for user ${userId}: ${productId}, tier=${resolvedTier}, expires ${expiryDate}`);
 
     return {
       success: true,
-      tier: tier,
+      tier: resolvedTier,
       isYearly: isYearly,
       expiryDate: expiryDate.toISOString(),
       autoRenewing: purchaseData.autoRenewing || false
@@ -294,6 +318,50 @@ function getTierFromProductId(productId) {
   if (productId.includes('pro')) return 'PRO';
   if (productId.includes('ultra')) return 'ULTRA';
   return null;
+}
+
+function normalizeTierHint(tierHint) {
+  if (!tierHint || typeof tierHint !== 'string') return null;
+  const normalized = tierHint.trim().toUpperCase();
+  return ['STANDARD', 'PLUS', 'PRO', 'ULTRA', 'FREE'].includes(normalized) ? normalized : null;
+}
+
+function resolveTierFromHints({ tierHint, basePlanIdHint, offerIdHint, offerTagsHint }) {
+  const explicitTier = normalizeTierHint(tierHint);
+  if (explicitTier) return explicitTier;
+
+  const textCandidates = [
+    basePlanIdHint,
+    offerIdHint,
+    ...(Array.isArray(offerTagsHint) ? offerTagsHint : [])
+  ].filter(Boolean).join(' ').toLowerCase();
+
+  if (!textCandidates) return null;
+  if (textCandidates.includes('standard')) return 'STANDARD';
+  if (textCandidates.includes('plus')) return 'PLUS';
+  if (textCandidates.includes('pro')) return 'PRO';
+  if (textCandidates.includes('ultra')) return 'ULTRA';
+  return null;
+}
+
+function inferYearlyFromHints({ productId, basePlanIdHint, offerIdHint, offerTagsHint }) {
+  if ((productId || '').toLowerCase().includes('yearly')) return true;
+
+  const textCandidates = [
+    basePlanIdHint,
+    offerIdHint,
+    ...(Array.isArray(offerTagsHint) ? offerTagsHint : [])
+  ].filter(Boolean).join(' ').toLowerCase();
+
+  return textCandidates.includes('year') || textCandidates.includes('annual');
+}
+
+async function getExistingUserTier(userId) {
+  const userDoc = await db.collection('users').doc(userId).get();
+  if (!userDoc.exists) return null;
+
+  const user = userDoc.data() || {};
+  return normalizeTierHint(user.subscriptionTier || user.tier);
 }
 
 /**

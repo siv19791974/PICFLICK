@@ -26,6 +26,7 @@ data class UserProfile(
     // Subscription and Storage Management Fields
     val subscriptionTier: SubscriptionTier = SubscriptionTier.FREE,
     val subscriptionActive: Boolean = false,
+    val autoRenewing: Boolean = false,
     @get:PropertyName("tier")
     @field:PropertyName("tier")
     val legacyTier: SubscriptionTier? = null, // Legacy/mirrored field kept for backward compatibility
