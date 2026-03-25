@@ -407,7 +407,8 @@ fun MainScreen(
             currentScreen is Screen.StreakAchievements ||
             currentScreen is Screen.Filter ||
             currentScreen is Screen.Philosophy ||
-            currentScreen is Screen.Legal -> {
+            currentScreen is Screen.Legal ||
+            currentScreen is Screen.Developer -> {
                 currentScreen = Screen.Home
             }
             // FindFriends goes back to Friends

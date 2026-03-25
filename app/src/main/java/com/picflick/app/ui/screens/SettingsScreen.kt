@@ -21,6 +21,7 @@ import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Cloud
+import androidx.compose.material.icons.filled.DeveloperMode
 import androidx.compose.material.icons.filled.Upgrade
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -72,9 +73,12 @@ fun SettingsScreen(
     onAbout: () -> Unit = {},
     onPhilosophy: () -> Unit = {},
     onLegal: () -> Unit = {},
-    onProfileClick: () -> Unit = {}
+    onProfileClick: () -> Unit = {},
+    onDeveloper: () -> Unit = {}
 ) {
     val context = LocalContext.current
+    val developerUid = "LpSqE40IZGeAGMknTAEzysqp5l33"
+    val isDeveloperUser = userProfile.uid == developerUid
     var showSignOutDialog by remember { mutableStateOf(false) }
     var showDeleteAccountDialog by remember { mutableStateOf(false) }
     var showDeleteAccountFinalDialog by remember { mutableStateOf(false) }
@@ -265,6 +269,18 @@ fun SettingsScreen(
             }
 
             HorizontalDivider(color = if (isDarkMode) Color(0xFF2C2C2E) else Color.LightGray, thickness = 0.5.dp)
+
+            if (isDeveloperUser) {
+                SettingsSection(title = "DEVELOPER", isDarkMode = isDarkMode) {
+                    SettingsItem(
+                        icon = Icons.Default.DeveloperMode,
+                        title = "DEVELOPER",
+                        subtitle = "PicFlick developer tools",
+                        onClick = onDeveloper
+                    )
+                }
+                HorizontalDivider(color = if (isDarkMode) Color(0xFF2C2C2E) else Color.LightGray, thickness = 0.5.dp)
+            }
 
             // Danger Zone
             SettingsSection(title = "DANGER ZONE", isDarkMode = isDarkMode) {
