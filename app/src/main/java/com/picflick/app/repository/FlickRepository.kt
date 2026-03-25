@@ -225,9 +225,18 @@ class FlickRepository private constructor() {
                 emptyList()
             }
 
-            // Merge, remove duplicates, and sort by timestamp DESC (client-side sorting)
+            val mutedUsers = userProfile?.mutedUsers ?: emptyMap()
+            val activeMutedUserIds = mutedUsers
+                .filterValues { it == Long.MAX_VALUE || it > System.currentTimeMillis() }
+                .keys
+            val blockedUserIds = userProfile?.blockedUsers ?: emptyList()
+
+            // Merge, remove duplicates, filter muted/blocked users, and sort by timestamp DESC (client-side sorting)
             var allFlicks = (ownFlicks + friendsFlicks)
                 .distinctBy { it.id }
+                .filterNot { flick ->
+                    flick.userId != userId && (activeMutedUserIds.contains(flick.userId) || blockedUserIds.contains(flick.userId))
+                }
                 .sortedByDescending { it.timestamp }
             
             android.util.Log.d("FlickRepository", "After deduplication: ${allFlicks.size} photos")
@@ -297,7 +306,16 @@ class FlickRepository private constructor() {
                 val flicks = flicksSnapshot.toObjects(Flick::class.java)
 
                 // Sort by timestamp first, then by reaction count (trending algorithm)
+                val userProfileDoc = db.collection("users").document(com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid ?: "").get().await()
+                val viewerProfile = userProfileDoc.toObject(UserProfile::class.java)
+                val mutedUsers = viewerProfile?.mutedUsers ?: emptyMap()
+                val activeMutedUserIds = mutedUsers
+                    .filterValues { it == Long.MAX_VALUE || it > System.currentTimeMillis() }
+                    .keys
+                val blockedUserIds = viewerProfile?.blockedUsers ?: emptyList()
+
                 val trendingFlicks = flicks
+                    .filterNot { flick -> activeMutedUserIds.contains(flick.userId) || blockedUserIds.contains(flick.userId) }
                     .sortedByDescending { it.timestamp } // Sort in memory
                     .sortedByDescending { it.getTotalReactions() + (it.commentCount * 2) }
                     .take(Constants.Pagination.FLICKS_PER_PAGE)
@@ -1011,6 +1029,26 @@ class FlickRepository private constructor() {
             .update("blockedUsers", FieldValue.arrayRemove(targetUserId))
             .addOnSuccessListener { onResult(Result.Success(Unit)) }
             .addOnFailureListener { e -> onResult(Result.Error(e, "Failed to unblock user")) }
+    }
+
+    /**
+     * Mute a user until a specific epoch millis (or forever with Long.MAX_VALUE).
+     */
+    fun muteUser(currentUserId: String, targetUserId: String, muteUntilEpochMs: Long, onResult: (Result<Unit>) -> Unit) {
+        db.collection("users").document(currentUserId)
+            .update("mutedUsers.$targetUserId", muteUntilEpochMs)
+            .addOnSuccessListener { onResult(Result.Success(Unit)) }
+            .addOnFailureListener { e -> onResult(Result.Error(e, "Failed to mute user")) }
+    }
+
+    /**
+     * Remove a user from muted list.
+     */
+    fun unmuteUser(currentUserId: String, targetUserId: String, onResult: (Result<Unit>) -> Unit) {
+        db.collection("users").document(currentUserId)
+            .update("mutedUsers.$targetUserId", FieldValue.delete())
+            .addOnSuccessListener { onResult(Result.Success(Unit)) }
+            .addOnFailureListener { e -> onResult(Result.Error(e, "Failed to unmute user")) }
     }
 
     // ==================== FRIEND REQUEST SYSTEM ====================

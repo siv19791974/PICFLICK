@@ -531,11 +531,16 @@ class HomeViewModel : ViewModel() {
         if (optimisticFlicks.isEmpty()) return serverFlicks
 
         val serverIds = serverFlicks.map { it.id }.toSet()
+        val serverClientUploadIds = serverFlicks
+            .mapNotNull { it.clientUploadId.takeIf { id -> id.isNotBlank() } }
+            .toSet()
+
         val stillPendingOptimistic = optimisticFlicks.filter { optimistic ->
-            !serverIds.contains(optimistic.id)
+            !serverIds.contains(optimistic.id) &&
+                (optimistic.clientUploadId.isBlank() || !serverClientUploadIds.contains(optimistic.clientUploadId))
         }
 
-        // Drop optimistic entries once server has real data for that id.
+        // Drop optimistic entries once server has real data for that id or clientUploadId.
         optimisticFlicks.clear()
         optimisticFlicks.addAll(stillPendingOptimistic)
 

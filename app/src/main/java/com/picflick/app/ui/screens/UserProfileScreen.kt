@@ -22,7 +22,7 @@ import androidx.compose.material.pullrefresh.PullRefreshIndicator
 import androidx.compose.material.pullrefresh.pullRefresh
 import androidx.compose.material.pullrefresh.rememberPullRefreshState
 import androidx.compose.material.icons.filled.Block
-
+import androidx.compose.material.icons.filled.NotificationsOff
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -68,6 +68,7 @@ fun UserProfileScreen(
     onAddFriend: () -> Unit = {},
     onAcceptRequest: () -> Unit = {}, // Accept friend request from this user
     onMessageClick: () -> Unit = {},
+    onMuteUser: () -> Unit = {},
     onBlockUser: () -> Unit = {},
     onUnfriend: () -> Unit = {}, // NEW: Delete friend/unfriend
     onRefresh: () -> Unit = {},
@@ -296,6 +297,27 @@ val primaryTextColor = if (isDarkMode) Color.White else Color.Black
             }
 
             Spacer(modifier = Modifier.height(16.dp))
+
+            // Mute user button (same boxed style)
+            OutlinedButton(
+                onClick = onMuteUser,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 32.dp),
+                colors = ButtonDefaults.outlinedButtonColors(
+                    contentColor = Color(0xFFFFB347)
+                )
+            ) {
+                Icon(
+                    imageVector = Icons.Default.NotificationsOff,
+                    contentDescription = null,
+                    modifier = Modifier.size(16.dp)
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Text("Mute User")
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
 
             // Block user button (same boxed style)
             OutlinedButton(

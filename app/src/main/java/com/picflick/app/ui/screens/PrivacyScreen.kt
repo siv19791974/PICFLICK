@@ -45,9 +45,11 @@ fun PrivacyScreen(
     val isDarkMode = ThemeManager.isDarkMode.value
     val repository = remember { FlickRepository.getInstance() }
     var blockedUsers by remember { mutableStateOf<List<UserProfile>>(emptyList()) }
+    var mutedUsers by remember { mutableStateOf<List<UserProfile>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
     var defaultPrivacy by remember { mutableStateOf(userProfile.defaultPrivacy) } // Load from userProfile
     var showUnblockDialog by remember { mutableStateOf<UserProfile?>(null) }
+    var showUnmuteDialog by remember { mutableStateOf<UserProfile?>(null) }
 
     // Theme-aware colors
     val accentColor = Color(0xFF1565C0) // Blue for light mode
@@ -56,9 +58,19 @@ fun PrivacyScreen(
     val cardBackground = isDarkModeSurface(isDarkMode)
     val dividerColor = if (isDarkMode) Color(0xFF2C2C2E) else Color.LightGray
 
-    // Load blocked users
-    LaunchedEffect(userProfile.blockedUsers) {
-        if (userProfile.blockedUsers.isEmpty()) {
+    // Load blocked + muted users
+    LaunchedEffect(userProfile.blockedUsers, userProfile.mutedUsers) {
+        val blockedIds = userProfile.blockedUsers
+        val activeMutedIds = userProfile.mutedUsers
+            .filterValues { it == Long.MAX_VALUE || it > System.currentTimeMillis() }
+            .keys
+            .toList()
+
+        val idsToLoad = (blockedIds + activeMutedIds).distinct()
+
+        if (idsToLoad.isEmpty()) {
+            blockedUsers = emptyList()
+            mutedUsers = emptyList()
             isLoading = false
             return@LaunchedEffect
         }
@@ -67,14 +79,15 @@ fun PrivacyScreen(
         val loadedProfiles = mutableListOf<UserProfile>()
         var completed = 0
 
-        userProfile.blockedUsers.forEach { blockedId ->
-            repository.getUserProfile(blockedId) { result ->
+        idsToLoad.forEach { uid ->
+            repository.getUserProfile(uid) { result ->
                 if (result is com.picflick.app.data.Result.Success) {
                     loadedProfiles.add(result.data)
                 }
                 completed++
-                if (completed >= userProfile.blockedUsers.size) {
-                    blockedUsers = loadedProfiles
+                if (completed >= idsToLoad.size) {
+                    blockedUsers = loadedProfiles.filter { blockedIds.contains(it.uid) }
+                    mutedUsers = loadedProfiles.filter { activeMutedIds.contains(it.uid) }
                     isLoading = false
                 }
             }
@@ -160,9 +173,9 @@ fun PrivacyScreen(
                 )
             }
 
-            // Blocked Users Section
+            // Muted Users Section
             item {
-                BlockedUsersHeader(count = blockedUsers.size, isDarkMode = isDarkMode)
+                MutedUsersHeader(count = mutedUsers.size, isDarkMode = isDarkMode)
             }
 
             if (isLoading) {
@@ -178,11 +191,34 @@ fun PrivacyScreen(
                         )
                     }
                 }
-            } else if (blockedUsers.isEmpty()) {
+            } else if (mutedUsers.isEmpty()) {
+                item {
+                    EmptyMutedUsers(isDarkMode = isDarkMode)
+                }
+            } else {
+                items(
+                    items = mutedUsers,
+                    key = { it.uid },
+                    contentType = { "muted_user" }
+                ) { mutedUser ->
+                    MutedUserItem(
+                        user = mutedUser,
+                        onUnmute = { showUnmuteDialog = mutedUser },
+                        isDarkMode = isDarkMode
+                    )
+                }
+            }
+
+            // Blocked Users Section
+            item {
+                BlockedUsersHeader(count = blockedUsers.size, isDarkMode = isDarkMode)
+            }
+
+            if (!isLoading && blockedUsers.isEmpty()) {
                 item {
                     EmptyBlockedUsers(isDarkMode = isDarkMode)
                 }
-            } else {
+            } else if (!isLoading) {
                 items(
                     items = blockedUsers,
                     key = { it.uid },
@@ -195,7 +231,42 @@ fun PrivacyScreen(
                     )
                 }
             }
+
+            item {
+                Spacer(modifier = Modifier.height(12.dp))
+            }
         }
+    }
+
+    // Unmute Confirmation Dialog
+    showUnmuteDialog?.let { user ->
+        AlertDialog(
+            onDismissRequest = { showUnmuteDialog = null },
+            title = { Text("Unmute ${user.displayName}?") },
+            text = { Text("Their uploads will appear in your feed again.") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        repository.unmuteUser(userProfile.uid, user.uid) { result ->
+                            if (result is com.picflick.app.data.Result.Success) {
+                                mutedUsers = mutedUsers.filter { it.uid != user.uid }
+                            }
+                        }
+                        showUnmuteDialog = null
+                    }
+                ) {
+                    Text("Unmute", color = Color(0xFFFFB347))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showUnmuteDialog = null }) {
+                    Text("Cancel", color = if (isDarkMode) Color.White else Color.Black)
+                }
+            },
+            containerColor = cardBackground,
+            titleContentColor = textColor,
+            textContentColor = subtitleColor
+        )
     }
 
     // Unblock Confirmation Dialog
@@ -460,6 +531,155 @@ private fun PrivacyPolicyLink(
                     tint = subtitleColor,
                     modifier = Modifier.size(20.dp)
                 )
+            }
+        }
+    }
+}
+
+@Composable
+private fun MutedUsersHeader(count: Int, isDarkMode: Boolean) {
+    val subtitleColor = if (isDarkMode) Color.Gray else Color.DarkGray
+
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = "MUTED USERS",
+            color = subtitleColor,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Bold
+        )
+
+        if (count > 0) {
+            Spacer(modifier = Modifier.width(8.dp))
+            Badge(
+                containerColor = Color(0xFFFFB347),
+                contentColor = Color.Black
+            ) {
+                Text(text = count.toString())
+            }
+        }
+
+        Spacer(modifier = Modifier.weight(1f))
+
+        Text(
+            text = "$count muted",
+            color = subtitleColor,
+            fontSize = 13.sp
+        )
+    }
+}
+
+@Composable
+private fun EmptyMutedUsers(isDarkMode: Boolean) {
+    val subtitleColor = if (isDarkMode) Color.Gray else Color.DarkGray
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = if (isDarkMode) Color(0xFF1C1C1E) else Color.White
+        ),
+        shape = RoundedCornerShape(12.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Icon(
+                imageVector = Icons.Default.NotificationsOff,
+                contentDescription = null,
+                tint = subtitleColor,
+                modifier = Modifier.size(40.dp)
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            Text(
+                text = "No muted users",
+                color = subtitleColor,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Medium
+            )
+        }
+    }
+}
+
+@Composable
+private fun MutedUserItem(
+    user: UserProfile,
+    onUnmute: () -> Unit,
+    isDarkMode: Boolean
+) {
+    val textColor = if (isDarkMode) Color.White else Color.Black
+    val subtitleColor = if (isDarkMode) Color.Gray else Color.DarkGray
+    val cardBackground = if (isDarkMode) Color(0xFF1C1C1E) else Color.White
+    val liveUserPhoto = rememberLiveUserPhotoUrl(user.uid, user.photoUrl)
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = cardBackground
+        ),
+        shape = RoundedCornerShape(12.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            if (liveUserPhoto.isNotEmpty()) {
+                AsyncImage(
+                    model = liveUserPhoto,
+                    contentDescription = null,
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clip(CircleShape)
+                )
+            } else {
+                Box(
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clip(CircleShape)
+                        .background(subtitleColor),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Person,
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier.size(28.dp)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.width(12.dp))
+
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = user.displayName,
+                    color = textColor,
+                    fontWeight = FontWeight.Medium,
+                    fontSize = 16.sp
+                )
+                Text(
+                    text = "Muted user",
+                    color = subtitleColor,
+                    fontSize = 13.sp
+                )
+            }
+
+            OutlinedButton(
+                onClick = onUnmute,
+                border = ButtonDefaults.outlinedButtonBorder.copy(
+                    brush = androidx.compose.ui.graphics.SolidColor(Color(0xFFFFB347))
+                ),
+                colors = ButtonDefaults.outlinedButtonColors(
+                    contentColor = Color(0xFFFFB347)
+                )
+            ) {
+                Text("Unmute")
             }
         }
     }

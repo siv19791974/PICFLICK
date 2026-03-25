@@ -213,17 +213,13 @@ fun FilterScreen(
                     val filteredUri = applyFilterAndSave(context, bitmap!!, selectedFilter, imageQuality)
                     onUpload(filteredUri, selectedFilter, taggedFriends.map { it.uid }, description.trim())
                     withContext(Dispatchers.Main) {
-                        android.widget.Toast.makeText(context, "Upload started", android.widget.Toast.LENGTH_SHORT).show()
-                        // Small hold so user sees confirmation before leaving screen.
+                        // Small hold so user sees handoff before leaving screen.
                         delay(900)
                         onUploadQueued()
                     }
                 } catch (e: Exception) {
-                    // On failure, revert the optimistic counter
+                    // On failure, revert the optimistic counter (silent fail UX)
                     optimisticDailyCount -= 1
-                    withContext(Dispatchers.Main) {
-                        android.widget.Toast.makeText(context, context.getString(R.string.upload_failed), android.widget.Toast.LENGTH_SHORT).show()
-                    }
                 } finally {
                     isUploading = false
                     showCountdownAnimation = false

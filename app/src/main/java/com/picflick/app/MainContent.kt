@@ -1030,10 +1030,11 @@ private fun FilterScreenContent(
                         homeViewModel.addOptimisticFlick(optimisticFlick)
                     },
                     onOptimisticRemove = { flickId, uploadSucceeded ->
+                        if (!uploadSucceeded) {
+                            homeViewModel.removeOptimisticFlick(flickId)
+                        }
                         if (uploadSucceeded) {
                             homeViewModel.loadFlicks(userProfile.uid)
-                        } else {
-                            homeViewModel.removeOptimisticFlick(flickId)
                         }
                     }
                 )
@@ -1247,6 +1248,21 @@ private fun UserProfileScreenContent(
                             }
                             else -> {}
                         }
+                    }
+                }
+            },
+            onMuteUser = {
+                val muteUntil = System.currentTimeMillis() + (7L * 24L * 60L * 60L * 1000L) // 1 week default from profile button
+                repository.muteUser(userProfile.uid, target.uid, muteUntil) { result ->
+                    when (result) {
+                        is com.picflick.app.data.Result.Success -> {
+                            Toast.makeText(context, "${target.displayName} muted for 1 week", Toast.LENGTH_LONG).show()
+                            onScreenChange(Screen.Home)
+                        }
+                        is com.picflick.app.data.Result.Error -> {
+                            Toast.makeText(context, result.message ?: "Failed to mute user", Toast.LENGTH_LONG).show()
+                        }
+                        else -> {}
                     }
                 }
             },
