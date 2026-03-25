@@ -80,6 +80,9 @@ class HomeViewModel : ViewModel() {
     var friendGroups = mutableStateListOf<FriendGroup>()
         private set
 
+    /** Local optimistic items that should stay visible until real data catches up. */
+    private val optimisticFlicks = mutableStateListOf<Flick>()
+
     /** Currently selected feed filter */
     var selectedFilter by mutableStateOf<FeedFilter>(FeedFilter.AllFriends)
         private set
@@ -118,8 +121,9 @@ class HomeViewModel : ViewModel() {
                         excludeIds = emptySet()
                     )) {
                         is Result.Success -> {
+                            val merged = mergeWithOptimistic(result.data)
                             flicks.clear()
-                            flicks.addAll(result.data)
+                            flicks.addAll(merged)
                             paginationCursorTimestamp = result.data.lastOrNull()?.timestamp
                             paginationCursorId = result.data.lastOrNull()?.id
                             consecutiveEmptyPages = 0
@@ -140,8 +144,9 @@ class HomeViewModel : ViewModel() {
                     repository.getFlicksForFriendGroup(userId, filter.group.id) { result ->
                         when (result) {
                             is Result.Success -> {
+                                val merged = mergeWithOptimistic(result.data)
                                 flicks.clear()
-                                flicks.addAll(result.data)
+                                flicks.addAll(merged)
                                 isLoading = false
                             }
                             is Result.Error -> {
@@ -479,6 +484,12 @@ class HomeViewModel : ViewModel() {
      * Optimistically add a newly uploading photo to the top of Home feed.
      */
     fun addOptimisticFlick(flick: Flick) {
+        val existingOptimisticIndex = optimisticFlicks.indexOfFirst { it.id == flick.id }
+        if (existingOptimisticIndex >= 0) {
+            optimisticFlicks.removeAt(existingOptimisticIndex)
+        }
+        optimisticFlicks.add(0, flick)
+
         val existingIndex = flicks.indexOfFirst { it.id == flick.id }
         if (existingIndex >= 0) {
             flicks.removeAt(existingIndex)
@@ -490,10 +501,45 @@ class HomeViewModel : ViewModel() {
      * Remove optimistic photo once upload either succeeds or fails.
      */
     fun removeOptimisticFlick(flickId: String) {
+        val optimisticIndex = optimisticFlicks.indexOfFirst { it.id == flickId }
+        if (optimisticIndex >= 0) {
+            optimisticFlicks.removeAt(optimisticIndex)
+        }
+
         val index = flicks.indexOfFirst { it.id == flickId }
         if (index >= 0) {
             flicks.removeAt(index)
         }
+    }
+
+    /**
+     * Remove a flick from feed immediately (used for optimistic delete UX).
+     */
+    fun removeFlickFromFeed(flickId: String) {
+        val optimisticIndex = optimisticFlicks.indexOfFirst { it.id == flickId }
+        if (optimisticIndex >= 0) {
+            optimisticFlicks.removeAt(optimisticIndex)
+        }
+
+        val index = flicks.indexOfFirst { it.id == flickId }
+        if (index >= 0) {
+            flicks.removeAt(index)
+        }
+    }
+
+    private fun mergeWithOptimistic(serverFlicks: List<Flick>): List<Flick> {
+        if (optimisticFlicks.isEmpty()) return serverFlicks
+
+        val serverIds = serverFlicks.map { it.id }.toSet()
+        val stillPendingOptimistic = optimisticFlicks.filter { optimistic ->
+            !serverIds.contains(optimistic.id)
+        }
+
+        // Drop optimistic entries once server has real data for that id.
+        optimisticFlicks.clear()
+        optimisticFlicks.addAll(stillPendingOptimistic)
+
+        return stillPendingOptimistic + serverFlicks
     }
 
     /**
