@@ -484,7 +484,10 @@ private fun ProfileScreenContent(
                 )
             }
         },
-        isLoading = profileViewModel.isLoading
+        isLoading = profileViewModel.isLoading,
+        onDeletePhotos = { photoIds, onComplete ->
+            profileViewModel.deletePhotos(photoIds, onComplete)
+        }
     )
 
     // FullScreenPhotoViewer when photo selected

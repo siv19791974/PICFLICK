@@ -149,6 +149,41 @@ class ProfileViewModel : ViewModel() {
             }
         }
     }
+
+    fun deletePhotos(photoIds: Set<String>, onComplete: (Boolean) -> Unit) {
+        if (photoIds.isEmpty()) {
+            onComplete(false)
+            return
+        }
+
+        var remaining = photoIds.size
+        var deletedCount = 0
+        var hadError = false
+
+        photoIds.forEach { photoId ->
+            repository.deleteFlick(photoId) { result ->
+                when (result) {
+                    is Result.Success -> {
+                        val removed = photos.removeIf { it.id == photoId }
+                        if (removed) deletedCount++
+                        remaining--
+                    }
+                    is Result.Error -> {
+                        hadError = true
+                        errorMessage = result.message
+                        remaining--
+                    }
+                    is Result.Loading -> Unit
+                }
+
+                if (remaining <= 0) {
+                    photoCount = photos.size
+                    totalReactions = photos.sumOf { it.getTotalReactions() }
+                    onComplete(deletedCount > 0 && !hadError)
+                }
+            }
+        }
+    }
     
     /**
      * Update photo caption/description

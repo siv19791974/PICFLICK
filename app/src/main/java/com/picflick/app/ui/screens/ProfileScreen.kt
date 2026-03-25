@@ -26,6 +26,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.pullrefresh.PullRefreshIndicator
 import androidx.compose.material.pullrefresh.pullRefresh
 import androidx.compose.material.pullrefresh.rememberPullRefreshState
@@ -95,7 +96,8 @@ fun ProfileScreen(
     onFriendsClick: () -> Unit = {},
     onStreakClick: () -> Unit = {},
     onReaction: (Flick, ReactionType?) -> Unit = { _, _ -> },
-    isLoading: Boolean = false
+    isLoading: Boolean = false,
+    onDeletePhotos: (Set<String>, (Boolean) -> Unit) -> Unit = { _, done -> done(false) }
 ) {
     val isDarkMode = ThemeManager.isDarkMode.value
     val configuration = LocalConfiguration.current
@@ -120,6 +122,19 @@ fun ProfileScreen(
 
     var pendingProfilePhotoUri by remember { mutableStateOf<Uri?>(null) }
     var showCropDialog by remember { mutableStateOf(false) }
+
+    val selectedPhotoIds = remember { mutableStateListOf<String>() }
+    val isSelectionMode = selectedPhotoIds.isNotEmpty()
+    var showBatchDeleteConfirm by remember { mutableStateOf(false) }
+    var isDeletingSelection by remember { mutableStateOf(false) }
+
+    LaunchedEffect(photos) {
+        val existingPhotoIds = photos.map { it.id }.toSet()
+        selectedPhotoIds.removeAll { it !in existingPhotoIds }
+        if (selectedPhotoIds.isEmpty()) {
+            showBatchDeleteConfirm = false
+        }
+    }
 
     // Image picker launcher
     val imagePicker = rememberLauncherForActivityResult(
@@ -398,6 +413,50 @@ fun ProfileScreen(
                 modifier = Modifier.fillMaxWidth(),
                 textAlign = androidx.compose.ui.text.style.TextAlign.Center
             )
+
+            if (isSelectionMode) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        text = "${selectedPhotoIds.size} selected",
+                        color = if (isDarkMode) Color.White else Color.Black,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        TextButton(
+                            onClick = { selectedPhotoIds.clear() },
+                            enabled = !isDeletingSelection
+                        ) {
+                            Text("Cancel")
+                        }
+                        if (selectedPhotoIds.size >= 2) {
+                            OutlinedButton(
+                                onClick = { showBatchDeleteConfirm = true },
+                                enabled = !isDeletingSelection,
+                                colors = ButtonDefaults.outlinedButtonColors(
+                                    contentColor = Color(0xFFD32F2F)
+                                ),
+                                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFD32F2F))
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Outlined.Delete,
+                                    contentDescription = "Delete selected",
+                                    tint = Color(0xFFD32F2F)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text("Delete")
+                            }
+                        }
+                    }
+                }
+            }
+
             Spacer(modifier = Modifier.height(12.dp))
             
             // Photo grid - match Home Feed exactly
@@ -432,15 +491,23 @@ fun ProfileScreen(
                         MyPhotoCard(
                             flick = flick,
                             userProfile = userProfile,
+                            isSelected = selectedPhotoIds.contains(flick.id),
+                            isSelectionMode = isSelectionMode,
                             onPhotoClick = {
-                                val index = photos.indexOf(flick)
-                                onPhotoClick(flick, index)
+                                if (isSelectionMode) {
+                                    if (selectedPhotoIds.contains(flick.id)) {
+                                        selectedPhotoIds.remove(flick.id)
+                                    } else {
+                                        selectedPhotoIds.add(flick.id)
+                                    }
+                                } else {
+                                    val index = photos.indexOf(flick)
+                                    onPhotoClick(flick, index)
+                                }
                             },
                             onLongPress = {
-                                // Only allow reacting to OTHER people's photos
-                                if (flick.userId != userProfile.uid) {
-                                    flickForReaction = flick
-                                    showReactionPicker = true
+                                if (!isSelectionMode) {
+                                    selectedPhotoIds.add(flick.id)
                                 }
                             },
                             rowHeight = rowHeight
@@ -524,6 +591,47 @@ fun ProfileScreen(
                 showCropDialog = false
                 pendingProfilePhotoUri = null
                 croppedUri?.let(onPhotoSelected)
+            }
+        )
+    }
+
+    if (showBatchDeleteConfirm) {
+        AlertDialog(
+            onDismissRequest = {
+                if (!isDeletingSelection) showBatchDeleteConfirm = false
+            },
+            title = { Text("Delete selected photos?") },
+            text = {
+                Text(
+                    "You are about to permanently delete ${selectedPhotoIds.size} photos. " +
+                        "This action is irreversible and cannot be undone."
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        if (selectedPhotoIds.size < 2 || isDeletingSelection) return@TextButton
+                        val deletingIds = selectedPhotoIds.toSet()
+                        isDeletingSelection = true
+                        showBatchDeleteConfirm = false
+                        selectedPhotoIds.clear()
+                        onDeletePhotos(deletingIds) {
+                            isDeletingSelection = false
+                        }
+                    },
+                    enabled = !isDeletingSelection,
+                    colors = ButtonDefaults.textButtonColors(contentColor = Color(0xFFD32F2F))
+                ) {
+                    Text(if (isDeletingSelection) "Deleting..." else "Delete")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { showBatchDeleteConfirm = false },
+                    enabled = !isDeletingSelection
+                ) {
+                    Text("Cancel")
+                }
             }
         )
     }
@@ -1276,6 +1384,8 @@ private fun calculateGapFreePhotoGridPositions(count: Int): List<PhotoGridPos> {
 private fun MyPhotoCard(
     flick: Flick,
     userProfile: UserProfile,
+    isSelected: Boolean = false,
+    isSelectionMode: Boolean = false,
     onPhotoClick: () -> Unit,
     onLongPress: () -> Unit = {},
     rowHeight: androidx.compose.ui.unit.Dp
@@ -1305,6 +1415,30 @@ private fun MyPhotoCard(
                 modifier = Modifier.fillMaxSize(),
                 contentScale = ContentScale.Crop
             )
+
+            if (isSelectionMode) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(6.dp)
+                        .size(22.dp)
+                        .background(
+                            if (isSelected) Color(0xFF4CAF50) else Color.Black.copy(alpha = 0.45f),
+                            CircleShape
+                        )
+                        .border(1.dp, Color.White.copy(alpha = 0.9f), CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (isSelected) {
+                        Icon(
+                            imageVector = Icons.Default.Check,
+                            contentDescription = "Selected",
+                            tint = Color.White,
+                            modifier = Modifier.size(14.dp)
+                        )
+                    }
+                }
+            }
 
             // Fixed mini info banner (same style as Home)
             Box(
