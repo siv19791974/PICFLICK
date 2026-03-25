@@ -32,6 +32,7 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.snapshots.SnapshotStateMap
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -46,8 +47,10 @@ import androidx.compose.ui.unit.sp
 import androidx.core.content.FileProvider
 import coil3.ImageLoader
 import coil3.compose.AsyncImage
+import coil3.compose.AsyncImagePainter
 import coil3.request.CachePolicy
 import coil3.request.ImageRequest
+import coil3.request.crossfade
 import com.picflick.app.data.ChatMessage
 import com.picflick.app.data.Flick
 import com.picflick.app.data.ReactionType
@@ -668,12 +671,49 @@ private fun FlickGrid(
         val prefetchImageLoader = remember(context) { ImageLoader.Builder(context).build() }
         val prefetchedFlickIds = remember { mutableSetOf<String>() }
         var hasRequestedForCurrentSize by remember { mutableStateOf(false) }
+        val optimisticImageBridge: SnapshotStateMap<String, String> = remember { mutableStateMapOf() }
+        val optimisticBridgeLastSeenAt: SnapshotStateMap<String, Long> = remember { mutableStateMapOf() }
 
         // Reset load-more request guard when item count changes (new page appended/refreshed)
         LaunchedEffect(flicks.size) {
             hasRequestedForCurrentSize = false
             if (prefetchedFlickIds.size > flicks.size + 60) {
                 prefetchedFlickIds.clear()
+            }
+        }
+
+        // Keep mapping from clientUploadId -> local optimistic URI.
+        // Use TTL so bridge survives brief optimistic->real reconciliation gaps.
+        LaunchedEffect(flicks) {
+            val now = System.currentTimeMillis()
+
+            flicks.forEach { flick ->
+                val clientId = flick.clientUploadId
+                if (clientId.isBlank()) return@forEach
+
+                if (
+                    flick.id.startsWith("optimistic_") && (
+                        flick.imageUrl.startsWith("content://") ||
+                        flick.imageUrl.startsWith("file://") ||
+                        flick.imageUrl.startsWith("android.resource://")
+                    )
+                ) {
+                    optimisticImageBridge[clientId] = flick.imageUrl
+                    optimisticBridgeLastSeenAt[clientId] = now
+                }
+            }
+
+            val ttlMs = 20_000L
+            val activeClientIds = flicks.mapNotNull { it.clientUploadId.takeIf { id -> id.isNotBlank() } }.toSet()
+
+            val staleBridgeKeys = optimisticImageBridge.keys.filter { clientId ->
+                if (activeClientIds.contains(clientId)) return@filter false
+                val lastSeen = optimisticBridgeLastSeenAt[clientId] ?: 0L
+                now - lastSeen > ttlMs
+            }
+            staleBridgeKeys.forEach { key ->
+                optimisticImageBridge.remove(key)
+                optimisticBridgeLastSeenAt.remove(key)
             }
         }
 
@@ -762,6 +802,7 @@ private fun FlickGrid(
                 FlickCard(
                     flick = flick,
                     userId = userProfile.uid,
+                    optimisticImageBridge = optimisticImageBridge,
                     onPhotoClick = { onPhotoClick(flick) },
                     onLongPress = { onLongPress(flick) },
                     rowHeight = rowHeight
@@ -793,6 +834,7 @@ private fun FlickGrid(
 private fun FlickCard(
     flick: Flick,
     userId: String,
+    optimisticImageBridge: SnapshotStateMap<String, String>,
     onPhotoClick: () -> Unit,
     onLongPress: () -> Unit,
     rowHeight: androidx.compose.ui.unit.Dp
@@ -805,6 +847,25 @@ private fun FlickCard(
     }
     val topReactionEmoji = topReactionDisplay.first
     val topReactionCount = topReactionDisplay.second
+
+    val localBridgeImage = remember(flick.clientUploadId, flick.imageUrl, optimisticImageBridge) {
+        if (flick.clientUploadId.isNotBlank()) optimisticImageBridge[flick.clientUploadId] else null
+    }
+
+    val isRemoteRow = !flick.id.startsWith("optimistic_")
+    val remoteImageUrl = remember(flick.imageUrl, flick.timestamp) {
+        if (
+            flick.imageUrl.startsWith("content://") ||
+            flick.imageUrl.startsWith("file://") ||
+            flick.imageUrl.startsWith("android.resource://")
+        ) {
+            flick.imageUrl
+        } else {
+            if (flick.timestamp > 0L) withCacheBust(flick.imageUrl, flick.timestamp) else flick.imageUrl
+        }
+    }
+    val shouldStageLocalBridge = isRemoteRow && !localBridgeImage.isNullOrBlank()
+
 
     Card(
         modifier = Modifier
@@ -829,16 +890,57 @@ private fun FlickCard(
                     .fillMaxSize()
                     .background(Color.Black)
             ) {
-                AsyncImage(
-                    model = ImageRequest.Builder(LocalContext.current)
-                        .data(flick.imageUrl)
-                        .memoryCachePolicy(CachePolicy.ENABLED)
-                        .diskCachePolicy(CachePolicy.ENABLED)
-                        .build(),
-                    contentDescription = null,
-                    modifier = Modifier.fillMaxSize(), // Fill the exact height
-                    contentScale = ContentScale.Crop
-                )
+                if (shouldStageLocalBridge) {
+                    // Layer 1: keep local optimistic image visible
+                    AsyncImage(
+                        model = ImageRequest.Builder(LocalContext.current)
+                            .data(localBridgeImage)
+                            .memoryCachePolicy(CachePolicy.ENABLED)
+                            .diskCachePolicy(CachePolicy.ENABLED)
+                            .build(),
+                        contentDescription = null,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+
+                    // Layer 2: remote image on top; remove bridge only after decode success
+                    AsyncImage(
+                        model = ImageRequest.Builder(LocalContext.current)
+                            .data(remoteImageUrl)
+                            .crossfade(120)
+                            .memoryCachePolicy(CachePolicy.ENABLED)
+                            .diskCachePolicy(CachePolicy.ENABLED)
+                            .build(),
+                        contentDescription = null,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop,
+                        onState = { state ->
+                            when (state) {
+                                is AsyncImagePainter.State.Success -> {
+                                    if (flick.clientUploadId.isNotBlank()) {
+                                        optimisticImageBridge.remove(flick.clientUploadId)
+                                    }
+                                }
+                                is AsyncImagePainter.State.Error -> {
+                                    // Keep local bridge image visible; remote will retry naturally.
+                                }
+                                else -> Unit
+                            }
+                        }
+                    )
+                } else {
+                    AsyncImage(
+                        model = ImageRequest.Builder(LocalContext.current)
+                            .data(remoteImageUrl)
+                            .crossfade(120)
+                            .memoryCachePolicy(CachePolicy.ENABLED)
+                            .diskCachePolicy(CachePolicy.ENABLED)
+                            .build(),
+                        contentDescription = null,
+                        modifier = Modifier.fillMaxSize(), // Fill the exact height
+                        contentScale = ContentScale.Crop
+                    )
+                }
             }
             
             // Info overlay at bottom (username + reactions)

@@ -293,7 +293,8 @@ class UploadViewModel : ViewModel() {
         photoUris: List<Uri>,
         userProfile: UserProfile,
         onOptimisticAdd: ((Flick) -> Unit)? = null,
-        onOptimisticRemove: ((String, Boolean) -> Unit)? = null
+        onOptimisticRemove: ((String, Boolean) -> Unit)? = null,
+        onBatchSuccess: (() -> Unit)? = null
     ) {
         viewModelScope.launch {
             if (photoUris.isEmpty()) return@launch
@@ -388,6 +389,7 @@ class UploadViewModel : ViewModel() {
 
             if (successCount > 0) {
                 uploadSuccess = true
+                onBatchSuccess?.invoke()
             }
             if (failCount > 0) {
                 uploadError = if (successCount > 0) {

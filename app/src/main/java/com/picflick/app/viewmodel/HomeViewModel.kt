@@ -103,7 +103,7 @@ class HomeViewModel : ViewModel() {
             return
         }
 
-        isLoading = true
+        isLoading = flicks.isEmpty()
         errorMessage = null
         isLoadingMore = false
         canLoadMore = true
