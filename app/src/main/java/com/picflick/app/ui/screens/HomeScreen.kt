@@ -703,7 +703,7 @@ private fun FlickGrid(
                 }
             }
 
-            val ttlMs = 20_000L
+            val ttlMs = 180_000L // 3 minutes: supports long batch uploads before final server reconcile
             val activeClientIds = flicks.mapNotNull { it.clientUploadId.takeIf { id -> id.isNotBlank() } }.toSet()
 
             val staleBridgeKeys = optimisticImageBridge.keys.filter { clientId ->
