@@ -301,8 +301,8 @@ fun HomeScreen(
             },
             canDelete = flick.userId == userProfile.uid,
             onDeleteClick = {
-                // Refresh the list after deletion
-                viewModel.loadFlicks(userProfile.uid)
+                // Optimistic immediate removal. Avoid immediate reload to prevent deleted flick bounce-back.
+                viewModel.removeFlickFromFeed(flick.id)
             },
             allPhotos = viewModel.flicks,
             currentIndex = selectedFlickIndex,

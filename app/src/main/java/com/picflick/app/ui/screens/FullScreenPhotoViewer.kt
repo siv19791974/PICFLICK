@@ -74,6 +74,8 @@ import android.content.pm.ActivityInfo
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.os.Build
+import android.os.Handler
+import android.os.Looper
 import android.provider.MediaStore
 import android.widget.Toast
 import android.view.LayoutInflater
@@ -129,17 +131,18 @@ fun FullScreenPhotoViewer(
 
     // Helper function to show custom toast with PicFlick logo
     fun showPicFlickToast(message: String) {
-        val inflater = LayoutInflater.from(context)
-        val layout = inflater.inflate(R.layout.custom_toast, null, false)
-        
-        val toastMessage = layout.findViewById<TextView>(R.id.toast_message)
-        
-        toastMessage.text = message
-        
-        val toast = Toast(context)
-        toast.duration = Toast.LENGTH_SHORT
-        toast.view = layout
-        toast.show()
+        Handler(Looper.getMainLooper()).post {
+            val inflater = LayoutInflater.from(context)
+            val layout = inflater.inflate(R.layout.custom_toast, null, false)
+
+            val toastMessage = layout.findViewById<TextView>(R.id.toast_message)
+            toastMessage.text = message
+
+            val toast = Toast(context)
+            toast.duration = Toast.LENGTH_SHORT
+            toast.view = layout
+            toast.show()
+        }
     }
     
     val repository = remember { FlickRepository.getInstance() }
@@ -192,8 +195,10 @@ fun FullScreenPhotoViewer(
     // 2D Pager state
     var currentPageIndex by remember { mutableIntStateOf(currentIndex) }
     
-    // Filter out photos with empty image URLs - NO remember() so it updates when reactions change
-    val validPhotos = allPhotos.filter { it.imageUrl.isNotBlank() }
+    val deletedFlickIds = remember { mutableStateListOf<String>() }
+
+    // Filter out photos with empty image URLs and locally deleted items.
+    val validPhotos = allPhotos.filter { it.imageUrl.isNotBlank() && !deletedFlickIds.contains(it.id) }
     
     // Current flick based on page index
     val currentFlick = if (validPhotos.isNotEmpty() && currentPageIndex in validPhotos.indices) {
@@ -449,22 +454,28 @@ val canDeleteCurrent = currentFlick.userId == currentUser.uid
             confirmButton = {
                 TextButton(
                     onClick = {
-                        repository.deleteFlick(currentFlick.id) { result ->
+                        showDeleteConfirmation = false
+
+                        // Optimistic UX: remove immediately in-viewer + parent feed, then delete in background.
+                        val flickIdToDelete = currentFlick.id
+                        deletedFlickIds.add(flickIdToDelete)
+                        onDeleteClick()
+                        onDismiss()
+
+                        repository.deleteFlick(flickIdToDelete) { result ->
                             when (result) {
                                 is com.picflick.app.data.Result.Success -> {
                                     showPicFlickToast("Photo Deleted")
-                                    onDeleteClick()
-                                    onDismiss()
                                 }
                                 is com.picflick.app.data.Result.Error -> {
-                                    showPicFlickToast("Failed to delete photo")
+                                    showPicFlickToast("Delete failed, refreshing...")
+                                    onDeleteClick()
                                 }
                                 else -> {
                                     // Loading or other states - do nothing
                                 }
                             }
                         }
-                        showDeleteConfirmation = false
                     }
                 ) {
                     Text("Delete", color = Color.Red)

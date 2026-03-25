@@ -1030,9 +1030,10 @@ private fun FilterScreenContent(
                         homeViewModel.addOptimisticFlick(optimisticFlick)
                     },
                     onOptimisticRemove = { flickId, uploadSucceeded ->
-                        homeViewModel.removeOptimisticFlick(flickId)
                         if (uploadSucceeded) {
                             homeViewModel.loadFlicks(userProfile.uid)
+                        } else {
+                            homeViewModel.removeOptimisticFlick(flickId)
                         }
                     }
                 )

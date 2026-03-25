@@ -285,6 +285,116 @@ class UploadViewModel : ViewModel() {
         }
     }
 
+    fun uploadPhotosBatch(
+        context: Context,
+        photoUris: List<Uri>,
+        userProfile: UserProfile,
+        onOptimisticAdd: ((Flick) -> Unit)? = null,
+        onOptimisticRemove: ((String, Boolean) -> Unit)? = null
+    ) {
+        viewModelScope.launch {
+            if (photoUris.isEmpty()) return@launch
+
+            val tier = userProfile.getEffectiveTier()
+            val dailyLimit = tier.getDailyUploadLimit()
+            val remainingDaily = if (dailyLimit == Int.MAX_VALUE) Int.MAX_VALUE else (dailyLimit - dailyUploadCount).coerceAtLeast(0)
+            val perBatchCap = if (tier == com.picflick.app.data.SubscriptionTier.ULTRA) 100 else remainingDaily
+            val allowedCount = photoUris.size.coerceAtMost(perBatchCap)
+
+            if (allowedCount <= 0) {
+                uploadError = "Daily upload limit reached (${dailyUploadCount}/${dailyLimit}). Try again tomorrow!"
+                return@launch
+            }
+
+            isUploading = true
+            uploadError = null
+            uploadSuccess = false
+
+            val tierStorageLimit = tier.getStorageLimitBytes()
+            val hardStorageLimit = (tierStorageLimit * STORAGE_HARD_STOP_THRESHOLD).toLong()
+            var rollingStorageUsed = userProfile.storageUsedBytes
+
+            var successCount = 0
+            var failCount = 0
+
+            photoUris.take(allowedCount).forEach { photoUri ->
+                var optimisticFlickId: String? = null
+                try {
+                    val estimatedUploadSize = estimatePhotoSizeBytes(context, photoUri)
+                    val projectedStorageUsed = rollingStorageUsed + estimatedUploadSize
+                    if (projectedStorageUsed > hardStorageLimit) {
+                        failCount++
+                        return@forEach
+                    }
+
+                    val optimisticFlick = Flick(
+                        id = "optimistic_${UUID.randomUUID()}",
+                        userId = userProfile.uid,
+                        userName = userProfile.displayName,
+                        userPhotoUrl = userProfile.photoUrl,
+                        imageUrl = photoUri.toString(),
+                        description = "",
+                        timestamp = System.currentTimeMillis(),
+                        reactions = emptyMap(),
+                        commentCount = 0,
+                        privacy = "friends",
+                        taggedFriends = emptyList()
+                    )
+                    optimisticFlickId = optimisticFlick.id
+                    onOptimisticAdd?.invoke(optimisticFlick)
+
+                    val (imageUrl, uploadedBytes) = uploadImageToStorage(context, photoUri, userProfile.uid)
+                    val flick = Flick(
+                        id = "",
+                        userId = userProfile.uid,
+                        userName = userProfile.displayName,
+                        userPhotoUrl = userProfile.photoUrl,
+                        imageUrl = imageUrl,
+                        description = "",
+                        timestamp = System.currentTimeMillis(),
+                        reactions = emptyMap(),
+                        commentCount = 0,
+                        privacy = "friends",
+                        taggedFriends = emptyList(),
+                        imageSizeBytes = uploadedBytes
+                    )
+
+                    val result = flickRepository.createFlick(flick, userProfile.photoUrl)
+                    if (result is com.picflick.app.data.Result.Error) {
+                        throw Exception(result.message)
+                    }
+
+                    incrementDailyUploadCount(userProfile.uid)
+                    dailyUploadCount++
+                    incrementTotalPhotos(userProfile.uid)
+                    rollingStorageUsed += uploadedBytes
+
+                    optimisticFlickId?.let { onOptimisticRemove?.invoke(it, true) }
+                    successCount++
+                } catch (e: Exception) {
+                    optimisticFlickId?.let { onOptimisticRemove?.invoke(it, false) }
+                    failCount++
+                    android.util.Log.w("UploadViewModel", "Batch upload item failed", e)
+                }
+            }
+
+            recalculateStorageUsedBytes(userProfile.uid)
+
+            if (successCount > 0) {
+                uploadSuccess = true
+            }
+            if (failCount > 0) {
+                uploadError = if (successCount > 0) {
+                    "$successCount uploaded, $failCount failed"
+                } else {
+                    "Batch upload failed"
+                }
+            }
+
+            isUploading = false
+        }
+    }
+
     /**
      * Upload image file to Firebase Storage
      */

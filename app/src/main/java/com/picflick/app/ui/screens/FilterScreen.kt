@@ -58,6 +58,7 @@ import com.picflick.app.ui.theme.ThemeManager
 import com.picflick.app.ui.theme.isDarkModeBackground
 import com.picflick.app.ui.theme.PicFlickLightBackground
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -213,6 +214,8 @@ fun FilterScreen(
                     onUpload(filteredUri, selectedFilter, taggedFriends.map { it.uid }, description.trim())
                     withContext(Dispatchers.Main) {
                         android.widget.Toast.makeText(context, "Upload started", android.widget.Toast.LENGTH_SHORT).show()
+                        // Small hold so user sees confirmation before leaving screen.
+                        delay(900)
                         onUploadQueued()
                     }
                 } catch (e: Exception) {
