@@ -19,7 +19,8 @@ data class Flick(
     val privacy: String = "friends", // "friends" = only friends can see, "public" = everyone
     val taggedFriends: List<String> = emptyList(), // List of tagged friend userIds
     val reportCount: Int = 0, // Number of reports for moderation
-    val imageSizeBytes: Long = 0 // Exact uploaded image size in bytes (for storage accounting)
+    val imageSizeBytes: Long = 0, // Exact uploaded image size in bytes (for storage accounting)
+    val clientUploadId: String = "" // Client-side id used to reconcile optimistic -> real upload
 ) {
     /**
      * Get total reaction count

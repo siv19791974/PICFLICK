@@ -197,8 +197,9 @@ class UploadViewModel : ViewModel() {
                 uploadError = null
                 uploadSuccess = false
 
+                val clientUploadId = UUID.randomUUID().toString()
                 val optimisticFlick = Flick(
-                    id = "optimistic_${UUID.randomUUID()}",
+                    id = "optimistic_$clientUploadId",
                     userId = userProfile.uid,
                     userName = userProfile.displayName,
                     userPhotoUrl = userProfile.photoUrl,
@@ -208,7 +209,8 @@ class UploadViewModel : ViewModel() {
                     reactions = emptyMap(),
                     commentCount = 0,
                     privacy = "friends",
-                    taggedFriends = taggedFriends
+                    taggedFriends = taggedFriends,
+                    clientUploadId = clientUploadId
                 )
                 optimisticFlickId = optimisticFlick.id
                 onOptimisticAdd?.invoke(optimisticFlick)
@@ -229,7 +231,8 @@ class UploadViewModel : ViewModel() {
                     commentCount = 0,
                     privacy = "friends",
                     taggedFriends = taggedFriends,
-                    imageSizeBytes = uploadedBytes
+                    imageSizeBytes = uploadedBytes,
+                    clientUploadId = clientUploadId
                 )
 
                 // Use repository to create flick - this sends notifications!
@@ -327,8 +330,9 @@ class UploadViewModel : ViewModel() {
                         return@forEach
                     }
 
+                    val clientUploadId = UUID.randomUUID().toString()
                     val optimisticFlick = Flick(
-                        id = "optimistic_${UUID.randomUUID()}",
+                        id = "optimistic_$clientUploadId",
                         userId = userProfile.uid,
                         userName = userProfile.displayName,
                         userPhotoUrl = userProfile.photoUrl,
@@ -338,7 +342,8 @@ class UploadViewModel : ViewModel() {
                         reactions = emptyMap(),
                         commentCount = 0,
                         privacy = "friends",
-                        taggedFriends = emptyList()
+                        taggedFriends = emptyList(),
+                        clientUploadId = clientUploadId
                     )
                     optimisticFlickId = optimisticFlick.id
                     onOptimisticAdd?.invoke(optimisticFlick)
@@ -356,7 +361,8 @@ class UploadViewModel : ViewModel() {
                         commentCount = 0,
                         privacy = "friends",
                         taggedFriends = emptyList(),
-                        imageSizeBytes = uploadedBytes
+                        imageSizeBytes = uploadedBytes,
+                        clientUploadId = clientUploadId
                     )
 
                     val result = flickRepository.createFlick(flick, userProfile.photoUrl)

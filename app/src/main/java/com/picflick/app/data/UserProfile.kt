@@ -19,6 +19,7 @@ data class UserProfile(
     val pendingFollowRequests: List<String> = emptyList(), // Users who want to follow this user (pending approval)
     val sentFollowRequests: List<String> = emptyList(), // Users this user has requested to follow (waiting for approval)
     val blockedUsers: List<String> = emptyList(), // Users this person has blocked
+    val mutedUsers: Map<String, Long> = emptyMap(), // userId -> mute expiry epoch millis (Long.MAX_VALUE = forever)
     val fcmToken: String = "", // Firebase Cloud Messaging token for push notifications
     val notificationPreferences: NotificationPreferences = NotificationPreferences(), // Notification settings
     val totalLikes: Int = 0,

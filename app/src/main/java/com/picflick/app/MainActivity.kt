@@ -688,10 +688,11 @@ fun MainScreen(
                 homeViewModel.addOptimisticFlick(optimisticFlick)
             },
             onOptimisticRemove = { flickId, uploadSucceeded ->
+                if (!uploadSucceeded) {
+                    homeViewModel.removeOptimisticFlick(flickId)
+                }
                 if (uploadSucceeded) {
                     homeViewModel.loadFlicks(profile.uid)
-                } else {
-                    homeViewModel.removeOptimisticFlick(flickId)
                 }
             }
         )

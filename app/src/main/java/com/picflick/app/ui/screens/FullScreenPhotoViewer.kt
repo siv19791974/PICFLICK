@@ -86,6 +86,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import java.util.concurrent.TimeUnit
 import java.net.URL
 import java.net.HttpURLConnection
 
@@ -187,6 +188,8 @@ fun FullScreenPhotoViewer(
     var showMoreMenu by remember { mutableStateOf(false) }
     var showReportDialog by remember { mutableStateOf(false) }
     var showBlockConfirmation by remember { mutableStateOf(false) }
+    var showMuteUserDialog by remember { mutableStateOf(false) }
+    var selectedMuteDurationMillis by remember { mutableStateOf<Long?>(null) }
     var selectedReportReason by remember { mutableStateOf("") }
     
     // UI visibility toggle
@@ -569,6 +572,93 @@ val canDeleteCurrent = currentFlick.userId == currentUser.uid
                 TextButton(onClick = { 
                     showReportDialog = false
                     selectedReportReason = ""
+                }) {
+                    Text("Cancel")
+                }
+            },
+            containerColor = Color(0xFF1C1C1E),
+            titleContentColor = Color.White,
+            textContentColor = Color.White
+        )
+    }
+
+    // MUTE USER DIALOG
+    if (showMuteUserDialog) {
+        val muteDurations = listOf(
+            "1 hour" to TimeUnit.HOURS.toMillis(1),
+            "1 day" to TimeUnit.DAYS.toMillis(1),
+            "1 week" to TimeUnit.DAYS.toMillis(7),
+            "1 month" to TimeUnit.DAYS.toMillis(30),
+            "1 year" to TimeUnit.DAYS.toMillis(365),
+            "Mute user" to Long.MAX_VALUE
+        )
+
+        AlertDialog(
+            onDismissRequest = {
+                showMuteUserDialog = false
+                selectedMuteDurationMillis = null
+            },
+            title = { Text("Mute User", color = Color.White) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        "Hide ${currentFlick.userName}'s uploads for how long?",
+                        color = Color.Gray
+                    )
+                    muteDurations.forEach { (label, durationMs) ->
+                        FilterChip(
+                            selected = selectedMuteDurationMillis == durationMs,
+                            onClick = { selectedMuteDurationMillis = durationMs },
+                            label = {
+                                Text(
+                                    label,
+                                    color = if (selectedMuteDurationMillis == durationMs) Color.Black else Color.White
+                                )
+                            },
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = Color(0xFF58A6FF),
+                                containerColor = Color(0xFF2C2C2E),
+                                selectedLabelColor = Color.Black,
+                                labelColor = Color.White
+                            )
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        val selectedDuration = selectedMuteDurationMillis ?: return@TextButton
+                        val muteUntil = if (selectedDuration == Long.MAX_VALUE) Long.MAX_VALUE else System.currentTimeMillis() + selectedDuration
+                        repository.muteUser(
+                            currentUserId = currentUser.uid,
+                            targetUserId = currentFlick.userId,
+                            muteUntilEpochMs = muteUntil
+                        ) { muteResult ->
+                            when (muteResult) {
+                                is com.picflick.app.data.Result.Success -> {
+                                    showPicFlickToast("User muted")
+                                    onDismiss()
+                                }
+                                is com.picflick.app.data.Result.Error -> showPicFlickToast("Failed to mute user")
+                                else -> Unit
+                            }
+                        }
+                        showMuteUserDialog = false
+                        selectedMuteDurationMillis = null
+                    },
+                    enabled = selectedMuteDurationMillis != null
+                ) {
+                    Text(
+                        "Mute",
+                        color = if (selectedMuteDurationMillis != null) Color(0xFFFFB347) else Color.Gray
+                    )
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    showMuteUserDialog = false
+                    selectedMuteDurationMillis = null
                 }) {
                     Text("Cancel")
                 }
@@ -1198,7 +1288,7 @@ if (canDeleteCurrent) {
                                         )
                                     }
                                     
-                                    // Dropdown Menu for Report & Block
+                                    // Dropdown Menu for Report / Mute / Block
                                     DropdownMenu(
                                         expanded = showMoreMenu,
                                         onDismissRequest = { showMoreMenu = false },
@@ -1225,6 +1315,27 @@ if (canDeleteCurrent) {
                                             }
                                         )
                                         
+                                        // MUTE USER Option
+                                        DropdownMenuItem(
+                                            text = {
+                                                Text(
+                                                    "Mute User",
+                                                    color = Color(0xFFFFB347)
+                                                )
+                                            },
+                                            leadingIcon = {
+                                                Icon(
+                                                    Icons.Default.NotificationsOff,
+                                                    contentDescription = null,
+                                                    tint = Color(0xFFFFB347)
+                                                )
+                                            },
+                                            onClick = {
+                                                showMoreMenu = false
+                                                showMuteUserDialog = true
+                                            }
+                                        )
+
                                         // BLOCK USER Option
                                         DropdownMenuItem(
                                             text = { 
