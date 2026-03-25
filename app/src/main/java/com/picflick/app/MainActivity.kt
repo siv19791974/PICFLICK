@@ -689,11 +689,12 @@ fun MainScreen(
                 homeViewModel.addOptimisticFlick(optimisticFlick)
             },
             onOptimisticRemove = { flickId, uploadSucceeded ->
-                if (uploadSucceeded) {
-                    homeViewModel.requestDebouncedFeedRefresh(profile.uid)
-                } else {
+                if (!uploadSucceeded) {
                     homeViewModel.removeOptimisticFlick(flickId)
                 }
+            },
+            onBatchSuccess = {
+                homeViewModel.requestDebouncedFeedRefresh(profile.uid)
             }
         )
 
