@@ -15,6 +15,8 @@ import com.picflick.app.data.ReactionType
 import com.picflick.app.data.Result
 import com.picflick.app.repository.FlickRepository
 import com.picflick.app.utils.Analytics
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 /**
@@ -484,13 +486,17 @@ class HomeViewModel : ViewModel() {
      * Optimistically add a newly uploading photo to the top of Home feed.
      */
     fun addOptimisticFlick(flick: Flick) {
-        val existingOptimisticIndex = optimisticFlicks.indexOfFirst { it.id == flick.id }
+        val existingOptimisticIndex = optimisticFlicks.indexOfFirst {
+            it.id == flick.id || (it.clientUploadId.isNotBlank() && it.clientUploadId == flick.clientUploadId)
+        }
         if (existingOptimisticIndex >= 0) {
             optimisticFlicks.removeAt(existingOptimisticIndex)
         }
         optimisticFlicks.add(0, flick)
 
-        val existingIndex = flicks.indexOfFirst { it.id == flick.id }
+        val existingIndex = flicks.indexOfFirst {
+            it.id == flick.id || (it.clientUploadId.isNotBlank() && it.clientUploadId == flick.clientUploadId)
+        }
         if (existingIndex >= 0) {
             flicks.removeAt(existingIndex)
         }
@@ -527,6 +533,15 @@ class HomeViewModel : ViewModel() {
         }
     }
 
+    fun requestDebouncedFeedRefresh(userId: String, delayMs: Long = 1400L) {
+        currentUserId = userId
+        debouncedFeedRefreshJob?.cancel()
+        debouncedFeedRefreshJob = viewModelScope.launch {
+            delay(delayMs)
+            loadFlicks(userId)
+        }
+    }
+
     private fun mergeWithOptimistic(serverFlicks: List<Flick>): List<Flick> {
         if (optimisticFlicks.isEmpty()) return serverFlicks
 
@@ -540,11 +555,43 @@ class HomeViewModel : ViewModel() {
                 (optimistic.clientUploadId.isBlank() || !serverClientUploadIds.contains(optimistic.clientUploadId))
         }
 
+        // Replace matching optimistic entries in-place before pruning to reduce visual jump.
+        val serverByClientUploadId = serverFlicks
+            .filter { it.clientUploadId.isNotBlank() }
+            .associateBy { it.clientUploadId }
+
+        optimisticFlicks.forEachIndexed { index, optimistic ->
+            val replacement = if (optimistic.clientUploadId.isNotBlank()) {
+                serverByClientUploadId[optimistic.clientUploadId]
+            } else null
+            if (replacement != null) {
+                optimisticFlicks[index] = replacement
+                val feedIndex = flicks.indexOfFirst { it.id == optimistic.id }
+                if (feedIndex >= 0) {
+                    flicks[feedIndex] = replacement
+                }
+            }
+        }
+
         // Drop optimistic entries once server has real data for that id or clientUploadId.
         optimisticFlicks.clear()
         optimisticFlicks.addAll(stillPendingOptimistic)
 
-        return stillPendingOptimistic + serverFlicks
+        val merged = (stillPendingOptimistic + serverFlicks)
+        val seenIds = HashSet<String>()
+        val seenClientUploadIds = HashSet<String>()
+
+        return merged.filter { flick ->
+            val idKey = flick.id
+            val clientKey = flick.clientUploadId.takeIf { it.isNotBlank() }
+
+            if (seenIds.contains(idKey)) return@filter false
+            if (clientKey != null && seenClientUploadIds.contains(clientKey)) return@filter false
+
+            seenIds.add(idKey)
+            if (clientKey != null) seenClientUploadIds.add(clientKey)
+            true
+        }
     }
 
     /**

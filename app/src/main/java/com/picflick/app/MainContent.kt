@@ -1030,11 +1030,10 @@ private fun FilterScreenContent(
                         homeViewModel.addOptimisticFlick(optimisticFlick)
                     },
                     onOptimisticRemove = { flickId, uploadSucceeded ->
-                        if (!uploadSucceeded) {
-                            homeViewModel.removeOptimisticFlick(flickId)
-                        }
+                        // Cleanup optimistic row; schedule one debounced refresh to avoid feed churn.
+                        homeViewModel.removeOptimisticFlick(flickId)
                         if (uploadSucceeded) {
-                            homeViewModel.loadFlicks(userProfile.uid)
+                            homeViewModel.requestDebouncedFeedRefresh(userProfile.uid)
                         }
                     }
                 )

@@ -688,11 +688,10 @@ fun MainScreen(
                 homeViewModel.addOptimisticFlick(optimisticFlick)
             },
             onOptimisticRemove = { flickId, uploadSucceeded ->
-                if (!uploadSucceeded) {
-                    homeViewModel.removeOptimisticFlick(flickId)
-                }
+                // Cleanup optimistic row; schedule one debounced refresh to avoid batch churn.
+                homeViewModel.removeOptimisticFlick(flickId)
                 if (uploadSucceeded) {
-                    homeViewModel.loadFlicks(profile.uid)
+                    homeViewModel.requestDebouncedFeedRefresh(profile.uid)
                 }
             }
         )
@@ -732,18 +731,16 @@ fun MainScreen(
         }
     }
 
-    // Handle upload success/error
+    // Handle upload state silently for smoother optimistic UX
     LaunchedEffect(uploadViewModel.uploadSuccess) {
         if (uploadViewModel.uploadSuccess) {
-            Toast.makeText(context, "Photo uploaded successfully!", Toast.LENGTH_SHORT).show()
             uploadViewModel.resetUploadState()
             currentScreen = Screen.Home
         }
     }
 
     LaunchedEffect(uploadViewModel.uploadError) {
-        uploadViewModel.uploadError?.let { error ->
-            Toast.makeText(context, "Upload failed: $error", Toast.LENGTH_LONG).show()
+        uploadViewModel.uploadError?.let {
             uploadViewModel.resetUploadState()
         }
     }
