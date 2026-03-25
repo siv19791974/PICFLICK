@@ -84,6 +84,7 @@ class HomeViewModel : ViewModel() {
 
     /** Local optimistic items that should stay visible until real data catches up. */
     private val optimisticFlicks = mutableStateListOf<Flick>()
+    private var debouncedFeedRefreshJob: Job? = null
 
     /** Currently selected feed filter */
     var selectedFilter by mutableStateOf<FeedFilter>(FeedFilter.AllFriends)
@@ -512,6 +513,8 @@ class HomeViewModel : ViewModel() {
             optimisticFlicks.removeAt(optimisticIndex)
         }
 
+        // Keep successful optimistic items on screen until debounced refresh reconciles them.
+        // Only remove optimistic row from visible feed when we know it's a failed upload.
         val index = flicks.indexOfFirst { it.id == flickId }
         if (index >= 0) {
             flicks.removeAt(index)
@@ -576,6 +579,11 @@ class HomeViewModel : ViewModel() {
         // Drop optimistic entries once server has real data for that id or clientUploadId.
         optimisticFlicks.clear()
         optimisticFlicks.addAll(stillPendingOptimistic)
+
+        // Keep feed list aligned with pending optimistic state (prevents stale swaps).
+        flicks.removeAll { feedItem ->
+            feedItem.id.startsWith("optimistic_") && stillPendingOptimistic.none { it.id == feedItem.id }
+        }
 
         val merged = (stillPendingOptimistic + serverFlicks)
         val seenIds = HashSet<String>()

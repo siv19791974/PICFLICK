@@ -710,7 +710,7 @@ private fun FlickGrid(
                         if (!prefetchedFlickIds.add(flick.id)) continue
 
                         val request = ImageRequest.Builder(context)
-                            .data(withCacheBust(flick.imageUrl, flick.timestamp))
+                            .data(flick.imageUrl)
                             .memoryCachePolicy(CachePolicy.ENABLED)
                             .diskCachePolicy(CachePolicy.ENABLED)
                             .build()
@@ -756,7 +756,7 @@ private fun FlickGrid(
             // Show all items (scrollable)
             items(
                 items = flicks,
-                key = { it.id },
+                key = { flick -> if (flick.clientUploadId.isNotBlank()) "cu_${flick.clientUploadId}" else flick.id },
                 contentType = { "flick" }
             ) { flick ->
                 FlickCard(
@@ -817,19 +817,29 @@ private fun FlickCard(
         shape = RectangleShape, // NO rounded corners
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp), // No elevation
         colors = CardDefaults.cardColors(
-            containerColor = Color.Transparent // Transparent background
+            containerColor = Color.Black // Stable non-white background
         )
     ) {
         Box(
             modifier = Modifier.fillMaxSize()
         ) {
             // Photo
-            AsyncImage(
-                model = withCacheBust(flick.imageUrl, flick.timestamp),
-                contentDescription = null,
-                modifier = Modifier.fillMaxSize(), // Fill the exact height
-                contentScale = ContentScale.Crop
-            )
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black)
+            ) {
+                AsyncImage(
+                    model = ImageRequest.Builder(LocalContext.current)
+                        .data(flick.imageUrl)
+                        .memoryCachePolicy(CachePolicy.ENABLED)
+                        .diskCachePolicy(CachePolicy.ENABLED)
+                        .build(),
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxSize(), // Fill the exact height
+                    contentScale = ContentScale.Crop
+                )
+            }
             
             // Info overlay at bottom (username + reactions)
             Box(
