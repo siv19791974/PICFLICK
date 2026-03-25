@@ -12,6 +12,7 @@ import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -688,10 +689,10 @@ fun MainScreen(
                 homeViewModel.addOptimisticFlick(optimisticFlick)
             },
             onOptimisticRemove = { flickId, uploadSucceeded ->
-                // Cleanup optimistic row; schedule one debounced refresh to avoid batch churn.
-                homeViewModel.removeOptimisticFlick(flickId)
                 if (uploadSucceeded) {
                     homeViewModel.requestDebouncedFeedRefresh(profile.uid)
+                } else {
+                    homeViewModel.removeOptimisticFlick(flickId)
                 }
             }
         )
