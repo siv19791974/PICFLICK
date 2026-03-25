@@ -40,6 +40,7 @@ import com.picflick.app.ui.screens.AboutScreen
 import com.picflick.app.ui.screens.ChatDetailScreen
 import com.picflick.app.ui.screens.ChatsScreen
 import com.picflick.app.ui.screens.ContactScreen
+import com.picflick.app.ui.screens.DeveloperScreen
 import com.picflick.app.ui.screens.EditPhotoScreen
 import com.picflick.app.ui.screens.ExploreScreen
 import com.picflick.app.ui.screens.FilterScreen
@@ -271,6 +272,15 @@ fun AuthenticatedContent(
         )
 
         is Screen.Legal -> LegalScreen(
+            onBack = { onScreenChange(Screen.Settings) }
+        )
+
+        is Screen.Developer -> DeveloperScreen(
+            userProfile = userProfile,
+            authViewModel = authViewModel,
+            homeViewModel = homeViewModel,
+            uploadViewModel = uploadViewModel,
+            billingViewModel = billingViewModel,
             onBack = { onScreenChange(Screen.Settings) }
         )
 
@@ -904,7 +914,8 @@ private fun SettingsScreenContent(
         onAbout = { onScreenChange(Screen.About) },
         onPhilosophy = { onScreenChange(Screen.Philosophy) },
         onLegal = { onScreenChange(Screen.Legal) },
-        onProfileClick = { onScreenChange(Screen.Profile) }
+        onProfileClick = { onScreenChange(Screen.Profile) },
+        onDeveloper = { onScreenChange(Screen.Developer) }
     )
 }
 

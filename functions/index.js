@@ -241,5 +241,95 @@ exports.sendWelcomeNotification = functions.firestore
     return null;
   });
 
+/**
+ * Cloud Function: Send push notification to assigned support user on new feedback
+ */
+exports.sendFeedbackPushToDeveloper = functions.firestore
+  .document('feedback/{feedbackId}')
+  .onCreate(async (snap, context) => {
+    const feedback = snap.data() || {};
+    const supportUid = feedback.assignedToUid || 'LpSqE40IZGeAGMknTAEzysqp5l33';
+
+    try {
+      const supportUserDoc = await admin.firestore()
+        .collection('users')
+        .doc(supportUid)
+        .get();
+
+      if (!supportUserDoc.exists) {
+        console.log('Support user not found:', supportUid);
+        return null;
+      }
+
+      const supportData = supportUserDoc.data() || {};
+      const supportToken = supportData.fcmToken;
+
+      if (!supportToken) {
+        console.log('Support user has no FCM token:', supportUid);
+        return null;
+      }
+
+      const category = (feedback.category || 'GENERAL').toUpperCase();
+      const senderName = feedback.userName || 'Unknown user';
+      const title = `New Contact Us: ${category}`;
+      const body = `${senderName}: ${(feedback.subject || 'No subject').toString().slice(0, 80)}`;
+
+      const message = {
+        token: supportToken,
+        notification: {
+          title,
+          body,
+        },
+        data: {
+          type: 'SUPPORT_FEEDBACK',
+          feedbackId: context.params.feedbackId,
+          senderId: feedback.userId || '',
+          senderName,
+          targetScreen: 'settings',
+          click_action: 'FLUTTER_NOTIFICATION_CLICK',
+        },
+        android: {
+          priority: 'high',
+          notification: {
+            channelId: 'picflick_important_v2',
+            sound: 'default',
+            clickAction: 'FLUTTER_NOTIFICATION_CLICK',
+          },
+        },
+        apns: {
+          headers: {
+            'apns-priority': '10',
+          },
+          payload: {
+            aps: {
+              sound: 'default',
+              badge: 1,
+              category: 'IMPORTANT',
+            },
+          },
+        },
+      };
+
+      const response = await admin.messaging().send(message);
+      console.log('Support feedback push sent:', response);
+
+      await snap.ref.update({
+        pushSentToSupport: true,
+        pushSentToSupportAt: admin.firestore.FieldValue.serverTimestamp(),
+        assignedToUid: supportUid,
+      });
+
+      return response;
+    } catch (error) {
+      console.error('Error sending support feedback push:', error);
+      await snap.ref.update({
+        pushSentToSupport: false,
+        pushSupportError: error.message || 'unknown',
+        assignedToUid: supportUid,
+      });
+      return null;
+    }
+  });
+
 // Export purchase/subscription validation callables from the dedicated module.
 Object.assign(exports, require('./purchaseValidation'));

@@ -2684,6 +2684,7 @@ class FlickRepository private constructor() {
     ): Result<String> {
         return try {
             val docRef = db.collection("feedback").document()
+            val supportAssigneeUid = "LpSqE40IZGeAGMknTAEzysqp5l33"
             val feedback = hashMapOf(
                 "id" to docRef.id,
                 "userId" to userId,
@@ -2694,6 +2695,7 @@ class FlickRepository private constructor() {
                 "category" to category,
                 "timestamp" to System.currentTimeMillis(),
                 "status" to "NEW",
+                "assignedToUid" to supportAssigneeUid,
                 "appVersion" to appVersion,
                 "deviceInfo" to deviceInfo
             )
