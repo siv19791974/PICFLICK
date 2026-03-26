@@ -18,6 +18,7 @@ import com.picflick.app.utils.Analytics
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import java.io.IOException
 
 /**
  * ViewModel for the home screen feed displaying photo flicks
@@ -602,6 +603,33 @@ class HomeViewModel : ViewModel() {
         }
     }
 
+    internal suspend fun runUploadWithRetry(
+        maxRetries: Int = 3,
+        baseDelayMs: Long = 500L,
+        uploadCall: suspend () -> Result<String>
+    ): Result<String> {
+        var result: Result<String> = Result.Error(IllegalStateException("Upload failed"), "Upload failed")
+
+        repeat(maxRetries.coerceAtLeast(1)) { attempt ->
+            result = uploadCall()
+            val error = result as? Result.Error ?: return result
+
+            val message = error.message.lowercase()
+            val isTransient = message.contains("timeout") ||
+                message.contains("network") ||
+                message.contains("unavailable") ||
+                message.contains("tempor")
+
+            if (!isTransient || attempt == maxRetries - 1) {
+                return result
+            }
+
+            delay(baseDelayMs * (attempt + 1))
+        }
+
+        return result
+    }
+
     /**
      * Upload a new flick
      */
@@ -621,11 +649,9 @@ class HomeViewModel : ViewModel() {
             errorMessage = null
             
             try {
-                // Read image bytes
-                val inputStream = context.contentResolver.openInputStream(imageUri)
-                val imageBytes = inputStream?.readBytes()
-                inputStream?.close()
-                
+                // Read image bytes safely
+                val imageBytes = context.contentResolver.openInputStream(imageUri)?.use { it.readBytes() }
+
                 if (imageBytes == null) {
                     errorMessage = "Failed to read image"
                     isLoading = false
@@ -633,8 +659,13 @@ class HomeViewModel : ViewModel() {
                     return@launch
                 }
                 
-                // Upload image to Firebase Storage
-                val uploadResult = repository.uploadFlickImage(userId, imageBytes)
+                // Upload image to Firebase Storage with safe retries for transient failures
+                val uploadResult = runUploadWithRetry(
+                    maxRetries = 3,
+                    baseDelayMs = 500L
+                ) {
+                    repository.uploadFlickImage(userId, imageBytes)
+                }
                 
                 when (uploadResult) {
                     is Result.Success -> {
@@ -681,6 +712,10 @@ class HomeViewModel : ViewModel() {
                     }
                     is Result.Loading -> { }
                 }
+            } catch (_: IOException) {
+                errorMessage = "Upload failed: network error. Please retry."
+                isLoading = false
+                onComplete(false)
             } catch (e: Exception) {
                 errorMessage = "Upload failed: ${e.message}"
                 isLoading = false
