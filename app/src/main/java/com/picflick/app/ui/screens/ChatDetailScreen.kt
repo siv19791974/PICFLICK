@@ -26,6 +26,7 @@ import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.AttachFile
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
@@ -97,6 +98,7 @@ fun ChatDetailScreen(
     
     var messageText by remember { mutableStateOf("") }
     var replyToMessage by remember { mutableStateOf<ChatMessage?>(null) }
+    var editingMessageId by remember { mutableStateOf<String?>(null) }
     var showHeaderMenu by remember { mutableStateOf(false) }
     var activeReactionMessageId by remember { mutableStateOf<String?>(null) }
     val selectedMessageIds = remember { mutableStateListOf<String>() }
@@ -270,6 +272,29 @@ val listState = rememberLazyListState()
         }
     }
 
+    val selectedMessageForEdit = viewModel.messages.firstOrNull { it.id in selectedMessageIds }
+    val canEditSelectedMessage = selectedMessageForEdit?.let { selected ->
+        selectedMessageIds.size == 1 &&
+            selected.senderId == currentUser.uid &&
+            !selected.read &&
+            selected.imageUrl.isBlank() &&
+            selected.text.isNotBlank()
+    } == true
+
+    LaunchedEffect(editingMessageId, viewModel.messages, currentUser.uid) {
+        val editingId = editingMessageId ?: return@LaunchedEffect
+        val liveMessage = viewModel.messages.firstOrNull { it.id == editingId }
+        val canStillEdit = liveMessage != null &&
+            liveMessage.senderId == currentUser.uid &&
+            !liveMessage.read &&
+            liveMessage.imageUrl.isBlank() &&
+            liveMessage.text.isNotBlank()
+
+        if (!canStillEdit) {
+            editingMessageId = null
+        }
+    }
+
     // LAYOUT: Box + Column with keyboard-aware input
     Box(
         modifier = Modifier
@@ -322,6 +347,27 @@ val listState = rememberLazyListState()
                                         contentDescription = "Delete selected",
                                         tint = Color.White
                                     )
+                                }
+
+                                if (canEditSelectedMessage) {
+                                    IconButton(
+                                        onClick = {
+                                            val messageToEdit = selectedMessageForEdit
+                                            editingMessageId = messageToEdit.id
+                                            messageText = messageToEdit.text
+                                            replyToMessage = null
+                                            isSelectionMode = false
+                                            selectedMessageIds.clear()
+                                            activeReactionMessageId = null
+                                        },
+                                        modifier = Modifier.size(40.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Edit,
+                                            contentDescription = "Edit selected",
+                                            tint = Color.White
+                                        )
+                                    }
                                 }
 
                                 Text(
@@ -591,7 +637,37 @@ Column(modifier = Modifier.fillMaxSize()) {
                     Spacer(modifier = Modifier.height(4.dp))
                 }
 
-                if (viewModel.messages.isEmpty() && messageText.isBlank() && replyToMessage == null) {
+                if (editingMessageId != null) {
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        color = Color(0xFF1A1A1A),
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 10.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(
+                                text = "Editing message",
+                                color = Color.White,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            TextButton(onClick = {
+                                editingMessageId = null
+                                messageText = ""
+                            }) {
+                                Text("Cancel", color = Color.LightGray)
+                            }
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(4.dp))
+                }
+
+                if (viewModel.messages.isEmpty() && messageText.isBlank() && replyToMessage == null && editingMessageId == null) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.Center
@@ -626,7 +702,11 @@ Column(modifier = Modifier.fillMaxSize()) {
                         onValueChange = { messageText = it },
                         placeholder = {
                             Text(
-                                if (replyToMessage != null) "Reply to message..." else "Message",
+                                when {
+                                    editingMessageId != null -> "Edit message..."
+                                    replyToMessage != null -> "Reply to message..."
+                                    else -> "Message"
+                                },
                                 color = Color.Gray
                             )
                         },
@@ -646,14 +726,20 @@ Column(modifier = Modifier.fillMaxSize()) {
                         maxLines = 5
                     )
 
-                    if (replyToMessage != null) {
+                    if (replyToMessage != null || editingMessageId != null) {
                         IconButton(
-                            onClick = { replyToMessage = null },
+                            onClick = {
+                                replyToMessage = null
+                                editingMessageId = null
+                                if (messageText.isBlank()) {
+                                    messageText = ""
+                                }
+                            },
                             modifier = Modifier.size(36.dp)
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Close,
-                                contentDescription = "Cancel reply",
+                                contentDescription = "Cancel compose state",
                                 tint = Color.LightGray
                             )
                         }
@@ -665,21 +751,40 @@ Column(modifier = Modifier.fillMaxSize()) {
                     FloatingActionButton(
                         onClick = {
                             if (messageText.isNotBlank()) {
-                                viewModel.sendMessage(
-                                    chatId = chatId,
-                                    text = messageText.trim(),
-                                    senderId = currentUser.uid,
-                                    recipientId = otherUserId,
-                                    senderName = currentUser.displayName,
-                                    senderPhotoUrl = currentUser.photoUrl,
-                                    replyToMessage = replyToMessage
-                                ) {
-                                    messageText = ""
-                                    replyToMessage = null
-                                    viewModel.stopTyping(chatId, currentUser.uid)
-                                    scope.launch {
-                                        delay(80)
-                                        scrollToBottom()
+                                val messageToSubmit = messageText.trim()
+                                val editingId = editingMessageId
+                                if (editingId != null) {
+                                    viewModel.editMessage(
+                                        chatId = chatId,
+                                        messageId = editingId,
+                                        currentUserId = currentUser.uid,
+                                        newText = messageToSubmit
+                                    ) { success ->
+                                        if (success) {
+                                            messageText = ""
+                                            editingMessageId = null
+                                            viewModel.stopTyping(chatId, currentUser.uid)
+                                        } else {
+                                            editingMessageId = null
+                                        }
+                                    }
+                                } else {
+                                    viewModel.sendMessage(
+                                        chatId = chatId,
+                                        text = messageToSubmit,
+                                        senderId = currentUser.uid,
+                                        recipientId = otherUserId,
+                                        senderName = currentUser.displayName,
+                                        senderPhotoUrl = currentUser.photoUrl,
+                                        replyToMessage = replyToMessage
+                                    ) {
+                                        messageText = ""
+                                        replyToMessage = null
+                                        viewModel.stopTyping(chatId, currentUser.uid)
+                                        scope.launch {
+                                            delay(80)
+                                            scrollToBottom()
+                                        }
                                     }
                                 }
                             }
@@ -689,7 +794,7 @@ Column(modifier = Modifier.fillMaxSize()) {
                     ) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.Send,
-                            contentDescription = "Send",
+                            contentDescription = if (editingMessageId != null) "Save edit" else "Send",
                             tint = Color.White
                         )
                     }
@@ -1055,6 +1160,14 @@ Box(
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.End
                                 ) {
+                                    if (message.edited) {
+                                        Text(
+                                            text = "edited",
+                                            fontSize = 9.sp,
+                                            color = Color.Black.copy(alpha = 0.45f)
+                                        )
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                    }
                                     Text(
                                         text = formatMessageTime(message.timestamp),
                                         fontSize = 10.sp,
@@ -1211,6 +1324,14 @@ modifier = Modifier
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.End
                                 ) {
+                                    if (message.edited) {
+                                        Text(
+                                            text = "edited",
+                                            fontSize = 9.sp,
+                                            color = Color.Black.copy(alpha = 0.45f)
+                                        )
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                    }
                                     Text(
                                         text = formatMessageTime(message.timestamp),
                                         fontSize = 10.sp,

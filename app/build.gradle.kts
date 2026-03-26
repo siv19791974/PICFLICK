@@ -23,8 +23,8 @@ android {
         applicationId = "com.picflick.app"
         minSdk = 24
         targetSdk = 35
-        versionCode = 31
-        versionName = "1.2.4"
+        versionCode = 32
+        versionName = "1.2.5"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

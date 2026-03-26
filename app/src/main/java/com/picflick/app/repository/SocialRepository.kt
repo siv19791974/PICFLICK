@@ -283,13 +283,13 @@ class SocialRepository private constructor() {
      * Creates a follow accepted notification for the requester
      * @param currentUserId The current user (accepting)
      * @param requesterId The user who sent the request
-     * @param requesterName The requester's name for notification
+     * @param currentUserName The current user's display name for acceptance notification
      * @return Result success or error
      */
     suspend fun acceptFollowRequest(
         currentUserId: String,
-        requesterId: String,
-        requesterName: String
+        currentUserName: String,
+        requesterId: String
     ): Result<Unit> {
         return try {
             val batch = db.batch()
@@ -311,7 +311,7 @@ class SocialRepository private constructor() {
             // Create acceptance notification
             createFollowAcceptedNotification(
                 accepterId = currentUserId,
-                accepterName = requesterName,
+                accepterName = currentUserName,
                 requesterId = requesterId
             )
 
