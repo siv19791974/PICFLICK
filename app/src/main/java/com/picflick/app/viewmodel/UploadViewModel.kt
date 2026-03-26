@@ -23,6 +23,7 @@ import java.util.Locale
 import java.util.UUID
 import com.picflick.app.data.getDailyUploadLimit
 import com.picflick.app.data.getStorageLimitBytes
+import com.picflick.app.utils.Analytics
 
 /**
  * ViewModel for handling photo upload with filters and daily limits
@@ -253,15 +254,14 @@ class UploadViewModel : ViewModel() {
                 incrementTotalPhotos(userProfile.uid)
                 recalculateStorageUsedBytes(userProfile.uid)
 
-                val optimisticId = optimisticFlickId
-                if (optimisticId != null && onOptimisticRemove != null) {
-                    onOptimisticRemove(optimisticId, true)
-                }
+                onOptimisticRemove?.invoke(optimisticFlickId, true)
                 uploadSuccess = true
+                Analytics.trackPhotoUploaded(source = "single", privacy = "friends")
 
             } catch (e: Exception) {
                 optimisticFlickId?.let { onOptimisticRemove?.invoke(it, false) }
                 uploadError = e.message ?: "Upload failed"
+                Analytics.trackError("upload_single_failed")
             } finally {
                 isUploading = false
             }
@@ -382,10 +382,7 @@ class UploadViewModel : ViewModel() {
                     incrementTotalPhotos(userProfile.uid)
                     rollingStorageUsed += uploadedBytes
 
-                    val optimisticId = optimisticFlickId
-                    if (optimisticId != null && onOptimisticRemove != null) {
-                        onOptimisticRemove(optimisticId, true)
-                    }
+                    onOptimisticRemove?.invoke(optimisticFlickId, true)
                     successCount++
                 } catch (e: Exception) {
                     optimisticFlickId?.let { onOptimisticRemove?.invoke(it, false) }
@@ -398,6 +395,7 @@ class UploadViewModel : ViewModel() {
 
             if (successCount > 0) {
                 uploadSuccess = true
+                Analytics.trackPhotoUploaded(source = "batch", privacy = "friends")
                 onBatchSuccess?.invoke()
             }
             if (failCount > 0) {
@@ -406,6 +404,7 @@ class UploadViewModel : ViewModel() {
                 } else {
                     "Batch upload failed"
                 }
+                Analytics.trackError("upload_batch_failed")
             }
 
             isUploading = false

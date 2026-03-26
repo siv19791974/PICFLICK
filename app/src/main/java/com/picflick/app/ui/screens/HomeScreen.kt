@@ -64,6 +64,7 @@ import com.picflick.app.ui.theme.isDarkModeBackground
 import com.picflick.app.ui.theme.ThemeManager
 import com.picflick.app.util.rememberLiveUserPhotoUrl
 import com.picflick.app.util.withCacheBust
+import com.picflick.app.utils.Analytics
 import com.picflick.app.viewmodel.HomeViewModel
 import java.io.File
 import kotlinx.coroutines.delay
@@ -359,8 +360,14 @@ fun HomeScreen(
                                     delivered = false
                                 )
                                 when (val sendResult = chatRepository.sendMessage(sessionResult.data, message, friendId)) {
-                                    is com.picflick.app.data.Result.Success -> Toast.makeText(context, "Photo sent", Toast.LENGTH_SHORT).show()
-                                    is com.picflick.app.data.Result.Error -> Toast.makeText(context, sendResult.message, Toast.LENGTH_SHORT).show()
+                                    is com.picflick.app.data.Result.Success -> {
+                                        Analytics.trackPhotoShared()
+                                        Toast.makeText(context, "Photo sent", Toast.LENGTH_SHORT).show()
+                                    }
+                                    is com.picflick.app.data.Result.Error -> {
+                                        Analytics.trackError("share_to_friend_failed")
+                                        Toast.makeText(context, sendResult.message, Toast.LENGTH_SHORT).show()
+                                    }
                                     is com.picflick.app.data.Result.Loading -> Unit
                                 }
                             }
@@ -420,11 +427,13 @@ fun HomeScreen(
                                                 )
                                                 when (val sendResult = chatRepository.sendMessage(chatResult.data, message, friend.uid)) {
                                                     is com.picflick.app.data.Result.Success -> {
+                                                        Analytics.trackPhotoShared()
                                                         Toast.makeText(context, "Photo shared to ${friend.displayName}", Toast.LENGTH_SHORT).show()
                                                         showShareToChatDialog = false
                                                         flickToShare = null
                                                     }
                                                     is com.picflick.app.data.Result.Error -> {
+                                                        Analytics.trackError("share_to_chat_failed")
                                                         Toast.makeText(context, sendResult.message, Toast.LENGTH_SHORT).show()
                                                     }
                                                     else -> Unit
