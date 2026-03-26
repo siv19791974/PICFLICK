@@ -684,7 +684,12 @@ private fun FlickGrid(
 
         // Keep mapping from clientUploadId -> local optimistic URI.
         // Use TTL so bridge survives brief optimistic->real reconciliation gaps.
-        LaunchedEffect(flicks) {
+        // Trigger only when identity set changes (not on every object mutation/recomposition).
+        val flickIdentitySignature = buildString(flicks.size * 18) {
+            flicks.forEach { append(it.id).append('|').append(it.clientUploadId).append(';') }
+        }
+
+        LaunchedEffect(flickIdentitySignature) {
             val now = System.currentTimeMillis()
 
             flicks.forEach { flick ->
@@ -704,7 +709,11 @@ private fun FlickGrid(
             }
 
             val ttlMs = 180_000L // 3 minutes: supports long batch uploads before final server reconcile
-            val activeClientIds = flicks.mapNotNull { it.clientUploadId.takeIf { id -> id.isNotBlank() } }.toSet()
+            val activeClientIds = HashSet<String>(flicks.size)
+            flicks.forEach { flick ->
+                val clientId = flick.clientUploadId
+                if (clientId.isNotBlank()) activeClientIds.add(clientId)
+            }
 
             val staleBridgeKeys = optimisticImageBridge.keys.filter { clientId ->
                 if (activeClientIds.contains(clientId)) return@filter false
@@ -742,12 +751,19 @@ private fun FlickGrid(
                     if (lastVisibleIndex < 0 || flicks.isEmpty()) return@collect
 
                     val start = (lastVisibleIndex + 1).coerceAtMost(flicks.lastIndex)
-                    val end = (lastVisibleIndex + 9).coerceAtMost(flicks.lastIndex)
+                    val end = (lastVisibleIndex + 6).coerceAtMost(flicks.lastIndex)
                     if (start > end) return@collect
 
                     for (index in start..end) {
                         val flick = flicks[index]
                         if (!prefetchedFlickIds.add(flick.id)) continue
+
+                        // Skip local optimistic URIs for prefetch; they are already local and cheap.
+                        if (
+                            flick.imageUrl.startsWith("content://") ||
+                            flick.imageUrl.startsWith("file://") ||
+                            flick.imageUrl.startsWith("android.resource://")
+                        ) continue
 
                         val request = ImageRequest.Builder(context)
                             .data(flick.imageUrl)
@@ -763,13 +779,13 @@ private fun FlickGrid(
         LaunchedEffect(listState, flicks.size, isLoadingMore, canLoadMore) {
             snapshotFlow {
                 val lastVisibleIndex = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: -1
-                val thresholdIndex = (flicks.size - 5).coerceAtLeast(0)
+                val thresholdIndex = (flicks.size - 3).coerceAtLeast(0)
                 lastVisibleIndex >= thresholdIndex
             }
                 .distinctUntilChanged()
                 .collect { isNearBottom ->
                     if (isNearBottom && !isLoadingMore && canLoadMore && !hasRequestedForCurrentSize) {
-                        delay(120)
+                        delay(180)
                         val latestLastVisibleIndex = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: -1
                         val latestThreshold = (flicks.size - 5).coerceAtLeast(0)
                         val stillNearBottom = latestLastVisibleIndex >= latestThreshold
@@ -840,16 +856,15 @@ private fun FlickCard(
     rowHeight: androidx.compose.ui.unit.Dp
 ) {
     // Keep derived reaction display stable per reaction map change
-    val topReactionDisplay = remember(flick.reactions) {
-        val reactionCounts = flick.getReactionCounts()
-        val topReaction = reactionCounts.maxByOrNull { it.value }
-        (topReaction?.key?.toEmoji() ?: "❤️") to (topReaction?.value ?: 0)
-    }
-    val topReactionEmoji = topReactionDisplay.first
-    val topReactionCount = topReactionDisplay.second
+    val reactionCounts = flick.getReactionCounts()
+    val topReaction = reactionCounts.maxByOrNull { it.value }
+    val topReactionEmoji = topReaction?.key?.toEmoji() ?: "❤️"
+    val topReactionCount = topReaction?.value ?: 0
 
-    val localBridgeImage = remember(flick.clientUploadId, flick.imageUrl, optimisticImageBridge) {
-        if (flick.clientUploadId.isNotBlank()) optimisticImageBridge[flick.clientUploadId] else null
+    val localBridgeImage = if (flick.clientUploadId.isNotBlank()) {
+        optimisticImageBridge[flick.clientUploadId]
+    } else {
+        null
     }
 
     val isRemoteRow = !flick.id.startsWith("optimistic_")
@@ -865,7 +880,26 @@ private fun FlickCard(
         }
     }
     val shouldStageLocalBridge = isRemoteRow && !localBridgeImage.isNullOrBlank()
+    val context = LocalContext.current
 
+    val localImageRequest = remember(localBridgeImage) {
+        ImageRequest.Builder(context)
+            .data(localBridgeImage)
+            .memoryCachePolicy(CachePolicy.ENABLED)
+            .diskCachePolicy(CachePolicy.ENABLED)
+            .build()
+    }
+
+    val remoteImageRequest = remember(remoteImageUrl, shouldStageLocalBridge) {
+        ImageRequest.Builder(context)
+            .data(remoteImageUrl)
+            .apply {
+                if (shouldStageLocalBridge) crossfade(80)
+            }
+            .memoryCachePolicy(CachePolicy.ENABLED)
+            .diskCachePolicy(CachePolicy.ENABLED)
+            .build()
+    }
 
     Card(
         modifier = Modifier
@@ -893,11 +927,7 @@ private fun FlickCard(
                 if (shouldStageLocalBridge) {
                     // Layer 1: keep local optimistic image visible
                     AsyncImage(
-                        model = ImageRequest.Builder(LocalContext.current)
-                            .data(localBridgeImage)
-                            .memoryCachePolicy(CachePolicy.ENABLED)
-                            .diskCachePolicy(CachePolicy.ENABLED)
-                            .build(),
+                        model = localImageRequest,
                         contentDescription = null,
                         modifier = Modifier.fillMaxSize(),
                         contentScale = ContentScale.Crop
@@ -905,12 +935,7 @@ private fun FlickCard(
 
                     // Layer 2: remote image on top; remove bridge only after decode success
                     AsyncImage(
-                        model = ImageRequest.Builder(LocalContext.current)
-                            .data(remoteImageUrl)
-                            .crossfade(120)
-                            .memoryCachePolicy(CachePolicy.ENABLED)
-                            .diskCachePolicy(CachePolicy.ENABLED)
-                            .build(),
+                        model = remoteImageRequest,
                         contentDescription = null,
                         modifier = Modifier.fillMaxSize(),
                         contentScale = ContentScale.Crop,
@@ -930,12 +955,7 @@ private fun FlickCard(
                     )
                 } else {
                     AsyncImage(
-                        model = ImageRequest.Builder(LocalContext.current)
-                            .data(remoteImageUrl)
-                            .crossfade(120)
-                            .memoryCachePolicy(CachePolicy.ENABLED)
-                            .diskCachePolicy(CachePolicy.ENABLED)
-                            .build(),
+                        model = remoteImageRequest,
                         contentDescription = null,
                         modifier = Modifier.fillMaxSize(), // Fill the exact height
                         contentScale = ContentScale.Crop
