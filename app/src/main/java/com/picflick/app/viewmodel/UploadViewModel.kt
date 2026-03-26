@@ -15,6 +15,7 @@ import com.picflick.app.repository.FlickRepository
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.storage.FirebaseStorage
 import com.google.firebase.storage.StorageReference
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import java.util.Calendar
@@ -30,6 +31,8 @@ class UploadViewModel : ViewModel() {
 
     companion object {
         private const val STORAGE_HARD_STOP_THRESHOLD = 1.10
+        private const val MAX_UPLOAD_RETRIES = 3
+        private const val RETRY_BASE_DELAY_MS = 500L
     }
 
     private val storage = FirebaseStorage.getInstance()
@@ -78,7 +81,7 @@ class UploadViewModel : ViewModel() {
                     dailyUploadCount = userProfile.dailyUploadsToday
                 }
                 
-            } catch (e: Exception) {
+            } catch (_: Exception) {
                 // If error, use the profile value or assume 0
                 dailyUploadCount = userProfile.dailyUploadsToday
             } finally {
@@ -166,7 +169,7 @@ class UploadViewModel : ViewModel() {
         context: Context,
         photoUri: Uri,
         userProfile: UserProfile,
-        filter: PhotoFilter,
+        @Suppress("UNUSED_PARAMETER") filter: PhotoFilter,
         taggedFriends: List<String> = emptyList(),
         description: String = "",
         onOptimisticAdd: ((Flick) -> Unit)? = null,
@@ -250,7 +253,10 @@ class UploadViewModel : ViewModel() {
                 incrementTotalPhotos(userProfile.uid)
                 recalculateStorageUsedBytes(userProfile.uid)
 
-                optimisticFlickId?.let { onOptimisticRemove?.invoke(it, true) }
+                val optimisticId = optimisticFlickId
+                if (optimisticId != null && onOptimisticRemove != null) {
+                    onOptimisticRemove(optimisticId, true)
+                }
                 uploadSuccess = true
 
             } catch (e: Exception) {
@@ -376,7 +382,10 @@ class UploadViewModel : ViewModel() {
                     incrementTotalPhotos(userProfile.uid)
                     rollingStorageUsed += uploadedBytes
 
-                    optimisticFlickId?.let { onOptimisticRemove?.invoke(it, true) }
+                    val optimisticId = optimisticFlickId
+                    if (optimisticId != null && onOptimisticRemove != null) {
+                        onOptimisticRemove(optimisticId, true)
+                    }
                     successCount++
                 } catch (e: Exception) {
                     optimisticFlickId?.let { onOptimisticRemove?.invoke(it, false) }
@@ -415,14 +424,28 @@ class UploadViewModel : ViewModel() {
         val imageName = "photos/${userId}/${UUID.randomUUID()}.jpg"
         val imageRef = storageRef.child(imageName)
 
-        // Upload the file
-        context.contentResolver.openInputStream(photoUri)?.use { inputStream ->
-            imageRef.putStream(inputStream).await()
-        } ?: throw IllegalStateException("Cannot open photo stream")
+        var lastError: Exception? = null
 
-        // Get exact uploaded size + download URL
-        val uploadedBytes = imageRef.metadata.await().sizeBytes
-        val downloadUrl = imageRef.downloadUrl.await().toString()
-        return downloadUrl to uploadedBytes
+        repeat(MAX_UPLOAD_RETRIES) { attempt ->
+            try {
+                // Re-open stream on every retry attempt (streams are one-shot).
+                context.contentResolver.openInputStream(photoUri)?.use { inputStream ->
+                    imageRef.putStream(inputStream).await()
+                } ?: throw IllegalStateException("Cannot open photo stream")
+
+                // Get exact uploaded size + download URL
+                val uploadedBytes = imageRef.metadata.await().sizeBytes
+                val downloadUrl = imageRef.downloadUrl.await().toString()
+                return downloadUrl to uploadedBytes
+            } catch (e: Exception) {
+                lastError = e
+                if (attempt < MAX_UPLOAD_RETRIES - 1) {
+                    val delayMs = RETRY_BASE_DELAY_MS * (attempt + 1)
+                    delay(delayMs)
+                }
+            }
+        }
+
+        throw lastError ?: IllegalStateException("Upload failed")
     }
 }
