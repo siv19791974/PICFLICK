@@ -753,14 +753,14 @@ private fun FlickGrid(
         }
 
         // Prefetch upcoming images just beyond current viewport
-        LaunchedEffect(listState, flicks) {
+        LaunchedEffect(listState, flicks, isLoadingMore) {
             snapshotFlow { listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: -1 }
                 .distinctUntilChanged()
                 .collect { lastVisibleIndex ->
-                    if (lastVisibleIndex < 0 || flicks.isEmpty()) return@collect
+                    if (lastVisibleIndex < 0 || flicks.isEmpty() || isLoadingMore) return@collect
 
                     val start = (lastVisibleIndex + 1).coerceAtMost(flicks.lastIndex)
-                    val end = (lastVisibleIndex + 6).coerceAtMost(flicks.lastIndex)
+                    val end = (lastVisibleIndex + 4).coerceAtMost(flicks.lastIndex)
                     if (start > end) return@collect
 
                     for (index in start..end) {
@@ -774,10 +774,19 @@ private fun FlickGrid(
                             flick.imageUrl.startsWith("android.resource://")
                         ) continue
 
+                        // IMPORTANT: match the same URL transformation used by FlickCard
+                        // so prefetched bytes hit the exact same Coil cache key.
+                        val prefetchUrl = if (flick.timestamp > 0L) {
+                            withCacheBust(flick.imageUrl, flick.timestamp)
+                        } else {
+                            flick.imageUrl
+                        }
+
                         val request = ImageRequest.Builder(context)
-                            .data(flick.imageUrl)
+                            .data(prefetchUrl)
                             .memoryCachePolicy(CachePolicy.ENABLED)
                             .diskCachePolicy(CachePolicy.ENABLED)
+                            .networkCachePolicy(CachePolicy.ENABLED)
                             .build()
                         prefetchImageLoader.enqueue(request)
                     }
@@ -788,15 +797,15 @@ private fun FlickGrid(
         LaunchedEffect(listState, flicks.size, isLoadingMore, canLoadMore) {
             snapshotFlow {
                 val lastVisibleIndex = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: -1
-                val thresholdIndex = (flicks.size - 3).coerceAtLeast(0)
+                val thresholdIndex = (flicks.size - 2).coerceAtLeast(0)
                 lastVisibleIndex >= thresholdIndex
             }
                 .distinctUntilChanged()
                 .collect { isNearBottom ->
                     if (isNearBottom && !isLoadingMore && canLoadMore && !hasRequestedForCurrentSize) {
-                        delay(180)
+                        delay(220)
                         val latestLastVisibleIndex = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: -1
-                        val latestThreshold = (flicks.size - 5).coerceAtLeast(0)
+                        val latestThreshold = (flicks.size - 3).coerceAtLeast(0)
                         val stillNearBottom = latestLastVisibleIndex >= latestThreshold
                         if (stillNearBottom && !hasRequestedForCurrentSize) {
                             hasRequestedForCurrentSize = true
@@ -907,6 +916,7 @@ private fun FlickCard(
             }
             .memoryCachePolicy(CachePolicy.ENABLED)
             .diskCachePolicy(CachePolicy.ENABLED)
+            .networkCachePolicy(CachePolicy.ENABLED)
             .build()
     }
 

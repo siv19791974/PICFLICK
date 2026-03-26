@@ -309,20 +309,23 @@ class NotificationViewModel : ViewModel() {
             android.util.Log.d("NotificationViewModel", "Deleted notification $notificationId from Firestore")
             
             // Accept the follow request
-            flickRepository.getUserProfile(requesterId) { result ->
-                if (result is Result.Success) {
-                    val requester = result.data
-                    viewModelScope.launch {
-                        val acceptResult = flickRepository.acceptFollowRequest(
-                            currentUserId = currentUserId,
-                            requesterId = requesterId,
-                            requesterName = requester.displayName
-                        )
-                        if (acceptResult is Result.Success) {
-                            android.util.Log.d("NotificationViewModel", "Successfully accepted friend request")
-                        } else {
-                            android.util.Log.e("NotificationViewModel", "Failed to accept friend request")
-                        }
+            flickRepository.getUserProfile(currentUserId) { result ->
+                val currentUserName = if (result is Result.Success) {
+                    result.data.displayName.ifBlank { "Someone" }
+                } else {
+                    "Someone"
+                }
+
+                viewModelScope.launch {
+                    val acceptResult = flickRepository.acceptFollowRequest(
+                        currentUserId = currentUserId,
+                        currentUserName = currentUserName,
+                        requesterId = requesterId
+                    )
+                    if (acceptResult is Result.Success) {
+                        android.util.Log.d("NotificationViewModel", "Successfully accepted friend request")
+                    } else {
+                        android.util.Log.e("NotificationViewModel", "Failed to accept friend request")
                     }
                 }
             }

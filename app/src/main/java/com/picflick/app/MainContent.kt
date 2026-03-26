@@ -1225,7 +1225,7 @@ private fun UserProfileScreenContent(
                 friendsViewModel.sendFollowRequest(userProfile.uid, target, userProfile)
             },
             onAcceptRequest = {
-                friendsViewModel.acceptFollowRequest(userProfile.uid, target)
+                friendsViewModel.acceptFollowRequest(userProfile.uid, userProfile.displayName, target)
                 authViewModel.reloadUserProfile()
             },
             onMessageClick = {

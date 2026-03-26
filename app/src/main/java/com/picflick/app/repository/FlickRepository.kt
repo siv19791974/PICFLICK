@@ -1102,8 +1102,8 @@ class FlickRepository private constructor() {
      */
     suspend fun acceptFollowRequest(
         currentUserId: String,
-        requesterId: String,
-        requesterName: String
+        currentUserName: String,
+        requesterId: String
     ): Result<Unit> {
         return try {
             val batch = db.batch()
@@ -1127,7 +1127,7 @@ class FlickRepository private constructor() {
             // Create acceptance notification
             createFollowAcceptedNotification(
                 accepterId = currentUserId,
-                accepterName = requesterName,
+                accepterName = currentUserName,
                 requesterId = requesterId
             )
 

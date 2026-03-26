@@ -365,6 +365,30 @@ class ChatViewModel : ViewModel() {
     }
 
     /**
+     * Edit one of the current user's sent messages while still unread by recipient.
+     */
+    fun editMessage(
+        chatId: String,
+        messageId: String,
+        currentUserId: String,
+        newText: String,
+        onComplete: (Boolean) -> Unit = {}
+    ) {
+        viewModelScope.launch {
+            when (val result = repository.editMessage(chatId, messageId, currentUserId, newText)) {
+                is Result.Success -> {
+                    onComplete(true)
+                }
+                is Result.Error -> {
+                    errorMessage = result.message
+                    onComplete(false)
+                }
+                is Result.Loading -> Unit
+            }
+        }
+    }
+
+    /**
      * Add reaction to message
      */
     fun addReaction(chatId: String, messageId: String, userId: String, emoji: String, senderName: String, senderPhotoUrl: String) {

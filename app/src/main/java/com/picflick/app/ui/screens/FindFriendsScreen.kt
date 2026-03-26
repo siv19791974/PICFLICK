@@ -124,7 +124,7 @@ fun FindFriendsScreen(
                             onProfileRefresh() // Refresh to update button state
                         }
                         "accept" -> {
-                            viewModel.acceptFollowRequest(userProfile.uid, user)
+                            viewModel.acceptFollowRequest(userProfile.uid, userProfile.displayName, user)
                             onProfileRefresh() // Refresh to update button state
                         }
                         "send_request" -> {
@@ -155,7 +155,7 @@ fun FindFriendsScreen(
                             onProfileRefresh() // Refresh to update button state
                         }
                         "accept" -> {
-                            viewModel.acceptFollowRequest(userProfile.uid, user)
+                            viewModel.acceptFollowRequest(userProfile.uid, userProfile.displayName, user)
                             onProfileRefresh() // Refresh to update button state
                         }
                         "send_request" -> {

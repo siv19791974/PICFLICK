@@ -210,9 +210,10 @@ class HomeViewModel : ViewModel() {
                     isLoadingMore = false
                 }
                 is Result.Error -> {
-                    // Keep UI responsive and expose one-shot signal for fullscreen toast diagnostics
+                    // Keep UI responsive and retry-friendly after transient failures.
                     isLoadingMore = false
-                    canLoadMore = false
+                    canLoadMore = true
+                    lastLoadMoreRequestKey = null
                     loadMoreFailureMessage = result.message.ifBlank { "Failed to load more photos" }
                     loadMoreFailureVersion += 1
                 }

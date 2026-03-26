@@ -425,6 +425,61 @@ class ChatRepository {
     }
 
     /**
+     * Edit a message (only sender and only while unread by recipient).
+     */
+    suspend fun editMessage(chatId: String, messageId: String, currentUserId: String, newText: String): Result<Unit> {
+        return try {
+            val trimmedText = newText.trim()
+            if (trimmedText.isBlank()) {
+                return Result.Error(Exception("Message cannot be empty"), "Message cannot be empty")
+            }
+
+            val messageRef = db.collection("chatSessions")
+                .document(chatId)
+                .collection("messages")
+                .document(messageId)
+
+            val messageDoc = messageRef.get().await()
+            if (!messageDoc.exists()) {
+                return Result.Error(Exception("Message not found"), "Message not found")
+            }
+
+            val senderId = messageDoc.getString("senderId").orEmpty()
+            val read = messageDoc.getBoolean("read") ?: false
+
+            if (senderId != currentUserId) {
+                return Result.Error(Exception("You can only edit your own messages"), "You can only edit your own messages")
+            }
+
+            if (read) {
+                return Result.Error(Exception("Message already read and cannot be edited"), "Message already read and cannot be edited")
+            }
+
+            val editedAt = System.currentTimeMillis()
+            messageRef.update(
+                mapOf(
+                    "text" to trimmedText,
+                    "edited" to true,
+                    "editedAt" to editedAt
+                )
+            ).await()
+
+            val chatSessionRef = db.collection("chatSessions").document(chatId)
+            val sessionDoc = chatSessionRef.get().await()
+            val lastMessageText = sessionDoc.getString("lastMessage").orEmpty()
+            val messageImageUrl = messageDoc.getString("imageUrl").orEmpty()
+            val previousPreview = if (messageImageUrl.isNotBlank() && messageDoc.getString("text").orEmpty().isBlank()) "📷 Photo" else messageDoc.getString("text").orEmpty()
+            if (lastMessageText == previousPreview) {
+                chatSessionRef.update("lastMessage", trimmedText).await()
+            }
+
+            Result.Success(Unit)
+        } catch (e: Exception) {
+            Result.Error(e, e.message ?: "Failed to edit message")
+        }
+    }
+
+    /**
      * Add reaction to a message
      */
     suspend fun addReaction(chatId: String, messageId: String, userId: String, emoji: String, senderName: String, senderPhotoUrl: String): Result<Unit> {

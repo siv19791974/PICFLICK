@@ -249,10 +249,14 @@ class FriendsViewModel : ViewModel() {
     /**
      * Accept a follow request
      */
-    fun acceptFollowRequest(currentUserId: String, requester: UserProfile) {
+    fun acceptFollowRequest(currentUserId: String, currentUserName: String, requester: UserProfile) {
         addProcessingUser(requester.uid)
         viewModelScope.launch {
-            socialRepository.acceptFollowRequest(currentUserId, requester.uid, requester.displayName)
+            socialRepository.acceptFollowRequest(
+                currentUserId = currentUserId,
+                currentUserName = currentUserName.ifBlank { "Someone" },
+                requesterId = requester.uid
+            )
             removeProcessingUser(requester.uid)
             Analytics.trackFriendRequestAccepted()
         }
