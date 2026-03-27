@@ -43,6 +43,7 @@ import com.picflick.app.R
 import com.picflick.app.data.Flick
 import com.picflick.app.data.ReactionType
 import com.picflick.app.data.UserProfile
+import com.picflick.app.data.toEmoji
 import com.picflick.app.ui.components.AnimatedReactionPicker
 import com.picflick.app.ui.theme.isDarkModeBackground
 import com.picflick.app.data.getColor
@@ -72,6 +73,10 @@ fun UserProfileScreen(
     onBlockUser: () -> Unit = {},
     onUnfriend: () -> Unit = {}, // NEW: Delete friend/unfriend
     onRefresh: () -> Unit = {},
+    onFriendsClick: () -> Unit = {},
+    onAchievementsClick: () -> Unit = {},
+    onPlanClick: () -> Unit = {},
+    achievementsValue: Int = 0,
     onReaction: (Flick, ReactionType?) -> Unit = { _, _ -> } // NEW: Reaction callback
 ) {
     BackHandler(onBack = onBack)
@@ -85,14 +90,26 @@ fun UserProfileScreen(
     // Reaction picker state for long-press on photos
     var showReactionPicker by remember { mutableStateOf(false) }
     var flickForReaction by remember { mutableStateOf<Flick?>(null) }
-    
+
     // Dark mode state
     val isDarkMode = com.picflick.app.ui.theme.ThemeManager.isDarkMode.value
     val configuration = LocalConfiguration.current
     val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
-val primaryTextColor = if (isDarkMode) Color.White else Color.Black
+    val primaryTextColor = if (isDarkMode) Color.White else Color.Black
     val secondaryTextColor = if (isDarkMode) Color.Gray else Color.Black.copy(alpha = 0.7f)
     val tierRingColor = userProfile.getEffectiveTier().getColor()
+    val friendsCount = remember(userProfile.followers, userProfile.following) {
+        userProfile.followers.intersect(userProfile.following.toSet()).size
+    }
+    val planValue = remember(userProfile.getEffectiveTier()) {
+        when (userProfile.getEffectiveTier()) {
+            com.picflick.app.data.SubscriptionTier.FREE -> "FREE"
+            com.picflick.app.data.SubscriptionTier.STANDARD -> "STD"
+            com.picflick.app.data.SubscriptionTier.PLUS -> "PLUS"
+            com.picflick.app.data.SubscriptionTier.PRO -> "PRO"
+            com.picflick.app.data.SubscriptionTier.ULTRA -> "ULTRA"
+        }
+    }
 
     Box(
         modifier = Modifier
@@ -114,7 +131,7 @@ val primaryTextColor = if (isDarkMode) Color.White else Color.Black
             Box(
                 modifier = Modifier
                     .size(avatarSize)
-.clip(CircleShape)
+                    .clip(CircleShape)
                     .background(Color.DarkGray.copy(alpha = 0.3f))
                     .border(4.dp, tierRingColor, CircleShape)
                     .clickable { onProfilePhotoClick() },
@@ -156,8 +173,9 @@ val primaryTextColor = if (isDarkMode) Color.White else Color.Black
                     text = userProfile.bio,
                     fontSize = 14.sp,
                     color = secondaryTextColor,
-                    modifier = Modifier                        .padding(horizontal = sidePadding)
-)
+                    modifier = Modifier
+                        .padding(horizontal = sidePadding)
+                )
                 Spacer(modifier = Modifier.height(10.dp))
             }
 
@@ -170,7 +188,7 @@ val primaryTextColor = if (isDarkMode) Color.White else Color.Black
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = sidePadding)
-) {
+                ) {
                     Text("Send Message")
                 }
 
@@ -191,6 +209,41 @@ val primaryTextColor = if (isDarkMode) Color.White else Color.Black
                 Spacer(modifier = Modifier.height(16.dp))
             }
 
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 8.dp),
+                horizontalArrangement = Arrangement.SpaceEvenly,
+                verticalAlignment = Alignment.Top
+            ) {
+                UserProfileStatItem(
+                    value = photos.size.toString(),
+                    label = "POSTS",
+                    isDarkMode = isDarkMode,
+                    onClick = {
+                        // Keep behavior same as ProfileScreen: jump to posts grid section
+                    }
+                )
+                UserProfileStatItem(
+                    value = friendsCount.toString(),
+                    label = "FRIENDS",
+                    isDarkMode = isDarkMode,
+                    onClick = onFriendsClick
+                )
+                UserProfileStatItem(
+                    value = achievementsValue.toString(),
+                    label = "ACHEIVEMENTS",
+                    isDarkMode = isDarkMode,
+                    onClick = onAchievementsClick
+                )
+                UserProfileStatItem(
+                    value = planValue,
+                    label = "PLAN",
+                    isDarkMode = isDarkMode,
+                    onClick = onPlanClick
+                )
+            }
+
             Spacer(modifier = Modifier.height(12.dp))
 
             // Photos Grid (only for friends)
@@ -202,17 +255,6 @@ val primaryTextColor = if (isDarkMode) Color.White else Color.Black
                         fontSize = 16.sp
                     )
                 } else {
-                    Text(
-                        text = "${photos.size} photos",
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = primaryTextColor,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 8.dp),
-                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
-                    )
-
                     // Match ProfileScreen standard sizing exactly
                     val rowCount = ((photos.size + 2) / 3).coerceAtLeast(4)
                     val homeLikeRowHeight = 148.dp
@@ -265,15 +307,16 @@ val primaryTextColor = if (isDarkMode) Color.White else Color.Black
                     text = "${userProfile.displayName} wants to be friends",
                     fontSize = 16.sp,
                     color = primaryTextColor,
-                    modifier = Modifier                        .padding(horizontal = sidePadding)
-)
+                    modifier = Modifier
+                        .padding(horizontal = sidePadding)
+                )
                 Spacer(modifier = Modifier.height(16.dp))
                 Button(
                     onClick = onAcceptRequest,
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = sidePadding)
-) {
+                ) {
                     Text("Accept Friend Request")
                 }
             } else if (hasSentRequest) {
@@ -282,8 +325,9 @@ val primaryTextColor = if (isDarkMode) Color.White else Color.Black
                     text = "Friend request sent",
                     fontSize = 16.sp,
                     color = secondaryTextColor,
-                    modifier = Modifier                        .padding(horizontal = sidePadding)
-)
+                    modifier = Modifier
+                        .padding(horizontal = sidePadding)
+                )
             } else {
                 // Add friend button
                 Button(
@@ -291,7 +335,7 @@ val primaryTextColor = if (isDarkMode) Color.White else Color.Black
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = sidePadding)
-) {
+                ) {
                     Text("Add Friend")
                 }
             }
@@ -370,6 +414,45 @@ val primaryTextColor = if (isDarkMode) Color.White else Color.Black
     // End of Box (pull-refresh container)
 }
 
+@Composable
+private fun UserProfileStatItem(
+    value: String,
+    label: String,
+    isDarkMode: Boolean,
+    onClick: () -> Unit = {}
+) {
+    val circleColor = if (isDarkMode) Color(0xFF2B3F56) else Color(0xFFB7D8F2)
+    val valueColor = if (isDarkMode) Color.White else Color(0xFF0D2A45)
+    val labelColor = if (isDarkMode) Color(0xFFBFD6EA) else Color(0xFF1F4D74)
+
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier.clickable { onClick() }
+    ) {
+        Box(
+            modifier = Modifier
+                .size(74.dp)
+                .clip(CircleShape)
+                .background(circleColor),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = value,
+                fontSize = 20.sp,
+                fontWeight = FontWeight.ExtraBold,
+                color = valueColor
+            )
+        }
+        Spacer(modifier = Modifier.height(6.dp))
+        Text(
+            text = label,
+            fontSize = 11.sp,
+            color = labelColor,
+            fontWeight = FontWeight.SemiBold
+        )
+    }
+}
+
 /**
  * Photo card for profile grids - matches Home Feed FlickCard with reactions
  */
@@ -403,67 +486,34 @@ private fun ProfilePhotoCard(
         Box(
             modifier = Modifier.fillMaxSize()
         ) {
-            // Photo
+            val model = withCacheBust(flick.imageUrl, flick.timestamp)
             AsyncImage(
-                model = withCacheBust(flick.imageUrl, flick.timestamp),
-                contentDescription = null,
+                model = model,
+                contentDescription = "Photo",
                 modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Crop
+                contentScale = ContentScale.Crop,
+                error = painterResource(id = android.R.drawable.ic_menu_report_image)
             )
-
-            // Fixed mini info banner (same style as Home/Profile)
-            Box(
-                modifier = Modifier
-                    .align(Alignment.BottomStart)
-                    .fillMaxWidth()
-                    .height(20.dp)
-                    .background(color = Color.Black.copy(alpha = 0.5f))
-                    .padding(horizontal = 4.dp, vertical = 1.dp),
-                contentAlignment = Alignment.CenterStart
-            ) {
-                val overlayTextStyle = MaterialTheme.typography.labelSmall.copy(
-                    fontSize = 10.sp,
-                    platformStyle = PlatformTextStyle(includeFontPadding = false)
-                )
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+            if (topReactionCount > 0) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(4.dp)
+                        .clip(CircleShape)
+                        .background(Color.Black.copy(alpha = 0.7f))
+                        .padding(horizontal = 6.dp, vertical = 2.dp)
                 ) {
                     Text(
-                        text = flick.userName,
+                        text = "$topReactionEmoji $topReactionCount",
+                        fontSize = 10.sp,
                         color = Color.White,
-                        style = overlayTextStyle.copy(fontWeight = FontWeight.SemiBold),
-                        maxLines = 1,
-                        modifier = Modifier.weight(1f)
+                        fontWeight = FontWeight.Bold,
+                        style = androidx.compose.ui.text.TextStyle(
+                            platformStyle = PlatformTextStyle(includeFontPadding = false)
+                        )
                     )
-
-                    Box(
-                        modifier = Modifier.width(36.dp),
-                        contentAlignment = Alignment.CenterEnd
-                    ) {
-                        if (topReactionCount > 0) {
-                            Text(
-                                text = "$topReactionEmoji $topReactionCount",
-                                style = overlayTextStyle,
-                                color = Color.White
-                            )
-                        }
-                    }
                 }
             }
         }
     }
-}
-
-/**
- * Convert ReactionType to emoji string
- */
-private fun ReactionType.toEmoji(): String = when (this) {
-    ReactionType.LIKE -> "❤️"
-    ReactionType.LOVE -> "😍"
-    ReactionType.LAUGH -> "😂"
-    ReactionType.WOW -> "😮"
-    ReactionType.FIRE -> "🔥"
 }
