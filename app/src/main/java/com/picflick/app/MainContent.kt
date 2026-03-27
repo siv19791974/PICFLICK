@@ -1151,6 +1151,12 @@ private fun UserProfileScreenContent(
     val hasSentRequest = userProfile.sentFollowRequests.contains(targetUserId)
     val hasReceivedRequest = userProfile.pendingFollowRequests.contains(targetUserId)
 
+    LaunchedEffect(userProfile.uid, userProfile.following) {
+        if (userProfile.following.isNotEmpty()) {
+            friendsViewModel.loadFollowingUsers(userProfile.following)
+        }
+    }
+
     LaunchedEffect(targetUserId) {
         isLoading = true
         repository.getUserProfile(targetUserId) { result ->
@@ -1332,7 +1338,11 @@ private fun UserProfileScreenContent(
                     onScreenChange(Screen.UserProfile(userId))
                 }
             },
-            onReaction = { _, _ -> /* Can't react to other users' photos */ }
+            onReaction = { _, _ -> /* Can't react to other users' photos */ },
+            friendProfiles = friendsViewModel.followingUsers.associateBy { it.uid } + mapOf(
+                target.uid to target,
+                userProfile.uid to userProfile
+            )
         )
     } ?: run {
         Box(
@@ -1492,7 +1502,8 @@ private fun UserProfilePhotoViewer(
     onNavigateToPhoto: (Int) -> Unit,
     onNavigateToFindFriends: () -> Unit,
     onUserProfileClick: (String) -> Unit,
-    onReaction: (Flick, ReactionType?) -> Unit
+    onReaction: (Flick, ReactionType?) -> Unit,
+    friendProfiles: Map<String, UserProfile>
 ) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
@@ -1531,13 +1542,17 @@ private fun UserProfilePhotoViewer(
                     Toast.makeText(context, "Photo unavailable to share", Toast.LENGTH_SHORT).show()
                 } else {
                     coroutineScope.launch {
+                        val friendProfile = friendProfiles[friendId]
+                        val friendName = friendProfile?.displayName?.ifBlank { "Friend" } ?: "Friend"
+                        val friendPhoto = friendProfile?.photoUrl ?: ""
+
                         when (val sessionResult = chatRepository.getOrCreateChatSession(
                             userId1 = currentUser.uid,
                             userId2 = friendId,
                             user1Name = currentUser.displayName,
-                            user2Name = "Friend",
+                            user2Name = friendName,
                             user1Photo = currentUser.photoUrl,
-                            user2Photo = ""
+                            user2Photo = friendPhoto
                         )) {
                             is com.picflick.app.data.Result.Success -> {
                                 val message = ChatMessage(
@@ -1563,7 +1578,8 @@ private fun UserProfilePhotoViewer(
                         }
                     }
                 }
-            }
+            },
+            friendProfiles = friendProfiles
         )
     }
 }
