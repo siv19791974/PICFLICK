@@ -246,6 +246,7 @@ fun AuthenticatedContent(
             friendsViewModel = friendsViewModel,
             authViewModel = authViewModel,
             homeViewModel = homeViewModel,
+            profileViewModel = profileViewModel,
             onScreenChange = onScreenChange
         )
 
@@ -1132,6 +1133,7 @@ private fun UserProfileScreenContent(
     friendsViewModel: FriendsViewModel,
     authViewModel: AuthViewModel,
     homeViewModel: HomeViewModel,
+    profileViewModel: ProfileViewModel,
     onScreenChange: (Screen) -> Unit
 ) {
     val context = LocalContext.current
@@ -1143,6 +1145,7 @@ private fun UserProfileScreenContent(
     var targetUser by remember { mutableStateOf<UserProfile?>(null) }
     var targetUserPhotos by remember { mutableStateOf<List<Flick>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
+    var targetUserStreak by remember { mutableIntStateOf(0) }
 
     val targetUserId = (currentScreen as Screen.UserProfile).userId
     val isCurrentUser = targetUserId == userProfile.uid
@@ -1171,9 +1174,20 @@ private fun UserProfileScreenContent(
                                 }
                                 else -> targetUserPhotos = emptyList()
                             }
+                            scope.launch {
+                                when (val streakResult = repository.getUserStreak(targetUserId)) {
+                                    is com.picflick.app.data.Result.Success -> {
+                                        targetUserStreak = streakResult.data.first
+                                    }
+                                    else -> {
+                                        targetUserStreak = 0
+                                    }
+                                }
+                            }
                             isLoading = false
                         }
                     } else {
+                        targetUserStreak = 0
                         isLoading = false
                     }
                 }
@@ -1201,9 +1215,20 @@ private fun UserProfileScreenContent(
                             if (photosResult is com.picflick.app.data.Result.Success<List<Flick>>) {
                                 targetUserPhotos = photosResult.data
                             }
+                            scope.launch {
+                                when (val streakResult = repository.getUserStreak(target.uid)) {
+                                    is com.picflick.app.data.Result.Success -> {
+                                        targetUserStreak = streakResult.data.first
+                                    }
+                                    else -> {
+                                        targetUserStreak = 0
+                                    }
+                                }
+                            }
                             isLoading = false
                         }
                     } else {
+                        targetUserStreak = 0
                         isLoading = false
                     }
                 }
@@ -1304,6 +1329,19 @@ private fun UserProfileScreenContent(
                 Toast.makeText(context, "${target.displayName} has been removed from friends", Toast.LENGTH_LONG).show()
                 onScreenChange(Screen.Home)
             },
+            onFriendsClick = {
+                onScreenChange(Screen.Friends)
+            },
+            onAchievementsClick = {
+                // Use User B data on the shared achievements screen path
+                profileViewModel.loadUserPhotos(target.uid)
+                onScreenChange(Screen.StreakAchievements)
+            },
+            onPlanClick = {
+                // Always open User A plan details
+                onScreenChange(Screen.PlanOptions)
+            },
+            achievementsValue = targetUserStreak,
             onReaction = { flick, reactionType ->
                 homeViewModel.toggleReaction(
                     flick,

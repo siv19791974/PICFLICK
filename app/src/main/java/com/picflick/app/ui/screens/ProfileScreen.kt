@@ -354,16 +354,23 @@ fun ProfileScreen(
             Spacer(modifier = Modifier.height(16.dp))
         }
 
-        // MODERN STATS GRID - Horizontal layout like Instagram (6 items)
+        // Analytics row (4 items)
+        val tierName = when (userProfile.getEffectiveTier()) {
+            com.picflick.app.data.SubscriptionTier.FREE -> "FREE"
+            com.picflick.app.data.SubscriptionTier.STANDARD -> "STD"
+            com.picflick.app.data.SubscriptionTier.PLUS -> "PLUS"
+            com.picflick.app.data.SubscriptionTier.PRO -> "PRO"
+            com.picflick.app.data.SubscriptionTier.ULTRA -> "ULTRA"
+        }
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 4.dp),  // Reduced from 8dp
-            horizontalArrangement = Arrangement.SpaceAround  // Better distribution than SpaceEvenly
+                .padding(horizontal = 8.dp),
+            horizontalArrangement = Arrangement.SpaceEvenly
         ) {
             ModernStatItem(
                 value = photoCount.toString(),
-                label = "Posts",
+                label = "POSTS",
                 isDarkMode = isDarkMode,
                 onClick = {
                     scope.launch {
@@ -372,25 +379,20 @@ fun ProfileScreen(
                 }
             )
             ModernStatItem(
-                value = formatNumber(totalReactions),
-                label = "Reactions",
-                isDarkMode = isDarkMode
-            )
-            ModernStatItem(
                 value = friendsCount.toString(),
-                label = "Friends",
+                label = "FRIENDS",
                 isDarkMode = isDarkMode,
                 onClick = onFriendsClick
             )
             ModernStatItem(
                 value = currentStreak.toString(),
-                label = "Streak",
+                label = "ACHEIVEMENTS",
                 isDarkMode = isDarkMode,
                 onClick = onStreakClick
             )
-            // SIXTH ITEM - Subscription Tier Badge
-            TierBadgeStatItem(
-                tier = userProfile.getEffectiveTier(),
+            ModernStatItem(
+                value = tierName,
+                label = "PLAN",
                 isDarkMode = isDarkMode,
                 onClick = onPlanOptions
             )
@@ -405,15 +407,6 @@ fun ProfileScreen(
                 .bringIntoViewRequester(photosSectionBringIntoViewRequester)
         ) {
         if (photos.isNotEmpty()) {
-            Text(
-                text = "My Photos ($photoCount)",
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold,
-                color = if (isDarkMode) Color.White else Color.Black,
-                modifier = Modifier.fillMaxWidth(),
-                textAlign = androidx.compose.ui.text.style.TextAlign.Center
-            )
-
             if (isSelectionMode) {
                 Spacer(modifier = Modifier.height(8.dp))
                 Row(
@@ -1188,93 +1181,34 @@ private fun ModernStatItem(
     isDarkMode: Boolean,
     onClick: () -> Unit = {}
 ) {
-    val textColor = if (isDarkMode) Color.White else Color.Black
-    val subtitleColor = if (isDarkMode) Color.Gray else Color.DarkGray
-    
+    val circleColor = if (isDarkMode) Color(0xFF2B3F56) else Color(0xFFB7D8F2)
+    val valueColor = if (isDarkMode) Color.White else Color(0xFF0D2A45)
+    val labelColor = if (isDarkMode) Color(0xFFBFD6EA) else Color(0xFF1F4D74)
+
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier
-            .wrapContentWidth()  // Don't expand unnecessarily
-            .clickable { onClick() }
+        modifier = Modifier.clickable { onClick() }
     ) {
-        // Fixed height container for value (30.dp matches badge height)
         Box(
-            modifier = Modifier.height(30.dp),
+            modifier = Modifier
+                .size(74.dp)
+                .clip(CircleShape)
+                .background(circleColor),
             contentAlignment = Alignment.Center
         ) {
             Text(
                 text = value,
-                fontSize = 22.sp,
-                fontWeight = FontWeight.Bold,
-                color = textColor
+                fontSize = 20.sp,
+                fontWeight = FontWeight.ExtraBold,
+                color = valueColor
             )
         }
-        Spacer(modifier = Modifier.height(2.dp))
+        Spacer(modifier = Modifier.height(6.dp))
         Text(
             text = label,
-            fontSize = 12.sp,
-            color = subtitleColor,
-            fontWeight = FontWeight.Medium
-        )
-    }
-}
-
-@Composable
-private fun TierBadgeStatItem(
-    tier: com.picflick.app.data.SubscriptionTier,
-    isDarkMode: Boolean,
-    onClick: () -> Unit = {}
-) {
-    val tierColor = tier.getColor()
-    val subtitleColor = if (isDarkMode) Color.Gray else Color.DarkGray
-
-    val tierName = when (tier) {
-        com.picflick.app.data.SubscriptionTier.FREE -> "Free"
-        com.picflick.app.data.SubscriptionTier.STANDARD -> "Standard"
-        com.picflick.app.data.SubscriptionTier.PLUS -> "Plus"
-        com.picflick.app.data.SubscriptionTier.PRO -> "Pro"
-        com.picflick.app.data.SubscriptionTier.ULTRA -> "Ultra"
-    }
-
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier
-            .wrapContentWidth()
-            .clickable { onClick() }
-    ) {
-        // Match ModernStatItem value zone exactly
-        Box(
-            modifier = Modifier.height(30.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(22.dp) // exact match target with 22sp stat value sizing
-                    .clip(CircleShape)
-                    .background(
-                        brush = Brush.sweepGradient(
-                            colors = listOf(
-                                tierColor,
-                                tier.getDarkColor(),
-                                tier.getLightColor(),
-                                tierColor
-                            )
-                        )
-                    )
-                    .border(
-                        width = 2.dp,
-                        color = if (isDarkMode) Color.White.copy(alpha = 0.5f) else Color.Black.copy(alpha = 0.3f),
-                        shape = CircleShape
-                    )
-            )
-        }
-        Spacer(modifier = Modifier.height(2.dp))
-        Text(
-            text = tierName,
-            fontSize = 12.sp,
-            color = subtitleColor.copy(alpha = 1f),
-            fontWeight = FontWeight.Medium,
-            modifier = Modifier.padding(top = 1.dp)
+            fontSize = 11.sp,
+            color = labelColor,
+            fontWeight = FontWeight.SemiBold
         )
     }
 }
