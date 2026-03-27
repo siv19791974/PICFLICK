@@ -51,6 +51,7 @@ import coil3.compose.AsyncImagePainter
 import coil3.request.CachePolicy
 import coil3.request.ImageRequest
 import coil3.request.crossfade
+import com.picflick.app.Constants
 import com.picflick.app.data.ChatMessage
 import com.picflick.app.data.Flick
 import com.picflick.app.data.ReactionType
@@ -60,6 +61,7 @@ import com.picflick.app.repository.ChatRepository
 import com.picflick.app.ui.components.AnimatedReactionPicker
 import com.picflick.app.ui.components.ErrorMessage
 import com.picflick.app.ui.components.PhotoGridShimmer
+import com.picflick.app.ui.theme.PicFlickLightBackground
 import com.picflick.app.ui.theme.isDarkModeBackground
 import com.picflick.app.ui.theme.ThemeManager
 import com.picflick.app.util.rememberLiveUserPhotoUrl
@@ -802,7 +804,13 @@ private fun FlickGrid(
             }
                 .distinctUntilChanged()
                 .collect { isNearBottom ->
-                    if (isNearBottom && !isLoadingMore && canLoadMore && !hasRequestedForCurrentSize) {
+                    if (
+                        flicks.size >= Constants.Pagination.FLICKS_PER_PAGE &&
+                        isNearBottom &&
+                        !isLoadingMore &&
+                        canLoadMore &&
+                        !hasRequestedForCurrentSize
+                    ) {
                         delay(220)
                         val latestLastVisibleIndex = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: -1
                         val latestThreshold = (flicks.size - 3).coerceAtLeast(0)
@@ -931,7 +939,7 @@ private fun FlickCard(
         shape = RectangleShape, // NO rounded corners
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp), // No elevation
         colors = CardDefaults.cardColors(
-            containerColor = Color.Black // Stable non-white background
+            containerColor = PicFlickLightBackground // Match app's normal light blue background
         )
     ) {
         Box(
@@ -941,7 +949,7 @@ private fun FlickCard(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(Color.Black)
+                    .background(PicFlickLightBackground)
             ) {
                 if (shouldStageLocalBridge) {
                     // Layer 1: keep local optimistic image visible
