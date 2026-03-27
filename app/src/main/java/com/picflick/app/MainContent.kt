@@ -1340,7 +1340,15 @@ private fun UserProfileScreenContent(
                     onScreenChange(Screen.UserProfile(userId))
                 }
             },
-            onReaction = { _, _ -> /* Can't react to other users' photos */ },
+            onReaction = { flick, reactionType ->
+                homeViewModel.toggleReaction(
+                    flick,
+                    userProfile.uid,
+                    userProfile.displayName,
+                    userProfile.photoUrl,
+                    reactionType
+                )
+            },
             friendProfiles = friendsViewModel.followingUsers.associateBy { it.uid } + mapOf(
                 target.uid to target,
                 userProfile.uid to userProfile
