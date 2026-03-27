@@ -237,6 +237,7 @@ val canDeleteCurrent = currentFlick.userId == currentUser.uid
     var showReactionPicker by remember { mutableStateOf(false) }
     var showReactionTallySheet by remember { mutableStateOf(false) }
     val reactionProfileCache = remember { mutableStateMapOf<String, UserProfile>() }
+    val reactionUserMetaCache = remember { mutableStateMapOf<String, Pair<String, String>>() }
     
     // Show comment panel state
     var showCommentPanel by remember(openCommentPanelInitially) { mutableStateOf(openCommentPanelInitially) }
@@ -2037,17 +2038,29 @@ if (canDeleteCurrent) {
                         val emoji: String
                     )
 
-                    val reactionUsers = remember(currentFlick.reactions, friendProfiles, currentUser, reactionProfileCache) {
+                    val reactionProfilesSnapshot = reactionProfileCache.toMap()
+                    val reactionMetaSnapshot = reactionUserMetaCache.toMap()
+
+                    val reactionUsers = remember(
+                        currentFlick.reactions,
+                        friendProfiles,
+                        currentUser,
+                        reactionProfilesSnapshot,
+                        reactionMetaSnapshot
+                    ) {
                         currentFlick.reactions.entries.map { (userId, reactionName) ->
                             val profile = when {
                                 userId == currentUser.uid -> currentUser
                                 friendProfiles[userId] != null -> friendProfiles.getValue(userId)
-                                reactionProfileCache[userId] != null -> reactionProfileCache.getValue(userId)
+                                reactionProfilesSnapshot[userId] != null -> reactionProfilesSnapshot.getValue(userId)
                                 else -> null
                             }
+                            val cachedMeta = reactionMetaSnapshot[userId]
                             val displayName = profile?.displayName?.takeIf { it.isNotBlank() }
-                                ?: if (userId == currentUser.uid) "You" else "Friend"
-                            val photoUrl = profile?.photoUrl.orEmpty()
+                                ?: cachedMeta?.first?.takeIf { it.isNotBlank() }
+                                ?: if (userId == currentUser.uid) "You" else "User"
+                            val photoUrl = profile?.photoUrl?.takeIf { it.isNotBlank() }
+                                ?: cachedMeta?.second.orEmpty()
                             val emoji = runCatching { ReactionType.valueOf(reactionName).toEmoji() }.getOrDefault("❤️")
                             ReactionUserUi(
                                 userId = userId,
@@ -2062,11 +2075,22 @@ if (canDeleteCurrent) {
                         if (!showReactionTallySheet) return@LaunchedEffect
                         currentFlick.reactions.keys
                             .filter { it != currentUser.uid }
-                            .filterNot { friendProfiles.containsKey(it) || reactionProfileCache.containsKey(it) }
+                            .filterNot {
+                                friendProfiles.containsKey(it) ||
+                                    reactionProfileCache.containsKey(it) ||
+                                    reactionUserMetaCache.containsKey(it)
+                            }
                             .forEach { userId ->
                                 repository.getUserProfile(userId) { result ->
-                                    if (result is com.picflick.app.data.Result.Success) {
-                                        reactionProfileCache[userId] = result.data
+                                    when (result) {
+                                        is com.picflick.app.data.Result.Success -> {
+                                            reactionProfileCache[userId] = result.data
+                                            reactionUserMetaCache[userId] = result.data.displayName to result.data.photoUrl
+                                        }
+                                        is com.picflick.app.data.Result.Error -> {
+                                            reactionUserMetaCache.putIfAbsent(userId, userId to "")
+                                        }
+                                        is com.picflick.app.data.Result.Loading -> Unit
                                     }
                                 }
                             }
@@ -2084,11 +2108,11 @@ if (canDeleteCurrent) {
                         ) {
                             Text(
                                 text = "Reactions",
-                                style = MaterialTheme.typography.titleLarge,
+                                style = MaterialTheme.typography.headlineSmall,
                                 color = MaterialTheme.colorScheme.onBackground,
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(horizontal = 20.dp, vertical = 8.dp)
+                                    .padding(horizontal = 20.dp, vertical = 10.dp)
                             )
 
                             if (reactionUsers.isEmpty()) {
