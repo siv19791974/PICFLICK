@@ -233,6 +233,7 @@ val canDeleteCurrent = currentFlick.userId == currentUser.uid
     
     // Show reaction picker state
     var showReactionPicker by remember { mutableStateOf(false) }
+    var showReactionTallySheet by remember { mutableStateOf(false) }
     
     // Show comment panel state
     var showCommentPanel by remember(openCommentPanelInitially) { mutableStateOf(openCommentPanelInitially) }
@@ -1886,7 +1887,9 @@ if (canDeleteCurrent) {
                                         
                                         // Name + Description/Time + Reactions row
                                         Column(
-                                            modifier = Modifier.clickable { onUserProfileClick(currentFlick.userId) }
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .clickable { onUserProfileClick(currentFlick.userId) }
                                         ) {
                                             // TOP ROW: Username + "is with" + tagged friends
                                             Row(
@@ -1998,11 +2001,8 @@ if (canDeleteCurrent) {
                                                 // RIGHT: Reactions aligned with timestamp
                                                 ReactionCountersRow(
                                                     flick = currentFlick,
-                                                    canReact = !canDeleteCurrent,
-                                                    onReactionClick = { 
-                                                        if (!canDeleteCurrent) {
-                                                            showReactionPicker = !showReactionPicker
-                                                        }
+                                                    onReactionClick = {
+                                                        showReactionTallySheet = true
                                                     }
                                                 )
                                             }
@@ -2024,6 +2024,130 @@ if (canDeleteCurrent) {
                         },
                         currentReaction = userReaction
                     )
+                }
+
+                if (showReactionTallySheet) {
+                    ModalBottomSheet(
+                        onDismissRequest = { showReactionTallySheet = false }
+                    ) {
+                        Text(
+                            text = "Reactions",
+                            style = MaterialTheme.typography.titleMedium,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 20.dp, vertical = 8.dp)
+                        )
+
+                        data class ReactionUserUi(
+                            val userId: String,
+                            val displayName: String,
+                            val photoUrl: String,
+                            val emoji: String
+                        )
+
+                        val reactionUsers = remember(currentFlick.reactions, friendProfiles, currentUser) {
+                            currentFlick.reactions.entries.map { (userId, reactionName) ->
+                                val profile = if (userId == currentUser.uid) currentUser else friendProfiles[userId]
+                                val displayName = profile?.displayName?.takeIf { it.isNotBlank() }
+                                    ?: if (userId == currentUser.uid) "You" else "Friend"
+                                val photoUrl = profile?.photoUrl.orEmpty()
+                                val emoji = runCatching { ReactionType.valueOf(reactionName).toEmoji() }.getOrDefault("❤️")
+                                ReactionUserUi(
+                                    userId = userId,
+                                    displayName = displayName,
+                                    photoUrl = photoUrl,
+                                    emoji = emoji
+                                )
+                            }.sortedBy { it.displayName.lowercase() }
+                        }
+
+                        if (reactionUsers.isEmpty()) {
+                            Text(
+                                text = "No reactions yet",
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp)
+                            )
+                        } else {
+                            LazyColumn(
+                                contentPadding = PaddingValues(vertical = 8.dp)
+                            ) {
+                                items(
+                                    items = reactionUsers,
+                                    key = { it.userId }
+                                ) { userReaction ->
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Box(
+                                            modifier = Modifier
+                                                .size(56.dp)
+                                                .clickable {
+                                                    showReactionTallySheet = false
+                                                    if (userReaction.userId != currentUser.uid) {
+                                                        onUserProfileClick(userReaction.userId)
+                                                    }
+                                                }
+                                        ) {
+                                            if (userReaction.photoUrl.isNotEmpty()) {
+                                                AsyncImage(
+                                                    model = userReaction.photoUrl,
+                                                    contentDescription = userReaction.displayName,
+                                                    modifier = Modifier
+                                                        .fillMaxSize()
+                                                        .clip(CircleShape),
+                                                    contentScale = ContentScale.Crop
+                                                )
+                                            } else {
+                                                Box(
+                                                    modifier = Modifier
+                                                        .fillMaxSize()
+                                                        .clip(CircleShape)
+                                                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)),
+                                                    contentAlignment = Alignment.Center
+                                                ) {
+                                                    Icon(
+                                                        imageVector = Icons.Default.Person,
+                                                        contentDescription = null,
+                                                        modifier = Modifier.size(28.dp),
+                                                        tint = MaterialTheme.colorScheme.primary
+                                                    )
+                                                }
+                                            }
+                                        }
+
+                                        Spacer(modifier = Modifier.width(16.dp))
+
+                                        Column(
+                                            modifier = Modifier
+                                                .weight(1f)
+                                                .clickable {
+                                                    showReactionTallySheet = false
+                                                    if (userReaction.userId != currentUser.uid) {
+                                                        onUserProfileClick(userReaction.userId)
+                                                    }
+                                                }
+                                        ) {
+                                            Text(
+                                                text = userReaction.displayName,
+                                                fontSize = 16.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = MaterialTheme.colorScheme.onSurface,
+                                                maxLines = 1
+                                            )
+                                        }
+
+                                        Text(
+                                            text = userReaction.emoji,
+                                            style = MaterialTheme.typography.titleMedium
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -2447,7 +2571,6 @@ private fun CompactReplyItem(
 @Composable
 private fun ReactionCountersRow(
     flick: Flick,
-    canReact: Boolean,
     onReactionClick: () -> Unit
 ) {
     val reactionCounts = flick.getReactionCounts()
@@ -2462,7 +2585,9 @@ private fun ReactionCountersRow(
     Row(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.clickable { onReactionClick() }
+        modifier = Modifier
+            .wrapContentWidth(Alignment.End)
+            .clickable { onReactionClick() }
     ) {
         ReactionType.entries.forEach { reactionType ->
             val count = reactionCounts[reactionType] ?: 0
