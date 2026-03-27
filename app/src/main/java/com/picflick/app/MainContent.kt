@@ -1305,11 +1305,13 @@ private fun UserProfileScreenContent(
                 onScreenChange(Screen.Home)
             },
             onReaction = { flick, reactionType ->
-                reactionType?.let {
-                    homeViewModel.toggleReaction(
-                        flick, userProfile.uid, userProfile.displayName, userProfile.photoUrl, it
-                    )
-                }
+                homeViewModel.toggleReaction(
+                    flick,
+                    userProfile.uid,
+                    userProfile.displayName,
+                    userProfile.photoUrl,
+                    reactionType
+                )
             }
         )
 
@@ -1517,7 +1519,12 @@ private fun UserProfilePhotoViewer(
             flick = flick,
             currentUser = currentUser,
             onDismiss = onDismiss,
-            onReaction = { if (!isUserProfilePhoto) onReaction(flick, it) },
+            onReaction = { reactionType ->
+                if (!isUserProfilePhoto) {
+                    val activeFlick = targetUserPhotos.getOrNull(selectedIndex) ?: flick
+                    onReaction(activeFlick, reactionType)
+                }
+            },
             onShareClick = {
                 val shareIntent = Intent().apply {
                     action = Intent.ACTION_SEND
