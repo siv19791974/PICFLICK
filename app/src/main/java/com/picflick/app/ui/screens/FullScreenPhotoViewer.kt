@@ -42,6 +42,7 @@ import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
@@ -65,6 +66,7 @@ import com.picflick.app.data.toEmoji
 import com.picflick.app.repository.FlickRepository
 import com.picflick.app.ui.components.AnimatedReactionPicker
 import com.picflick.app.ui.components.ReactionPicker
+import com.picflick.app.ui.theme.PicFlickLightBackground
 import com.picflick.app.util.withCacheBust
 import android.app.Activity
 import android.content.ContentValues
@@ -234,6 +236,7 @@ val canDeleteCurrent = currentFlick.userId == currentUser.uid
     // Show reaction picker state
     var showReactionPicker by remember { mutableStateOf(false) }
     var showReactionTallySheet by remember { mutableStateOf(false) }
+    val reactionProfileCache = remember { mutableStateMapOf<String, UserProfile>() }
     
     // Show comment panel state
     var showCommentPanel by remember(openCommentPanelInitially) { mutableStateOf(openCommentPanelInitially) }
@@ -2027,122 +2030,154 @@ if (canDeleteCurrent) {
                 }
 
                 if (showReactionTallySheet) {
+                    data class ReactionUserUi(
+                        val userId: String,
+                        val displayName: String,
+                        val photoUrl: String,
+                        val emoji: String
+                    )
+
+                    val reactionUsers = remember(currentFlick.reactions, friendProfiles, currentUser, reactionProfileCache) {
+                        currentFlick.reactions.entries.map { (userId, reactionName) ->
+                            val profile = when {
+                                userId == currentUser.uid -> currentUser
+                                friendProfiles[userId] != null -> friendProfiles.getValue(userId)
+                                reactionProfileCache[userId] != null -> reactionProfileCache.getValue(userId)
+                                else -> null
+                            }
+                            val displayName = profile?.displayName?.takeIf { it.isNotBlank() }
+                                ?: if (userId == currentUser.uid) "You" else "Friend"
+                            val photoUrl = profile?.photoUrl.orEmpty()
+                            val emoji = runCatching { ReactionType.valueOf(reactionName).toEmoji() }.getOrDefault("❤️")
+                            ReactionUserUi(
+                                userId = userId,
+                                displayName = displayName,
+                                photoUrl = photoUrl,
+                                emoji = emoji
+                            )
+                        }.sortedBy { it.displayName.lowercase() }
+                    }
+
+                    LaunchedEffect(showReactionTallySheet, currentFlick.id, currentFlick.reactions) {
+                        if (!showReactionTallySheet) return@LaunchedEffect
+                        currentFlick.reactions.keys
+                            .filter { it != currentUser.uid }
+                            .filterNot { friendProfiles.containsKey(it) || reactionProfileCache.containsKey(it) }
+                            .forEach { userId ->
+                                repository.getUserProfile(userId) { result ->
+                                    if (result is com.picflick.app.data.Result.Success) {
+                                        reactionProfileCache[userId] = result.data
+                                    }
+                                }
+                            }
+                    }
+
                     ModalBottomSheet(
-                        onDismissRequest = { showReactionTallySheet = false }
+                        onDismissRequest = { showReactionTallySheet = false },
+                        containerColor = PicFlickLightBackground
                     ) {
-                        Text(
-                            text = "Reactions",
-                            style = MaterialTheme.typography.titleMedium,
+                        Column(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = 20.dp, vertical = 8.dp)
-                        )
-
-                        data class ReactionUserUi(
-                            val userId: String,
-                            val displayName: String,
-                            val photoUrl: String,
-                            val emoji: String
-                        )
-
-                        val reactionUsers = remember(currentFlick.reactions, friendProfiles, currentUser) {
-                            currentFlick.reactions.entries.map { (userId, reactionName) ->
-                                val profile = if (userId == currentUser.uid) currentUser else friendProfiles[userId]
-                                val displayName = profile?.displayName?.takeIf { it.isNotBlank() }
-                                    ?: if (userId == currentUser.uid) "You" else "Friend"
-                                val photoUrl = profile?.photoUrl.orEmpty()
-                                val emoji = runCatching { ReactionType.valueOf(reactionName).toEmoji() }.getOrDefault("❤️")
-                                ReactionUserUi(
-                                    userId = userId,
-                                    displayName = displayName,
-                                    photoUrl = photoUrl,
-                                    emoji = emoji
-                                )
-                            }.sortedBy { it.displayName.lowercase() }
-                        }
-
-                        if (reactionUsers.isEmpty()) {
+                                .fillMaxHeight(0.72f)
+                                .background(PicFlickLightBackground)
+                        ) {
                             Text(
-                                text = "No reactions yet",
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp)
+                                text = "Reactions",
+                                style = MaterialTheme.typography.titleLarge,
+                                color = MaterialTheme.colorScheme.onBackground,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 20.dp, vertical = 8.dp)
                             )
-                        } else {
-                            LazyColumn(
-                                contentPadding = PaddingValues(vertical = 8.dp)
-                            ) {
-                                items(
-                                    items = reactionUsers,
-                                    key = { it.userId }
-                                ) { userReaction ->
-                                    Row(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(horizontal = 16.dp, vertical = 12.dp),
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Box(
+
+                            if (reactionUsers.isEmpty()) {
+                                Text(
+                                    text = "No reactions yet",
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp)
+                                )
+                            } else {
+                                LazyColumn(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .weight(1f),
+                                    contentPadding = PaddingValues(vertical = 8.dp)
+                                ) {
+                                    items(
+                                        items = reactionUsers,
+                                        key = { it.userId }
+                                    ) { userReaction ->
+                                        Row(
                                             modifier = Modifier
-                                                .size(56.dp)
-                                                .clickable {
-                                                    showReactionTallySheet = false
-                                                    if (userReaction.userId != currentUser.uid) {
-                                                        onUserProfileClick(userReaction.userId)
-                                                    }
-                                                }
+                                                .fillMaxWidth()
+                                                .padding(horizontal = 16.dp, vertical = 12.dp),
+                                            verticalAlignment = Alignment.CenterVertically
                                         ) {
-                                            if (userReaction.photoUrl.isNotEmpty()) {
-                                                AsyncImage(
-                                                    model = userReaction.photoUrl,
-                                                    contentDescription = userReaction.displayName,
-                                                    modifier = Modifier
-                                                        .fillMaxSize()
-                                                        .clip(CircleShape),
-                                                    contentScale = ContentScale.Crop
-                                                )
-                                            } else {
-                                                Box(
-                                                    modifier = Modifier
-                                                        .fillMaxSize()
-                                                        .clip(CircleShape)
-                                                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)),
-                                                    contentAlignment = Alignment.Center
-                                                ) {
-                                                    Icon(
-                                                        imageVector = Icons.Default.Person,
-                                                        contentDescription = null,
-                                                        modifier = Modifier.size(28.dp),
-                                                        tint = MaterialTheme.colorScheme.primary
+                                            Box(
+                                                modifier = Modifier
+                                                    .size(56.dp)
+                                                    .clickable {
+                                                        showReactionTallySheet = false
+                                                        if (userReaction.userId != currentUser.uid) {
+                                                            onUserProfileClick(userReaction.userId)
+                                                        }
+                                                    }
+                                            ) {
+                                                if (userReaction.photoUrl.isNotEmpty()) {
+                                                    AsyncImage(
+                                                        model = userReaction.photoUrl,
+                                                        contentDescription = userReaction.displayName,
+                                                        modifier = Modifier
+                                                            .fillMaxSize()
+                                                            .clip(CircleShape),
+                                                        contentScale = ContentScale.Crop,
+                                                        error = painterResource(id = android.R.drawable.ic_menu_myplaces)
                                                     )
+                                                } else {
+                                                    Box(
+                                                        modifier = Modifier
+                                                            .fillMaxSize()
+                                                            .clip(CircleShape)
+                                                            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)),
+                                                        contentAlignment = Alignment.Center
+                                                    ) {
+                                                        Text(
+                                                            text = userReaction.displayName.firstOrNull()?.uppercase() ?: "?",
+                                                            fontSize = 20.sp,
+                                                            fontWeight = FontWeight.Bold,
+                                                            color = MaterialTheme.colorScheme.primary
+                                                        )
+                                                    }
                                                 }
                                             }
-                                        }
 
-                                        Spacer(modifier = Modifier.width(16.dp))
+                                            Spacer(modifier = Modifier.width(16.dp))
 
-                                        Column(
-                                            modifier = Modifier
-                                                .weight(1f)
-                                                .clickable {
-                                                    showReactionTallySheet = false
-                                                    if (userReaction.userId != currentUser.uid) {
-                                                        onUserProfileClick(userReaction.userId)
+                                            Column(
+                                                modifier = Modifier
+                                                    .weight(1f)
+                                                    .clickable {
+                                                        showReactionTallySheet = false
+                                                        if (userReaction.userId != currentUser.uid) {
+                                                            onUserProfileClick(userReaction.userId)
+                                                        }
                                                     }
-                                                }
-                                        ) {
+                                            ) {
+                                                Text(
+                                                    text = userReaction.displayName,
+                                                    fontSize = 16.sp,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = MaterialTheme.colorScheme.onSurface,
+                                                    maxLines = 1
+                                                )
+                                            }
+
                                             Text(
-                                                text = userReaction.displayName,
-                                                fontSize = 16.sp,
-                                                fontWeight = FontWeight.Bold,
-                                                color = MaterialTheme.colorScheme.onSurface,
-                                                maxLines = 1
+                                                text = userReaction.emoji,
+                                                style = MaterialTheme.typography.titleMedium
                                             )
                                         }
-
-                                        Text(
-                                            text = userReaction.emoji,
-                                            style = MaterialTheme.typography.titleMedium
-                                        )
                                     }
                                 }
                             }
