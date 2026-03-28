@@ -12,6 +12,7 @@ sealed class Screen {
     data class UserProfile(val userId: String) : Screen() // View another user's profile
     data object MyPhotos : Screen()
     data object Friends : Screen()
+    data object UserFriends : Screen() // View another user's friends list (not main Friends tab)
     data object Chats : Screen()
     data object ChatDetail : Screen()
     data object FindFriends : Screen()

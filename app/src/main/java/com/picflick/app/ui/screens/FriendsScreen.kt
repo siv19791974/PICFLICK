@@ -57,7 +57,8 @@ fun FriendsScreen(
     currentUserFollowingIds: Set<String> = userProfile.following.toSet(),
     currentUserSentRequestIds: Set<String> = userProfile.sentFollowRequests.toSet(),
     displayedUsersOverride: List<UserProfile>? = null,
-    onAddFriendClick: (UserProfile) -> Unit = {}
+    onAddFriendClick: (UserProfile) -> Unit = {},
+    onCancelFriendRequestClick: (UserProfile) -> Unit = {}
 ) {
     val context = LocalContext.current
     var pendingDeleteFriendId by remember { mutableStateOf<String?>(null) }
@@ -80,6 +81,7 @@ fun FriendsScreen(
         derivedStateOf {
             sourceUsers
                 .filterNot { it.uid in optimisticallyRemovedFriendIds }
+                .filterNot { it.uid == currentUserId }
                 .distinctBy { it.uid }
         }
     }
@@ -184,6 +186,11 @@ modifier = Modifier.weight(1f),
                                     if (!isAlreadyFriend && !hasSentRequest && friend.uid != currentUserId) {
                                         onAddFriendClick(friend)
                                     }
+                                },
+                                onCancelRequest = {
+                                    if (hasSentRequest && !isAlreadyFriend && friend.uid != currentUserId) {
+                                        onCancelFriendRequestClick(friend)
+                                    }
                                 }
                             )
                         }
@@ -234,7 +241,8 @@ private fun FriendListItem(
     hasSentRequest: Boolean = false,
     currentUserId: String,
     onDeleteFriend: () -> Unit = {},
-    onAddFriend: () -> Unit = {}
+    onAddFriend: () -> Unit = {},
+    onCancelRequest: () -> Unit = {}
 ) {
     val liveFriendPhoto = rememberLiveUserPhotoUrl(friend.uid, friend.photoUrl)
 
@@ -327,7 +335,6 @@ Row(
                 }
             }
         } else {
-            val canAdd = !isAlreadyFriend && !hasSentRequest && friend.uid != currentUserId
             val isWaiting = hasSentRequest
             val buttonColor = when {
                 isAlreadyFriend -> Color(0xFF2E7D32)
@@ -336,8 +343,13 @@ Row(
             }
 
             OutlinedButton(
-                onClick = onAddFriend,
-                enabled = canAdd && !isRemoving,
+                onClick = {
+                    when {
+                        isWaiting -> onCancelRequest()
+                        else -> onAddFriend()
+                    }
+                },
+                enabled = !isAlreadyFriend && !isRemoving,
                 shape = RoundedCornerShape(20.dp),
                 modifier = Modifier.wrapContentWidth(),
                 colors = ButtonDefaults.outlinedButtonColors(
