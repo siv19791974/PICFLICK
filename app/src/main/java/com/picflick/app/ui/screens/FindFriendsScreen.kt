@@ -10,6 +10,7 @@ import androidx.compose.material.pullrefresh.pullRefresh
 import androidx.compose.material.pullrefresh.rememberPullRefreshState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -40,6 +41,7 @@ import com.picflick.app.ui.components.FullScreenLoading
 import com.picflick.app.ui.theme.isDarkModeBackground
 import com.picflick.app.ui.theme.ThemeManager
 import com.picflick.app.util.rememberLiveUserPhotoUrl
+import com.picflick.app.util.rememberLiveUserTierColor
 import com.picflick.app.viewmodel.FriendsViewModel
 
 /**
@@ -885,6 +887,7 @@ private fun UserResultItem(
 ) {
     val isDarkMode = ThemeManager.isDarkMode.value
     val liveUserPhoto = rememberLiveUserPhotoUrl(user.uid, user.photoUrl)
+    val tierRingColor = rememberLiveUserTierColor(user.uid)
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -899,6 +902,7 @@ private fun UserResultItem(
                     modifier = Modifier
                         .size(56.dp)
                         .clip(CircleShape)
+                        .border(2.dp, tierRingColor, CircleShape)
                         .clickable { onUserClick() },
                     contentScale = androidx.compose.ui.layout.ContentScale.Crop,
                     error = painterResource(id = android.R.drawable.ic_menu_myplaces)
@@ -908,6 +912,7 @@ private fun UserResultItem(
                     modifier = Modifier
                         .size(56.dp)
                         .clip(CircleShape)
+                        .border(2.dp, tierRingColor, CircleShape)
                         .background(if (isDarkMode) Color(0xFF3A3A3C) else Color(0xFFE0E0E0))
                         .clickable { onUserClick() },
                     contentAlignment = Alignment.Center

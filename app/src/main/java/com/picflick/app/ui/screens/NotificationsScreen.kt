@@ -4,6 +4,7 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -52,6 +53,7 @@ import com.picflick.app.data.UserProfile
 import com.picflick.app.ui.theme.isDarkModeBackground
 import com.picflick.app.ui.theme.ThemeManager
 import com.picflick.app.util.rememberLiveUserPhotoUrl
+import com.picflick.app.util.rememberLiveUserTierColor
 import com.picflick.app.viewmodel.NotificationViewModel
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -443,6 +445,7 @@ private fun NotificationItem(
         userId = notification.senderId,
         fallbackPhotoUrl = notification.senderPhotoUrl
     )
+    val tierRingColor = rememberLiveUserTierColor(notification.senderId)
 
     LaunchedEffect(notification.id, notification.senderId, notification.chatId) {
         if (notification.senderId.isBlank()) return@LaunchedEffect
@@ -525,6 +528,7 @@ private fun NotificationItem(
                     modifier = Modifier
                         .fillMaxSize()
                         .clip(CircleShape)
+                        .border(2.dp, tierRingColor, CircleShape)
                         .background(if (isDarkMode) Color.Gray else Color.LightGray),
                     contentScale = ContentScale.Crop
                 )
@@ -533,6 +537,7 @@ private fun NotificationItem(
                     modifier = Modifier
                         .fillMaxSize()
                         .clip(CircleShape)
+                        .border(2.dp, tierRingColor, CircleShape)
                         .background(if (isDarkMode) Color(0xFF7A665C) else Color(0xFFB39B8F)),
                     contentAlignment = Alignment.Center
                 ) {

@@ -5,6 +5,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.border
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -54,6 +55,7 @@ import com.picflick.app.ui.components.LogoImage
 import com.picflick.app.ui.theme.PicFlickBannerBackground
 import com.picflick.app.ui.theme.PicFlickLightBackground
 import com.picflick.app.util.rememberLiveUserPhotoUrl
+import com.picflick.app.util.rememberLiveUserTierColor
 import com.picflick.app.ui.theme.ThemeManager
 import com.picflick.app.ui.theme.isDarkModeBackground
 import com.picflick.app.viewmodel.ChatViewModel
@@ -543,6 +545,7 @@ private fun ChatListItem(
         0
     }
     val hasUnread = unreadDisplayCount > 0
+    val tierRingColor = rememberLiveUserTierColor(otherUserId)
 
     Row(
         modifier = Modifier
@@ -567,7 +570,8 @@ private fun ChatListItem(
                     contentDescription = otherUserName,
                     modifier = Modifier
                         .fillMaxSize()
-                        .clip(CircleShape),
+                        .clip(CircleShape)
+                        .border(2.dp, tierRingColor, CircleShape),
                     contentScale = ContentScale.Crop
                 )
             } else {
@@ -575,6 +579,7 @@ private fun ChatListItem(
                     modifier = Modifier
                         .fillMaxSize()
                         .clip(CircleShape)
+                        .border(2.dp, tierRingColor, CircleShape)
                         .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)),
                     contentAlignment = Alignment.Center
                 ) {
@@ -876,6 +881,7 @@ private fun FullScreenFriendItem(
     onProfilePhotoClick: () -> Unit
 ) {
     val liveFriendPhoto = rememberLiveUserPhotoUrl(friend.uid, friend.photoUrl)
+    val tierRingColor = rememberLiveUserTierColor(friend.uid)
 
     Row(
         modifier = Modifier
@@ -896,7 +902,8 @@ private fun FullScreenFriendItem(
                     contentDescription = friend.displayName,
                     modifier = Modifier
                         .fillMaxSize()
-                        .clip(CircleShape),
+                        .clip(CircleShape)
+                        .border(2.dp, tierRingColor, CircleShape),
                     contentScale = ContentScale.Crop
                 )
             } else {
@@ -904,6 +911,7 @@ private fun FullScreenFriendItem(
                     modifier = Modifier
                         .fillMaxSize()
                         .clip(CircleShape)
+                        .border(2.dp, tierRingColor, CircleShape)
                         .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)),
                     contentAlignment = Alignment.Center
                 ) {
@@ -969,6 +977,7 @@ private fun FriendListItem(
     onProfilePhotoClick: () -> Unit
 ) {
     val liveFriendPhoto = rememberLiveUserPhotoUrl(friend.uid, friend.photoUrl)
+    val tierRingColor = rememberLiveUserTierColor(friend.uid)
 
     Row(
         modifier = Modifier
@@ -987,6 +996,7 @@ private fun FriendListItem(
                 modifier = Modifier
                     .size(50.dp)
                     .clip(CircleShape)
+                    .border(2.dp, tierRingColor, CircleShape)
                     .background(MaterialTheme.colorScheme.surface),
                 contentScale = ContentScale.Crop
             )

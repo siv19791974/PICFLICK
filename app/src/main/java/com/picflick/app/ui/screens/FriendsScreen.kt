@@ -21,6 +21,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.border
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.input.pointer.pointerInput
@@ -37,6 +38,7 @@ import com.picflick.app.ui.components.ListItemShimmer
 import com.picflick.app.ui.theme.isDarkModeBackground
 import com.picflick.app.ui.theme.ThemeManager
 import com.picflick.app.util.rememberLiveUserPhotoUrl
+import com.picflick.app.util.rememberLiveUserTierColor
 import com.picflick.app.viewmodel.FriendsViewModel
 
 /**
@@ -245,6 +247,7 @@ private fun FriendListItem(
     onCancelRequest: () -> Unit = {}
 ) {
     val liveFriendPhoto = rememberLiveUserPhotoUrl(friend.uid, friend.photoUrl)
+    val tierRingColor = rememberLiveUserTierColor(friend.uid)
 
     // Use Row like ChatListItem - no card
 Row(
@@ -265,7 +268,8 @@ Row(
                     contentDescription = friend.displayName,
                     modifier = Modifier
                         .fillMaxSize()
-                        .clip(CircleShape),
+                        .clip(CircleShape)
+                        .border(2.dp, tierRingColor, CircleShape),
                     contentScale = ContentScale.Crop,
                     error = painterResource(id = android.R.drawable.ic_menu_myplaces)
                 )
@@ -274,6 +278,7 @@ Row(
                     modifier = Modifier
                         .fillMaxSize()
                         .clip(CircleShape)
+                        .border(2.dp, tierRingColor, CircleShape)
                         .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)),
                     contentAlignment = Alignment.Center
                 ) {
