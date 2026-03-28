@@ -1288,6 +1288,10 @@ private fun FlickGrid(
                             modifier = Modifier
                                 .align(Alignment.CenterStart)
                                 .padding(start = 6.dp, end = 6.dp)
+                                .offset(y = (-0.5).dp),
+                            style = androidx.compose.ui.text.TextStyle(
+                                platformStyle = PlatformTextStyle(includeFontPadding = false)
+                            )
                         )
 
                         Row(
@@ -1304,6 +1308,7 @@ private fun FlickGrid(
                                     color = Color.White,
                                     fontSize = 9.sp,
                                     fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.offset(y = (-0.5).dp),
                                     style = androidx.compose.ui.text.TextStyle(
                                         platformStyle = PlatformTextStyle(includeFontPadding = false)
                                     )
