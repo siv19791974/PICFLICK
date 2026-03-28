@@ -805,21 +805,12 @@ private fun UserResultItem(
 ) {
     val isDarkMode = ThemeManager.isDarkMode.value
     val liveUserPhoto = rememberLiveUserPhotoUrl(user.uid, user.photoUrl)
-    Card(
+    Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 4.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = if (isDarkMode) Color(0xFF2A4A73) else Color(0xFFB8D4F0) // Mid blue - darker than background
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+            .padding(horizontal = 12.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
             // Profile photo - clickable
             if (liveUserPhoto.isNotEmpty()) {
                 AsyncImage(

@@ -47,7 +47,6 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -216,11 +215,13 @@ fun ProfileScreen(
         onRefresh = onRefresh
     )
 
-    Box(
+    BoxWithConstraints(
         modifier = Modifier
             .fillMaxSize()
             .pullRefresh(pullRefreshState)
     ) {
+        val availableGridHeight = maxHeight
+
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -455,9 +456,9 @@ fun ProfileScreen(
             // Photo grid - match Home Feed dynamic sizing
             val rowCount = ((photos.size + 2) / 3).coerceAtLeast(1)
             val homeLikeRowHeight = if (isLandscape) {
-                (configuration.screenHeightDp.dp / 1.1f).coerceAtMost(148.dp)
+                availableGridHeight / 1.1f
             } else {
-                (configuration.screenHeightDp.dp / 4.1f).coerceAtMost(148.dp)
+                availableGridHeight / 4.1f
             }
             val cellOuterHeight = homeLikeRowHeight + 2.dp // MyPhotoCard has 1.dp top + 1.dp bottom padding
             val gridHeight = (rowCount * cellOuterHeight.value).dp + 6.dp // include grid content padding so last row never clips
@@ -1328,9 +1329,10 @@ private fun MyPhotoCard(
     rowHeight: androidx.compose.ui.unit.Dp
 ) {
     val reactionCounts = flick.getReactionCounts()
-    val topReaction = reactionCounts.maxByOrNull { it.value }
-    val topReactionCount = topReaction?.value ?: 0
-    val topReactionEmoji = topReaction?.key?.toEmoji() ?: "❤️"
+    val orderedReactions = reactionCounts.entries
+        .filter { it.value > 0 }
+        .sortedByDescending { it.value }
+        .take(5)
 
     Card(
         modifier = Modifier
@@ -1377,7 +1379,6 @@ private fun MyPhotoCard(
                 }
             }
 
-            // Fixed mini info banner (same style as Home)
             Box(
                 modifier = Modifier
                     .align(Alignment.BottomStart)
@@ -1385,40 +1386,26 @@ private fun MyPhotoCard(
                     .height(20.dp)
                     .background(color = Color.Black.copy(alpha = 0.5f))
                     .padding(horizontal = 4.dp, vertical = 1.dp),
-                contentAlignment = Alignment.CenterStart
+                contentAlignment = Alignment.CenterEnd
             ) {
-                val overlayTextStyle = MaterialTheme.typography.labelSmall.copy(
-                    fontSize = 10.sp,
-                    platformStyle = PlatformTextStyle(includeFontPadding = false)
-                )
-
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
-                        text = flick.userName,
-                        color = Color.White,
-                        style = overlayTextStyle.copy(fontWeight = FontWeight.SemiBold),
-                        maxLines = 1,
-                        modifier = Modifier.weight(1f)
-                    )
-
-                    Box(
-                        modifier = Modifier.width(36.dp),
-                        contentAlignment = Alignment.CenterEnd
-                    ) {
-                        if (topReactionCount > 0) {
-                            Text(
-                                text = "$topReactionEmoji $topReactionCount",
-                                style = overlayTextStyle,
-                                color = Color.White
-                            )
-                        }
+                    orderedReactions.forEach { (reactionType, count) ->
+                        val emoji = runCatching { reactionType.toEmoji() }
+                            .getOrDefault("❤️")
+                        Text(
+                            text = "$emoji $count",
+                            fontSize = 10.sp,
+                            color = Color.White,
+                            fontWeight = FontWeight.SemiBold,
+                            maxLines = 1
+                        )
                     }
                 }
             }
+
         }
     }
 }
