@@ -49,6 +49,7 @@ import androidx.compose.ui.window.DialogProperties
 import coil3.compose.AsyncImage
 import com.picflick.app.R
 import com.picflick.app.data.ChatSession
+import com.picflick.app.data.FriendGroup
 import com.picflick.app.data.UserProfile
 import com.picflick.app.ui.components.BottomNavBar
 import com.picflick.app.ui.components.LogoImage
@@ -72,10 +73,14 @@ fun ChatsScreen(
     userProfile: UserProfile,
     viewModel: ChatViewModel,
     friendsViewModel: FriendsViewModel,
+    friendGroups: List<FriendGroup> = emptyList(),
     onBack: () -> Unit,
     onNavigateHome: () -> Unit = onBack,
     onChatClick: (ChatSession, String) -> Unit,
     onStartNewChat: ((String, String, String) -> Unit)? = null,
+    onOpenGroupFlow: (() -> Unit)? = null,
+    onOpenGroupChat: ((FriendGroup) -> Unit)? = null,
+    onOpenGroupsList: (() -> Unit)? = null,
     onUserProfileClick: (String) -> Unit = {},
     onBottomNavNavigate: (String) -> Unit = {}
 ) {
@@ -511,12 +516,25 @@ fun ChatsScreen(
     if (showNewChatDialog) {
         NewChatDialog(
             friends = availableFriendsForNewChat,
+            groups = friendGroups,
             isLoading = friendsViewModel.isLoading,
             isDarkMode = isDarkMode,
             onDismiss = { showNewChatDialog = false },
             onFriendSelected = { friendId, friendName, friendPhoto ->
                 showNewChatDialog = false
                 onStartNewChat?.invoke(friendId, friendName, friendPhoto)
+            },
+            onOpenGroupFlow = {
+                showNewChatDialog = false
+                onOpenGroupFlow?.invoke()
+            },
+            onOpenGroupChat = { group ->
+                showNewChatDialog = false
+                onOpenGroupChat?.invoke(group)
+            },
+            onOpenGroupsList = {
+                showNewChatDialog = false
+                onOpenGroupsList?.invoke()
             },
             onUserProfileClick = onUserProfileClick
         )
@@ -732,10 +750,14 @@ private fun formatChatTime(timestamp: Long): String {
 @Composable
 private fun NewChatDialog(
     friends: List<com.picflick.app.data.UserProfile>,
+    groups: List<FriendGroup>,
     isLoading: Boolean,
     isDarkMode: Boolean,
     onDismiss: () -> Unit,
     onFriendSelected: (String, String, String) -> Unit,
+    onOpenGroupFlow: () -> Unit,
+    onOpenGroupChat: (FriendGroup) -> Unit,
+    onOpenGroupsList: () -> Unit,
     onUserProfileClick: (String) -> Unit
 ) {
     val backgroundColor = if (isDarkMode) Color.Black else PicFlickLightBackground
@@ -778,69 +800,170 @@ private fun NewChatDialog(
                 }
             }
 
-            when {
-            isLoading -> {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f),
-                    contentAlignment = Alignment.Center
-                ) {
-                    CircularProgressIndicator(color = if (isDarkMode) Color.White else Color.Black)
-                }
-            }
-            friends.isEmpty() -> {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f)
-                        .padding(32.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Person,
-                        contentDescription = null,
-                        modifier = Modifier.size(64.dp),
-                        tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Text(
-                        text = "No available users",
-                        fontSize = 18.sp,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = "All your friends already have an active chat.",
-                        fontSize = 14.sp,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
-                    )
-                }
-            }
-            else -> {
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f)
-                ) {
-                    items(
-                        items = friends,
-                        key = { it.uid },
-                        contentType = { "friend" }
-                    ) { friend ->
-                        FullScreenFriendItem(
-                            friend = friend,
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
+            ) {
+                    item("new_group_action") {
+                        NewContactActionItem(
+                            icon = {
+                                Box(
+                                    modifier = Modifier
+                                        .size(44.dp)
+                                        .clip(CircleShape)
+                                        .background(Color.Black),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Person,
+                                        contentDescription = null,
+                                        tint = Color.White,
+                                        modifier = Modifier.size(22.dp)
+                                    )
+                                }
+                            },
+                            title = "Create new group",
                             isDarkMode = isDarkMode,
-                            onClick = { onFriendSelected(friend.uid, friend.displayName, friend.photoUrl) },
-                            onProfilePhotoClick = { onUserProfileClick(friend.uid) }
+                            onClick = onOpenGroupFlow
                         )
+                    }
+
+                    item("groups_label") {
+                        Text(
+                            text = "Groups",
+                            modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 10.dp, bottom = 6.dp),
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                        )
+                    }
+
+                    item("existing_groups_action") {
+                        NewContactActionItem(
+                            icon = {
+                                Box(
+                                    modifier = Modifier
+                                        .size(44.dp)
+                                        .clip(CircleShape)
+                                        .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.AutoMirrored.Filled.Chat,
+                                        contentDescription = null,
+                                        tint = if (isDarkMode) Color.White else Color.Black,
+                                        modifier = Modifier.size(22.dp)
+                                    )
+                                }
+                            },
+                            title = "Group chats",
+                            isDarkMode = isDarkMode,
+                            onClick = onOpenGroupsList
+                        )
+                    }
+
+                    if (groups.isEmpty()) {
+                        item("groups_empty") {
+                            Text(
+                                text = "No groups yet",
+                                modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 8.dp),
+                                fontSize = 13.sp,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                            )
+                        }
+                    } else {
+                        items(
+                            items = groups.sortedBy { it.name.lowercase(Locale.getDefault()) },
+                            key = { "group_${it.id}" },
+                            contentType = { "group" }
+                        ) { group ->
+                            NewContactActionItem(
+                                icon = {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(44.dp)
+                                            .clip(CircleShape)
+                                            .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            text = group.icon.ifBlank { "👥" },
+                                            fontSize = 18.sp
+                                        )
+                                    }
+                                },
+                                title = group.name,
+                                isDarkMode = isDarkMode,
+                                onClick = { onOpenGroupChat(group) }
+                            )
+                        }
+                    }
+
+                    item("friends_label") {
+                        Text(
+                            text = "Friends",
+                            modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 6.dp),
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                        )
+                    }
+
+                    when {
+                        isLoading -> {
+                            item("friends_loading") {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 24.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    CircularProgressIndicator(color = if (isDarkMode) Color.White else Color.Black)
+                                }
+                            }
+                        }
+                        friends.isEmpty() -> {
+                            item("friends_empty") {
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 24.dp, vertical = 12.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
+                                    Text(
+                                        text = "No available users",
+                                        fontSize = 15.sp,
+                                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                                    )
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Text(
+                                        text = "All your friends already have an active chat.",
+                                        fontSize = 13.sp,
+                                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.45f)
+                                    )
+                                }
+                            }
+                        }
+                        else -> {
+                            items(
+                                items = friends,
+                                key = { it.uid },
+                                contentType = { "friend" }
+                            ) { friend ->
+                                FullScreenFriendItem(
+                                    friend = friend,
+                                    isDarkMode = isDarkMode,
+                                    onClick = { onFriendSelected(friend.uid, friend.displayName, friend.photoUrl) },
+                                    onProfilePhotoClick = { onUserProfileClick(friend.uid) }
+                                )
+                            }
+                        }
                     }
                 }
             }
         }
     }
-}
-}
 
 /**
  * Action item for new group/contact - WhatsApp style
