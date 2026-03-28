@@ -12,13 +12,15 @@ import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Badge
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -30,6 +32,7 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -51,6 +54,7 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.picflick.app.data.ChatSession
+import com.picflick.app.data.FriendGroup
 import com.picflick.app.data.SubscriptionTier
 import com.picflick.app.navigation.Screen
 import com.picflick.app.repository.FlickRepository
@@ -540,6 +544,8 @@ fun MainScreen(
     // Upload flow states
     var showUploadSourceDialog by remember { mutableStateOf(false) }
     var selectedPhotoUri by remember { mutableStateOf<Uri?>(null) }
+    var privateSharePhotoUris by remember { mutableStateOf<List<Uri>>(emptyList()) }
+    var showPrivateShareTargetDialog by remember { mutableStateOf(false) }
 
     // Android 13+ runtime permission for push notification display
     val notificationPermissionLauncher = rememberLauncherForActivityResult(
@@ -723,6 +729,32 @@ fun MainScreen(
         }
     }
 
+    val privateShareGalleryLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickMultipleVisualMedia(100)
+    ) { uris: List<Uri> ->
+        val selectedUris = uris.distinct()
+        if (selectedUris.isEmpty()) return@rememberLauncherForActivityResult
+
+        val profile = userProfile ?: return@rememberLauncherForActivityResult
+        val tier = profile.getEffectiveTier()
+        val dailyLimit = tier.getDailyUploadLimit()
+        val remainingDaily = if (dailyLimit == Int.MAX_VALUE) Int.MAX_VALUE else (dailyLimit - uploadViewModel.dailyUploadCount).coerceAtLeast(0)
+        val allowedCount = if (tier == SubscriptionTier.ULTRA) minOf(100, remainingDaily) else remainingDaily
+
+        if (allowedCount <= 0) {
+            Toast.makeText(context, "Daily upload limit reached", Toast.LENGTH_LONG).show()
+            return@rememberLauncherForActivityResult
+        }
+
+        val sendUris = selectedUris.take(allowedCount)
+        if (selectedUris.size > allowedCount) {
+            Toast.makeText(context, "Selected ${selectedUris.size}. Sending first $allowedCount due to daily limit.", Toast.LENGTH_LONG).show()
+        }
+
+        privateSharePhotoUris = sendUris
+        showPrivateShareTargetDialog = true
+    }
+
     // Camera permission launcher
     val cameraPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
@@ -774,12 +806,88 @@ fun MainScreen(
                         ActivityResultContracts.PickVisualMedia.ImageOnly
                     )
                 )
+            },
+            onSharePrivatelyClick = {
+                showUploadSourceDialog = false
+                privateShareGalleryLauncher.launch(
+                    PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                )
             }
         )
     }
 
     // Snackbar state for error feedback
     val snackbarHostState = remember { SnackbarHostState() }
+
+    if (showPrivateShareTargetDialog && privateSharePhotoUris.isNotEmpty() && userProfile != null) {
+        PrivateShareTargetDialog(
+            friends = friendsViewModel.followingUsers,
+            groups = homeViewModel.friendGroups,
+            onDismiss = {
+                showPrivateShareTargetDialog = false
+                privateSharePhotoUris = emptyList()
+            },
+            onShareToFriend = { friend ->
+                val imageUris = privateSharePhotoUris
+                chatViewModel.startChat(
+                    userId = userProfile.uid,
+                    otherUserId = friend.uid,
+                    userName = userProfile.displayName,
+                    otherUserName = friend.displayName,
+                    userPhoto = userProfile.photoUrl,
+                    otherUserPhoto = friend.photoUrl
+                ) { chatId ->
+                    imageUris.forEach { imageUri ->
+                        chatViewModel.sendPhotoMessage(
+                            chatId = chatId,
+                            imageUri = imageUri,
+                            senderId = userProfile.uid,
+                            recipientId = friend.uid,
+                            senderName = userProfile.displayName,
+                            senderPhotoUrl = userProfile.photoUrl,
+                            context = context,
+                            onComplete = {
+                                uploadViewModel.consumeDailyUploadSlot(userProfile.uid)
+                            }
+                        )
+                    }
+                    Toast.makeText(context, "Shared privately (${imageUris.size})", Toast.LENGTH_SHORT).show()
+                }
+                showPrivateShareTargetDialog = false
+                privateSharePhotoUris = emptyList()
+            },
+            onShareToGroup = { group ->
+                val imageUris = privateSharePhotoUris
+                chatViewModel.startGroupChat(
+                    ownerUserId = userProfile.uid,
+                    ownerName = userProfile.displayName,
+                    ownerPhoto = userProfile.photoUrl,
+                    groupId = group.id,
+                    groupName = group.name,
+                    groupIcon = group.icon,
+                    memberIds = group.friendIds
+                ) { chatId ->
+                    imageUris.forEach { imageUri ->
+                        chatViewModel.sendPhotoMessage(
+                            chatId = chatId,
+                            imageUri = imageUri,
+                            senderId = userProfile.uid,
+                            recipientId = "group:$chatId",
+                            senderName = userProfile.displayName,
+                            senderPhotoUrl = userProfile.photoUrl,
+                            context = context,
+                            onComplete = {
+                                uploadViewModel.consumeDailyUploadSlot(userProfile.uid)
+                            }
+                        )
+                    }
+                    Toast.makeText(context, "Shared privately (${imageUris.size})", Toast.LENGTH_SHORT).show()
+                }
+                showPrivateShareTargetDialog = false
+                privateSharePhotoUris = emptyList()
+            }
+        )
+    }
     
     // Track screen views for analytics
     LaunchedEffect(currentScreen) {
@@ -1050,5 +1158,42 @@ fun MainScreen(
         }
 
     }
+}
+
+@Composable
+private fun PrivateShareTargetDialog(
+    friends: List<com.picflick.app.data.UserProfile>,
+    groups: List<FriendGroup>,
+    onDismiss: () -> Unit,
+    onShareToFriend: (com.picflick.app.data.UserProfile) -> Unit,
+    onShareToGroup: (FriendGroup) -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Share privately") },
+        text = {
+            LazyColumn {
+                item {
+                    Text("Groups", fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+                }
+                items(groups, key = { it.id }) { group ->
+                    TextButton(onClick = { onShareToGroup(group) }) {
+                        Text("${group.icon} ${group.name}")
+                    }
+                }
+                item {
+                    Text("Individuals", fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+                }
+                items(friends, key = { it.uid }) { friend ->
+                    TextButton(onClick = { onShareToFriend(friend) }) {
+                        Text(friend.displayName)
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) { Text("Close") }
+        }
+    )
 }
 
