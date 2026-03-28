@@ -455,9 +455,9 @@ fun ProfileScreen(
             // Photo grid - match Home Feed dynamic sizing
             val rowCount = ((photos.size + 2) / 3).coerceAtLeast(1)
             val homeLikeRowHeight = if (isLandscape) {
-                configuration.screenHeightDp.dp / 1.1f
+                (configuration.screenHeightDp.dp / 1.1f).coerceAtMost(148.dp)
             } else {
-                configuration.screenHeightDp.dp / 4.1f
+                (configuration.screenHeightDp.dp / 4.1f).coerceAtMost(148.dp)
             }
             val cellOuterHeight = homeLikeRowHeight + 2.dp // MyPhotoCard has 1.dp top + 1.dp bottom padding
             val gridHeight = (rowCount * cellOuterHeight.value).dp + 6.dp // include grid content padding so last row never clips
