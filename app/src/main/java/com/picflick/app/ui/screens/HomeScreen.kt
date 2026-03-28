@@ -1034,7 +1034,7 @@ private fun FlickGrid(
         val rowHeight = if (isLandscape) {
             this.maxHeight / 1.1f
         } else {
-            this.maxHeight / 4.1f
+            this.maxHeight / 4.08f
         }
 
         // Track scroll position for infinite scroll

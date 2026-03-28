@@ -458,7 +458,7 @@ fun ProfileScreen(
             val homeLikeRowHeight = if (isLandscape) {
                 availableGridHeight / 1.1f
             } else {
-                availableGridHeight / 4.1f
+                availableGridHeight / 4.08f
             }
             val cellOuterHeight = homeLikeRowHeight + 2.dp // MyPhotoCard has 1.dp top + 1.dp bottom padding
             val gridHeight = (rowCount * cellOuterHeight.value).dp + 6.dp // include grid content padding so last row never clips
