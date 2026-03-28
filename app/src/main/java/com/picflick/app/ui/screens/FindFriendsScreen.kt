@@ -522,14 +522,29 @@ private fun ContactsTab(
                 }
                 
                 Column(modifier = Modifier.fillMaxSize()) {
-                    // On the app section
-                    if (filteredContacts.isNotEmpty()) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 10.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
                         Text(
                             text = "Contacts on PicFlick (${filteredContacts.size})",
                             style = MaterialTheme.typography.titleMedium,
-                            modifier = Modifier.padding(16.dp)
+                            color = if (isDarkMode) Color.White else Color.Black
                         )
+                        OutlinedButton(
+                            onClick = onRefresh,
+                            shape = RoundedCornerShape(20.dp),
+                            contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp)
+                        ) {
+                            Text("Sync Contacts", fontSize = 12.sp)
+                        }
+                    }
 
+                    // On the app section
+                    if (filteredContacts.isNotEmpty()) {
                         LazyColumn(
                             state = listState
                         ) {
@@ -873,7 +888,11 @@ private fun UserResultItem(
                 }
             }
             
-            // Action button - small, on the right
+            // Action button - aligned with User B friends list styles
+            val addColor = Color(0xFF1E88E5)      // Light blue outline/text for ADD
+            val waitingColor = Color(0xFF2A4A73)  // Standard mid-blue for WAITING
+            val friendsColor = Color(0xFF2E7D32)  // Green for FRIENDS
+
             when {
                 isProcessing -> {
                     CircularProgressIndicator(
@@ -887,10 +906,14 @@ private fun UserResultItem(
                         shape = RoundedCornerShape(20.dp),
                         modifier = Modifier.wrapContentWidth(),
                         colors = ButtonDefaults.outlinedButtonColors(
-                            contentColor = Color.Gray
-                        )
+                            containerColor = waitingColor,
+                            contentColor = Color.White,
+                            disabledContainerColor = waitingColor,
+                            disabledContentColor = Color.White
+                        ),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, waitingColor)
                     ) {
-                        Text("Waiting", fontSize = 12.sp)
+                        Text("WAITING", fontSize = 12.sp, color = Color.White)
                     }
                 }
                 hasReceivedRequest -> {
@@ -909,18 +932,32 @@ private fun UserResultItem(
                     OutlinedButton(
                         onClick = onFollowClick,
                         shape = RoundedCornerShape(20.dp),
-                        modifier = Modifier.wrapContentWidth()
+                        modifier = Modifier.wrapContentWidth(),
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            containerColor = friendsColor,
+                            contentColor = Color.White,
+                            disabledContainerColor = friendsColor,
+                            disabledContentColor = Color.White
+                        ),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, friendsColor)
                     ) {
-                        Text("Friends", fontSize = 12.sp)
+                        Text("FRIENDS", fontSize = 12.sp, color = Color.White)
                     }
                 }
                 else -> {
-                    Button(
+                    OutlinedButton(
                         onClick = onFollowClick,
                         shape = RoundedCornerShape(20.dp),
-                        modifier = Modifier.wrapContentWidth()
+                        modifier = Modifier.wrapContentWidth(),
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            containerColor = Color.Transparent,
+                            contentColor = addColor,
+                            disabledContainerColor = Color.Transparent,
+                            disabledContentColor = addColor
+                        ),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, addColor)
                     ) {
-                        Text("Add", fontSize = 12.sp)
+                        Text("ADD", fontSize = 12.sp, color = addColor)
                     }
                 }
             }
