@@ -281,6 +281,21 @@ class FriendsViewModel : ViewModel() {
     }
 
     /**
+     * Decline/reject an incoming follow request.
+     */
+    fun declineFollowRequest(currentUserId: String, requesterId: String) {
+        addProcessingUser(requesterId)
+        viewModelScope.launch {
+            val result = socialRepository.declineFollowRequest(currentUserId, requesterId)
+            if (result is com.picflick.app.data.Result.Error) {
+                android.util.Log.e("FriendsViewModel", "Failed to decline follow request: ${result.exception?.message}")
+                errorMessage = result.exception.message ?: result.message
+            }
+            removeProcessingUser(requesterId)
+        }
+    }
+
+    /**
      * Cancel a follow request (withdraw request sent to another user)
      */
     fun cancelFollowRequest(currentUserId: String, targetUserId: String) {

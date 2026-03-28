@@ -318,7 +318,7 @@ Row(
         }
         
         if (isOwnFriendsList) {
-            // Delete friend flow: normal -> solid red "SURE?" -> delete
+            // Delete friend flow: normal -> solid red "CONFIRM DELETE" -> delete
             val deleteRed = Color(0xFFD32F2F)
             OutlinedButton(
                 onClick = onDeleteFriend,
@@ -335,8 +335,8 @@ Row(
             ) {
                 when {
                     isRemoving -> Text("Removing...", fontSize = 12.sp, color = Color.White)
-                    isPendingDelete -> Text("SURE?", fontSize = 12.sp, color = Color.White)
-                    else -> Text("DELETE FRIEND", fontSize = 12.sp, color = deleteRed)
+                    isPendingDelete -> Text("Confirm delete", fontSize = 12.sp, color = Color.White)
+                    else -> Text("Delete friend", fontSize = 12.sp, color = deleteRed)
                 }
             }
         } else {
@@ -366,9 +366,9 @@ Row(
                 border = androidx.compose.foundation.BorderStroke(1.dp, buttonColor)
             ) {
                 when {
-                    isAlreadyFriend -> Text("FRIENDS", fontSize = 12.sp, color = Color.White)
-                    isWaiting -> Text("WAITING", fontSize = 12.sp, color = Color.White)
-                    else -> Text("ADD", fontSize = 12.sp)
+                    isAlreadyFriend -> Text("Friends", fontSize = 12.sp, color = Color.White)
+                    isWaiting -> Text("Waiting", fontSize = 12.sp, color = Color.White)
+                    else -> Text("Add", fontSize = 12.sp)
                 }
             }
         }

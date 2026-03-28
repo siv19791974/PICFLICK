@@ -7,6 +7,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -33,6 +34,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
@@ -93,6 +95,13 @@ fun UserProfileScreen(
     // Reaction picker state for long-press on photos
     var showReactionPicker by remember { mutableStateOf(false) }
     var flickForReaction by remember { mutableStateOf<Flick?>(null) }
+    var showUnfriendConfirm by remember { mutableStateOf(false) }
+
+    LaunchedEffect(isFriend) {
+        if (!isFriend) {
+            showUnfriendConfirm = false
+        }
+    }
 
     // Dark mode state
     val isDarkMode = com.picflick.app.ui.theme.ThemeManager.isDarkMode.value
@@ -132,8 +141,15 @@ fun UserProfileScreen(
         modifier = Modifier
             .fillMaxSize()
             .pullRefresh(pullRefreshState)
+            .pointerInput(showUnfriendConfirm) {
+                detectTapGestures(onTap = {
+                    if (showUnfriendConfirm) {
+                        showUnfriendConfirm = false
+                    }
+                })
+            }
     ) {
-        val availableGridHeight = maxHeight
+        val availableGridHeight = this.maxHeight
 
         Column(
             modifier = Modifier
@@ -213,16 +229,34 @@ fun UserProfileScreen(
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                OutlinedButton(
-                    onClick = onUnfriend,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 32.dp),
-                    colors = ButtonDefaults.outlinedButtonColors(
-                        contentColor = Color.Gray
-                    )
-                ) {
-                    Text("Remove Friend")
+                if (showUnfriendConfirm) {
+                    Button(
+                        onClick = {
+                            onUnfriend()
+                            showUnfriendConfirm = false
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 32.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFFC62828),
+                            contentColor = Color.White
+                        )
+                    ) {
+                        Text("Confirm delete")
+                    }
+                } else {
+                    OutlinedButton(
+                        onClick = { showUnfriendConfirm = true },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 32.dp),
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            contentColor = Color.Gray
+                        )
+                    ) {
+                        Text("Remove Friend")
+                    }
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
