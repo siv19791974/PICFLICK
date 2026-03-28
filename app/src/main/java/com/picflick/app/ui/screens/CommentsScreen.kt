@@ -2,6 +2,7 @@ package com.picflick.app.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -30,6 +31,7 @@ import com.picflick.app.repository.PhotoRepository
 import com.picflick.app.repository.FlickRepository
 import com.picflick.app.ui.theme.ThemeManager
 import com.picflick.app.util.rememberLiveUserPhotoUrl
+import com.picflick.app.util.rememberLiveUserTierColor
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
@@ -347,6 +349,7 @@ private fun CommentItem(
         userId = comment.userId,
         fallbackPhotoUrl = comment.userPhotoUrl
     )
+    val tierRingColor = rememberLiveUserTierColor(comment.userId)
 
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -360,6 +363,7 @@ private fun CommentItem(
                 modifier = Modifier
                     .size(40.dp)
                     .clip(CircleShape)
+                    .border(2.dp, tierRingColor, CircleShape)
                     .clickable { onUserClick() }
             )
         } else {
@@ -369,6 +373,7 @@ private fun CommentItem(
                 modifier = Modifier
                     .size(40.dp)
                     .clip(CircleShape)
+                    .border(2.dp, tierRingColor, CircleShape)
                     .background(MaterialTheme.colorScheme.surfaceVariant)
                     .padding(8.dp)
                     .clickable { onUserClick() },

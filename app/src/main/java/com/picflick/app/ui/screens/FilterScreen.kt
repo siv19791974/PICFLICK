@@ -45,6 +45,7 @@ import coil3.request.ImageRequest
 import coil3.request.allowHardware
 import coil3.toBitmap
 import com.picflick.app.util.rememberLiveUserPhotoUrl
+import com.picflick.app.util.rememberLiveUserTierColor
 import com.canhub.cropper.CropImageContract
 import com.canhub.cropper.CropImageContractOptions
 import com.canhub.cropper.CropImageOptions
@@ -697,6 +698,7 @@ private fun TaggedFriendChip(
     isDarkMode: Boolean
 ) {
     val liveFriendPhoto = rememberLiveUserPhotoUrl(friend.uid, friend.photoUrl)
+    val tierRingColor = rememberLiveUserTierColor(friend.uid)
 
     Box(
         modifier = Modifier
@@ -711,6 +713,7 @@ private fun TaggedFriendChip(
                 modifier = Modifier
                     .size(22.dp)
                     .clip(CircleShape)
+                    .border(2.dp, tierRingColor, CircleShape)
                     .background(if (isDarkMode) Color.Black.copy(alpha = 0.15f) else Color.White.copy(alpha = 0.2f)),
                 contentAlignment = Alignment.Center
             ) {
@@ -837,6 +840,7 @@ private fun FriendPickerItem(
     onClick: () -> Unit
 ) {
     val liveFriendPhoto = rememberLiveUserPhotoUrl(friend.uid, friend.photoUrl)
+    val tierRingColor = rememberLiveUserTierColor(friend.uid)
 
     Row(
         modifier = Modifier
@@ -851,7 +855,7 @@ private fun FriendPickerItem(
                 .size(48.dp)
                 .clip(CircleShape)
                 .background(Color.Gray.copy(alpha = 0.4f))
-                .border(2.dp, Color.White.copy(alpha = 0.8f), CircleShape),
+                .border(2.dp, tierRingColor, CircleShape),
             contentAlignment = Alignment.Center
         ) {
             if (liveFriendPhoto.isNotBlank()) {

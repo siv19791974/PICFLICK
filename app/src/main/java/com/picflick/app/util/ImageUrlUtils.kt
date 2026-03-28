@@ -6,10 +6,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import coil3.request.CachePolicy
 import coil3.request.ImageRequest
 import com.picflick.app.data.Result
+import com.picflick.app.data.SubscriptionTier
+import com.picflick.app.data.getColor
 import com.picflick.app.repository.FlickRepository
 import java.util.concurrent.TimeUnit
 
@@ -82,4 +85,26 @@ fun rememberLiveUserPhotoUrl(userId: String, fallbackPhotoUrl: String?): String 
 
     val finalUrl = if (resolvedPhotoUrl.isNotBlank()) resolvedPhotoUrl else normalizePhotoUrl(fallbackPhotoUrl)
     return withCacheBust(finalUrl, finalUrl)
+}
+
+@Composable
+fun rememberLiveUserTierColor(userId: String): Color {
+    var tierColor by remember(userId) {
+        mutableStateOf(SubscriptionTier.FREE.getColor())
+    }
+
+    DisposableEffect(userId) {
+        if (userId.isBlank()) {
+            onDispose { }
+        } else {
+            val listener = FlickRepository.getInstance().listenToUserProfile(userId) { result ->
+                if (result is Result.Success) {
+                    tierColor = result.data.getEffectiveTier().getColor()
+                }
+            }
+            onDispose { listener.remove() }
+        }
+    }
+
+    return tierColor
 }

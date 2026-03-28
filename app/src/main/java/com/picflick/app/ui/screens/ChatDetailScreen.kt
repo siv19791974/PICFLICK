@@ -8,6 +8,7 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.*
@@ -57,6 +58,7 @@ import com.picflick.app.ui.theme.ThemeManager
 import com.picflick.app.ui.theme.isDarkModeBackground
 import com.picflick.app.util.rememberChatImageModel
 import com.picflick.app.util.rememberLiveUserPhotoUrl
+import com.picflick.app.util.rememberLiveUserTierColor
 import com.picflick.app.viewmodel.ChatViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -1160,14 +1162,6 @@ Box(
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.End
                                 ) {
-                                    if (message.edited) {
-                                        Text(
-                                            text = "edited",
-                                            fontSize = 9.sp,
-                                            color = Color.Black.copy(alpha = 0.45f)
-                                        )
-                                        Spacer(modifier = Modifier.width(4.dp))
-                                    }
                                     Text(
                                         text = formatMessageTime(message.timestamp),
                                         fontSize = 10.sp,
@@ -1324,14 +1318,6 @@ modifier = Modifier
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.End
                                 ) {
-                                    if (message.edited) {
-                                        Text(
-                                            text = "edited",
-                                            fontSize = 9.sp,
-                                            color = Color.Black.copy(alpha = 0.45f)
-                                        )
-                                        Spacer(modifier = Modifier.width(4.dp))
-                                    }
                                     Text(
                                         text = formatMessageTime(message.timestamp),
                                         fontSize = 10.sp,
@@ -1516,6 +1502,7 @@ private fun QuickSwitchChatBar(
     val currentName = currentChatSession.participantNames[currentOtherUserId]
         ?.takeIf { it.isNotBlank() }
         ?: "Chat"
+    val currentTierRingColor = rememberLiveUserTierColor(currentOtherUserId)
 
     val sortedOthers = quickSwitchChats
         .filter { it.otherUserId != currentOtherUserId }
@@ -1555,6 +1542,7 @@ private fun QuickSwitchChatBar(
                         modifier = Modifier
                             .size(avatarSize)
                             .clip(CircleShape)
+                            .border(2.dp, currentTierRingColor, CircleShape)
                             .background(Color.White.copy(alpha = 0.15f))
                     )
                 } else {
@@ -1562,10 +1550,12 @@ private fun QuickSwitchChatBar(
                         userId = item.otherUserId,
                         fallbackPhotoUrl = item.otherUserPhoto
                     )
+                    val avatarTierRingColor = rememberLiveUserTierColor(item.otherUserId)
                     Box(
                         modifier = Modifier
                             .size(avatarSize)
                             .clip(CircleShape)
+                            .border(2.dp, avatarTierRingColor, CircleShape)
                             .background(Color.White.copy(alpha = if (isCenter) 0.35f else 0.2f))
                             .clickable {
                                 if (!isCenter) {
@@ -1580,7 +1570,8 @@ private fun QuickSwitchChatBar(
                                 contentDescription = item.otherUserName,
                                 modifier = Modifier
                                     .fillMaxSize()
-                                    .clip(CircleShape),
+                                    .clip(CircleShape)
+                                    .border(2.dp, avatarTierRingColor, CircleShape),
                                 contentScale = ContentScale.Crop
                             )
                         } else {

@@ -2,6 +2,7 @@ package com.picflick.app.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -28,6 +29,7 @@ import com.picflick.app.ui.theme.ThemeManager
 import com.picflick.app.ui.theme.isDarkModeBackground
 import com.picflick.app.ui.theme.isDarkModeSurface
 import com.picflick.app.util.rememberLiveUserPhotoUrl
+import com.picflick.app.util.rememberLiveUserTierColor
 
 /**
  * Privacy Settings Screen - Privacy by Default
@@ -615,6 +617,7 @@ private fun MutedUserItem(
     val subtitleColor = if (isDarkMode) Color.Gray else Color.DarkGray
     val cardBackground = if (isDarkMode) Color(0xFF1C1C1E) else Color.White
     val liveUserPhoto = rememberLiveUserPhotoUrl(user.uid, user.photoUrl)
+    val tierRingColor = rememberLiveUserTierColor(user.uid)
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -636,12 +639,14 @@ private fun MutedUserItem(
                     modifier = Modifier
                         .size(48.dp)
                         .clip(CircleShape)
+                        .border(2.dp, tierRingColor, CircleShape)
                 )
             } else {
                 Box(
                     modifier = Modifier
                         .size(48.dp)
                         .clip(CircleShape)
+                        .border(2.dp, tierRingColor, CircleShape)
                         .background(subtitleColor),
                     contentAlignment = Alignment.Center
                 ) {
@@ -771,6 +776,7 @@ private fun BlockedUserItem(
     val subtitleColor = if (isDarkMode) Color.Gray else Color.DarkGray
     val cardBackground = if (isDarkMode) Color(0xFF1C1C1E) else Color.White
     val liveUserPhoto = rememberLiveUserPhotoUrl(user.uid, user.photoUrl)
+    val tierRingColor = rememberLiveUserTierColor(user.uid)
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -793,12 +799,14 @@ private fun BlockedUserItem(
                     modifier = Modifier
                         .size(48.dp)
                         .clip(CircleShape)
+                        .border(2.dp, tierRingColor, CircleShape)
                 )
             } else {
                 Box(
                     modifier = Modifier
                         .size(48.dp)
                         .clip(CircleShape)
+                        .border(2.dp, tierRingColor, CircleShape)
                         .background(subtitleColor),
                     contentAlignment = Alignment.Center
                 ) {
