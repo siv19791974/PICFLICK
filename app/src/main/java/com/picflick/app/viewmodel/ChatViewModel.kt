@@ -216,12 +216,18 @@ class ChatViewModel : ViewModel() {
                 quotedImageUrl = replyToMessage?.imageUrl?.takeIf { it.isNotBlank() }
             )
 
-            when (val result = repository.sendMessage(chatId, message, recipientId)) {
+            val sendResult = if (recipientId.startsWith("group:")) {
+                repository.sendGroupMessage(chatId, message)
+            } else {
+                repository.sendMessage(chatId, message, recipientId)
+            }
+
+            when (sendResult) {
                 is Result.Success -> {
                     onComplete()
                 }
                 is Result.Error -> {
-                    errorMessage = "Failed to send message: ${result.message}"
+                    errorMessage = "Failed to send message: ${sendResult.message}"
                 }
                 is Result.Loading -> {}
             }
@@ -281,13 +287,19 @@ class ChatViewModel : ViewModel() {
 
                 // Keep same ID so backend write replaces optimistic item seamlessly
                 val finalMessage = optimisticMessage.copy(imageUrl = downloadUrl)
-                when (val result = repository.sendMessage(chatId, finalMessage, recipientId)) {
+                val sendResult = if (recipientId.startsWith("group:")) {
+                    repository.sendGroupMessage(chatId, finalMessage)
+                } else {
+                    repository.sendMessage(chatId, finalMessage, recipientId)
+                }
+
+                when (sendResult) {
                     is Result.Success -> {
                         onComplete()
                     }
                     is Result.Error -> {
                         messages = messages.filterNot { it.id == optimisticMessageId }
-                        errorMessage = "Failed to send photo: ${result.message}"
+                        errorMessage = "Failed to send photo: ${sendResult.message}"
                     }
                     is Result.Loading -> Unit
                 }
@@ -319,6 +331,36 @@ class ChatViewModel : ViewModel() {
                     errorMessage = "Failed to start chat: ${result.message}"
                 }
                 is Result.Loading -> {}
+            }
+        }
+    }
+
+    /**
+     * Start or open a group chat from a friend group.
+     */
+    fun startGroupChat(
+        ownerUserId: String,
+        ownerName: String,
+        ownerPhoto: String,
+        groupId: String,
+        groupName: String,
+        groupIcon: String,
+        memberIds: List<String>,
+        onChatReady: (String) -> Unit
+    ) {
+        viewModelScope.launch {
+            when (val result = repository.getOrCreateGroupChatSession(
+                ownerUserId = ownerUserId,
+                groupId = groupId,
+                groupName = groupName,
+                groupIcon = groupIcon,
+                groupMemberIds = memberIds,
+                ownerName = ownerName,
+                ownerPhoto = ownerPhoto
+            )) {
+                is Result.Success -> onChatReady(result.data)
+                is Result.Error -> errorMessage = "Failed to start group chat: ${result.message}"
+                is Result.Loading -> Unit
             }
         }
     }

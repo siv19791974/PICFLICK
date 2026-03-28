@@ -5,6 +5,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Menu
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -26,7 +27,8 @@ import androidx.compose.ui.unit.sp
 fun UploadSourceDialog(
     onDismiss: () -> Unit,
     onCameraClick: () -> Unit,
-    onGalleryClick: () -> Unit
+    onGalleryClick: () -> Unit,
+    onSharePrivatelyClick: () -> Unit
 ) {
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -53,7 +55,8 @@ fun UploadSourceDialog(
                 icon = Icons.Outlined.Add,
                 title = "Take Photo",
                 subtitle = "Use your camera",
-                onClick = onCameraClick
+                onClick = onCameraClick,
+                backgroundColor = Color(0xFF5FB9FF)
             )
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -63,22 +66,32 @@ fun UploadSourceDialog(
                 icon = Icons.Outlined.Menu,
                 title = "Choose from Gallery",
                 subtitle = "Select existing photo",
-                onClick = onGalleryClick
+                onClick = onGalleryClick,
+                backgroundColor = Color(0xFF6EC2FF)
             )
 
-            Spacer(modifier = Modifier.height(32.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
-            // Cancel Button
-            TextButton(
+            // Private share option
+            UploadOptionRow(
+                icon = Icons.AutoMirrored.Filled.Send,
+                title = "Share privately 🎭",
+                subtitle = "Send to individual or group only",
+                onClick = onSharePrivatelyClick,
+                backgroundColor = Color(0xFF7BC9FF)
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            UploadOptionRow(
+                icon = Icons.Outlined.Menu,
+                title = "Cancel",
+                subtitle = "Close add photo",
                 onClick = onDismiss,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text(
-                    text = "Cancel",
-                    color = Color.Gray,
-                    fontSize = 16.sp
-                )
-            }
+                backgroundColor = Color(0xFF89D0FF)
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
         }
     }
 }
@@ -88,13 +101,14 @@ private fun UploadOptionRow(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     title: String,
     subtitle: String,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    backgroundColor: Color
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
-            .background(Color(0xFF2C2C2E))
+            .background(backgroundColor)
             .clickable(onClick = onClick)
             .padding(16.dp),
         verticalAlignment = Alignment.CenterVertically
