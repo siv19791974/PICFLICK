@@ -286,6 +286,58 @@ class HomeViewModel : ViewModel() {
     }
 
     /**
+     * Update an existing friend group
+     */
+    fun updateFriendGroup(
+        userId: String,
+        groupId: String,
+        name: String,
+        icon: String,
+        friendIds: List<String>,
+        color: String,
+        onComplete: (Boolean) -> Unit = {}
+    ) {
+        viewModelScope.launch {
+            isLoading = true
+            when (val result = repository.updateFriendGroup(
+                userId = userId,
+                groupId = groupId,
+                name = name,
+                friendIds = friendIds,
+                icon = icon,
+                color = color
+            )) {
+                is Result.Success -> {
+                    val index = friendGroups.indexOfFirst { it.id == groupId }
+                    if (index != -1) {
+                        val updated = friendGroups[index].copy(
+                            name = name,
+                            icon = icon,
+                            friendIds = friendIds,
+                            color = color,
+                            updatedAt = System.currentTimeMillis()
+                        )
+                        friendGroups[index] = updated
+
+                        if (selectedFilter is FeedFilter.ByGroup && (selectedFilter as FeedFilter.ByGroup).group.id == groupId) {
+                            selectedFilter = FeedFilter.ByGroup(updated)
+                            loadFlicks()
+                        }
+                    }
+                    isLoading = false
+                    onComplete(true)
+                }
+                is Result.Error -> {
+                    errorMessage = result.message
+                    isLoading = false
+                    onComplete(false)
+                }
+                is Result.Loading -> { }
+            }
+        }
+    }
+
+    /**
      * Delete a friend group
      */
     fun deleteFriendGroup(userId: String, groupId: String) {
