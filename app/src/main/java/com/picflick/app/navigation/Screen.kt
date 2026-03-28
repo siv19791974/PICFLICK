@@ -15,7 +15,7 @@ sealed class Screen {
     data object UserFriends : Screen() // View another user's friends list (not main Friends tab)
     data object Chats : Screen()
     data object ChatDetail : Screen()
-    data object FindFriends : Screen()
+    data class FindFriends(val priorityRequesterId: String? = null) : Screen()
     data object About : Screen()
     data object Contact : Screen()
     data object Notifications : Screen()

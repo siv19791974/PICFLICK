@@ -308,10 +308,19 @@ class SocialRepository private constructor() {
 
             batch.commit().await()
 
+            // Always resolve accepter name from backend profile to avoid reversed/wrong names.
+            val resolvedAccepterName = try {
+                val accepterDoc = currentUserRef.get().await()
+                accepterDoc.getString("displayName")?.takeIf { it.isNotBlank() }
+                    ?: currentUserName.ifBlank { "Someone" }
+            } catch (_: Exception) {
+                currentUserName.ifBlank { "Someone" }
+            }
+
             // Create acceptance notification
             createFollowAcceptedNotification(
                 accepterId = currentUserId,
-                accepterName = currentUserName,
+                accepterName = resolvedAccepterName,
                 requesterId = requesterId
             )
 

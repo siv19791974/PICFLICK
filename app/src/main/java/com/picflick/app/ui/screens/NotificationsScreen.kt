@@ -69,7 +69,7 @@ fun NotificationsScreen(
     onUserProfileClick: (String) -> Unit = {},
     onPhotoClick: (flickId: String, imageUrl: String?, userId: String) -> Unit = { _, _, _ -> },
     onChatClick: (chatId: String, otherUserId: String, otherUserName: String, otherUserPhoto: String) -> Unit = { _, _, _, _ -> },
-    onFindFriendsClick: () -> Unit = {},
+    onFindFriendsClick: (String?) -> Unit = {},
     onAddFirstPhotoClick: () -> Unit = {},
     viewModel: NotificationViewModel = viewModel()
 ) {
@@ -303,9 +303,10 @@ fun NotificationsScreen(
                                                             hint.contains("find friends") ||
                                                             hint.contains("tap to find") ||
                                                             hint.contains("welcome") ||
-                                                            hint.contains("onboarding") -> onFindFriendsClick()
+                                                            hint.contains("onboarding") -> onFindFriendsClick(notification.senderId)
                                                     }
                                                 }
+                                                NotificationType.FRIEND_REQUEST -> onFindFriendsClick(notification.senderId)
                                                 else -> Unit
                                             }
                                         }
@@ -376,9 +377,10 @@ fun NotificationsScreen(
                                                             hint.contains("find friends") ||
                                                             hint.contains("tap to find") ||
                                                             hint.contains("welcome") ||
-                                                            hint.contains("onboarding") -> onFindFriendsClick()
+                                                            hint.contains("onboarding") -> onFindFriendsClick(notification.senderId)
                                                     }
                                                 }
+                                                NotificationType.FRIEND_REQUEST -> onFindFriendsClick(notification.senderId)
                                                 else -> Unit
                                             }
                                         }

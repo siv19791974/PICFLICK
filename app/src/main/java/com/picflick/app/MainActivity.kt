@@ -190,6 +190,14 @@ class MainActivity : ComponentActivity() {
             !flickId.isNullOrBlank() -> "photo"
             !chatId.isNullOrBlank() -> "chat"
             !senderId.isNullOrBlank() -> "profile"
+            notificationTypeLower.contains("message") -> "chat"
+            notificationTypeLower.contains("mention") ||
+                notificationTypeLower.contains("comment") ||
+                notificationTypeLower.contains("reaction") ||
+                notificationTypeLower.contains("like") -> "photo"
+            notificationTypeLower.contains("follow") ||
+                notificationTypeLower.contains("friend") ||
+                notificationTypeLower.contains("profile") -> "profile"
             else -> "notifications"
         }
 
@@ -354,7 +362,7 @@ fun MainScreen(
                     }
                 }
                 "find_friends" -> {
-                    currentScreen = Screen.FindFriends
+                    currentScreen = Screen.FindFriends(priorityRequesterId = senderId?.takeIf { it.isNotBlank() })
                 }
                 "photo" -> {
                     val flickId = pushData.getString("flickId")

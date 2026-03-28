@@ -226,7 +226,8 @@ fun AuthenticatedContent(
                 userProfile = userProfile,
                 friendsViewModel = friendsViewModel,
                 authViewModel = authViewModel,
-                onScreenChange = onScreenChange
+                onScreenChange = onScreenChange,
+                priorityRequesterId = currentScreen.priorityRequesterId
             )
         }
 
@@ -446,7 +447,7 @@ fun AuthenticatedContent(
                 onNavigateToPhoto = { },
                 onNavigateToFindFriends = {
                     onPushPhotoConsumed()
-                    onScreenChange(Screen.FindFriends)
+                    onScreenChange(Screen.FindFriends())
                 },
                 onUserProfileClick = { userId ->
                     onPushPhotoConsumed()
@@ -493,7 +494,7 @@ private fun HomeScreenContent(
                 "my_photos" -> Screen.MyPhotos
                 "friends" -> Screen.Friends
                 "chats" -> Screen.Chats
-                "find_friends" -> Screen.FindFriends
+                "find_friends" -> Screen.FindFriends()
                 "about" -> Screen.About
                 "contact" -> Screen.Contact
                 "notifications" -> Screen.Notifications
@@ -600,7 +601,7 @@ private fun ProfileScreenContent(
             },
             onNavigateToFindFriends = {
                 selectedPhoto = null
-                onScreenChange(Screen.FindFriends)
+                onScreenChange(Screen.FindFriends())
             },
             onUserProfileClick = { userId ->
                 selectedPhoto = null
@@ -654,7 +655,7 @@ private fun FriendsScreenContent(
         userProfile = userProfile,
         viewModel = friendsViewModel,
         onBack = onBack,
-        onFindFriendsClick = { onScreenChange(Screen.FindFriends) },
+        onFindFriendsClick = { onScreenChange(Screen.FindFriends()) },
         onProfilePhotoClick = { friend ->
             onScreenChange(Screen.UserProfile(friend.uid))
         },
@@ -858,7 +859,7 @@ private fun ChatDetailScreenContent(
             onNavigateToPhoto = { },
             onNavigateToFindFriends = {
                 selectedChatPhoto = null
-                onScreenChange(Screen.FindFriends)
+                onScreenChange(Screen.FindFriends())
             },
             onUserProfileClick = { userId ->
                 selectedChatPhoto = null
@@ -884,7 +885,8 @@ private fun FindFriendsScreenContent(
     userProfile: UserProfile,
     friendsViewModel: FriendsViewModel,
     authViewModel: AuthViewModel,
-    onScreenChange: (Screen) -> Unit
+    onScreenChange: (Screen) -> Unit,
+    priorityRequesterId: String? = null
 ) {
     FindFriendsScreen(
         viewModel = friendsViewModel,
@@ -893,7 +895,8 @@ private fun FindFriendsScreenContent(
         onNavigateToProfile = { userId ->
             onScreenChange(Screen.UserProfile(userId))
         },
-        onProfileRefresh = { authViewModel.reloadUserProfile() }
+        onProfileRefresh = { authViewModel.reloadUserProfile() },
+        priorityRequesterId = priorityRequesterId
     )
 }
 
@@ -945,8 +948,8 @@ private fun NotificationsScreenContent(
         onChatClick = { _, _, _, _ ->
             onScreenChange(Screen.Chats)
         },
-        onFindFriendsClick = {
-            onScreenChange(Screen.FindFriends)
+        onFindFriendsClick = { requesterId ->
+            onScreenChange(Screen.FindFriends(priorityRequesterId = requesterId))
         },
         onAddFirstPhotoClick = {
             onScreenChange(Screen.Home)
@@ -964,7 +967,7 @@ private fun NotificationsScreenContent(
         onNavigateToPhoto = { },
         onNavigateToFindFriends = {
             selectedNotificationPhoto = null
-            onScreenChange(Screen.FindFriends)
+            onScreenChange(Screen.FindFriends())
         },
         onUserProfileClick = { userId ->
             selectedNotificationPhoto = null
@@ -1156,7 +1159,7 @@ private fun FilterScreenContent(
                 )
             },
             onUploadQueued = { onScreenChange(Screen.Home) },
-            onNavigateToFindFriends = { onScreenChange(Screen.FindFriends) },
+            onNavigateToFindFriends = { onScreenChange(Screen.FindFriends()) },
             onNavigateToCamera = { onScreenChange(Screen.Home) }
         )
     } ?: run {
@@ -1202,7 +1205,7 @@ private fun ExploreScreenContent(
             },
             onNavigateToFindFriends = {
                 selectedPhoto = null
-                onScreenChange(Screen.FindFriends)
+                onScreenChange(Screen.FindFriends())
             },
             onUserProfileClick = { userId ->
                 selectedPhoto = null
@@ -1475,7 +1478,7 @@ private fun UserProfileScreenContent(
             },
             onNavigateToFindFriends = {
                 selectedUserPhoto = null
-                onScreenChange(Screen.FindFriends)
+                onScreenChange(Screen.FindFriends())
             },
             onUserProfileClick = { userId ->
                 selectedUserPhoto = null

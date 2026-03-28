@@ -53,7 +53,8 @@ fun FindFriendsScreen(
     userProfile: UserProfile,
     onBack: () -> Unit, // Kept for API compatibility
     onNavigateToProfile: (String) -> Unit = {},
-    onProfileRefresh: () -> Unit = {} // Callback to refresh user profile after follow/unfollow
+    onProfileRefresh: () -> Unit = {}, // Callback to refresh user profile after follow/unfollow
+    priorityRequesterId: String? = null
 ) {
     val context = LocalContext.current
     val isDarkMode = ThemeManager.isDarkMode.value
@@ -117,6 +118,7 @@ fun FindFriendsScreen(
             0 -> DiscoverTab(
                 viewModel = viewModel,
                 userProfile = userProfile,
+                priorityRequesterId = priorityRequesterId,
                 onFollowClick = { user, action ->
                     when (action) {
                         "unfollow" -> {
@@ -144,6 +146,7 @@ fun FindFriendsScreen(
             1 -> ContactsTab(
                 viewModel = viewModel,
                 userProfile = userProfile,
+                priorityRequesterId = priorityRequesterId,
                 hasPermission = hasContactPermission,
                 onRequestPermission = {
                     permissionLauncher.launch(android.Manifest.permission.READ_CONTACTS)
@@ -189,6 +192,7 @@ fun FindFriendsScreen(
 private fun DiscoverTab(
     viewModel: FriendsViewModel,
     userProfile: UserProfile,
+    priorityRequesterId: String? = null,
     onFollowClick: (UserProfile, String) -> Unit,
     onUserClick: (String) -> Unit
 ) {
@@ -258,8 +262,26 @@ private fun DiscoverTab(
             val filteredSuggestedUsers = viewModel.suggestedUsers.filter { user ->
                 !userProfile.following.contains(user.uid) && user.uid != userProfile.uid
             }
+
+            // Sort by mutual friends (high -> low), while keeping priority requester pinned first when applicable
+            val orderedSuggestedUsers = remember(filteredSuggestedUsers, priorityRequesterId, userProfile.following) {
+                val followingSet = userProfile.following.toSet()
+                filteredSuggestedUsers
+                    .sortedWith(
+                        compareByDescending<UserProfile> { user ->
+                            (user.followers intersect followingSet).size
+                        }.thenBy { it.displayName.lowercase() }
+                    )
+                    .let { sortedByMutuals ->
+                        if (priorityRequesterId.isNullOrBlank()) {
+                            sortedByMutuals
+                        } else {
+                            sortedByMutuals.sortedByDescending { it.uid == priorityRequesterId }
+                        }
+                    }
+            }
             
-            if (viewModel.searchQuery.isBlank() && filteredSuggestedUsers.isNotEmpty()) {
+            if (viewModel.searchQuery.isBlank() && orderedSuggestedUsers.isNotEmpty()) {
                 Text(
                     text = "People on PicFlick",
                     style = MaterialTheme.typography.titleMedium,
@@ -271,7 +293,7 @@ private fun DiscoverTab(
                     state = listState
                 ) {
                     items(
-                        items = filteredSuggestedUsers,
+                        items = orderedSuggestedUsers,
                         key = { it.uid },
                         contentType = { "suggested_user" }
                     ) { user ->
@@ -290,6 +312,9 @@ private fun DiscoverTab(
                             },
                             onCancelRequest = {
                                 viewModel.cancelFollowRequest(userProfile.uid, user.uid)
+                            },
+                            onDeclineRequest = {
+                                viewModel.declineFollowRequest(userProfile.uid, user.uid)
                             },
                             onUserClick = { onUserClick(user.uid) },
                             showMutualFriends = true,
@@ -314,7 +339,7 @@ private fun DiscoverTab(
                         }
                     }
                 }
-            } else if (viewModel.searchQuery.isBlank() && filteredSuggestedUsers.isEmpty() && viewModel.suggestedUsers.isNotEmpty()) {
+            } else if (viewModel.searchQuery.isBlank() && orderedSuggestedUsers.isEmpty() && viewModel.suggestedUsers.isNotEmpty()) {
                 // All suggested users are already friends
                 Box(
                     modifier = Modifier
@@ -410,6 +435,9 @@ private fun DiscoverTab(
                                 onCancelRequest = {
                                     viewModel.cancelFollowRequest(userProfile.uid, user.uid)
                                 },
+                                onDeclineRequest = {
+                                    viewModel.declineFollowRequest(userProfile.uid, user.uid)
+                                },
                                 onUserClick = { onUserClick(user.uid) }
                             )
                         }
@@ -434,6 +462,7 @@ private fun DiscoverTab(
 private fun ContactsTab(
     viewModel: FriendsViewModel,
     userProfile: UserProfile,
+    priorityRequesterId: String? = null,
     hasPermission: Boolean,
     onRequestPermission: () -> Unit,
     onFollowClick: (UserProfile, String) -> Unit,
@@ -441,6 +470,8 @@ private fun ContactsTab(
     onRefresh: () -> Unit = {}
 ) {
     val isDarkMode = ThemeManager.isDarkMode.value
+    var isContactsSynced by remember { mutableStateOf(false) }
+    val midBlue = Color(0xFF2A4A73)
     
     // Pull-to-refresh state
     val pullRefreshState = rememberPullRefreshState(
@@ -520,6 +551,15 @@ private fun ContactsTab(
                 val filteredContacts = viewModel.contactsOnApp.filter { user ->
                     !userProfile.following.contains(user.uid) && user.uid != userProfile.uid
                 }
+
+                // Bring priority requester to top when arriving from friend-request notifications
+                val orderedContacts = remember(filteredContacts, priorityRequesterId) {
+                    if (priorityRequesterId.isNullOrBlank()) {
+                        filteredContacts
+                    } else {
+                        filteredContacts.sortedByDescending { it.uid == priorityRequesterId }
+                    }
+                }
                 
                 Column(modifier = Modifier.fillMaxSize()) {
                     Row(
@@ -530,26 +570,47 @@ private fun ContactsTab(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "Contacts on PicFlick (${filteredContacts.size})",
+                            text = "Contacts on PicFlick (${orderedContacts.size})",
                             style = MaterialTheme.typography.titleMedium,
                             color = if (isDarkMode) Color.White else Color.Black
                         )
-                        OutlinedButton(
-                            onClick = onRefresh,
+                        Button(
+                            onClick = {
+                                onRefresh()
+                                isContactsSynced = true
+                            },
                             shape = RoundedCornerShape(20.dp),
+                            colors = if (isContactsSynced) {
+                                ButtonDefaults.buttonColors(
+                                    containerColor = midBlue,
+                                    contentColor = Color.White
+                                )
+                            } else {
+                                ButtonDefaults.buttonColors(
+                                    containerColor = Color.Transparent,
+                                    contentColor = if (isDarkMode) Color.White else Color.Black
+                                )
+                            },
+                            border = if (isContactsSynced) null else androidx.compose.foundation.BorderStroke(
+                                1.dp,
+                                if (isDarkMode) Color.White.copy(alpha = 0.35f) else Color.Black.copy(alpha = 0.2f)
+                            ),
                             contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp)
                         ) {
-                            Text("Sync Contacts", fontSize = 12.sp)
+                            Text(
+                                if (isContactsSynced) "Contacts synced" else "Sync contacts",
+                                fontSize = 12.sp
+                            )
                         }
                     }
 
                     // On the app section
-                    if (filteredContacts.isNotEmpty()) {
+                    if (orderedContacts.isNotEmpty()) {
                         LazyColumn(
                             state = listState
                         ) {
                             items(
-                                items = filteredContacts,
+                                items = orderedContacts,
                                 key = { it.uid },
                                 contentType = { "contact_user" }
                             ) { user ->
@@ -568,6 +629,9 @@ private fun ContactsTab(
                                     },
                                     onCancelRequest = {
                                         viewModel.cancelFollowRequest(userProfile.uid, user.uid)
+                                    },
+                                    onDeclineRequest = {
+                                        viewModel.declineFollowRequest(userProfile.uid, user.uid)
                                     },
                                     onUserClick = { onUserClick(user.uid) },
                                     subtitle = "From your contacts"
@@ -591,7 +655,7 @@ private fun ContactsTab(
                                 }
                             }
                         }
-                    } else if (viewModel.contactsOnApp.isNotEmpty() && filteredContacts.isEmpty()) {
+                    } else if (viewModel.contactsOnApp.isNotEmpty() && orderedContacts.isEmpty()) {
                         // All contacts are already friends
                         Box(
                             modifier = Modifier.fillMaxSize(),
@@ -813,6 +877,7 @@ private fun UserResultItem(
     isProcessing: Boolean = false,
     onFollowClick: () -> Unit,
     onCancelRequest: () -> Unit = {},
+    onDeclineRequest: () -> Unit = {},
     onUserClick: () -> Unit,
     showMutualFriends: Boolean = false,
     mutualCount: Int = 0,
@@ -913,19 +978,33 @@ private fun UserResultItem(
                         ),
                         border = androidx.compose.foundation.BorderStroke(1.dp, waitingColor)
                     ) {
-                        Text("WAITING", fontSize = 12.sp, color = Color.White)
+                        Text("Waiting", fontSize = 12.sp, color = Color.White)
                     }
                 }
                 hasReceivedRequest -> {
-                    Button(
-                        onClick = onFollowClick,
-                        shape = RoundedCornerShape(20.dp),
-                        modifier = Modifier.wrapContentWidth(),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = Color(0xFF4CAF50)
-                        )
-                    ) {
-                        Text("Accept", fontSize = 12.sp)
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Button(
+                            onClick = onFollowClick,
+                            shape = RoundedCornerShape(20.dp),
+                            modifier = Modifier.wrapContentWidth(),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color(0xFF2E7D32),
+                                contentColor = Color.White
+                            )
+                        ) {
+                            Text("Accept", fontSize = 12.sp)
+                        }
+                        Button(
+                            onClick = onDeclineRequest,
+                            shape = RoundedCornerShape(20.dp),
+                            modifier = Modifier.wrapContentWidth(),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color(0xFFC62828),
+                                contentColor = Color.White
+                            )
+                        ) {
+                            Text("Decline", fontSize = 12.sp)
+                        }
                     }
                 }
                 isFollowing -> {
@@ -941,7 +1020,7 @@ private fun UserResultItem(
                         ),
                         border = androidx.compose.foundation.BorderStroke(1.dp, friendsColor)
                     ) {
-                        Text("FRIENDS", fontSize = 12.sp, color = Color.White)
+                        Text("Friends", fontSize = 12.sp, color = Color.White)
                     }
                 }
                 else -> {
@@ -957,7 +1036,7 @@ private fun UserResultItem(
                         ),
                         border = androidx.compose.foundation.BorderStroke(1.dp, addColor)
                     ) {
-                        Text("ADD", fontSize = 12.sp, color = addColor)
+                        Text("Add", fontSize = 12.sp, color = addColor)
                     }
                 }
             }
