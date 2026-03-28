@@ -924,7 +924,6 @@ private fun UserResultItem(
                     }
                 }
             }
-        }
     }
 }
 
