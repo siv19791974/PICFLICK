@@ -12,6 +12,8 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.shape.CircleShape
 
 import androidx.compose.foundation.verticalScroll
@@ -32,8 +34,10 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import kotlinx.coroutines.launch
 import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -110,6 +114,20 @@ fun UserProfileScreen(
             com.picflick.app.data.SubscriptionTier.ULTRA -> "ULTRA"
         }
     }
+    val scope = rememberCoroutineScope()
+    val postsSectionBringIntoViewRequester = remember { BringIntoViewRequester() }
+
+    val scrollState = rememberScrollState()
+    val density = LocalDensity.current
+
+    fun scrollDownSixtyPercent() {
+        scope.launch {
+            val viewportPx = with(density) { configuration.screenHeightDp.dp.roundToPx() }
+            val delta = (viewportPx * 0.35f).toInt()
+            val target = (scrollState.value + delta).coerceIn(0, scrollState.maxValue)
+            scrollState.animateScrollTo(target)
+        }
+    }
 
     Box(
         modifier = Modifier
@@ -120,7 +138,7 @@ fun UserProfileScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .background(isDarkModeBackground(isDarkMode))
-                .verticalScroll(rememberScrollState()),
+                .verticalScroll(scrollState),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Spacer(modifier = Modifier.height(8.dp))
@@ -221,7 +239,7 @@ fun UserProfileScreen(
                     label = "POSTS",
                     isDarkMode = isDarkMode,
                     onClick = {
-                        // Keep behavior same as ProfileScreen: jump to posts grid section
+                        scrollDownSixtyPercent()
                     }
                 )
                 UserProfileStatItem(
@@ -255,14 +273,19 @@ fun UserProfileScreen(
                         fontSize = 16.sp
                     )
                 } else {
-                    // Match ProfileScreen standard sizing exactly
+                    // Match Home/Profile dynamic sizing
                     val rowCount = ((photos.size + 2) / 3).coerceAtLeast(4)
-                    val homeLikeRowHeight = 148.dp
+                    val homeLikeRowHeight = if (isLandscape) {
+                        configuration.screenHeightDp.dp / 1.1f
+                    } else {
+                        configuration.screenHeightDp.dp / 4.1f
+                    }
                     val gridHeight = (rowCount * homeLikeRowHeight.value).dp + 8.dp
 
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
+                            .bringIntoViewRequester(postsSectionBringIntoViewRequester)
                             .height(gridHeight)
                     ) {
                         LazyVerticalGrid(
