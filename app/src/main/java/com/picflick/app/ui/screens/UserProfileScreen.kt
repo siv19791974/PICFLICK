@@ -40,6 +40,8 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import kotlinx.coroutines.launch
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -313,7 +315,7 @@ fun UserProfileScreen(
                     val homeLikeRowHeight = if (isLandscape) {
                         availableGridHeight / 1.1f
                     } else {
-                        availableGridHeight / 4.08f
+                        availableGridHeight / 4.07f
                     }
                     val cellOuterHeight = homeLikeRowHeight + 2.dp
                     val gridHeight = (rowCount * cellOuterHeight.value).dp + 6.dp
@@ -560,7 +562,7 @@ private fun ProfilePhotoCard(
                     .fillMaxWidth()
                     .height(20.dp)
                     .background(color = Color.Black.copy(alpha = 0.5f))
-                    .padding(horizontal = 4.dp, vertical = 1.dp),
+                    .padding(horizontal = 4.dp),
                 contentAlignment = Alignment.CenterEnd
             ) {
                 Row(
@@ -575,7 +577,10 @@ private fun ProfilePhotoCard(
                             fontSize = 10.sp,
                             color = Color.White,
                             fontWeight = FontWeight.SemiBold,
-                            maxLines = 1
+                            maxLines = 1,
+                            style = TextStyle(
+                                platformStyle = PlatformTextStyle(includeFontPadding = false)
+                            )
                         )
                     }
                 }
