@@ -47,6 +47,8 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -220,7 +222,7 @@ fun ProfileScreen(
             .fillMaxSize()
             .pullRefresh(pullRefreshState)
     ) {
-        val availableGridHeight = maxHeight
+        val availableGridHeight = this.maxHeight
 
         Column(
             modifier = Modifier
@@ -458,7 +460,7 @@ fun ProfileScreen(
             val homeLikeRowHeight = if (isLandscape) {
                 availableGridHeight / 1.1f
             } else {
-                availableGridHeight / 4.08f
+                availableGridHeight / 4.07f
             }
             val cellOuterHeight = homeLikeRowHeight + 2.dp // MyPhotoCard has 1.dp top + 1.dp bottom padding
             val gridHeight = (rowCount * cellOuterHeight.value).dp + 6.dp // include grid content padding so last row never clips
@@ -1385,7 +1387,7 @@ private fun MyPhotoCard(
                     .fillMaxWidth()
                     .height(20.dp)
                     .background(color = Color.Black.copy(alpha = 0.5f))
-                    .padding(horizontal = 4.dp, vertical = 1.dp),
+                    .padding(horizontal = 4.dp),
                 contentAlignment = Alignment.CenterEnd
             ) {
                 Row(
@@ -1400,7 +1402,10 @@ private fun MyPhotoCard(
                             fontSize = 10.sp,
                             color = Color.White,
                             fontWeight = FontWeight.SemiBold,
-                            maxLines = 1
+                            maxLines = 1,
+                            style = TextStyle(
+                                platformStyle = PlatformTextStyle(includeFontPadding = false)
+                            )
                         )
                     }
                 }

@@ -272,6 +272,7 @@ fun MainScreen(
     uploadViewModel: UploadViewModel = viewModel()
 ) {
     var currentScreen by remember { mutableStateOf<Screen>(Screen.Home) }
+    var openHomeGroupsManager by remember { mutableStateOf(false) }
     var wasPreviouslyLoggedOut by remember { mutableStateOf(true) }
     val appContext = LocalContext.current
 
@@ -946,12 +947,19 @@ fun MainScreen(
                         is Screen.Friends -> "friends"
                         is Screen.UserFriends -> "user_friends"
                         is Screen.Profile -> "profile"
-                        else -> "home"
+                        is Screen.UserProfile -> "user_profile"
+                        else -> "other"
                     },
                     onNavigate = { route ->
                         if (profileReady) {
                             when (route) {
-                                "home" -> currentScreen = Screen.Home
+                                "home" -> {
+                                    if (currentScreen is Screen.Home) {
+                                        openHomeGroupsManager = true
+                                    } else {
+                                        currentScreen = Screen.Home
+                                    }
+                                }
                                 "chats" -> currentScreen = Screen.Chats
                                 "upload" -> showUploadSourceDialog = true
                                 "friends" -> currentScreen = Screen.Friends
@@ -1003,6 +1011,8 @@ fun MainScreen(
                     uploadViewModel = uploadViewModel,
                     authViewModel = authViewModel,
                     homeResetVersion = forceHomeResetVersion,
+                    openGroupsManager = openHomeGroupsManager,
+                    onOpenGroupsManagerConsumed = { openHomeGroupsManager = false },
                     selectedChatSession = selectedChatSession,
                     selectedOtherUserId = selectedOtherUserId,
                     onSetSelectedChat = { session, userId ->

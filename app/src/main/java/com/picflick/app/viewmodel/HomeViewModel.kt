@@ -265,7 +265,7 @@ class HomeViewModel : ViewModel() {
         icon: String,
         friendIds: List<String>,
         color: String = "#4FC3F7",
-        onComplete: (Boolean) -> Unit = {}
+        onComplete: (Boolean, FriendGroup?) -> Unit = { _, _ -> }
     ) {
         viewModelScope.launch {
             isLoading = true
@@ -273,12 +273,12 @@ class HomeViewModel : ViewModel() {
                 is Result.Success -> {
                     friendGroups.add(result.data)
                     isLoading = false
-                    onComplete(true)
+                    onComplete(true, result.data)
                 }
                 is Result.Error -> {
                     errorMessage = result.message
                     isLoading = false
-                    onComplete(false)
+                    onComplete(false, null)
                 }
                 is Result.Loading -> { }
             }

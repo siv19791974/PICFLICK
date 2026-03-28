@@ -2892,7 +2892,7 @@ android.util.Log.e("FlickRepository", "Failed to submit feedback", e)
                 color = color
             ))
         } catch (e: Exception) {
-            Result.Error(e, "Failed to create friend group")
+            Result.Error(e, "Failed to create friend group: ${e.message ?: "Unknown error"}")
         }
     }
 

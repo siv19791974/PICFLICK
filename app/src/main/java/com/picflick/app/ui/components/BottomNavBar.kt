@@ -5,7 +5,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AddCircle
 import androidx.compose.material.icons.filled.ChatBubble
-import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.outlined.ChatBubbleOutline
@@ -42,8 +42,8 @@ fun BottomNavBar(
         NavigationBarItem(
             icon = {
                 Icon(
-                    imageVector = if (currentRoute == "home") Icons.Filled.Home else Icons.Outlined.Home,
-                    contentDescription = "Home",
+                    imageVector = if (currentRoute == "home") Icons.Filled.Groups else Icons.Outlined.Home,
+                    contentDescription = if (currentRoute == "home") "Groups" else "Home",
                     tint = if (currentRoute == "home") Color.White else Color.LightGray
                 )
             },

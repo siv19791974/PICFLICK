@@ -1,6 +1,10 @@
 package com.picflick.app.ui.screens
 
+import android.content.res.Configuration
+import android.graphics.Bitmap
 import android.net.Uri
+import android.os.Build
+import android.provider.MediaStore
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -13,6 +17,8 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -28,7 +34,6 @@ import androidx.compose.material.pullrefresh.PullRefreshIndicator
 import androidx.compose.material.pullrefresh.pullRefresh
 import androidx.compose.material.pullrefresh.rememberPullRefreshState
 import androidx.compose.ui.graphics.RectangleShape
-import android.content.res.Configuration
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -38,13 +43,16 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.snapshots.SnapshotStateMap
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.FileProvider
@@ -77,9 +85,15 @@ import java.util.Locale
 import com.picflick.app.utils.Analytics
 import com.picflick.app.viewmodel.HomeViewModel
 import java.io.File
+import java.io.FileOutputStream
+import kotlin.math.max
+import kotlin.math.min
+import kotlin.math.roundToInt
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * Home screen with photo grid and bottom navigation
@@ -94,14 +108,28 @@ fun HomeScreen(
     onSignOut: () -> Unit,
     onUserProfileClick: (String) -> Unit = {},
     friends: List<UserProfile> = emptyList(), // Friends list for profile picture lookup
-    onEditPhotoClick: (Flick) -> Unit = {} // Navigate to edit photo screen
+    onEditPhotoClick: (Flick) -> Unit = {}, // Navigate to edit photo screen
+    openGroupsManager: Boolean = false,
+    onOpenGroupsManagerConsumed: () -> Unit = {}
 ) {
     val context = LocalContext.current
     var showUploadDialog by remember { mutableStateOf(false) }
     var showGroupsManager by remember { mutableStateOf(false) }
+    val temporaryGroupExamples = remember {
+        mutableStateListOf(
+            "Uncle John's wedding",
+            "Five a side footie talk"
+        )
+    }
     var showCreateGroupDialog by remember { mutableStateOf(false) }
     var editingGroup by remember { mutableStateOf<FriendGroup?>(null) }
     var tempCameraUri by remember { mutableStateOf<Uri?>(null) }
+    var pendingGroupIconSourceUri by remember { mutableStateOf<Uri?>(null) }
+    var showGroupIconCropDialog by remember { mutableStateOf(false) }
+    var pendingGroupIconTarget by remember { mutableStateOf<String?>(null) }
+    var groupIconCropSourceUri by remember { mutableStateOf<Uri?>(null) }
+    var createDialogIconOverride by remember { mutableStateOf<String?>(null) }
+    var editDialogIconOverride by remember { mutableStateOf<String?>(null) }
     var selectedFlick by remember { mutableStateOf<Flick?>(null) }
     var selectedFlickIndex by remember { mutableIntStateOf(0) }
     var privacySetting by remember { mutableStateOf("friends") } // "friends" or "public"
@@ -131,6 +159,13 @@ fun HomeScreen(
     LaunchedEffect(userProfile.uid) {
         viewModel.loadFlicks(userProfile.uid)
         viewModel.loadFriendGroups(userProfile.uid)
+    }
+
+    LaunchedEffect(openGroupsManager) {
+        if (openGroupsManager) {
+            showGroupsManager = true
+            onOpenGroupsManagerConsumed()
+        }
     }
 
     // External reset trigger (e.g., app foreground): refresh newest feed and return to top.
@@ -199,6 +234,48 @@ fun HomeScreen(
         }
     }
 
+    // Group icon image picker
+    val groupIconPickerLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        if (uri != null) {
+            groupIconCropSourceUri = uri
+            showGroupIconCropDialog = true
+        }
+    }
+
+    // Handle cropped group icon upload
+    LaunchedEffect(pendingGroupIconSourceUri) {
+        val uri = pendingGroupIconSourceUri ?: return@LaunchedEffect
+        val target = pendingGroupIconTarget
+        try {
+            val inputStream = context.contentResolver.openInputStream(uri)
+            val imageBytes = inputStream?.readBytes()
+            inputStream?.close()
+            if (imageBytes != null) {
+                when (val uploadResult = com.picflick.app.repository.FlickRepository.getInstance().uploadFlickImage(userProfile.uid, imageBytes)) {
+                    is com.picflick.app.data.Result.Success -> {
+                        if (target == "create") {
+                            createDialogIconOverride = uploadResult.data
+                        } else {
+                            editDialogIconOverride = uploadResult.data
+                        }
+                        Toast.makeText(context, "Group photo added", Toast.LENGTH_SHORT).show()
+                    }
+                    is com.picflick.app.data.Result.Error -> {
+                        Toast.makeText(context, "Failed to upload group photo", Toast.LENGTH_SHORT).show()
+                    }
+                    else -> Unit
+                }
+            }
+        } catch (_: Exception) {
+            Toast.makeText(context, "Failed to process group photo", Toast.LENGTH_SHORT).show()
+        } finally {
+            pendingGroupIconSourceUri = null
+            pendingGroupIconTarget = null
+        }
+    }
+
     val isDarkMode = ThemeManager.isDarkMode.value
     var isFeedAtTop by remember { mutableStateOf(true) }
 
@@ -226,21 +303,6 @@ fun HomeScreen(
                     enabled = isFeedAtTop && !viewModel.isLoadingMore
                 )
         ) {
-            IconButton(
-                onClick = { showGroupsManager = true },
-                modifier = Modifier
-                    .align(Alignment.TopStart)
-                    .padding(start = 12.dp, top = 12.dp)
-                    .size(40.dp)
-                    .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.9f), CircleShape)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.PhotoAlbum,
-                    contentDescription = "Groups",
-                    tint = MaterialTheme.colorScheme.primary
-                )
-            }
-
             when {
                 viewModel.isLoading && viewModel.flicks.isEmpty() -> PhotoGridShimmer()
                 viewModel.errorMessage != null -> ErrorMessage(
@@ -266,46 +328,15 @@ fun HomeScreen(
                     isLoadingMore = viewModel.isLoadingMore,
                     canLoadMore = viewModel.canLoadMore,
                     onLoadMore = { viewModel.loadMoreFlicks() },
-                    onIsAtTopChanged = { isAtTop ->
-                        isFeedAtTop = isAtTop
-                    }
+                    onIsAtTopChanged = { atTop -> isFeedAtTop = atTop }
                 )
             }
 
-            // Modern PullRefreshIndicator
             PullRefreshIndicator(
                 refreshing = viewModel.isLoading,
                 state = pullRefreshState,
-                modifier = Modifier.align(Alignment.TopCenter),
-                backgroundColor = MaterialTheme.colorScheme.surface,
-                contentColor = MaterialTheme.colorScheme.primary
+                modifier = Modifier.align(Alignment.TopCenter)
             )
-
-            // Upload mini FABs overlay
-            if (showUploadDialog) {
-                UploadOverlay(
-                    onDismiss = { showUploadDialog = false },
-                    onCameraClick = {
-                        val photoFile = File(
-                            context.cacheDir,
-                            "photo_${System.currentTimeMillis()}.jpg"
-                        )
-                        tempCameraUri = FileProvider.getUriForFile(
-                            context,
-                            "${context.packageName}.fileprovider",
-                            photoFile
-                        )
-                        cameraLauncher.launch(tempCameraUri!!)
-                        showUploadDialog = false
-                    },
-                    onGalleryClick = {
-                        galleryLauncher.launch("image/*")
-                        showUploadDialog = false
-                    },
-                    privacySetting = privacySetting,
-                    onPrivacyChange = { privacySetting = it }
-                )
-            }
         }
     }
 
@@ -316,16 +347,10 @@ fun HomeScreen(
             currentUser = currentUserWithLivePhoto,
             onDismiss = { selectedFlick = null },
             onReaction = { reactionType ->
-                // Get the CURRENT flick based on selected index (not the stale flick reference)
                 val currentFlick = viewModel.flicks.getOrNull(selectedFlickIndex) ?: flick
-                // Handle reaction via ViewModel
                 viewModel.toggleReaction(currentFlick, userProfile.uid, userProfile.displayName, currentUserWithLivePhoto.photoUrl, reactionType)
-                // IMMEDIATELY update selectedFlick with the latest data from ViewModel
-                // This ensures the UI shows the reaction immediately
                 val updatedFlick = viewModel.flicks.getOrNull(selectedFlickIndex)
-                if (updatedFlick != null) {
-                    selectedFlick = updatedFlick
-                }
+                if (updatedFlick != null) selectedFlick = updatedFlick
             },
             onShareClick = {
                 flickToShare = flick
@@ -333,30 +358,24 @@ fun HomeScreen(
             },
             canDelete = flick.userId == userProfile.uid,
             onDeleteClick = {
-                // Optimistic immediate removal. Avoid immediate reload to prevent deleted flick bounce-back.
                 viewModel.removeFlickFromFeed(flick.id)
             },
             allPhotos = viewModel.flicks,
             currentIndex = selectedFlickIndex,
             onNavigateToPhoto = { index ->
-                // Keep loading more while swiping near the end so very long sessions continue.
                 val remaining = viewModel.flicks.size - 1 - index
                 if (remaining <= 2 && !viewModel.isLoadingMore) {
                     viewModel.loadMoreFlicks()
                 }
 
-                // CRITICAL: never null-dismiss fullscreen when boundary index arrives before append.
                 if (index in viewModel.flicks.indices) {
                     selectedFlickIndex = index
                     selectedFlick = viewModel.flicks[index]
                 } else {
-                    // Keep current photo visible until the new page appends.
                     selectedFlickIndex = index.coerceAtMost((viewModel.flicks.size - 1).coerceAtLeast(0))
                 }
             },
-            onUserProfileClick = { userId ->
-                onUserProfileClick(userId)
-            },
+            onUserProfileClick = { userId -> onUserProfileClick(userId) },
             onShareToFriend = { flickId, friendId ->
                 val flickToSend = viewModel.flicks.firstOrNull { it.id == flickId } ?: flick
                 if (flickToSend.imageUrl.isBlank()) {
@@ -406,9 +425,7 @@ fun HomeScreen(
                 }
             },
             friendProfiles = liveFriendProfiles,
-            onEditPhotoClick = { flick ->
-                onEditPhotoClick(flick)
-            }
+            onEditPhotoClick = { onEditPhotoClick(it) }
         )
     }
 
@@ -504,6 +521,8 @@ fun HomeScreen(
             groups = viewModel.friendGroups,
             selectedFilter = viewModel.selectedFilter,
             friends = friends,
+            allFriendsCount = max(friends.size, userProfile.following.size),
+            temporaryExampleGroups = temporaryGroupExamples,
             isDarkMode = isDarkMode,
             onDismiss = { showGroupsManager = false },
             onSelectGroup = { filter ->
@@ -512,7 +531,8 @@ fun HomeScreen(
             },
             onCreateGroup = { showCreateGroupDialog = true },
             onEditGroup = { group -> editingGroup = group },
-            onDeleteGroup = { group -> viewModel.deleteFriendGroup(userProfile.uid, group.id) }
+            onDeleteGroup = { group -> viewModel.deleteFriendGroup(userProfile.uid, group.id) },
+            onDeleteTemporaryGroup = { title -> temporaryGroupExamples.remove(title) }
         )
     }
 
@@ -523,10 +543,17 @@ fun HomeScreen(
             friends = friends,
             isDarkMode = isDarkMode,
             initialName = "",
-            initialIcon = "👥",
+            initialIcon = createDialogIconOverride ?: "👥",
             initialColor = "#4FC3F7",
             initialSelectedFriendIds = emptyList(),
-            onDismiss = { showCreateGroupDialog = false },
+            onDismiss = {
+                showCreateGroupDialog = false
+                createDialogIconOverride = null
+            },
+            onAddPhoto = {
+                pendingGroupIconTarget = "create"
+                groupIconPickerLauncher.launch("image/*")
+            },
             onSubmit = { name, icon, selectedFriendIds, color ->
                 viewModel.createFriendGroup(
                     userId = userProfile.uid,
@@ -534,9 +561,20 @@ fun HomeScreen(
                     icon = icon,
                     friendIds = selectedFriendIds,
                     color = color
-                ) { success ->
+                ) { success, createdGroup ->
                     if (success) {
+                        if (createdGroup != null) {
+                            viewModel.setFilter(FeedFilter.ByGroup(createdGroup))
+                        }
                         showCreateGroupDialog = false
+                        showGroupsManager = false
+                        createDialogIconOverride = null
+                    } else {
+                        Toast.makeText(
+                            context,
+                            viewModel.errorMessage ?: "Failed to create group",
+                            Toast.LENGTH_LONG
+                        ).show()
                     }
                 }
             }
@@ -550,10 +588,17 @@ fun HomeScreen(
             friends = friends,
             isDarkMode = isDarkMode,
             initialName = group.name,
-            initialIcon = group.icon,
+            initialIcon = editDialogIconOverride ?: group.icon,
             initialColor = group.color,
             initialSelectedFriendIds = group.friendIds,
-            onDismiss = { editingGroup = null },
+            onDismiss = {
+                editingGroup = null
+                editDialogIconOverride = null
+            },
+            onAddPhoto = {
+                pendingGroupIconTarget = "edit"
+                groupIconPickerLauncher.launch("image/*")
+            },
             onSubmit = { name, icon, selectedFriendIds, color ->
                 viewModel.updateFriendGroup(
                     userId = userProfile.uid,
@@ -565,7 +610,25 @@ fun HomeScreen(
                 ) { success ->
                     if (success) {
                         editingGroup = null
+                        editDialogIconOverride = null
                     }
+                }
+            }
+        )
+    }
+
+    if (showGroupIconCropDialog) {
+        GroupPhotoCropDialog(
+            imageUri = groupIconCropSourceUri,
+            onDismiss = {
+                showGroupIconCropDialog = false
+                groupIconCropSourceUri = null
+            },
+            onConfirm = { croppedUri ->
+                showGroupIconCropDialog = false
+                groupIconCropSourceUri = null
+                if (croppedUri != null) {
+                    pendingGroupIconSourceUri = croppedUri
                 }
             }
         )
@@ -623,129 +686,213 @@ private fun UploadOverlay(
         modifier = Modifier
             .fillMaxSize()
             .background(Color.Black.copy(alpha = 0.6f))
-            .clickable { onDismiss() }
+            .pointerInput(Unit) {
+                detectTapGestures(
+                    onTap = { onDismiss() }
+                )
+            }
     ) {
-        Column(
+        Card(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
-                .padding(bottom = 100.dp)
-                .background(
-                    MaterialTheme.colorScheme.surface,
-                    RoundedCornerShape(16.dp)
-                )
-                .padding(24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+                .fillMaxWidth()
+                .padding(16.dp)
+                .pointerInput(Unit) {
+                    detectTapGestures(
+                        onTap = { /* Consume tap inside card */ }
+                    )
+                },
+            shape = RoundedCornerShape(24.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surface
+            ),
+            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
         ) {
-            Text(
-                text = "Upload Photo",
-                style = MaterialTheme.typography.titleLarge,
-                modifier = Modifier.padding(bottom = 16.dp)
-            )
-
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(32.dp)
-            ) {
-                // Camera option
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier.clickable { onCameraClick() }
-                ) {
-                    FloatingActionButton(
-                        onClick = onCameraClick,
-                        containerColor = MaterialTheme.colorScheme.primary
-                    ) {
-                        Icon(
-                            Icons.Default.Add,
-                            contentDescription = "Camera",
-                            tint = MaterialTheme.colorScheme.onPrimary
-                        )
-                    }
-                    Text(
-                        text = "Camera",
-                        modifier = Modifier.padding(top = 8.dp),
-                        style = MaterialTheme.typography.labelMedium
-                    )
-                }
-
-                // Gallery option
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier.clickable { onGalleryClick() }
-                ) {
-                    FloatingActionButton(
-                        onClick = onGalleryClick,
-                        containerColor = MaterialTheme.colorScheme.secondary
-                    ) {
-                        Icon(
-                            Icons.Default.Menu,
-                            contentDescription = "Gallery",
-                            tint = MaterialTheme.colorScheme.onSecondary
-                        )
-                    }
-                    Text(
-                        text = "Gallery",
-                        modifier = Modifier.padding(top = 8.dp),
-                        style = MaterialTheme.typography.labelMedium
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            // Privacy Toggle
-            Text(
-                text = "Who can see this?",
-                style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier.padding(bottom = 8.dp)
-            )
-
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                // Friends only option
-                FilterChip(
-                    selected = privacySetting == "friends",
-                    onClick = { onPrivacyChange("friends") },
-                    label = { Text("Friends Only") },
-                    leadingIcon = if (privacySetting == "friends") {
-                        {
-                            Icon(
-                                imageVector = Icons.Default.Check,
-                                contentDescription = null,
-                                modifier = Modifier.size(18.dp)
-                            )
-                        }
-                    } else null
-                )
-
-                // Public option
-                FilterChip(
-                    selected = privacySetting == "public",
-                    onClick = { onPrivacyChange("public") },
-                    label = { Text("Public") },
-                    leadingIcon = if (privacySetting == "public") {
-                        {
-                            Icon(
-                                imageVector = Icons.Default.Check,
-                                contentDescription = null,
-                                modifier = Modifier.size(18.dp)
-                            )
-                        }
-                    } else null
-                )
-            }
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Text(
-                text = if (privacySetting == "friends")
-                    "Only your friends will see this photo"
-                else
-                    "Everyone can see this photo",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+            UploadOptionsContent(
+                onDismiss = onDismiss,
+                onCameraClick = onCameraClick,
+                onGalleryClick = onGalleryClick,
+                privacySetting = privacySetting,
+                onPrivacyChange = onPrivacyChange
             )
         }
+    }
+}
+
+@Composable
+private fun UploadOptionsContent(
+    onDismiss: () -> Unit,
+    onCameraClick: () -> Unit,
+    onGalleryClick: () -> Unit,
+    privacySetting: String,
+    onPrivacyChange: (String) -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        // Handle bar
+        Box(
+            modifier = Modifier
+                .width(40.dp)
+                .height(4.dp)
+                .background(
+                    MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f),
+                    RoundedCornerShape(2.dp)
+                )
+        )
+
+        Spacer(modifier = Modifier.height(20.dp))
+
+        Text(
+            text = "Upload Photo",
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.Bold
+        )
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        // Privacy toggle segmented control
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(14.dp),
+            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(4.dp),
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                val optionModifier = Modifier
+                    .weight(1f)
+                    .height(40.dp)
+                    .clip(RoundedCornerShape(10.dp))
+
+                Box(
+                    modifier = optionModifier
+                        .background(
+                            if (privacySetting == "friends") MaterialTheme.colorScheme.primary else Color.Transparent
+                        )
+                        .clickable { onPrivacyChange("friends") },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "Friends",
+                        color = if (privacySetting == "friends") MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 13.sp
+                    )
+                }
+
+                Box(
+                    modifier = optionModifier
+                        .background(
+                            if (privacySetting == "public") MaterialTheme.colorScheme.primary else Color.Transparent
+                        )
+                        .clickable { onPrivacyChange("public") },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "Public",
+                        color = if (privacySetting == "public") MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 13.sp
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(18.dp))
+
+        // Camera option
+        ElevatedCard(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { onCameraClick() },
+            colors = CardDefaults.elevatedCardColors(
+                containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.7f)
+            )
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Default.CameraAlt,
+                    contentDescription = "Camera",
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(24.dp)
+                )
+                Spacer(modifier = Modifier.width(16.dp))
+                Column {
+                    Text(
+                        text = "Take Photo",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Text(
+                        text = "Use camera to capture new photo",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        // Gallery option
+        ElevatedCard(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { onGalleryClick() },
+            colors = CardDefaults.elevatedCardColors(
+                containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.7f)
+            )
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Default.PhotoLibrary,
+                    contentDescription = "Gallery",
+                    tint = MaterialTheme.colorScheme.secondary,
+                    modifier = Modifier.size(24.dp)
+                )
+                Spacer(modifier = Modifier.width(16.dp))
+                Column {
+                    Text(
+                        text = "Choose from Gallery",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Text(
+                        text = "Select existing photo from device",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Text(
+            text = if (privacySetting == "friends")
+                "Only your friends will see this photo"
+            else
+                "Everyone can see this photo",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+        )
     }
 }
 
@@ -754,17 +901,19 @@ private fun GroupManagerSheet(
     groups: List<FriendGroup>,
     selectedFilter: FeedFilter,
     friends: List<UserProfile>,
+    allFriendsCount: Int,
+    temporaryExampleGroups: List<String>,
     isDarkMode: Boolean,
     onDismiss: () -> Unit,
     onSelectGroup: (FeedFilter) -> Unit,
     onCreateGroup: () -> Unit,
     onEditGroup: (FriendGroup) -> Unit,
-    onDeleteGroup: (FriendGroup) -> Unit
+    onDeleteGroup: (FriendGroup) -> Unit,
+    onDeleteTemporaryGroup: (String) -> Unit
 ) {
     val backgroundColor = if (isDarkMode) Color(0xFF121212) else PicFlickLightBackground
-    val rowColor = if (isDarkMode) Color(0xFF1E1E1E) else Color.White
     val textColor = if (isDarkMode) Color.White else Color(0xFF111111)
-    val sortedGroups = remember(groups) { groups.sortedBy { it.name.lowercase(Locale.getDefault()) } }
+    val sortedGroups = groups.sortedBy { it.name.lowercase(Locale.getDefault()) }
 
     Box(
         modifier = Modifier
@@ -797,10 +946,16 @@ private fun GroupManagerSheet(
                         fontWeight = FontWeight.Bold
                     )
                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        OutlinedButton(onClick = onCreateGroup) {
+                        Button(
+                            onClick = onCreateGroup,
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color(0xFF2A4A73),
+                                contentColor = Color.White
+                            )
+                        ) {
                             Icon(Icons.Default.Add, contentDescription = null)
                             Spacer(modifier = Modifier.width(6.dp))
-                            Text("Add group")
+                            Text("Add group", fontSize = 16.sp, fontWeight = FontWeight.Bold)
                         }
                         IconButton(onClick = onDismiss) {
                             Icon(Icons.Default.Close, contentDescription = "Close", tint = textColor)
@@ -811,22 +966,38 @@ private fun GroupManagerSheet(
                 HorizontalDivider()
 
                 LazyColumn(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(horizontal = 12.dp, vertical = 10.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                    modifier = Modifier.fillMaxSize()
                 ) {
                     item {
                         val isSelected = selectedFilter is FeedFilter.AllFriends
                         GroupRowCard(
                             title = "All friends",
-                            subtitle = "${friends.size} friends",
+                            subtitle = "$allFriendsCount friends",
                             icon = "🏠",
+                            colour = "#4FC3F7",
                             selected = isSelected,
-                            rowColor = rowColor,
                             onClick = { onSelectGroup(FeedFilter.AllFriends) },
                             textColor = textColor,
                             trailingContent = {}
+                        )
+                    }
+
+                    items(temporaryExampleGroups, key = { "temp_$it" }) { tempTitle ->
+                        val tempIcon = if (tempTitle == "Uncle John's wedding") "👰🤵" else "⚽"
+                        GroupRowCard(
+                            title = tempTitle,
+                            subtitle = "Group example. Delete when you want 🙂",
+                            icon = tempIcon,
+                            colour = "#9E9E9E",
+                            selected = false,
+                            onClick = {},
+                            textColor = textColor,
+                            enabled = false,
+                            trailingContent = {
+                                IconButton(onClick = { onDeleteTemporaryGroup(tempTitle) }) {
+                                    Icon(Icons.Default.Delete, contentDescription = "Delete temporary group", tint = Color(0xFFD84343))
+                                }
+                            }
                         )
                     }
 
@@ -836,8 +1007,8 @@ private fun GroupManagerSheet(
                             title = group.name,
                             subtitle = "${group.friendIds.size} friends",
                             icon = group.icon,
+                            colour = group.color,
                             selected = isSelected,
-                            rowColor = rowColor,
                             onClick = { onSelectGroup(FeedFilter.ByGroup(group)) },
                             textColor = textColor,
                             trailingContent = {
@@ -861,27 +1032,44 @@ private fun GroupRowCard(
     title: String,
     subtitle: String,
     icon: String,
+    colour: String,
     selected: Boolean,
-    rowColor: Color,
     onClick: () -> Unit,
     textColor: Color,
+    enabled: Boolean = true,
     trailingContent: @Composable RowScope.() -> Unit
 ) {
-    Surface(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { onClick() },
-        color = rowColor,
-        shape = RoundedCornerShape(14.dp),
-        border = if (selected) androidx.compose.foundation.BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null
-    ) {
+    val rowBackground = if (selected) MaterialTheme.colorScheme.primary.copy(alpha = 0.12f) else Color.Transparent
+    val accentColour = try { Color(android.graphics.Color.parseColor(colour)) } catch (_: Exception) { Color(0xFF4FC3F7) }
+
+    Column(modifier = Modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 14.dp, vertical = 10.dp),
+                .background(rowBackground)
+                .clickable(enabled = enabled) { onClick() }
+                .padding(horizontal = 16.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(text = icon, fontSize = 22.sp)
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .border(2.dp, accentColour, CircleShape)
+                    .clip(CircleShape)
+                    .background(Color.Transparent),
+                contentAlignment = Alignment.Center
+            ) {
+                if (icon.startsWith("http")) {
+                    AsyncImage(
+                        model = icon,
+                        contentDescription = "Group icon",
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                } else {
+                    Text(text = icon, fontSize = 20.sp)
+                }
+            }
             Spacer(modifier = Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(text = title, color = textColor, fontWeight = FontWeight.SemiBold)
@@ -889,6 +1077,7 @@ private fun GroupRowCard(
             }
             Row(content = trailingContent)
         }
+        HorizontalDivider(color = textColor.copy(alpha = 0.12f))
     }
 }
 
@@ -903,6 +1092,7 @@ private fun CreateOrEditGroupDialog(
     initialColor: String,
     initialSelectedFriendIds: List<String>,
     onDismiss: () -> Unit,
+    onAddPhoto: () -> Unit,
     onSubmit: (name: String, icon: String, selectedFriendIds: List<String>, color: String) -> Unit
 ) {
     var groupName by remember(initialName) { mutableStateOf(initialName) }
@@ -910,63 +1100,177 @@ private fun CreateOrEditGroupDialog(
     var selectedColor by remember(initialColor) { mutableStateOf(initialColor) }
     var selectedFriends by remember(initialSelectedFriendIds) { mutableStateOf(initialSelectedFriendIds.toSet()) }
 
-    val icons = listOf("👥", "👨‍👩‍👧‍👦", "💼", "🎓", "⭐", "✈️", "⚽", "🎨", "🏠", "🎵", "📚", "🎮")
+    val icons = listOf(
+        "👥", "👨‍👩‍👧‍👦", "💼", "🎓", "⭐", "✈️", "⚽", "🎨", "🏠", "🎵", "📚", "🎮",
+        "🍔", "🍷", "🛫", "🏋️", "🏖️", "🎬", "🐶", "🚗", "🛍️", "🧠", "🧑‍💻", "📷"
+    )
     val colors = listOf("#4FC3F7", "#FF6B6B", "#4CAF50", "#FFD93D", "#FF9F43", "#A55EEA", "#FF6B9D", "#26D0CE")
 
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(title) },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                OutlinedTextField(
-                    value = groupName,
-                    onValueChange = { groupName = it },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
-                    label = { Text("Group name") }
-                )
+    val pageBackground = if (isDarkMode) Color(0xFF121212) else PicFlickLightBackground
+    val textColor = if (isDarkMode) Color.White else Color(0xFF111111)
+    val selectedColourValue = try { Color(android.graphics.Color.parseColor(selectedColor)) } catch (_: Exception) { Color(0xFF4FC3F7) }
 
-                Text("Icon", fontWeight = FontWeight.SemiBold)
-                LazyColumn(modifier = Modifier.heightIn(max = 64.dp)) {
-                    item {
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            icons.forEach { icon ->
-                                Surface(
-                                    modifier = Modifier
-                                        .size(38.dp)
-                                        .clickable { selectedIcon = icon },
-                                    shape = CircleShape,
-                                    color = if (selectedIcon == icon) MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
-                                    else if (isDarkMode) Color(0xFF2A2A2A) else Color(0xFFF1F1F1),
-                                    border = if (selectedIcon == icon) androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.primary) else null
-                                ) {
-                                    Box(contentAlignment = Alignment.Center) { Text(icon) }
-                                }
-                            }
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black.copy(alpha = 0.45f))
+            .clickable { onDismiss() }
+    ) {
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .fillMaxHeight(0.92f)
+                .align(Alignment.BottomCenter)
+                .clickable(enabled = false) {},
+            shape = RoundedCornerShape(topStart = 22.dp, topEnd = 22.dp),
+            color = pageBackground,
+            tonalElevation = 4.dp
+        ) {
+            Column(modifier = Modifier.fillMaxSize()) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        text = title,
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = textColor
+                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        TextButton(onClick = onDismiss) { Text("Cancel") }
+                        Button(
+                            onClick = {
+                                onSubmit(groupName.trim(), selectedIcon, selectedFriends.toList(), selectedColor)
+                            },
+                            enabled = groupName.isNotBlank(),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color(0xFF2A4A73),
+                                contentColor = Color.White
+                            )
+                        ) {
+                            Text(submitLabel)
                         }
                     }
                 }
 
-                Text("Color", fontWeight = FontWeight.SemiBold)
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    colors.forEach { colorHex ->
-                        val color = try { Color(android.graphics.Color.parseColor(colorHex)) } catch (_: Exception) { Color.Gray }
-                        Box(
+                HorizontalDivider()
+
+                OutlinedTextField(
+                    value = groupName,
+                    onValueChange = { groupName = it },
+                    singleLine = true,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    label = { Text("Group name") }
+                )
+
+                LazyColumn(modifier = Modifier.weight(1f)) {
+                    item {
+                        Text(
+                            text = "Icon",
+                            fontWeight = FontWeight.SemiBold,
+                            color = textColor,
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                        )
+
+                        Row(
                             modifier = Modifier
-                                .size(26.dp)
-                                .background(color, CircleShape)
-                                .border(
-                                    width = if (selectedColor == colorHex) 2.dp else 0.dp,
-                                    color = MaterialTheme.colorScheme.onSurface,
-                                    shape = CircleShape
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(40.dp)
+                                    .border(2.dp, selectedColourValue, CircleShape)
+                                    .clip(CircleShape)
+                                    .background(if (isDarkMode) Color(0xFF2A2A2A) else Color(0xFFF1F1F1))
+                                    .clickable { onAddPhoto() },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                if (selectedIcon.startsWith("http")) {
+                                    AsyncImage(
+                                        model = selectedIcon,
+                                        contentDescription = "Group icon photo",
+                                        contentScale = ContentScale.Crop,
+                                        modifier = Modifier.fillMaxSize()
+                                    )
+                                } else {
+                                    Icon(Icons.Default.AddAPhoto, contentDescription = "Add photo", tint = textColor)
+                                }
+                            }
+
+                            LazyColumn(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .heightIn(max = 66.dp)
+                            ) {
+                                item {
+                                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                        icons.forEach { icon ->
+                                            Surface(
+                                                modifier = Modifier
+                                                    .size(40.dp)
+                                                    .clickable { selectedIcon = icon },
+                                                shape = CircleShape,
+                                                color = if (selectedIcon == icon) MaterialTheme.colorScheme.primary.copy(alpha = 0.22f)
+                                                else if (isDarkMode) Color(0xFF2A2A2A) else Color(0xFFF1F1F1),
+                                                border = if (selectedIcon == icon) androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.primary) else null
+                                            ) {
+                                                Box(contentAlignment = Alignment.Center) { Text(icon, fontSize = 20.sp) }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        Text(
+                            text = "Colour",
+                            fontWeight = FontWeight.SemiBold,
+                            color = textColor,
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                        )
+
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            modifier = Modifier.padding(horizontal = 16.dp)
+                        ) {
+                            colors.forEach { colourHex ->
+                                val colour = try { Color(android.graphics.Color.parseColor(colourHex)) } catch (_: Exception) { Color.Gray }
+                                Box(
+                                    modifier = Modifier
+                                        .size(28.dp)
+                                        .background(colour, CircleShape)
+                                        .border(
+                                            width = if (selectedColor == colourHex) 2.dp else 0.dp,
+                                            color = MaterialTheme.colorScheme.onSurface,
+                                            shape = CircleShape
+                                        )
+                                        .clickable {
+                                            selectedColor = colourHex
+                                        }
                                 )
-                                .clickable { selectedColor = colorHex }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(8.dp))
+                        HorizontalDivider()
+
+                        Text(
+                            text = "Members",
+                            fontWeight = FontWeight.SemiBold,
+                            color = textColor,
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp)
                         )
                     }
-                }
 
-                Text("Members", fontWeight = FontWeight.SemiBold)
-                LazyColumn(modifier = Modifier.heightIn(max = 180.dp)) {
                     items(friends, key = { it.uid }) { friend ->
                         val isSelected = selectedFriends.contains(friend.uid)
                         Row(
@@ -975,40 +1279,259 @@ private fun CreateOrEditGroupDialog(
                                 .clickable {
                                     selectedFriends = if (isSelected) selectedFriends - friend.uid else selectedFriends + friend.uid
                                 }
-                                .padding(vertical = 6.dp),
+                                .padding(horizontal = 16.dp, vertical = 10.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Checkbox(
-                                checked = isSelected,
-                                onCheckedChange = {
-                                    selectedFriends = if (it) selectedFriends + friend.uid else selectedFriends - friend.uid
+                            Surface(
+                                shape = CircleShape,
+                                color = if (isDarkMode) Color(0xFF2A2A2A) else Color(0xFFF1F1F1),
+                                modifier = Modifier.size(36.dp)
+                            ) {
+                                if (friend.photoUrl.isNotBlank()) {
+                                    AsyncImage(
+                                        model = withCacheBust(friend.photoUrl, System.currentTimeMillis()),
+                                        contentDescription = "${friend.displayName} profile photo",
+                                        contentScale = ContentScale.Crop,
+                                        modifier = Modifier.fillMaxSize()
+                                    )
+                                } else {
+                                    Box(contentAlignment = Alignment.Center) {
+                                        Icon(
+                                            imageVector = Icons.Default.Person,
+                                            contentDescription = null,
+                                            tint = textColor.copy(alpha = 0.7f),
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                    }
                                 }
+                            }
+
+                            Spacer(modifier = Modifier.width(12.dp))
+
+                            Text(
+                                text = friend.displayName,
+                                color = textColor,
+                                fontWeight = FontWeight.Medium,
+                                modifier = Modifier.weight(1f)
                             )
-                            Text(friend.displayName)
+
+                            FilledIconButton(
+                                onClick = {
+                                    selectedFriends = if (isSelected) selectedFriends - friend.uid else selectedFriends + friend.uid
+                                },
+                                colors = IconButtonDefaults.filledIconButtonColors(
+                                    containerColor = if (isSelected) Color(0xFF2E7D32) else if (isDarkMode) Color(0xFF2A2A2A) else Color(0xFFF1F1F1),
+                                    contentColor = if (isSelected) Color.White else textColor
+                                ),
+                                modifier = Modifier.size(34.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Add,
+                                    contentDescription = if (isSelected) "Added" else "Add",
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
                         }
+                        HorizontalDivider(color = textColor.copy(alpha = 0.12f))
                     }
                 }
             }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
+        }
+    }
+}
+
+@Composable
+private fun GroupPhotoCropDialog(
+    imageUri: Uri?,
+    onDismiss: () -> Unit,
+    onConfirm: (Uri?) -> Unit
+) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var sourceBitmap by remember(imageUri) { mutableStateOf<Bitmap?>(null) }
+    var viewportSize by remember { mutableStateOf(IntSize.Zero) }
+    var scale by remember { mutableFloatStateOf(1f) }
+    var offset by remember { mutableStateOf(Offset.Zero) }
+    var isSaving by remember { mutableStateOf(false) }
+
+    LaunchedEffect(imageUri) {
+        if (imageUri == null) return@LaunchedEffect
+        sourceBitmap = withContext(Dispatchers.IO) {
+            loadBitmapFromUri(context, imageUri)
+        }
+        scale = 1f
+        offset = Offset.Zero
+    }
+
+    AlertDialog(
+        onDismissRequest = {
+            if (!isSaving) onDismiss()
         },
         confirmButton = {
-            Button(
-                enabled = groupName.isNotBlank(),
+            TextButton(
+                enabled = sourceBitmap != null && !isSaving && viewportSize.width > 0 && viewportSize.height > 0,
                 onClick = {
-                    onSubmit(
-                        groupName.trim(),
-                        selectedIcon,
-                        selectedFriends.toList(),
-                        selectedColor
-                    )
+                    val bitmap = sourceBitmap ?: return@TextButton
+                    isSaving = true
+                    scope.launch {
+                        val croppedUri = withContext(Dispatchers.IO) {
+                            createCroppedGroupImageUri(
+                                context = context,
+                                sourceBitmap = bitmap,
+                                viewportSize = viewportSize,
+                                zoomScale = scale,
+                                panOffset = offset,
+                                imageQuality = 90
+                            )
+                        }
+                        isSaving = false
+                        onConfirm(croppedUri)
+                    }
                 }
             ) {
-                Text(submitLabel)
+                Text(if (isSaving) "Saving..." else "Save")
+            }
+        },
+        dismissButton = {
+            TextButton(enabled = !isSaving, onClick = onDismiss) { Text("Cancel") }
+        },
+        title = { Text("Adjust group photo") },
+        text = {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(
+                    text = "Pinch to zoom and drag to position",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color.Gray
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .aspectRatio(1f)
+                        .clip(CircleShape)
+                        .background(Color.Black)
+                        .onSizeChanged { viewportSize = it }
+                        .pointerInput(sourceBitmap, viewportSize) {
+                            detectTransformGestures { _, pan, zoom, _ ->
+                                val bitmap = sourceBitmap ?: return@detectTransformGestures
+                                val nextScale = (scale * zoom).coerceIn(1f, 6f)
+                                val clampedOffset = clampPanOffsetForGroup(
+                                    viewportSize = viewportSize,
+                                    imageWidth = bitmap.width,
+                                    imageHeight = bitmap.height,
+                                    scale = nextScale,
+                                    currentOffset = offset + pan
+                                )
+                                scale = nextScale
+                                offset = clampedOffset
+                            }
+                        },
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (sourceBitmap == null) {
+                        CircularProgressIndicator()
+                    } else {
+                        AsyncImage(
+                            model = sourceBitmap,
+                            contentDescription = "Crop group photo",
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .graphicsLayer {
+                                    scaleX = scale
+                                    scaleY = scale
+                                    translationX = offset.x
+                                    translationY = offset.y
+                                }
+                        )
+                    }
+                }
             }
         }
     )
+}
+
+private fun clampPanOffsetForGroup(
+    viewportSize: IntSize,
+    imageWidth: Int,
+    imageHeight: Int,
+    scale: Float,
+    currentOffset: Offset
+): Offset {
+    if (viewportSize.width <= 0 || viewportSize.height <= 0 || imageWidth <= 0 || imageHeight <= 0) {
+        return Offset.Zero
+    }
+
+    val baseScale = max(
+        viewportSize.width.toFloat() / imageWidth.toFloat(),
+        viewportSize.height.toFloat() / imageHeight.toFloat()
+    )
+    val scaledWidth = imageWidth * baseScale * scale
+    val scaledHeight = imageHeight * baseScale * scale
+
+    val maxOffsetX = max(0f, (scaledWidth - viewportSize.width) / 2f)
+    val maxOffsetY = max(0f, (scaledHeight - viewportSize.height) / 2f)
+
+    return Offset(
+        x = currentOffset.x.coerceIn(-maxOffsetX, maxOffsetX),
+        y = currentOffset.y.coerceIn(-maxOffsetY, maxOffsetY)
+    )
+}
+
+private fun createCroppedGroupImageUri(
+    context: android.content.Context,
+    sourceBitmap: Bitmap,
+    viewportSize: IntSize,
+    zoomScale: Float,
+    panOffset: Offset,
+    imageQuality: Int
+): Uri? {
+    if (viewportSize.width <= 0 || viewportSize.height <= 0) return null
+
+    val baseScale = max(
+        viewportSize.width.toFloat() / sourceBitmap.width.toFloat(),
+        viewportSize.height.toFloat() / sourceBitmap.height.toFloat()
+    )
+    val totalScale = (baseScale * zoomScale).coerceAtLeast(0.0001f)
+
+    val cropWidth = (viewportSize.width / totalScale).roundToInt().coerceIn(1, sourceBitmap.width)
+    val cropHeight = (viewportSize.height / totalScale).roundToInt().coerceIn(1, sourceBitmap.height)
+
+    val centerX = sourceBitmap.width / 2f - (panOffset.x / totalScale)
+    val centerY = sourceBitmap.height / 2f - (panOffset.y / totalScale)
+
+    val left = (centerX - cropWidth / 2f).roundToInt().coerceIn(0, sourceBitmap.width - cropWidth)
+    val top = (centerY - cropHeight / 2f).roundToInt().coerceIn(0, sourceBitmap.height - cropHeight)
+
+    val cropped = Bitmap.createBitmap(sourceBitmap, left, top, cropWidth, cropHeight)
+    val outputSize = min(512, min(cropped.width, cropped.height)).coerceAtLeast(128)
+    val normalized = Bitmap.createScaledBitmap(cropped, outputSize, outputSize, true)
+
+    val outputFile = File(context.cacheDir, "group_crop_${System.currentTimeMillis()}.jpg")
+    FileOutputStream(outputFile).use { stream ->
+        normalized.compress(Bitmap.CompressFormat.JPEG, imageQuality, stream)
+        stream.flush()
+    }
+
+    if (normalized != cropped) cropped.recycle()
+    return Uri.fromFile(outputFile)
+}
+
+private fun loadBitmapFromUri(context: android.content.Context, uri: Uri): Bitmap? {
+    return try {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            val source = android.graphics.ImageDecoder.createSource(context.contentResolver, uri)
+            android.graphics.ImageDecoder.decodeBitmap(source) { decoder, _, _ ->
+                decoder.isMutableRequired = false
+            }
+        } else {
+            @Suppress("DEPRECATION")
+            MediaStore.Images.Media.getBitmap(context.contentResolver, uri)
+        }
+    } catch (_: Exception) {
+        null
+    }
 }
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -1034,7 +1557,7 @@ private fun FlickGrid(
         val rowHeight = if (isLandscape) {
             this.maxHeight / 1.1f
         } else {
-            this.maxHeight / 4.08f
+            this.maxHeight / 4.07f
         }
 
         // Track scroll position for infinite scroll
@@ -1116,7 +1639,7 @@ private fun FlickGrid(
             columns = GridCells.Fixed(3),
             modifier = Modifier.fillMaxSize(),
             state = listState,
-            contentPadding = PaddingValues(bottom = 160.dp),
+            contentPadding = PaddingValues(top = 5.dp, bottom = 160.dp),
             horizontalArrangement = Arrangement.spacedBy(1.dp),
             verticalArrangement = Arrangement.spacedBy(1.dp)
         ) {
@@ -1164,178 +1687,80 @@ private fun FlickGrid(
                             onLongClick = { onLongPress(flick) }
                         )
                 ) {
-                    // Determine if this image URL likely points to a local/temp source
-                    val isLocalSource = flick.imageUrl.startsWith("content://") ||
-                            flick.imageUrl.startsWith("file://") ||
-                            (!flick.imageUrl.startsWith("http://") && !flick.imageUrl.startsWith("https://"))
-
-                    // Track painter state to detect stuck loading and switch to robust fallback
-                    var loadingStartMs by remember(flick.id, flick.imageUrl) { mutableLongStateOf(0L) }
-                    var forceDirectUrl by remember(flick.id, flick.imageUrl) { mutableStateOf(false) }
-
-                    val currentModel = if (forceDirectUrl) cacheBusted else bridgedModel
-                    val painter = rememberAsyncImagePainter(model = currentModel)
-                    val painterState = painter.state
-
-                    // Reset per-image fallback controls when model identity changes
-                    LaunchedEffect(flick.id, flick.imageUrl) {
-                        loadingStartMs = 0L
-                        forceDirectUrl = false
-                    }
-
-                    // If spinner seems stuck for remote images, force a direct URL model once
-                    LaunchedEffect(painterState, flick.id, flick.imageUrl) {
-                        if (isLocalSource) return@LaunchedEffect
-                        when (painterState) {
-                            is AsyncImagePainter.State.Loading -> {
-                                if (loadingStartMs == 0L) loadingStartMs = System.currentTimeMillis()
-                                delay(2500)
-                                val stillLoading = painter.state is AsyncImagePainter.State.Loading
-                                if (stillLoading && !forceDirectUrl) {
-                                    forceDirectUrl = true
-                                }
-                            }
-                            is AsyncImagePainter.State.Success,
-                            is AsyncImagePainter.State.Error -> {
-                                loadingStartMs = 0L
-                            }
-                            else -> Unit
-                        }
-                    }
-
-                    val hasImage = currentModel != null && cacheBusted.isNotBlank()
-
-                    when {
-                        !hasImage -> {
-                            // Cleaner placeholder for missing URL (common just-after-upload race)
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .background(Color.DarkGray),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    text = "🖼️",
-                                    color = Color.White.copy(alpha = 0.55f),
-                                    fontSize = 20.sp
-                                )
-                            }
-                        }
-
-                        else -> {
-                            AsyncImage(
-                                model = currentModel,
-                                contentDescription = "Photo",
-                                modifier = Modifier.fillMaxSize(),
-                                contentScale = ContentScale.Crop
-                            )
-
-                            // Subtle loading overlay only while image is actively loading
-                            if (painterState is AsyncImagePainter.State.Loading) {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .background(Color.Black.copy(alpha = 0.22f)),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    CircularProgressIndicator(
-                                        modifier = Modifier.size(22.dp),
-                                        strokeWidth = 2.dp,
-                                        color = Color.White.copy(alpha = 0.9f)
-                                    )
-                                }
-                            }
-
-                            // If direct-url fallback also errors, show clear failure hint
-                            if (painterState is AsyncImagePainter.State.Error) {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .background(Color.Black.copy(alpha = 0.35f)),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Text(
-                                        text = "Image unavailable",
-                                        color = Color.White.copy(alpha = 0.85f),
-                                        fontSize = 11.sp,
-                                        fontWeight = FontWeight.SemiBold
-                                    )
-                                }
-                            }
-                        }
+                    if (bridgedModel == null) {
+                        Box(modifier = Modifier.fillMaxSize().background(Color(0xFF111111)))
+                    } else {
+                        AsyncImage(
+                            model = bridgedModel,
+                            contentDescription = "Photo",
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize()
+                        )
                     }
 
                     val reactionCounts = flick.getReactionCounts()
-                    val orderedReactions = reactionCounts
-                        .filterValues { it > 0 }
-                        .toList()
-                        .sortedByDescending { it.second }
-                        .take(5)
+                    val topReaction = reactionCounts
+                        .maxByOrNull { it.value }
 
-                    Box(
+                    Row(
                         modifier = Modifier
                             .align(Alignment.BottomStart)
                             .fillMaxWidth()
                             .height(20.dp)
-                            .background(Color.Black.copy(alpha = 0.65f))
+                            .background(Color.Black.copy(alpha = 0.55f))
+                            .padding(horizontal = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
                             text = flick.userName,
                             color = Color.White,
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.Bold,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.SemiBold,
                             maxLines = 1,
                             modifier = Modifier
-                                .align(Alignment.CenterStart)
-                                .padding(start = 6.dp, end = 6.dp)
+                                .weight(1f)
                                 .offset(y = (-0.5).dp),
-                            style = androidx.compose.ui.text.TextStyle(
+                            style = LocalTextStyle.current.copy(
                                 platformStyle = PlatformTextStyle(includeFontPadding = false)
                             )
                         )
 
-                        Row(
-                            modifier = Modifier
-                                .align(Alignment.CenterEnd)
-                                .padding(end = 6.dp),
-                            horizontalArrangement = Arrangement.spacedBy(4.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            orderedReactions.forEach { (reactionType, count) ->
-                                val emoji = reactionType.toEmoji()
-                                Text(
-                                    text = "$emoji$count",
-                                    color = Color.White,
-                                    fontSize = 9.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    modifier = Modifier.offset(y = (-0.5).dp),
-                                    style = androidx.compose.ui.text.TextStyle(
-                                        platformStyle = PlatformTextStyle(includeFontPadding = false)
-                                    )
+                        topReaction?.takeIf { it.value > 0 }?.let { (reactionType, count) ->
+                            Text(
+                                text = "${reactionType.toEmoji()} $count",
+                                color = Color.White,
+                                fontSize = 10.sp,
+                                maxLines = 1,
+                                modifier = Modifier.offset(y = (-0.5).dp),
+                                style = LocalTextStyle.current.copy(
+                                    platformStyle = PlatformTextStyle(includeFontPadding = false)
                                 )
-                            }
+                            )
                         }
                     }
                 }
             }
 
-            // Loading indicator as grid item
-            if (isLoadingMore) {
+            if (isLoadingMore && flicks.isNotEmpty()) {
                 item(span = { GridItemSpan(3) }) {
-                    Box(
+                    Row(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(vertical = 12.dp),
-                        contentAlignment = Alignment.Center
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
+                        CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Loading more...", color = Color.Gray, fontSize = 12.sp)
                     }
                 }
             }
 
-            // End spacer to avoid abrupt stop under nav overlay
-            item(span = { GridItemSpan(3) }) {
-                Spacer(modifier = Modifier.height(24.dp))
+            if (!canLoadMore && flicks.isNotEmpty()) {
+                item(span = { GridItemSpan(3) }) {
+                    Spacer(modifier = Modifier.height(20.dp))
+                }
             }
         }
     }
@@ -1343,77 +1768,60 @@ private fun FlickGrid(
 
 @Composable
 private fun EmptyState() {
-    Box(
+    Column(
         modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
     ) {
+        Icon(
+            imageVector = Icons.Default.PhotoLibrary,
+            contentDescription = null,
+            modifier = Modifier.size(64.dp),
+            tint = Color.Gray
+        )
+        Spacer(modifier = Modifier.height(16.dp))
         Text(
-            text = "No photos yet. Upload one!",
-            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+            text = "No photos yet",
+            fontSize = 18.sp,
+            fontWeight = FontWeight.Medium,
+            color = Color.Gray
+        )
+        Text(
+            text = "Share your first photo!",
+            fontSize = 14.sp,
+            color = Color.Gray.copy(alpha = 0.7f)
         )
     }
 }
 
-/**
- * Flying reaction animation - animates emoji from center to target photo
- */
 @Composable
 private fun FlyingReactionAnimation(
     reaction: ReactionType,
     targetIndex: Int,
     onAnimationEnd: () -> Unit
 ) {
-    val emoji = reaction.toEmoji()
-
-    // Calculate target position (3-column grid)
-    val column = targetIndex % 3
-    val row = targetIndex / 3
-
-    // Screen-relative positions (estimates for 3-column grid)
-    val targetX = when (column) {
-        0 -> -0.25f
-        1 -> 0f
-        2 -> 0.25f
-        else -> 0f
-    }
-    val targetY = when (row) {
-        0 -> -0.15f
-        1 -> 0.05f
-        2 -> 0.25f
-        3 -> 0.45f
-        else -> 0f
-    }
-
-    var animationStarted by remember { mutableStateOf(false) }
-
-    val offsetX by animateFloatAsState(
-        targetValue = if (animationStarted) targetX else 0f,
-        animationSpec = tween(durationMillis = 600, easing = FastOutSlowInEasing),
-        label = "fly_x"
-    )
-
-    val offsetY by animateFloatAsState(
-        targetValue = if (animationStarted) targetY else 0f,
-        animationSpec = tween(durationMillis = 600, easing = FastOutSlowInEasing),
-        finishedListener = { onAnimationEnd() },
-        label = "fly_y"
-    )
+    var startAnimation by remember { mutableStateOf(false) }
 
     val scale by animateFloatAsState(
-        targetValue = if (animationStarted) 0.5f else 2f,
-        animationSpec = tween(durationMillis = 600, easing = FastOutSlowInEasing),
-        label = "fly_scale"
+        targetValue = if (startAnimation) 2f else 0.5f,
+        animationSpec = tween(400, easing = FastOutSlowInEasing),
+        finishedListener = {
+            onAnimationEnd()
+        }, label = "scale"
     )
 
     val alpha by animateFloatAsState(
-        targetValue = if (animationStarted) 0f else 1f,
-        animationSpec = tween(durationMillis = 600),
-        label = "fly_alpha"
+        targetValue = if (startAnimation) 0f else 1f,
+        animationSpec = tween(400), label = "alpha"
+    )
+
+    val yOffset by animateFloatAsState(
+        targetValue = if (startAnimation) -200f else 0f,
+        animationSpec = tween(400, easing = FastOutSlowInEasing), label = "yOffset"
     )
 
     LaunchedEffect(Unit) {
-        delay(50)
-        animationStarted = true
+        startAnimation = true
     }
 
     Box(
@@ -1421,60 +1829,15 @@ private fun FlyingReactionAnimation(
         contentAlignment = Alignment.Center
     ) {
         Text(
-            text = emoji,
+            text = reaction.toEmoji(),
             fontSize = 48.sp,
             modifier = Modifier
                 .graphicsLayer {
-                    translationX = offsetX * size.width
-                    translationY = offsetY * size.height
                     scaleX = scale
                     scaleY = scale
                     this.alpha = alpha
+                    translationY = yOffset
                 }
-        )
-    }
-}
-
-/**
- * Heart like animation that shows when double-tapping a photo
- * Shows ❤️ for like, 🤍 for unlike
- */
-@Composable
-private fun LikeAnimation(
-    isUnlike: Boolean = false,
-    onAnimationComplete: () -> Unit
-) {
-    var animationStarted by remember { mutableStateOf(false) }
-
-    val scale by animateFloatAsState(
-        targetValue = if (animationStarted) 1.5f else 0f,
-        animationSpec = tween(durationMillis = 400, easing = FastOutSlowInEasing),
-        label = "like_scale"
-    )
-
-    val alpha by animateFloatAsState(
-        targetValue = if (animationStarted) 0f else 1f,
-        animationSpec = tween(durationMillis = 400, delayMillis = 200),
-        finishedListener = { onAnimationComplete() },
-        label = "like_alpha"
-    )
-
-    LaunchedEffect(Unit) {
-        animationStarted = true
-    }
-
-    Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text = if (isUnlike) "🤍" else "❤️", // White heart for unlike, red for like
-            fontSize = 80.sp,
-            modifier = Modifier.graphicsLayer {
-                scaleX = scale
-                scaleY = scale
-                this.alpha = alpha
-            }
         )
     }
 }

@@ -91,6 +91,8 @@ fun AuthenticatedContent(
     uploadViewModel: UploadViewModel,
     authViewModel: AuthViewModel,
     homeResetVersion: Int = 0,
+    openGroupsManager: Boolean = false,
+    onOpenGroupsManagerConsumed: () -> Unit = {},
     selectedChatSession: ChatSession?,
     selectedOtherUserId: String,
     onSetSelectedChat: (ChatSession, String) -> Unit,
@@ -141,7 +143,9 @@ fun AuthenticatedContent(
                 friendsViewModel = friendsViewModel,
                 onScreenChange = onScreenChange,
                 onSignOut = onSignOut,
-                homeResetVersion = homeResetVersion
+                homeResetVersion = homeResetVersion,
+                openGroupsManager = openGroupsManager,
+                onOpenGroupsManagerConsumed = onOpenGroupsManagerConsumed
             )
         }
 
@@ -482,8 +486,18 @@ private fun HomeScreenContent(
     friendsViewModel: FriendsViewModel,
     onScreenChange: (Screen) -> Unit,
     onSignOut: () -> Unit,
-    homeResetVersion: Int = 0
+    homeResetVersion: Int = 0,
+    openGroupsManager: Boolean = false,
+    onOpenGroupsManagerConsumed: () -> Unit = {}
 ) {
+    LaunchedEffect(userProfile.uid, userProfile.following) {
+        if (userProfile.following.isNotEmpty()) {
+            friendsViewModel.loadFollowingUsers(userProfile.following)
+        } else {
+            friendsViewModel.loadFollowingUsers(emptyList())
+        }
+    }
+
     HomeScreen(
         userProfile = userProfile,
         viewModel = homeViewModel,
@@ -513,7 +527,9 @@ private fun HomeScreenContent(
         friends = friendsViewModel.followingUsers, // Pass friends for profile picture lookup
         onEditPhotoClick = { flick ->
             onScreenChange(Screen.EditPhoto(flick))
-        }
+        },
+        openGroupsManager = openGroupsManager,
+        onOpenGroupsManagerConsumed = onOpenGroupsManagerConsumed
     )
 }
 
