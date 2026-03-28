@@ -108,17 +108,25 @@ fun AuthenticatedContent(
 
     // Capture billingViewModel locally for use in when blocks
     val bvm = billingViewModel
+    var friendsOverrideIds by remember { mutableStateOf<List<String>?>(null) }
+    var friendsOverrideTitle by remember { mutableStateOf<String?>(null) }
+    var friendsOverrideUsers by remember { mutableStateOf<List<UserProfile>?>(null) }
 
     // Direct screen switching - NO animation (fixes banner position shift)
     when (currentScreen) {
-        is Screen.Home -> HomeScreenContent(
-            userProfile = userProfile,
-            homeViewModel = homeViewModel,
-            friendsViewModel = friendsViewModel,
-            onScreenChange = onScreenChange,
-            onSignOut = onSignOut,
-            homeResetVersion = homeResetVersion
-        )
+        is Screen.Home -> {
+            friendsOverrideIds = null
+            friendsOverrideTitle = null
+            friendsOverrideUsers = null
+            HomeScreenContent(
+                userProfile = userProfile,
+                homeViewModel = homeViewModel,
+                friendsViewModel = friendsViewModel,
+                onScreenChange = onScreenChange,
+                onSignOut = onSignOut,
+                homeResetVersion = homeResetVersion
+            )
+        }
 
         is Screen.Profile -> ProfileScreenContent(
             userProfile = userProfile,
@@ -142,7 +150,11 @@ fun AuthenticatedContent(
         is Screen.Friends -> FriendsScreenContent(
             userProfile = userProfile,
             friendsViewModel = friendsViewModel,
-            onScreenChange = onScreenChange
+            onScreenChange = onScreenChange,
+            followingOverrideIds = friendsOverrideIds,
+            displayedUsersOverride = friendsOverrideUsers,
+            titleOverride = friendsOverrideTitle,
+            onBack = { onScreenChange(Screen.Home) }
         )
 
         is Screen.Chats -> ChatsScreenContent(
@@ -164,12 +176,17 @@ fun AuthenticatedContent(
             onOpenUploadSourceDialog = onOpenUploadSourceDialog
         )
 
-        is Screen.FindFriends -> FindFriendsScreenContent(
-            userProfile = userProfile,
-            friendsViewModel = friendsViewModel,
-            authViewModel = authViewModel,
-            onScreenChange = onScreenChange
-        )
+        is Screen.FindFriends -> {
+            friendsOverrideIds = null
+            friendsOverrideTitle = null
+            friendsOverrideUsers = null
+            FindFriendsScreenContent(
+                userProfile = userProfile,
+                friendsViewModel = friendsViewModel,
+                authViewModel = authViewModel,
+                onScreenChange = onScreenChange
+            )
+        }
 
         is Screen.About -> AboutScreen(
             onBack = { onScreenChange(Screen.Settings) }
@@ -247,7 +264,30 @@ fun AuthenticatedContent(
             authViewModel = authViewModel,
             homeViewModel = homeViewModel,
             profileViewModel = profileViewModel,
-            onScreenChange = onScreenChange
+            onScreenChange = onScreenChange,
+            onOpenFriendsForIds = { ids, title ->
+                friendsOverrideIds = ids
+                friendsOverrideTitle = title
+                friendsOverrideUsers = emptyList()
+
+                val loadedUsers = mutableListOf<UserProfile>()
+                ids.distinct().forEach { userId ->
+                    repository.getUserProfile(userId) { result ->
+                        if (result is com.picflick.app.data.Result.Success<UserProfile>) {
+                            val profile = result.data
+                            val existingIndex = loadedUsers.indexOfFirst { existing -> existing.uid == profile.uid }
+                            if (existingIndex >= 0) {
+                                loadedUsers[existingIndex] = profile
+                            } else {
+                                loadedUsers.add(profile)
+                            }
+                            friendsOverrideUsers = loadedUsers.toList()
+                        }
+                    }
+                }
+
+                onScreenChange(Screen.Friends)
+            }
         )
 
         is Screen.Privacy -> PrivacyScreen(
@@ -559,15 +599,37 @@ private fun ProfileScreenContent(
 private fun FriendsScreenContent(
     userProfile: UserProfile,
     friendsViewModel: FriendsViewModel,
-    onScreenChange: (Screen) -> Unit
+    onScreenChange: (Screen) -> Unit,
+    followingOverrideIds: List<String>? = null,
+    displayedUsersOverride: List<UserProfile>? = null,
+    titleOverride: String? = null,
+    onBack: () -> Unit = { onScreenChange(Screen.Home) }
 ) {
+    LaunchedEffect(userProfile.uid, followingOverrideIds) {
+        followingOverrideIds?.let { ids ->
+            friendsViewModel.loadFollowingUsers(ids)
+        }
+    }
+
+    val isViewingOverrideFriends = followingOverrideIds != null
+
     FriendsScreen(
         userProfile = userProfile,
         viewModel = friendsViewModel,
-        onBack = { onScreenChange(Screen.Home) },
+        onBack = onBack,
         onFindFriendsClick = { onScreenChange(Screen.FindFriends) },
         onProfilePhotoClick = { friend ->
             onScreenChange(Screen.UserProfile(friend.uid))
+        },
+        titleOverride = titleOverride,
+        showFindFriendsBar = !isViewingOverrideFriends,
+        isOwnFriendsList = !isViewingOverrideFriends,
+        currentUserId = userProfile.uid,
+        currentUserFollowingIds = userProfile.following.toSet(),
+        currentUserSentRequestIds = userProfile.sentFollowRequests.toSet(),
+        displayedUsersOverride = displayedUsersOverride,
+        onAddFriendClick = { targetUser ->
+            friendsViewModel.sendFollowRequest(userProfile.uid, targetUser, userProfile)
         }
     )
 }
@@ -1134,7 +1196,8 @@ private fun UserProfileScreenContent(
     authViewModel: AuthViewModel,
     homeViewModel: HomeViewModel,
     profileViewModel: ProfileViewModel,
-    onScreenChange: (Screen) -> Unit
+    onScreenChange: (Screen) -> Unit,
+    onOpenFriendsForIds: (List<String>, String) -> Unit
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -1330,7 +1393,11 @@ private fun UserProfileScreenContent(
                 onScreenChange(Screen.Home)
             },
             onFriendsClick = {
-                onScreenChange(Screen.Friends)
+                // Show User B friends list
+                onOpenFriendsForIds(
+                    target.following,
+                    "${target.displayName}'s Friends"
+                )
             },
             onAchievementsClick = {
                 // Use User B data on the shared achievements screen path

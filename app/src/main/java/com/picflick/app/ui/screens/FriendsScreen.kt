@@ -49,7 +49,15 @@ fun FriendsScreen(
     viewModel: FriendsViewModel,
     onBack: () -> Unit,
     onFindFriendsClick: () -> Unit = {},
-    onProfilePhotoClick: (UserProfile) -> Unit = {}
+    onProfilePhotoClick: (UserProfile) -> Unit = {},
+    titleOverride: String? = null,
+    showFindFriendsBar: Boolean = true,
+    isOwnFriendsList: Boolean = true,
+    currentUserId: String = userProfile.uid,
+    currentUserFollowingIds: Set<String> = userProfile.following.toSet(),
+    currentUserSentRequestIds: Set<String> = userProfile.sentFollowRequests.toSet(),
+    displayedUsersOverride: List<UserProfile>? = null,
+    onAddFriendClick: (UserProfile) -> Unit = {}
 ) {
     val context = LocalContext.current
     var pendingDeleteFriendId by remember { mutableStateOf<String?>(null) }
@@ -67,9 +75,12 @@ fun FriendsScreen(
     )
 
     val isDarkMode = ThemeManager.isDarkMode.value
-    val visibleFollowingUsers by remember {
+    val sourceUsers = displayedUsersOverride ?: viewModel.followingUsers
+    val visibleFollowingUsers by remember(sourceUsers, optimisticallyRemovedFriendIds) {
         derivedStateOf {
-            viewModel.followingUsers.filterNot { it.uid in optimisticallyRemovedFriendIds }
+            sourceUsers
+                .filterNot { it.uid in optimisticallyRemovedFriendIds }
+                .distinctBy { it.uid }
         }
     }
 
@@ -104,7 +115,7 @@ modifier = Modifier
                     )
                 }
                 Text(
-                    text = "My Friends (${visibleFollowingUsers.size})",
+                    text = titleOverride ?: "My Friends (${visibleFollowingUsers.size})",
 modifier = Modifier.weight(1f),
                     color = Color.White,
                     fontSize = 15.sp,
@@ -123,7 +134,7 @@ modifier = Modifier.weight(1f),
                 .pullRefresh(pullRefreshState)
         ) {
             when {
-                viewModel.isLoading && viewModel.followingUsers.isEmpty() -> {
+                viewModel.isLoading && sourceUsers.isEmpty() -> {
                     // Show 5 shimmer items
                     Column {
                         repeat(5) {
@@ -141,17 +152,23 @@ modifier = Modifier.weight(1f),
                             key = { it.uid },
                             contentType = { "friend" }
                         ) { friend ->
+                            val isAlreadyFriend = currentUserFollowingIds.contains(friend.uid)
+                            val hasSentRequest = currentUserSentRequestIds.contains(friend.uid)
                             FriendListItem(
                                 friend = friend,
                                 onProfilePhotoClick = { onProfilePhotoClick(friend) },
                                 isPendingDelete = pendingDeleteFriendId == friend.uid,
                                 isRemoving = viewModel.processingUserIds.contains(friend.uid),
+                                isOwnFriendsList = isOwnFriendsList,
+                                isAlreadyFriend = isAlreadyFriend,
+                                hasSentRequest = hasSentRequest,
+                                currentUserId = currentUserId,
                                 onDeleteFriend = {
                                     if (pendingDeleteFriendId == friend.uid) {
                                         val friendId = friend.uid
                                         optimisticallyRemovedFriendIds.add(friendId)
                                         pendingDeleteFriendId = null
-                                        viewModel.unfollowUser(userProfile.uid, friendId) { success ->
+                                        viewModel.unfollowUser(currentUserId, friendId) { success ->
                                             if (success) {
                                                 Toast.makeText(context, "Removed", Toast.LENGTH_SHORT).show()
                                             } else {
@@ -161,6 +178,11 @@ modifier = Modifier.weight(1f),
                                         }
                                     } else {
                                         pendingDeleteFriendId = friend.uid
+                                    }
+                                },
+                                onAddFriend = {
+                                    if (!isAlreadyFriend && !hasSentRequest && friend.uid != currentUserId) {
+                                        onAddFriendClick(friend)
                                     }
                                 }
                             )
@@ -179,21 +201,23 @@ modifier = Modifier.weight(1f),
             )
         }
 
-        // Find Friends button - NOW AT THE BOTTOM
-        Button(
-            onClick = onFindFriendsClick,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp),
-            shape = RoundedCornerShape(12.dp)
-        ) {
-            Icon(
-                imageVector = Icons.Default.Search,
-                contentDescription = null,
-                modifier = Modifier.size(20.dp)
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            Text("Find Friends")
+        if (showFindFriendsBar) {
+            // Find Friends button - NOW AT THE BOTTOM
+            Button(
+                onClick = onFindFriendsClick,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Search,
+                    contentDescription = null,
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Find Friends")
+            }
         }
 
     }
@@ -205,7 +229,12 @@ private fun FriendListItem(
     onProfilePhotoClick: () -> Unit = {},
     isPendingDelete: Boolean = false,
     isRemoving: Boolean = false,
-    onDeleteFriend: () -> Unit = {}
+    isOwnFriendsList: Boolean = true,
+    isAlreadyFriend: Boolean = false,
+    hasSentRequest: Boolean = false,
+    currentUserId: String,
+    onDeleteFriend: () -> Unit = {},
+    onAddFriend: () -> Unit = {}
 ) {
     val liveFriendPhoto = rememberLiveUserPhotoUrl(friend.uid, friend.photoUrl)
 
@@ -280,20 +309,50 @@ Row(
             )
         }
         
-        // Delete Friend button - small, on the right
-        OutlinedButton(
-            onClick = onDeleteFriend,
-            enabled = !isRemoving,
-            shape = RoundedCornerShape(20.dp),
-            modifier = Modifier.wrapContentWidth(),
-            colors = ButtonDefaults.outlinedButtonColors(
-                contentColor = Color(0xFFFF4444) // Red
-            )
-        ) {
-            when {
-                isRemoving -> Text("Removing...", fontSize = 12.sp)
-                isPendingDelete -> Text("Confirm", fontSize = 12.sp)
-                else -> Text("Delete", fontSize = 12.sp)
+        if (isOwnFriendsList) {
+            // Delete Friend button - small, on the right
+            OutlinedButton(
+                onClick = onDeleteFriend,
+                enabled = !isRemoving,
+                shape = RoundedCornerShape(20.dp),
+                modifier = Modifier.wrapContentWidth(),
+                colors = ButtonDefaults.outlinedButtonColors(
+                    contentColor = Color(0xFFFF4444) // Red
+                )
+            ) {
+                when {
+                    isRemoving -> Text("Removing...", fontSize = 12.sp)
+                    isPendingDelete -> Text("Confirm", fontSize = 12.sp)
+                    else -> Text("Delete", fontSize = 12.sp)
+                }
+            }
+        } else {
+            val canAdd = !isAlreadyFriend && !hasSentRequest && friend.uid != currentUserId
+            val isWaiting = hasSentRequest
+            val buttonColor = when {
+                isAlreadyFriend -> Color(0xFF2E7D32)
+                isWaiting -> Color(0xFFFB8C00)
+                else -> Color(0xFF1E88E5)
+            }
+
+            OutlinedButton(
+                onClick = onAddFriend,
+                enabled = canAdd && !isRemoving,
+                shape = RoundedCornerShape(20.dp),
+                modifier = Modifier.wrapContentWidth(),
+                colors = ButtonDefaults.outlinedButtonColors(
+                    containerColor = if (isAlreadyFriend || isWaiting) buttonColor else Color.Transparent,
+                    contentColor = buttonColor,
+                    disabledContainerColor = if (isAlreadyFriend || isWaiting) buttonColor else Color.Transparent,
+                    disabledContentColor = Color.White
+                ),
+                border = androidx.compose.foundation.BorderStroke(1.dp, buttonColor)
+            ) {
+                when {
+                    isAlreadyFriend -> Text("FRIENDS", fontSize = 12.sp, color = Color.White)
+                    isWaiting -> Text("WAITING", fontSize = 12.sp, color = Color.White)
+                    else -> Text("ADD", fontSize = 12.sp)
+                }
             }
         }
 }

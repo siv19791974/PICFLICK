@@ -46,6 +46,9 @@ class FriendsViewModel : ViewModel() {
     /** Last user ID for pagination */
     private var lastUserId: String? = null
 
+    /** Token to ignore stale async callbacks when loadFollowingUsers is called repeatedly */
+    private var followingLoadToken: Int = 0
+
     var searchQuery by mutableStateOf("")
         private set
 
@@ -79,6 +82,8 @@ class FriendsViewModel : ViewModel() {
      * Load users that the current user is following
      */
     fun loadFollowingUsers(followingIds: List<String>) {
+        val loadToken = ++followingLoadToken
+
         if (followingIds.isEmpty()) {
             followingUsers.clear()
             return
@@ -87,12 +92,25 @@ class FriendsViewModel : ViewModel() {
         isLoading = true
         followingUsers.clear()
 
+        // Avoid duplicate requests (and duplicate keys) when source list contains repeated ids
+        val uniqueFollowingIds = followingIds.distinct()
+
         // Load each user's profile
-        followingIds.forEach { userId ->
+        uniqueFollowingIds.forEach { userId ->
             flickRepository.getUserProfile(userId) { result ->
+                // Ignore stale callbacks from previous loads
+                if (loadToken != followingLoadToken) return@getUserProfile
+
                 when (result) {
                     is Result.Success -> {
-                        followingUsers.add(result.data)
+                        val profile = result.data
+                        // Upsert by uid to guarantee uniqueness for LazyColumn keys
+                        val existingIndex = followingUsers.indexOfFirst { it.uid == profile.uid }
+                        if (existingIndex >= 0) {
+                            followingUsers[existingIndex] = profile
+                        } else {
+                            followingUsers.add(profile)
+                        }
                     }
                     is Result.Error -> {
                         errorMessage = result.message

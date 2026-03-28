@@ -452,11 +452,14 @@ fun ProfileScreen(
 
             Spacer(modifier = Modifier.height(12.dp))
             
-            // Photo grid - match Home Feed exactly
-            // Home calculates: (screen - banner - nav - status) / 4.1f = ~148dp
+            // Photo grid - match Home Feed dynamic sizing
             val rowCount = ((photos.size + 2) / 3).coerceAtLeast(1)
-            val rowHeight = 148.dp // Fine-tuned to match Home exactly
-            val cellOuterHeight = rowHeight + 2.dp // MyPhotoCard has 1.dp top + 1.dp bottom padding
+            val homeLikeRowHeight = if (isLandscape) {
+                configuration.screenHeightDp.dp / 1.1f
+            } else {
+                configuration.screenHeightDp.dp / 4.1f
+            }
+            val cellOuterHeight = homeLikeRowHeight + 2.dp // MyPhotoCard has 1.dp top + 1.dp bottom padding
             val gridHeight = (rowCount * cellOuterHeight.value).dp + 6.dp // include grid content padding so last row never clips
 
             Box(
@@ -503,7 +506,7 @@ fun ProfileScreen(
                                     selectedPhotoIds.add(flick.id)
                                 }
                             },
-                            rowHeight = rowHeight
+                            rowHeight = homeLikeRowHeight
                         )
                     }
                 }
