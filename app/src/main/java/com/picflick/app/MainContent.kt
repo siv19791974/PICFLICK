@@ -111,13 +111,30 @@ fun AuthenticatedContent(
     var friendsOverrideIds by remember { mutableStateOf<List<String>?>(null) }
     var friendsOverrideTitle by remember { mutableStateOf<String?>(null) }
     var friendsOverrideUsers by remember { mutableStateOf<List<UserProfile>?>(null) }
+    var isFriendsOverrideMode by remember { mutableStateOf(false) }
+    var previousScreen by remember { mutableStateOf<Screen?>(null) }
+
+    LaunchedEffect(currentScreen) {
+        val cameFromFriends = previousScreen is Screen.Friends || previousScreen is Screen.UserFriends
+        val nowOutsideFriends = currentScreen !is Screen.Friends && currentScreen !is Screen.UserFriends
+        if (cameFromFriends && nowOutsideFriends) {
+            friendsOverrideIds = null
+            friendsOverrideTitle = null
+            friendsOverrideUsers = null
+            isFriendsOverrideMode = false
+        }
+        previousScreen = currentScreen
+    }
 
     // Direct screen switching - NO animation (fixes banner position shift)
     when (currentScreen) {
         is Screen.Home -> {
-            friendsOverrideIds = null
-            friendsOverrideTitle = null
-            friendsOverrideUsers = null
+            if (isFriendsOverrideMode) {
+                friendsOverrideIds = null
+                friendsOverrideTitle = null
+                friendsOverrideUsers = null
+                isFriendsOverrideMode = false
+            }
             HomeScreenContent(
                 userProfile = userProfile,
                 homeViewModel = homeViewModel,
@@ -151,10 +168,32 @@ fun AuthenticatedContent(
             userProfile = userProfile,
             friendsViewModel = friendsViewModel,
             onScreenChange = onScreenChange,
+            followingOverrideIds = null,
+            displayedUsersOverride = null,
+            titleOverride = null,
+            onBack = {
+                friendsOverrideIds = null
+                friendsOverrideTitle = null
+                friendsOverrideUsers = null
+                isFriendsOverrideMode = false
+                onScreenChange(Screen.Home)
+            }
+        )
+
+        is Screen.UserFriends -> FriendsScreenContent(
+            userProfile = userProfile,
+            friendsViewModel = friendsViewModel,
+            onScreenChange = onScreenChange,
             followingOverrideIds = friendsOverrideIds,
             displayedUsersOverride = friendsOverrideUsers,
             titleOverride = friendsOverrideTitle,
-            onBack = { onScreenChange(Screen.Home) }
+            onBack = {
+                friendsOverrideIds = null
+                friendsOverrideTitle = null
+                friendsOverrideUsers = null
+                isFriendsOverrideMode = false
+                onScreenChange(Screen.Home)
+            }
         )
 
         is Screen.Chats -> ChatsScreenContent(
@@ -177,9 +216,12 @@ fun AuthenticatedContent(
         )
 
         is Screen.FindFriends -> {
-            friendsOverrideIds = null
-            friendsOverrideTitle = null
-            friendsOverrideUsers = null
+            if (isFriendsOverrideMode) {
+                friendsOverrideIds = null
+                friendsOverrideTitle = null
+                friendsOverrideUsers = null
+                isFriendsOverrideMode = false
+            }
             FindFriendsScreenContent(
                 userProfile = userProfile,
                 friendsViewModel = friendsViewModel,
@@ -266,6 +308,7 @@ fun AuthenticatedContent(
             profileViewModel = profileViewModel,
             onScreenChange = onScreenChange,
             onOpenFriendsForIds = { ids, title ->
+                isFriendsOverrideMode = true
                 friendsOverrideIds = ids
                 friendsOverrideTitle = title
                 friendsOverrideUsers = emptyList()
@@ -286,7 +329,7 @@ fun AuthenticatedContent(
                     }
                 }
 
-                onScreenChange(Screen.Friends)
+                onScreenChange(Screen.UserFriends)
             }
         )
 
@@ -605,12 +648,6 @@ private fun FriendsScreenContent(
     titleOverride: String? = null,
     onBack: () -> Unit = { onScreenChange(Screen.Home) }
 ) {
-    LaunchedEffect(userProfile.uid, followingOverrideIds) {
-        followingOverrideIds?.let { ids ->
-            friendsViewModel.loadFollowingUsers(ids)
-        }
-    }
-
     val isViewingOverrideFriends = followingOverrideIds != null
 
     FriendsScreen(
@@ -630,6 +667,9 @@ private fun FriendsScreenContent(
         displayedUsersOverride = displayedUsersOverride,
         onAddFriendClick = { targetUser ->
             friendsViewModel.sendFollowRequest(userProfile.uid, targetUser, userProfile)
+        },
+        onCancelFriendRequestClick = { targetUser ->
+            friendsViewModel.cancelFollowRequest(userProfile.uid, targetUser.uid)
         }
     )
 }

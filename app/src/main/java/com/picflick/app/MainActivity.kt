@@ -394,6 +394,7 @@ fun MainScreen(
             currentScreen is Screen.Profile ||
             currentScreen is Screen.MyPhotos ||
             currentScreen is Screen.Friends ||
+            currentScreen is Screen.UserFriends ||
             currentScreen is Screen.Chats ||
             currentScreen is Screen.Contact ||
             currentScreen is Screen.Notifications ||
@@ -451,6 +452,7 @@ fun MainScreen(
             is Screen.Profile -> "profile"
             is Screen.Chats -> "chats"
             is Screen.Friends -> "friends"
+            is Screen.UserFriends -> "user_friends"
             is Screen.Notifications -> "notifications"
             is Screen.Settings -> "settings"
             is Screen.UserProfile -> "user_profile"
@@ -777,6 +779,7 @@ fun MainScreen(
             is Screen.Profile -> "profile"
             is Screen.Chats -> "chats"
             is Screen.Friends -> "friends"
+            is Screen.UserFriends -> "user_friends"
             is Screen.Notifications -> "notifications"
             is Screen.Settings -> "settings"
             is Screen.UserProfile -> "user_profile"
@@ -933,6 +936,7 @@ fun MainScreen(
                         is Screen.Home -> "home"
                         is Screen.Chats -> "chats"
                         is Screen.Friends -> "friends"
+                        is Screen.UserFriends -> "user_friends"
                         is Screen.Profile -> "profile"
                         else -> "home"
                     },
