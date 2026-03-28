@@ -38,7 +38,6 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import kotlinx.coroutines.launch
-import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -129,11 +128,13 @@ fun UserProfileScreen(
         }
     }
 
-    Box(
+    BoxWithConstraints(
         modifier = Modifier
             .fillMaxSize()
             .pullRefresh(pullRefreshState)
     ) {
+        val availableGridHeight = maxHeight
+
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -276,9 +277,9 @@ fun UserProfileScreen(
                     // Match Home/Profile dynamic sizing
                     val rowCount = ((photos.size + 2) / 3).coerceAtLeast(1)
                     val homeLikeRowHeight = if (isLandscape) {
-                        (configuration.screenHeightDp.dp / 1.1f).coerceAtMost(148.dp)
+                        availableGridHeight / 1.1f
                     } else {
-                        (configuration.screenHeightDp.dp / 4.1f).coerceAtMost(148.dp)
+                        availableGridHeight / 4.1f
                     }
                     val cellOuterHeight = homeLikeRowHeight + 2.dp
                     val gridHeight = (rowCount * cellOuterHeight.value).dp + 6.dp
@@ -489,9 +490,10 @@ private fun ProfilePhotoCard(
     onLongPress: () -> Unit
 ) {
     val reactionCounts = flick.getReactionCounts()
-    val topReaction = reactionCounts.maxByOrNull { it.value }
-    val topReactionCount = topReaction?.value ?: 0
-    val topReactionEmoji = topReaction?.key?.toEmoji() ?: "❤️"
+    val orderedReactions = reactionCounts.entries
+        .filter { it.value > 0 }
+        .sortedByDescending { it.value }
+        .take(5)
 
     Card(
         modifier = Modifier
@@ -518,24 +520,30 @@ private fun ProfilePhotoCard(
                 contentScale = ContentScale.Crop,
                 error = painterResource(id = android.R.drawable.ic_menu_report_image)
             )
-            if (topReactionCount > 0) {
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .padding(4.dp)
-                        .clip(CircleShape)
-                        .background(Color.Black.copy(alpha = 0.7f))
-                        .padding(horizontal = 6.dp, vertical = 2.dp)
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .fillMaxWidth()
+                    .height(20.dp)
+                    .background(color = Color.Black.copy(alpha = 0.5f))
+                    .padding(horizontal = 4.dp, vertical = 1.dp),
+                contentAlignment = Alignment.CenterEnd
+            ) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
-                        text = "$topReactionEmoji $topReactionCount",
-                        fontSize = 10.sp,
-                        color = Color.White,
-                        fontWeight = FontWeight.Bold,
-                        style = androidx.compose.ui.text.TextStyle(
-                            platformStyle = PlatformTextStyle(includeFontPadding = false)
+                    orderedReactions.forEach { (reactionType, count) ->
+                        val emoji = runCatching { reactionType.toEmoji() }
+                            .getOrDefault("❤️")
+                        Text(
+                            text = "$emoji $count",
+                            fontSize = 10.sp,
+                            color = Color.White,
+                            fontWeight = FontWeight.SemiBold,
+                            maxLines = 1
                         )
-                    )
+                    }
                 }
             }
         }
