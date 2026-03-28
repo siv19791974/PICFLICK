@@ -203,6 +203,7 @@ fun AuthenticatedContent(
         is Screen.Chats -> ChatsScreenContent(
             userProfile = userProfile,
             chatViewModel = chatViewModel,
+            homeViewModel = homeViewModel,
             friendsViewModel = friendsViewModel,
             onScreenChange = onScreenChange,
             onSetSelectedChat = onSetSelectedChat
@@ -312,6 +313,7 @@ fun AuthenticatedContent(
             homeViewModel = homeViewModel,
             profileViewModel = profileViewModel,
             onScreenChange = onScreenChange,
+            onSetSelectedChat = onSetSelectedChat,
             onOpenFriendsForIds = { ids, title ->
                 isFriendsOverrideMode = true
                 friendsOverrideIds = ids
@@ -695,14 +697,20 @@ private fun FriendsScreenContent(
 private fun ChatsScreenContent(
     userProfile: UserProfile,
     chatViewModel: ChatViewModel,
+    homeViewModel: HomeViewModel,
     friendsViewModel: FriendsViewModel,
     onScreenChange: (Screen) -> Unit,
     onSetSelectedChat: (ChatSession, String) -> Unit
 ) {
+    LaunchedEffect(userProfile.uid) {
+        homeViewModel.loadFriendGroups(userProfile.uid)
+    }
+
     ChatsScreen(
         userProfile = userProfile,
         viewModel = chatViewModel,
         friendsViewModel = friendsViewModel,
+        friendGroups = homeViewModel.friendGroups,
         onBack = { onScreenChange(Screen.Home) },
         onChatClick = { session, otherUserId ->
             onSetSelectedChat(session, otherUserId)
@@ -722,6 +730,41 @@ private fun ChatsScreenContent(
                     onScreenChange(Screen.ChatDetail)
                 }
             )
+        },
+        onOpenGroupFlow = {
+            onScreenChange(Screen.Home)
+        },
+        onOpenGroupsList = {
+            onScreenChange(Screen.Home)
+        },
+        onOpenGroupChat = { group ->
+            chatViewModel.startGroupChat(
+                ownerUserId = userProfile.uid,
+                ownerName = userProfile.displayName,
+                ownerPhoto = userProfile.photoUrl,
+                groupId = group.id,
+                groupName = group.name,
+                groupIcon = group.icon,
+                memberIds = group.friendIds
+            ) { chatId ->
+                val session = chatViewModel.chatSessions.firstOrNull { it.id == chatId } ?: ChatSession(
+                    id = chatId,
+                    participants = (group.friendIds + userProfile.uid).distinct(),
+                    participantNames = buildMap {
+                        put(userProfile.uid, userProfile.displayName)
+                        group.friendIds.forEach { uid -> put(uid, "Member") }
+                    },
+                    participantPhotos = buildMap {
+                        put(userProfile.uid, userProfile.photoUrl)
+                    },
+                    isGroup = true,
+                    groupId = group.id,
+                    groupName = group.name,
+                    groupIcon = group.icon
+                )
+                onSetSelectedChat(session, "group:${group.id}")
+                onScreenChange(Screen.ChatDetail)
+            }
         },
         onUserProfileClick = { userId ->
             onScreenChange(Screen.UserProfile(userId))
@@ -1256,6 +1299,7 @@ private fun UserProfileScreenContent(
     homeViewModel: HomeViewModel,
     profileViewModel: ProfileViewModel,
     onScreenChange: (Screen) -> Unit,
+    onSetSelectedChat: (ChatSession, String) -> Unit,
     onOpenFriendsForIds: (List<String>, String) -> Unit
 ) {
     val context = LocalContext.current
@@ -1402,11 +1446,15 @@ private fun UserProfileScreenContent(
                                         userProfile.uid to userProfile.displayName,
                                         target.uid to target.displayName
                                     ),
+                                    participantPhotos = mapOf(
+                                        userProfile.uid to userProfile.photoUrl,
+                                        target.uid to target.photoUrl
+                                    ),
                                     lastMessage = "",
                                     lastTimestamp = System.currentTimeMillis(),
                                     unreadCount = 0
                                 )
-                                // Navigate to chat via callback
+                                onSetSelectedChat(session, target.uid)
                                 onScreenChange(Screen.ChatDetail)
                             }
                             is com.picflick.app.data.Result.Error -> {

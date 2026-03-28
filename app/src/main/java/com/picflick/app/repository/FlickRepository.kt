@@ -141,84 +141,22 @@ class FlickRepository private constructor() {
                 friends.chunked(Constants.Pagination.MAX_FRIENDS_BATCH).flatMap { friendBatch ->
                     android.util.Log.d("FlickRepository", "Querying friend batch: $friendBatch")
                     
-                    // Query ALL photos from friends (friends, public, AND private)
-                    // Mutual friends should see everything
-                    val batchFlicks = mutableListOf<Flick>()
-                    
-                    // Query "friends" privacy photos
+                    // Query ALL photos from friends in a single query to avoid composite-index failures.
+                    // Mutual friends should see everything, so no privacy filter is required here.
                     try {
-                        val friendsPrivacySnapshot = db.collection("flicks")
+                        val batchSnapshot = db.collection("flicks")
                             .whereIn("userId", friendBatch)
-                            .whereEqualTo("privacy", "friends")
-                            .limit(fetchPoolSize)
+                            .limit(fetchPoolSize * 3)
                             .get()
                             .await()
-                        
-                        val friendsPrivacyFlicks = friendsPrivacySnapshot.toObjects(Flick::class.java)
-                        batchFlicks.addAll(friendsPrivacyFlicks)
-                        android.util.Log.d("FlickRepository", "Loaded ${friendsPrivacyFlicks.size} friends-privacy photos")
+
+                        val batchFlicks = batchSnapshot.toObjects(Flick::class.java)
+                        android.util.Log.d("FlickRepository", "Loaded ${batchFlicks.size} total friend photos in single batch query")
+                        batchFlicks
                     } catch (e: Exception) {
-                        android.util.Log.e("FlickRepository", "Error loading friends-privacy: ${e.message}")
+                        android.util.Log.e("FlickRepository", "Error loading friend batch photos: ${e.message}")
+                        emptyList()
                     }
-                    
-                    // Query "public" privacy photos
-                    try {
-                        val publicPrivacySnapshot = db.collection("flicks")
-                            .whereIn("userId", friendBatch)
-                            .whereEqualTo("privacy", "public")
-                            .limit(fetchPoolSize)
-                            .get()
-                            .await()
-                        
-                        val publicPrivacyFlicks = publicPrivacySnapshot.toObjects(Flick::class.java)
-                        batchFlicks.addAll(publicPrivacyFlicks)
-                        android.util.Log.d("FlickRepository", "Loaded ${publicPrivacyFlicks.size} public-privacy photos")
-                    } catch (e: Exception) {
-                        android.util.Log.e("FlickRepository", "Error loading public-privacy: ${e.message}")
-                    }
-                    
-                    // Query "private" privacy photos (MUTUAL FRIENDS SEE ALL!)
-                    try {
-                        val privatePrivacySnapshot = db.collection("flicks")
-                            .whereIn("userId", friendBatch)
-                            .whereEqualTo("privacy", "private")
-                            .limit(fetchPoolSize)
-                            .get()
-                            .await()
-                        
-                        val privatePrivacyFlicks = privatePrivacySnapshot.toObjects(Flick::class.java)
-                        batchFlicks.addAll(privatePrivacyFlicks)
-                        android.util.Log.d("FlickRepository", "Loaded ${privatePrivacyFlicks.size} private-privacy photos (mutual friends)")
-                    } catch (e: Exception) {
-                        android.util.Log.e("FlickRepository", "Error loading private-privacy: ${e.message}")
-                    }
-                    
-                    // Query photos WITHOUT privacy field (treat as "friends" - default behavior)
-                    // This handles legacy photos uploaded before privacy feature was added
-                    try {
-                        val noPrivacySnapshot = db.collection("flicks")
-                            .whereIn("userId", friendBatch)
-                            // Firestore doesn't have "field doesn't exist" query
-                            // So we get all and filter client-side for missing privacy
-                            .limit(pageSize.toLong() * 3)
-                            .get()
-                            .await()
-                        
-                        val noPrivacyFlicks = noPrivacySnapshot.documents
-                            .filter { doc -> 
-                                // Only include docs where privacy is missing, null, or empty
-                                val privacy = doc.getString("privacy")
-                                privacy == null || privacy.isEmpty()
-                            }
-                            .mapNotNull { it.toObject(Flick::class.java) }
-                        
-                        batchFlicks.addAll(noPrivacyFlicks)
-                        android.util.Log.d("FlickRepository", "Loaded ${noPrivacyFlicks.size} photos without privacy field (treated as friends)")
-                    } catch (e: Exception) {
-                        android.util.Log.e("FlickRepository", "Error loading no-privacy photos: ${e.message}")
-                    }
-                    
-                    batchFlicks
                 }
             } else {
                 android.util.Log.d("FlickRepository", "No friends to query")
