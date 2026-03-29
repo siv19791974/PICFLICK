@@ -2949,8 +2949,8 @@ android.util.Log.e("FlickRepository", "Failed to submit feedback", e)
             if (!groupDoc.exists()) return Result.Error(Exception("Group not found"), "Group not found")
 
             val group = groupDoc.toObject(FriendGroup::class.java) ?: FriendGroup()
-            if (!group.isAdmin(userId)) {
-                return Result.Error(Exception("Permission denied"), "Only admins can edit this group")
+            if (!group.isOwner(userId) && !group.isAdmin(userId)) {
+                return Result.Error(Exception("Permission denied"), "Only owner/admin can edit this group")
             }
 
             val updates = hashMapOf<String, Any>(
@@ -2971,6 +2971,39 @@ android.util.Log.e("FlickRepository", "Failed to submit feedback", e)
             Result.Success(Unit)
         } catch (e: Exception) {
             Result.Error(e, "Failed to update friend group: ${e.message ?: "Unknown error"}")
+        }
+    }
+
+    suspend fun updateGroupAdmins(
+        userId: String,
+        groupId: String,
+        adminIds: List<String>
+    ): Result<Unit> {
+        return try {
+            val groupRef = db.collection("groups").document(groupId)
+            val groupDoc = groupRef.get().await()
+            if (!groupDoc.exists()) return Result.Error(Exception("Group not found"), "Group not found")
+
+            val group = groupDoc.toObject(FriendGroup::class.java) ?: FriendGroup()
+            if (!group.isOwner(userId)) {
+                return Result.Error(Exception("Permission denied"), "Only owner can assign admins")
+            }
+
+            val ownerId = group.effectiveOwnerId()
+            val validAdmins = adminIds
+                .filter { it.isNotBlank() && it != ownerId && group.isMember(it) }
+                .distinct()
+
+            groupRef.update(
+                mapOf(
+                    "adminIds" to validAdmins,
+                    "updatedAt" to System.currentTimeMillis()
+                )
+            ).await()
+
+            Result.Success(Unit)
+        } catch (e: Exception) {
+            Result.Error(e, "Failed to update admins: ${e.message ?: "Unknown error"}")
         }
     }
 

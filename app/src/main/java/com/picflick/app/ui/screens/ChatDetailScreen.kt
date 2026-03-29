@@ -524,17 +524,10 @@ Column(modifier = Modifier.fillMaxSize()) {
                                 modifier = Modifier.fillMaxSize(),
                                 contentAlignment = Alignment.Center
                             ) {
-                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                    Text(
-                                        text = "No messages yet",
-                                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
-                                    )
-                                    Spacer(modifier = Modifier.height(8.dp))
-                                    AssistChip(
-                                        onClick = { sendHeyMessage() },
-                                        label = { Text("Say hello") }
-                                    )
-                                }
+                                Text(
+                                    text = "No messages yet",
+                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                                )
                             }
                         }
                         else -> {
@@ -678,18 +671,6 @@ Column(modifier = Modifier.fillMaxSize()) {
                     Spacer(modifier = Modifier.height(4.dp))
                 }
 
-                if (viewModel.messages.isEmpty() && messageText.isBlank() && replyToMessage == null && editingMessageId == null) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.Center
-                    ) {
-                        AssistChip(
-                            onClick = { sendHeyMessage() },
-                            label = { Text("Send Hey") }
-                        )
-                    }
-                    Spacer(modifier = Modifier.height(6.dp))
-                }
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),

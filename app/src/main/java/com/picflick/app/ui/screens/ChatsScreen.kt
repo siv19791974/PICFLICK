@@ -449,7 +449,17 @@ fun ChatsScreen(
                                                 selectedChatIds.add(session.id)
                                             }
                                         } else {
-                                            onChatClick(session, otherUserId)
+                                            if (isGroupSession) {
+                                                val targetGroupId = session.groupId.ifBlank { session.id.removePrefix("group_") }
+                                                val targetGroup = friendGroups.firstOrNull { it.id == targetGroupId }
+                                                if (targetGroup != null && onOpenGroupChat != null) {
+                                                    onOpenGroupChat(targetGroup)
+                                                } else {
+                                                    onChatClick(session, otherUserId)
+                                                }
+                                            } else {
+                                                onChatClick(session, otherUserId)
+                                            }
                                         }
                                     },
                                     onLongClick = {
@@ -897,42 +907,6 @@ private fun NewChatDialog(
                         )
                     }
 
-                    if (groups.isEmpty()) {
-                        item("groups_empty") {
-                            Text(
-                                text = "No groups yet",
-                                modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 8.dp),
-                                fontSize = 13.sp,
-                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
-                            )
-                        }
-                    } else {
-                        items(
-                            items = groups.sortedBy { it.name.lowercase(Locale.getDefault()) },
-                            key = { "group_${it.id}" },
-                            contentType = { "group" }
-                        ) { group ->
-                            NewContactActionItem(
-                                icon = {
-                                    Box(
-                                        modifier = Modifier
-                                            .size(44.dp)
-                                            .clip(CircleShape)
-                                            .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Text(
-                                            text = group.icon.ifBlank { "👥" },
-                                            fontSize = 18.sp
-                                        )
-                                    }
-                                },
-                                title = group.name,
-                                isDarkMode = isDarkMode,
-                                onClick = { onOpenGroupChat(group) }
-                            )
-                        }
-                    }
 
                     item("friends_label") {
                         Text(

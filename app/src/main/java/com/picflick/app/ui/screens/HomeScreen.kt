@@ -54,6 +54,7 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -126,6 +127,7 @@ fun HomeScreen(
     var showCreateGroupDialog by remember { mutableStateOf(false) }
     var editingGroup by remember { mutableStateOf<FriendGroup?>(null) }
     var inviteTargetGroup by remember { mutableStateOf<FriendGroup?>(null) }
+    var adminTargetGroup by remember { mutableStateOf<FriendGroup?>(null) }
     var tempCameraUri by remember { mutableStateOf<Uri?>(null) }
     var pendingGroupIconSourceUri by remember { mutableStateOf<Uri?>(null) }
     var showGroupIconCropDialog by remember { mutableStateOf(false) }
@@ -263,16 +265,16 @@ fun HomeScreen(
                         } else {
                             editDialogIconOverride = uploadResult.data
                         }
-                        Toast.makeText(context, "Group photo added", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, "Album photo added", Toast.LENGTH_SHORT).show()
                     }
                     is com.picflick.app.data.Result.Error -> {
-                        Toast.makeText(context, "Failed to upload group photo", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, "Failed to upload album photo", Toast.LENGTH_SHORT).show()
                     }
                     else -> Unit
                 }
             }
         } catch (_: Exception) {
-            Toast.makeText(context, "Failed to process group photo", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, "Failed to process album photo", Toast.LENGTH_SHORT).show()
         } finally {
             pendingGroupIconSourceUri = null
             pendingGroupIconTarget = null
@@ -527,6 +529,7 @@ fun HomeScreen(
             allFriendsCount = max(friends.size, userProfile.following.size),
             temporaryExampleGroups = temporaryGroupExamples,
             isDarkMode = isDarkMode,
+            currentUserId = userProfile.uid,
             onDismiss = { showGroupsManager = false },
             onSelectGroup = { filter ->
                 viewModel.setFilter(filter)
@@ -535,6 +538,7 @@ fun HomeScreen(
             onCreateGroup = { showCreateGroupDialog = true },
             onEditGroup = { group -> editingGroup = group },
             onInviteToGroup = { group -> inviteTargetGroup = group },
+            onManageAdmins = { group -> adminTargetGroup = group },
             onDeleteGroup = { group -> viewModel.deleteFriendGroup(userProfile.uid, group.id) },
             onDeleteTemporaryGroup = { title -> temporaryGroupExamples.remove(title) },
             onReorderGroups = { orderedGroupIds -> viewModel.reorderFriendGroups(userProfile.uid, orderedGroupIds) }
@@ -543,8 +547,8 @@ fun HomeScreen(
 
     if (showCreateGroupDialog) {
         CreateOrEditGroupDialog(
-            title = "Create group",
-            submitLabel = "Create group",
+            title = "Create album",
+            submitLabel = "Create album",
             friends = friends,
             isDarkMode = isDarkMode,
             initialName = "",
@@ -577,7 +581,7 @@ fun HomeScreen(
                     } else {
                         Toast.makeText(
                             context,
-                            viewModel.errorMessage ?: "Failed to create group",
+                            viewModel.errorMessage ?: "Failed to create album",
                             Toast.LENGTH_LONG
                         ).show()
                     }
@@ -588,7 +592,7 @@ fun HomeScreen(
 
     editingGroup?.let { group ->
         CreateOrEditGroupDialog(
-            title = "Edit group",
+            title = "Edit album",
             submitLabel = "Save",
             friends = friends,
             isDarkMode = isDarkMode,
@@ -639,6 +643,100 @@ fun HomeScreen(
         )
     }
 
+    adminTargetGroup?.let { group ->
+        val ownerId = group.effectiveOwnerId()
+        val candidates = friends
+            .filter { it.uid.isNotBlank() }
+            .filter { group.effectiveMemberIds().contains(it.uid) }
+            .filter { it.uid != ownerId }
+            .sortedBy { it.displayName.lowercase(Locale.getDefault()) }
+        var selectedAdmins by remember(group.id, candidates) {
+            mutableStateOf(group.adminIds.filter { it.isNotBlank() && it != ownerId && group.isMember(it) }.toSet())
+        }
+
+        AlertDialog(
+            onDismissRequest = { adminTargetGroup = null },
+            title = { Text("Manage admins") },
+            text = {
+                if (candidates.isEmpty()) {
+                    Text("No eligible members to promote.")
+                } else {
+                    LazyColumn(modifier = Modifier.heightIn(max = 360.dp)) {
+                        items(candidates, key = { it.uid }) { member ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 8.dp)
+                                    .clickable {
+                                        selectedAdmins = if (selectedAdmins.contains(member.uid)) {
+                                            selectedAdmins - member.uid
+                                        } else {
+                                            selectedAdmins + member.uid
+                                        }
+                                    },
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Surface(
+                                    shape = CircleShape,
+                                    color = if (isDarkMode) Color(0xFF2A2A2A) else Color(0xFFF1F1F1),
+                                    modifier = Modifier.size(46.dp)
+                                ) {
+                                    if (member.photoUrl.isNotBlank()) {
+                                        AsyncImage(
+                                            model = withCacheBust(member.photoUrl, System.currentTimeMillis()),
+                                            contentDescription = member.displayName,
+                                            contentScale = ContentScale.Crop,
+                                            modifier = Modifier.fillMaxSize()
+                                        )
+                                    } else {
+                                        Box(contentAlignment = Alignment.Center) {
+                                            Icon(Icons.Default.Person, contentDescription = null, modifier = Modifier.size(22.dp))
+                                        }
+                                    }
+                                }
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Text(
+                                    text = member.displayName,
+                                    modifier = Modifier.weight(1f),
+                                    fontSize = 15.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                                Checkbox(
+                                    checked = selectedAdmins.contains(member.uid),
+                                    onCheckedChange = {
+                                        selectedAdmins = if (it) selectedAdmins + member.uid else selectedAdmins - member.uid
+                                    }
+                                )
+                            }
+                            HorizontalDivider(color = if (isDarkMode) Color(0xFF2C2C2C) else Color(0xFFE5E5E5))
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    viewModel.updateGroupAdmins(
+                        userId = userProfile.uid,
+                        groupId = group.id,
+                        adminIds = selectedAdmins.toList()
+                    ) { success, message ->
+                        Toast.makeText(
+                            context,
+                            if (success) "Admins updated" else (message ?: "Failed to update admins"),
+                            Toast.LENGTH_SHORT
+                        ).show()
+                        if (success) adminTargetGroup = null
+                    }
+                }) { Text("Save") }
+            },
+            dismissButton = {
+                TextButton(onClick = { adminTargetGroup = null }) { Text("Cancel") }
+            }
+        )
+    }
+
     inviteTargetGroup?.let { group ->
         val eligibleFriends = friends
             .filter { it.uid.isNotBlank() }
@@ -652,12 +750,43 @@ fun HomeScreen(
                 if (eligibleFriends.isEmpty()) {
                     Text("All your friends are already in this group.")
                 } else {
-                    LazyColumn(modifier = Modifier.heightIn(max = 320.dp)) {
+                    LazyColumn(modifier = Modifier.heightIn(max = 360.dp)) {
                         items(eligibleFriends, key = { it.uid }) { friend ->
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .clickable {
+                                    .padding(vertical = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Surface(
+                                    shape = CircleShape,
+                                    color = if (isDarkMode) Color(0xFF2A2A2A) else Color(0xFFF1F1F1),
+                                    modifier = Modifier.size(46.dp)
+                                ) {
+                                    if (friend.photoUrl.isNotBlank()) {
+                                        AsyncImage(
+                                            model = withCacheBust(friend.photoUrl, System.currentTimeMillis()),
+                                            contentDescription = friend.displayName,
+                                            contentScale = ContentScale.Crop,
+                                            modifier = Modifier.fillMaxSize()
+                                        )
+                                    } else {
+                                        Box(contentAlignment = Alignment.Center) {
+                                            Icon(Icons.Default.Person, contentDescription = null, modifier = Modifier.size(22.dp))
+                                        }
+                                    }
+                                }
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Text(
+                                    text = friend.displayName,
+                                    modifier = Modifier.weight(1f),
+                                    fontSize = 15.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                                OutlinedButton(
+                                    onClick = {
                                         viewModel.inviteFriendToGroup(
                                             inviterId = userProfile.uid,
                                             inviterName = userProfile.displayName,
@@ -670,32 +799,13 @@ fun HomeScreen(
                                                 Toast.LENGTH_SHORT
                                             ).show()
                                         }
-                                    }
-                                    .padding(vertical = 10.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Surface(
-                                    shape = CircleShape,
-                                    color = if (isDarkMode) Color(0xFF2A2A2A) else Color(0xFFF1F1F1),
-                                    modifier = Modifier.size(34.dp)
+                                    },
+                                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)
                                 ) {
-                                    if (friend.photoUrl.isNotBlank()) {
-                                        AsyncImage(
-                                            model = withCacheBust(friend.photoUrl, System.currentTimeMillis()),
-                                            contentDescription = friend.displayName,
-                                            contentScale = ContentScale.Crop,
-                                            modifier = Modifier.fillMaxSize()
-                                        )
-                                    } else {
-                                        Box(contentAlignment = Alignment.Center) {
-                                            Icon(Icons.Default.Person, contentDescription = null, modifier = Modifier.size(18.dp))
-                                        }
-                                    }
+                                    Text("Invite")
                                 }
-                                Spacer(modifier = Modifier.width(10.dp))
-                                Text(friend.displayName, modifier = Modifier.weight(1f))
-                                Icon(Icons.AutoMirrored.Filled.Send, contentDescription = "Invite")
                             }
+                            HorizontalDivider(color = if (isDarkMode) Color(0xFF2C2C2C) else Color(0xFFE5E5E5))
                         }
                     }
                 }
@@ -976,11 +1086,13 @@ private fun GroupManagerSheet(
     allFriendsCount: Int,
     temporaryExampleGroups: List<String>,
     isDarkMode: Boolean,
+    currentUserId: String,
     onDismiss: () -> Unit,
     onSelectGroup: (FeedFilter) -> Unit,
     onCreateGroup: () -> Unit,
     onEditGroup: (FriendGroup) -> Unit,
     onInviteToGroup: (FriendGroup) -> Unit,
+    onManageAdmins: (FriendGroup) -> Unit,
     onDeleteGroup: (FriendGroup) -> Unit,
     onDeleteTemporaryGroup: (String) -> Unit,
     onReorderGroups: (List<String>) -> Unit
@@ -1007,7 +1119,7 @@ private fun GroupManagerSheet(
         confirmDeleteGroup?.let { group ->
             AlertDialog(
                 onDismissRequest = { confirmDeleteGroup = null },
-                title = { Text("Delete group?") },
+                title = { Text("Delete album?") },
                 text = { Text("Are you sure you want to delete '${group.name}'?") },
                 confirmButton = {
                     TextButton(onClick = {
@@ -1024,7 +1136,7 @@ private fun GroupManagerSheet(
         confirmDeleteTempTitle?.let { tempTitle ->
             AlertDialog(
                 onDismissRequest = { confirmDeleteTempTitle = null },
-                title = { Text("Delete group?") },
+                title = { Text("Delete album?") },
                 text = { Text("Are you sure you want to delete '$tempTitle'?") },
                 confirmButton = {
                     TextButton(onClick = {
@@ -1057,7 +1169,7 @@ private fun GroupManagerSheet(
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Text(
-                        text = "Groups",
+                        text = "Albums",
                         style = MaterialTheme.typography.titleLarge,
                         color = textColor,
                         fontWeight = FontWeight.Bold
@@ -1072,7 +1184,7 @@ private fun GroupManagerSheet(
                         ) {
                             Icon(Icons.Default.Add, contentDescription = null)
                             Spacer(modifier = Modifier.width(6.dp))
-                            Text("Add group", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                            Text("New album", fontSize = 16.sp, fontWeight = FontWeight.Bold)
                         }
                         IconButton(onClick = onDismiss) {
                             Icon(Icons.Default.Close, contentDescription = "Close", tint = textColor)
@@ -1096,41 +1208,6 @@ private fun GroupManagerSheet(
                             onClick = { onSelectGroup(FeedFilter.AllFriends) },
                             textColor = textColor,
                             trailingContent = {}
-                        )
-                    }
-
-                    items(temporaryExampleGroups, key = { "temp_$it" }) { tempTitle ->
-                        val tempIcon = if (tempTitle == "Uncle John's wedding") "👰🤵" else "⚽"
-                        var showTempMenu by remember(tempTitle) { mutableStateOf(false) }
-                        GroupRowCard(
-                            title = tempTitle,
-                            subtitle = "Group example. Delete when you want 🙂",
-                            icon = tempIcon,
-                            colour = "#9E9E9E",
-                            selected = false,
-                            onClick = {},
-                            textColor = textColor,
-                            enabled = true,
-                            trailingContent = {
-                                Box {
-                                    IconButton(onClick = { showTempMenu = true }) {
-                                        Icon(Icons.Default.MoreVert, contentDescription = "Group menu", tint = textColor)
-                                    }
-                                    DropdownMenu(
-                                        expanded = showTempMenu,
-                                        onDismissRequest = { showTempMenu = false }
-                                    ) {
-                                        DropdownMenuItem(
-                                            text = { Text("Delete") },
-                                            onClick = {
-                                                showTempMenu = false
-                                                confirmDeleteTempTitle = tempTitle
-                                            },
-                                            leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null, tint = Color(0xFFD84343)) }
-                                        )
-                                    }
-                                }
-                            }
                         )
                     }
 
@@ -1202,14 +1279,24 @@ private fun GroupManagerSheet(
                                                 },
                                                 leadingIcon = { Icon(Icons.Default.Chat, contentDescription = null) }
                                             )
-                                            DropdownMenuItem(
-                                                text = { Text("Share") },
-                                                onClick = {
-                                                    showGroupMenu = false
-                                                    onInviteToGroup(group)
-                                                },
-                                                leadingIcon = { Icon(Icons.AutoMirrored.Filled.Send, contentDescription = null) }
-                                            )
+                                            if (group.isOwner(currentUserId)) {
+                                                DropdownMenuItem(
+                                                    text = { Text("Invite") },
+                                                    onClick = {
+                                                        showGroupMenu = false
+                                                        onInviteToGroup(group)
+                                                    },
+                                                    leadingIcon = { Icon(Icons.AutoMirrored.Filled.Send, contentDescription = null) }
+                                                )
+                                                DropdownMenuItem(
+                                                    text = { Text("Admins") },
+                                                    onClick = {
+                                                        showGroupMenu = false
+                                                        onManageAdmins(group)
+                                                    },
+                                                    leadingIcon = { Icon(Icons.Default.AdminPanelSettings, contentDescription = null) }
+                                                )
+                                            }
                                             DropdownMenuItem(
                                                 text = { Text("Edit") },
                                                 onClick = {
@@ -1227,6 +1314,41 @@ private fun GroupManagerSheet(
                                                 leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null, tint = Color(0xFFD84343)) }
                                             )
                                         }
+                                    }
+                                }
+                            }
+                        )
+                    }
+
+                    items(temporaryExampleGroups, key = { "temp_$it" }) { tempTitle ->
+                        val tempIcon = if (tempTitle == "Uncle John's wedding") "👰" else "⚽"
+                        var showTempMenu by remember(tempTitle) { mutableStateOf(false) }
+                        GroupRowCard(
+                            title = tempTitle,
+                            subtitle = "Album example. Delete when you want 🙂",
+                            icon = tempIcon,
+                            colour = "#9E9E9E",
+                            selected = false,
+                            onClick = {},
+                            textColor = textColor,
+                            enabled = true,
+                            trailingContent = {
+                                Box {
+                                    IconButton(onClick = { showTempMenu = true }) {
+                                        Icon(Icons.Default.MoreVert, contentDescription = "Group menu", tint = textColor)
+                                    }
+                                    DropdownMenu(
+                                        expanded = showTempMenu,
+                                        onDismissRequest = { showTempMenu = false }
+                                    ) {
+                                        DropdownMenuItem(
+                                            text = { Text("Delete") },
+                                            onClick = {
+                                                showTempMenu = false
+                                                confirmDeleteTempTitle = tempTitle
+                                            },
+                                            leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null, tint = Color(0xFFD84343)) }
+                                        )
                                     }
                                 }
                             }
@@ -1404,7 +1526,7 @@ private fun CreateOrEditGroupDialog(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp, vertical = 12.dp),
-                    label = { Text("Group name") }
+                    label = { Text("Album name") }
                 )
 
                 LazyColumn(modifier = Modifier.weight(1f)) {
@@ -1435,7 +1557,7 @@ private fun CreateOrEditGroupDialog(
                                 if (selectedIcon.startsWith("http")) {
                                     AsyncImage(
                                         model = selectedIcon,
-                                        contentDescription = "Group icon photo",
+                                        contentDescription = "Album icon photo",
                                         contentScale = ContentScale.Crop,
                                         modifier = Modifier.fillMaxSize()
                                     )
@@ -1602,7 +1724,7 @@ private fun GroupPhotoCropDialog(
         dismissButton = {
             TextButton(enabled = !isSaving, onClick = onDismiss) { Text("Cancel") }
         },
-        title = { Text("Adjust group photo") },
+        title = { Text("Adjust album photo") },
         text = {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(
@@ -1641,7 +1763,7 @@ private fun GroupPhotoCropDialog(
                     } else {
                         AsyncImage(
                             model = sourceBitmap,
-                            contentDescription = "Crop group photo",
+                            contentDescription = "Crop album photo",
                             contentScale = ContentScale.Crop,
                             modifier = Modifier
                                 .fillMaxSize()
