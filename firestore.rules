@@ -73,11 +73,18 @@ service cloud.firestore {
         request.resource.data.userId == request.auth.uid
       );
 
-      // Only admins/owner can update core group fields
+      // Admin/owner can update core group fields.
+      // Legacy fallback: if older docs are missing owner/admin markers, allow existing member updates.
       allow update: if isAuth() && (
         ('adminIds' in resource.data && request.auth.uid in resource.data.adminIds) ||
         ('ownerId' in resource.data && request.auth.uid == resource.data.ownerId) ||
-        ('userId' in resource.data && request.auth.uid == resource.data.userId)
+        ('userId' in resource.data && request.auth.uid == resource.data.userId) ||
+        (
+          ('memberIds' in resource.data && request.auth.uid in resource.data.memberIds) &&
+          !('adminIds' in resource.data) &&
+          !('ownerId' in resource.data) &&
+          !('userId' in resource.data)
+        )
       );
 
       // Only owner can delete group (ownerId or legacy userId)
