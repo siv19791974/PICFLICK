@@ -18,6 +18,7 @@ import androidx.compose.material.pullrefresh.pullRefresh
 import androidx.compose.material.pullrefresh.rememberPullRefreshState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -78,7 +79,7 @@ fun ChatsScreen(
     onNavigateHome: () -> Unit = onBack,
     onChatClick: (ChatSession, String) -> Unit,
     onStartNewChat: ((String, String, String) -> Unit)? = null,
-    onOpenGroupFlow: (() -> Unit)? = null,
+    onCreateSharedGroup: (String, String, List<String>, (Boolean, FriendGroup?) -> Unit) -> Unit = { _, _, _, _ -> },
     onOpenGroupChat: ((FriendGroup) -> Unit)? = null,
     onUserProfileClick: (String) -> Unit = {},
     onBottomNavNavigate: (String) -> Unit = {}
@@ -91,6 +92,7 @@ fun ChatsScreen(
     }
 
     var showNewChatDialog by remember { mutableStateOf(false) }
+    var showCreateGroupDialog by remember { mutableStateOf(false) }
     val selectedChatIds = remember { mutableStateListOf<String>() }
     var showHeaderMenu by remember { mutableStateOf(false) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
@@ -586,7 +588,7 @@ fun ChatsScreen(
             },
             onOpenGroupFlow = {
                 showNewChatDialog = false
-                onOpenGroupFlow?.invoke()
+                showCreateGroupDialog = true
             },
             onOpenGroupChat = { group ->
                 showNewChatDialog = false
@@ -595,6 +597,185 @@ fun ChatsScreen(
 
             onUserProfileClick = onUserProfileClick
         )
+    }
+
+    if (showCreateGroupDialog) {
+        NewGroupFromComposeDialog(
+            friends = friendsViewModel.followingUsers,
+            isLoading = friendsViewModel.isLoading,
+            isDarkMode = isDarkMode,
+            onDismiss = { showCreateGroupDialog = false },
+            onCreateSharedGroup = { name, icon, selectedFriendIds, onDone ->
+                onCreateSharedGroup(name, icon, selectedFriendIds) { success, createdGroup ->
+                    if (success && createdGroup != null) {
+                        showCreateGroupDialog = false
+                        onOpenGroupChat?.invoke(createdGroup)
+                    }
+                    onDone(success, createdGroup)
+                }
+            },
+            onUserProfileClick = onUserProfileClick
+        )
+    }
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun NewGroupFromComposeDialog(
+    friends: List<com.picflick.app.data.UserProfile>,
+    isLoading: Boolean,
+    isDarkMode: Boolean,
+    onDismiss: () -> Unit,
+    onCreateSharedGroup: (String, String, List<String>, (Boolean, FriendGroup?) -> Unit) -> Unit,
+    onUserProfileClick: (String) -> Unit
+) {
+    var groupName by remember { mutableStateOf("") }
+    val selectedIds = remember { mutableStateListOf<String>() }
+    var selectedIcon by remember { mutableStateOf("👥") }
+    var isSubmitting by remember { mutableStateOf(false) }
+
+    val canCreate = groupName.trim().isNotEmpty() && selectedIds.isNotEmpty() && !isSubmitting
+
+    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .fillMaxHeight(0.9f)
+                .padding(12.dp),
+            shape = RoundedCornerShape(16.dp),
+            color = if (isDarkMode) Color(0xFF121212) else Color.White
+        ) {
+            Column(modifier = Modifier.fillMaxSize()) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(Color.Black)
+                        .height(48.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    IconButton(onClick = onDismiss, modifier = Modifier.size(48.dp)) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
+                    }
+                    Text(
+                        text = "Create new group",
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 15.sp,
+                        modifier = Modifier.weight(1f),
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                    )
+                    Spacer(modifier = Modifier.size(48.dp))
+                }
+
+                OutlinedTextField(
+                    value = groupName,
+                    onValueChange = { groupName = it },
+                    label = { Text("Group name") },
+                    singleLine = true,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 12.dp)
+                )
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    listOf("👥", "👨‍👩‍👧", "🎉", "📸", "⚽", "💬").forEach { icon ->
+                        FilterChip(
+                            selected = selectedIcon == icon,
+                            onClick = { selectedIcon = icon },
+                            label = { Text(icon) }
+                        )
+                    }
+                }
+
+                Text(
+                    text = "Select friends",
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                    modifier = Modifier.padding(start = 16.dp, top = 12.dp, end = 16.dp, bottom = 6.dp)
+                )
+
+                if (isLoading) {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator()
+                    }
+                } else {
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f)
+                    ) {
+                        items(friends, key = { it.uid }) { friend ->
+                            val checked = selectedIds.contains(friend.uid)
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .combinedClickable(
+                                        onClick = {
+                                            if (checked) selectedIds.remove(friend.uid) else selectedIds.add(friend.uid)
+                                        },
+                                        onLongClick = { onUserProfileClick(friend.uid) }
+                                    )
+                                    .padding(horizontal = 16.dp, vertical = 10.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                val livePhoto = rememberLiveUserPhotoUrl(friend.uid, friend.photoUrl)
+                                AsyncImage(
+                                    model = livePhoto,
+                                    contentDescription = friend.displayName,
+                                    modifier = Modifier
+                                        .size(44.dp)
+                                        .clip(CircleShape)
+                                        .background(MaterialTheme.colorScheme.surfaceVariant),
+                                    contentScale = ContentScale.Crop
+                                )
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Text(
+                                    text = friend.displayName,
+                                    modifier = Modifier.weight(1f),
+                                    fontSize = 15.sp,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                                Checkbox(
+                                    checked = checked,
+                                    onCheckedChange = {
+                                        if (it) selectedIds.add(friend.uid) else selectedIds.remove(friend.uid)
+                                    }
+                                )
+                            }
+                            HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f))
+                        }
+                    }
+                }
+
+                Button(
+                    onClick = {
+                        if (!canCreate) return@Button
+                        isSubmitting = true
+                        onCreateSharedGroup(groupName.trim(), selectedIcon, selectedIds.toList()) { success, _ ->
+                            isSubmitting = false
+                            if (success) onDismiss()
+                        }
+                    },
+                    enabled = canCreate,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp)
+                ) {
+                    if (isSubmitting) {
+                        CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                        Spacer(modifier = Modifier.width(8.dp))
+                    }
+                    Text("Create shared group")
+                }
+            }
+        }
     }
 }
 
@@ -894,7 +1075,7 @@ private fun NewChatDialog(
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Icon(
-                                        imageVector = Icons.Default.Person,
+                                        imageVector = Icons.Default.Groups,
                                         contentDescription = null,
                                         tint = Color.White,
                                         modifier = Modifier.size(22.dp)
