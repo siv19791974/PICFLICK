@@ -2790,62 +2790,100 @@ android.util.Log.e("FlickRepository", "Failed to submit feedback", e)
         }
     }
 
-    // ==================== FRIEND GROUPS (ALBUMS) ====================
+    // ==================== SHARED GROUPS (SOCIAL) ====================
 
     /**
-     * Create a new friend group/album
+     * Create a shared social group and owner membership.
      */
     suspend fun createFriendGroup(
         userId: String,
         name: String,
         friendIds: List<String>,
         icon: String = "👥",
-        color: String = "#4FC3F7"
+        color: String = "#4FC3F7",
+        eventAt: Long? = null
     ): Result<FriendGroup> {
         return try {
             val groupId = UUID.randomUUID().toString()
-            val group = hashMapOf(
+            val now = System.currentTimeMillis()
+            val memberIds = (friendIds + userId).filter { it.isNotBlank() }.distinct()
+            val adminIds = listOf(userId)
+
+            val groupDoc = hashMapOf<String, Any?>(
                 "id" to groupId,
-                "userId" to userId,
+                "ownerId" to userId,
+                "userId" to userId, // legacy compatibility
                 "name" to name,
-                "friendIds" to friendIds,
+                "memberIds" to memberIds,
+                "friendIds" to memberIds.filter { it != userId }, // legacy compatibility
+                "adminIds" to adminIds,
                 "icon" to icon,
                 "color" to color,
-                "createdAt" to System.currentTimeMillis(),
-                "updatedAt" to System.currentTimeMillis()
+                "eventAt" to eventAt,
+                "createdAt" to now,
+                "updatedAt" to now
             )
 
-            db.collection("users").document(userId)
-                .collection("friendGroups")
+            db.collection("groups")
                 .document(groupId)
-                .set(group)
+                .set(groupDoc)
                 .await()
 
-            Result.Success(FriendGroup(
-                id = groupId,
-                userId = userId,
-                name = name,
-                friendIds = friendIds,
-                icon = icon,
-                color = color
-            ))
+            memberIds.forEach { memberId ->
+                db.collection("groups")
+                    .document(groupId)
+                    .collection("members")
+                    .document(memberId)
+                    .set(
+                        mapOf(
+                            "userId" to memberId,
+                            "groupId" to groupId,
+                            "role" to when {
+                                memberId == userId -> GroupRole.OWNER.name
+                                adminIds.contains(memberId) -> GroupRole.ADMIN.name
+                                else -> GroupRole.MEMBER.name
+                            },
+                            "status" to "active",
+                            "joinedAt" to now,
+                            "updatedAt" to now
+                        )
+                    )
+                    .await()
+            }
+
+            Result.Success(
+                FriendGroup(
+                    id = groupId,
+                    userId = userId,
+                    ownerId = userId,
+                    name = name,
+                    friendIds = memberIds.filter { it != userId },
+                    memberIds = memberIds,
+                    adminIds = adminIds,
+                    icon = icon,
+                    color = color,
+                    eventAt = eventAt,
+                    createdAt = now,
+                    updatedAt = now
+                )
+            )
         } catch (e: Exception) {
             Result.Error(e, "Failed to create friend group: ${e.message ?: "Unknown error"}")
         }
     }
 
     /**
-     * Get all friend groups for a user
+     * Get all shared groups where user is a member.
      */
     suspend fun getFriendGroups(userId: String): Result<List<FriendGroup>> {
         return try {
-            val snapshot = db.collection("users").document(userId)
-                .collection("friendGroups")
-                .orderBy("updatedAt", com.google.firebase.firestore.Query.Direction.DESCENDING)
+            val snapshot = db.collection("groups")
+                .whereArrayContains("memberIds", userId)
                 .get()
                 .await()
 
             val groups = snapshot.toObjects(FriendGroup::class.java)
+                .sortedByDescending { it.updatedAt }
             Result.Success(groups)
         } catch (e: Exception) {
             Result.Error(e, "Failed to get friend groups")
@@ -2853,7 +2891,7 @@ android.util.Log.e("FlickRepository", "Failed to submit feedback", e)
     }
 
     /**
-     * Update a friend group
+     * Update a shared group (admin only).
      */
     suspend fun updateFriendGroup(
         userId: String,
@@ -2861,41 +2899,54 @@ android.util.Log.e("FlickRepository", "Failed to submit feedback", e)
         name: String? = null,
         friendIds: List<String>? = null,
         icon: String? = null,
-        color: String? = null
+        color: String? = null,
+        eventAt: Long? = null
     ): Result<Unit> {
         return try {
+            val groupRef = db.collection("groups").document(groupId)
+            val groupDoc = groupRef.get().await()
+            if (!groupDoc.exists()) return Result.Error(Exception("Group not found"), "Group not found")
+
+            val group = groupDoc.toObject(FriendGroup::class.java) ?: FriendGroup()
+            if (!group.isAdmin(userId)) {
+                return Result.Error(Exception("Permission denied"), "Only admins can edit this group")
+            }
+
             val updates = hashMapOf<String, Any>(
                 "updatedAt" to System.currentTimeMillis()
             )
-
             name?.let { updates["name"] = it }
-            friendIds?.let { updates["friendIds"] = it }
             icon?.let { updates["icon"] = it }
             color?.let { updates["color"] = it }
+            eventAt?.let { updates["eventAt"] = it }
 
-            db.collection("users").document(userId)
-                .collection("friendGroups")
-                .document(groupId)
-                .update(updates)
-                .await()
+            friendIds?.let {
+                val memberIds = (it + group.effectiveOwnerId()).filter { id -> id.isNotBlank() }.distinct()
+                updates["memberIds"] = memberIds
+                updates["friendIds"] = memberIds.filter { id -> id != group.effectiveOwnerId() }
+            }
 
+            groupRef.update(updates).await()
             Result.Success(Unit)
         } catch (e: Exception) {
-            Result.Error(e, "Failed to update friend group")
+            Result.Error(e, "Failed to update friend group: ${e.message ?: "Unknown error"}")
         }
     }
 
     /**
-     * Delete a friend group
+     * Delete a shared group (owner only).
      */
     suspend fun deleteFriendGroup(userId: String, groupId: String): Result<Unit> {
         return try {
-            db.collection("users").document(userId)
-                .collection("friendGroups")
-                .document(groupId)
-                .delete()
-                .await()
+            val groupRef = db.collection("groups").document(groupId)
+            val group = groupRef.get().await().toObject(FriendGroup::class.java)
+                ?: return Result.Error(Exception("Group not found"), "Group not found")
 
+            if (!group.isOwner(userId)) {
+                return Result.Error(Exception("Permission denied"), "Only owner can delete this group")
+            }
+
+            groupRef.delete().await()
             Result.Success(Unit)
         } catch (e: Exception) {
             Result.Error(e, "Failed to delete friend group")
@@ -2903,55 +2954,172 @@ android.util.Log.e("FlickRepository", "Failed to submit feedback", e)
     }
 
     /**
-     * Add a friend to a group
+     * Invite friend to group (admin only).
      */
-    suspend fun addFriendToGroup(
-        userId: String,
+    suspend fun inviteFriendToGroup(
+        inviterId: String,
+        inviterName: String,
         groupId: String,
-        friendId: String
-    ): Result<Unit> {
+        inviteeId: String
+    ): Result<GroupInvite> {
         return try {
-            db.collection("users").document(userId)
-                .collection("friendGroups")
-                .document(groupId)
-                .update(
-                    "friendIds", FieldValue.arrayUnion(friendId),
-                    "updatedAt", System.currentTimeMillis()
-                )
-                .await()
+            val groupDoc = db.collection("groups").document(groupId).get().await()
+            val group = groupDoc.toObject(FriendGroup::class.java)
+                ?: return Result.Error(Exception("Group not found"), "Group not found")
 
-            Result.Success(Unit)
+            if (!group.isAdmin(inviterId)) {
+                return Result.Error(Exception("Permission denied"), "Only admins can invite members")
+            }
+
+            if (group.isMember(inviteeId)) {
+                return Result.Error(Exception("Already a member"), "User is already in the group")
+            }
+
+            val invitesCollection = db.collection("groups").document(groupId).collection("invites")
+            val existingPending = invitesCollection
+                .whereEqualTo("inviteeId", inviteeId)
+                .whereEqualTo("status", GroupInviteStatus.PENDING.name)
+                .limit(1)
+                .get()
+                .await()
+                .documents
+                .firstOrNull()
+
+            if (existingPending != null) {
+                val existing = existingPending.toObject(GroupInvite::class.java)
+                if (existing != null) return Result.Success(existing)
+            }
+
+            val inviteId = UUID.randomUUID().toString()
+            val now = System.currentTimeMillis()
+            val invite = GroupInvite(
+                id = inviteId,
+                groupId = group.id,
+                groupName = group.name,
+                inviterId = inviterId,
+                inviterName = inviterName,
+                inviteeId = inviteeId,
+                status = GroupInviteStatus.PENDING,
+                createdAt = now,
+                updatedAt = now
+            )
+
+            invitesCollection.document(inviteId).set(invite).await()
+
+            db.collection("notifications").add(
+                mapOf(
+                    "userId" to inviteeId,
+                    "type" to "GROUP_INVITE",
+                    "title" to "Group invite",
+                    "message" to "$inviterName invited you to ${group.name}",
+                    "senderId" to inviterId,
+                    "senderName" to inviterName,
+                    "chatId" to group.id,
+                    "timestamp" to now,
+                    "isRead" to false,
+                    "groupId" to group.id,
+                    "groupName" to group.name,
+                    "inviteId" to inviteId
+                )
+            ).await()
+
+            Result.Success(invite)
         } catch (e: Exception) {
-            Result.Error(e, "Failed to add friend to group")
+            Result.Error(e, "Failed to invite friend: ${e.message ?: "Unknown error"}")
         }
     }
 
     /**
-     * Remove a friend from a group
+     * Accept or decline invite as invitee.
      */
-    suspend fun removeFriendFromGroup(
-        userId: String,
+    suspend fun respondToGroupInvite(
         groupId: String,
-        friendId: String
+        inviteId: String,
+        userId: String,
+        accept: Boolean
     ): Result<Unit> {
         return try {
-            db.collection("users").document(userId)
-                .collection("friendGroups")
-                .document(groupId)
-                .update(
-                    "friendIds", FieldValue.arrayRemove(friendId),
-                    "updatedAt", System.currentTimeMillis()
+            val inviteRef = db.collection("groups").document(groupId).collection("invites").document(inviteId)
+            val inviteDoc = inviteRef.get().await()
+            val invite = inviteDoc.toObject(GroupInvite::class.java)
+                ?: return Result.Error(Exception("Invite not found"), "Invite not found")
+
+            if (invite.inviteeId != userId) {
+                return Result.Error(Exception("Permission denied"), "Only invitee can respond")
+            }
+
+            val now = System.currentTimeMillis()
+            val newStatus = if (accept) GroupInviteStatus.ACCEPTED else GroupInviteStatus.DECLINED
+            inviteRef.update(
+                mapOf(
+                    "status" to newStatus.name,
+                    "updatedAt" to now
                 )
-                .await()
+            ).await()
+
+            if (accept) {
+                val groupRef = db.collection("groups").document(groupId)
+                groupRef.update(
+                    mapOf(
+                        "memberIds" to FieldValue.arrayUnion(userId),
+                        "friendIds" to FieldValue.arrayUnion(userId),
+                        "updatedAt" to now
+                    )
+                ).await()
+
+                groupRef.collection("members").document(userId)
+                    .set(
+                        mapOf(
+                            "userId" to userId,
+                            "groupId" to groupId,
+                            "role" to GroupRole.MEMBER.name,
+                            "status" to "active",
+                            "joinedAt" to now,
+                            "updatedAt" to now
+                        )
+                    )
+                    .await()
+            }
 
             Result.Success(Unit)
         } catch (e: Exception) {
-            Result.Error(e, "Failed to remove friend from group")
+            Result.Error(e, "Failed to respond to invite: ${e.message ?: "Unknown error"}")
         }
     }
 
     /**
-     * Get flicks from friends in a specific group
+     * Get pending invites for a user.
+     */
+    suspend fun getPendingGroupInvites(userId: String): Result<List<GroupInvite>> {
+        return try {
+            val groups = db.collection("groups")
+                .whereArrayContains("memberIds", userId)
+                .get()
+                .await()
+
+            val memberGroupIds = groups.documents.map { it.id }.toSet()
+            val result = mutableListOf<GroupInvite>()
+
+            db.collectionGroup("invites")
+                .whereEqualTo("inviteeId", userId)
+                .whereEqualTo("status", GroupInviteStatus.PENDING.name)
+                .get()
+                .await()
+                .toObjects(GroupInvite::class.java)
+                .forEach { invite ->
+                    if (!memberGroupIds.contains(invite.groupId)) {
+                        result.add(invite)
+                    }
+                }
+
+            Result.Success(result.sortedByDescending { it.createdAt })
+        } catch (e: Exception) {
+            Result.Error(e, "Failed to load pending invites")
+        }
+    }
+
+    /**
+     * Get flicks from members in a specific shared group.
      */
     suspend fun getFlicksForFriendGroup(
         userId: String,
@@ -2959,38 +3127,46 @@ android.util.Log.e("FlickRepository", "Failed to submit feedback", e)
         onResult: (Result<List<Flick>>) -> Unit
     ) {
         try {
-            // Get the group
-            val groupDoc = db.collection("users").document(userId)
-                .collection("friendGroups")
+            val groupDoc = db.collection("groups")
                 .document(groupId)
                 .get()
                 .await()
 
-            val friendIds = groupDoc.get("friendIds") as? List<String> ?: emptyList()
+            val group = groupDoc.toObject(FriendGroup::class.java)
+            if (group == null) {
+                onResult(Result.Error(Exception("Group not found"), "Group not found"))
+                return
+            }
 
-            if (friendIds.isEmpty()) {
+            val memberIds = group.effectiveMemberIds()
+            if (!memberIds.contains(userId)) {
+                onResult(Result.Error(Exception("Permission denied"), "You are not a member of this group"))
+                return
+            }
+
+            if (memberIds.isEmpty()) {
                 onResult(Result.Success(emptyList()))
                 return
             }
 
-            // Get flicks from friends in the group (photos visible to user)
             db.collection(Constants.FirebaseCollections.FLICKS)
-                .whereIn("userId", friendIds)
-                .whereIn("privacy", listOf("public", "friends"))
-                .orderBy("timestamp", Query.Direction.DESCENDING)
-                .limit(Constants.Pagination.FLICKS_PER_PAGE.toLong())
+                .whereIn("userId", memberIds)
+                .limit(250)
                 .get()
                 .addOnSuccessListener { snapshot ->
                     val flicks = snapshot.toObjects(Flick::class.java)
+                        .filter { it.privacy == "public" || it.privacy == "friends" }
+                        .sortedByDescending { it.timestamp }
+                        .take(Constants.Pagination.FLICKS_PER_PAGE)
                     onResult(Result.Success(flicks))
                 }
                 .addOnFailureListener { e ->
-                    onResult(Result.Error(e, "Failed to get group flicks"))
+                    onResult(Result.Error(e, "Failed to get group flicks: ${e.message}"))
                 }
         } catch (e: Exception) {
-            onResult(Result.Error(e, "Failed to get group flicks"))
+            onResult(Result.Error(e, "Failed to get group flicks: ${e.message}"))
         }
     }
 
-    // ==================== END FRIEND GROUPS ====================
+    // ==================== END SHARED GROUPS ====================
 }

@@ -93,10 +93,15 @@ fun ChatDetailScreen(
     val chatId = chatSession.id
     val isDarkMode = ThemeManager.isDarkMode.value
     val chatBackground = isDarkModeBackground(isDarkMode)
-    val otherUserPhoto = rememberLiveUserPhotoUrl(
-        userId = otherUserId,
-        fallbackPhotoUrl = chatSession.participantPhotos[otherUserId]
-    )
+    val isGroupChat = chatSession.isGroup || otherUserId.startsWith("group:")
+    val otherUserPhoto = if (isGroupChat) {
+        ""
+    } else {
+        rememberLiveUserPhotoUrl(
+            userId = otherUserId,
+            fallbackPhotoUrl = chatSession.participantPhotos[otherUserId]
+        )
+    }
     
     var messageText by remember { mutableStateOf("") }
     var replyToMessage by remember { mutableStateOf<ChatMessage?>(null) }
@@ -422,10 +427,14 @@ val listState = rememberLazyListState()
                                     onDismissRequest = { showHeaderMenu = false }
                                 ) {
                                     DropdownMenuItem(
-                                        text = { Text("View profile") },
+                                        text = { Text(if (isGroupChat) "View group" else "View profile") },
                                         onClick = {
                                             showHeaderMenu = false
-                                            onUserProfileClick(otherUserId)
+                                            if (!isGroupChat) {
+                                                onUserProfileClick(otherUserId)
+                                            } else {
+                                                onBack()
+                                            }
                                         }
                                     )
 
@@ -775,7 +784,7 @@ Column(modifier = Modifier.fillMaxSize()) {
                                         chatId = chatId,
                                         text = messageToSubmit,
                                         senderId = currentUser.uid,
-                                        recipientId = otherUserId,
+                                        recipientId = if (isGroupChat) "group:${chatSession.groupId.ifBlank { chatSession.id }}" else otherUserId,
                                         senderName = currentUser.displayName,
                                         senderPhotoUrl = currentUser.photoUrl,
                                         replyToMessage = replyToMessage
@@ -1515,8 +1524,8 @@ private fun QuickSwitchChatBar(
         QuickSwitchChatItem(
             chatSession = currentChatSession,
             otherUserId = currentOtherUserId,
-            otherUserName = currentName,
-            otherUserPhoto = currentOtherUserPhoto
+            otherUserName = if (currentChatSession.isGroup) currentChatSession.groupName.ifBlank { currentName } else currentName,
+            otherUserPhoto = if (currentChatSession.isGroup) "" else currentOtherUserPhoto
         ),
         sortedOthers.getOrNull(1),
         sortedOthers.getOrNull(3)

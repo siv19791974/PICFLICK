@@ -51,6 +51,77 @@ service cloud.firestore {
             'blockedUsers'
           ])
       );
+
+      // Legacy friend groups (kept for backwards compatibility reads/migrations)
+      match /friendGroups/{groupId} {
+        allow read, create, update, delete: if isMine(userId);
+      }
+    }
+
+    // SHARED GROUPS (MVP social groups)
+    match /groups/{groupId} {
+      allow read: if isAuth() && request.auth.uid in resource.data.memberIds;
+
+      // Any authenticated user can create a group they own
+      allow create: if isAuth() && request.resource.data.ownerId == request.auth.uid;
+
+      // Only admins can update core group fields
+      allow update: if isAuth() && (
+        request.auth.uid in resource.data.adminIds ||
+        request.auth.uid == resource.data.ownerId
+      );
+
+      // Only owner can delete group
+      allow delete: if isAuth() && request.auth.uid == resource.data.ownerId;
+
+      // Members subcollection
+      match /members/{memberId} {
+        allow read: if isAuth() &&
+          request.auth.uid in get(/databases/$(database)/documents/groups/$(groupId)).data.memberIds;
+
+        allow create, update: if isAuth() && (
+          // Admin can manage membership
+          request.auth.uid in get(/databases/$(database)/documents/groups/$(groupId)).data.adminIds ||
+          request.auth.uid == get(/databases/$(database)/documents/groups/$(groupId)).data.ownerId ||
+          // User can create/update their own member doc when accepting invite
+          request.auth.uid == memberId
+        );
+
+        allow delete: if isAuth() && (
+          request.auth.uid in get(/databases/$(database)/documents/groups/$(groupId)).data.adminIds ||
+          request.auth.uid == get(/databases/$(database)/documents/groups/$(groupId)).data.ownerId ||
+          request.auth.uid == memberId
+        );
+      }
+
+      // Invites subcollection
+      match /invites/{inviteId} {
+        allow read: if isAuth() && (
+          request.auth.uid == resource.data.inviteeId ||
+          request.auth.uid == resource.data.inviterId ||
+          request.auth.uid in get(/databases/$(database)/documents/groups/$(groupId)).data.adminIds ||
+          request.auth.uid == get(/databases/$(database)/documents/groups/$(groupId)).data.ownerId
+        );
+
+        // Admin/owner can create invites
+        allow create: if isAuth() && (
+          request.auth.uid in get(/databases/$(database)/documents/groups/$(groupId)).data.adminIds ||
+          request.auth.uid == get(/databases/$(database)/documents/groups/$(groupId)).data.ownerId
+        );
+
+        // Invitee can respond, admin/owner can manage
+        allow update: if isAuth() && (
+          request.auth.uid == resource.data.inviteeId ||
+          request.auth.uid in get(/databases/$(database)/documents/groups/$(groupId)).data.adminIds ||
+          request.auth.uid == get(/databases/$(database)/documents/groups/$(groupId)).data.ownerId
+        );
+
+        allow delete: if isAuth() && (
+          request.auth.uid == resource.data.inviterId ||
+          request.auth.uid in get(/databases/$(database)/documents/groups/$(groupId)).data.adminIds ||
+          request.auth.uid == get(/databases/$(database)/documents/groups/$(groupId)).data.ownerId
+        );
+      }
     }
     
     // FRIENDSHIPS

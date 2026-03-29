@@ -265,11 +265,12 @@ class HomeViewModel : ViewModel() {
         icon: String,
         friendIds: List<String>,
         color: String = "#4FC3F7",
+        eventAt: Long? = null,
         onComplete: (Boolean, FriendGroup?) -> Unit = { _, _ -> }
     ) {
         viewModelScope.launch {
             isLoading = true
-            when (val result = repository.createFriendGroup(userId, name, friendIds, icon, color)) {
+            when (val result = repository.createFriendGroup(userId, name, friendIds, icon, color, eventAt)) {
                 is Result.Success -> {
                     friendGroups.add(result.data)
                     isLoading = false
@@ -295,6 +296,7 @@ class HomeViewModel : ViewModel() {
         icon: String,
         friendIds: List<String>,
         color: String,
+        eventAt: Long? = null,
         onComplete: (Boolean) -> Unit = {}
     ) {
         viewModelScope.launch {
@@ -305,7 +307,8 @@ class HomeViewModel : ViewModel() {
                 name = name,
                 friendIds = friendIds,
                 icon = icon,
-                color = color
+                color = color,
+                eventAt = eventAt
             )) {
                 is Result.Success -> {
                     val index = friendGroups.indexOfFirst { it.id == groupId }
@@ -314,7 +317,9 @@ class HomeViewModel : ViewModel() {
                             name = name,
                             icon = icon,
                             friendIds = friendIds,
+                            memberIds = (friendIds + friendGroups[index].effectiveOwnerId()).distinct(),
                             color = color,
+                            eventAt = eventAt,
                             updatedAt = System.currentTimeMillis()
                         )
                         friendGroups[index] = updated
@@ -333,6 +338,22 @@ class HomeViewModel : ViewModel() {
                     onComplete(false)
                 }
                 is Result.Loading -> { }
+            }
+        }
+    }
+
+    fun inviteFriendToGroup(
+        inviterId: String,
+        inviterName: String,
+        groupId: String,
+        inviteeId: String,
+        onComplete: (Boolean, String?) -> Unit = { _, _ -> }
+    ) {
+        viewModelScope.launch {
+            when (val result = repository.inviteFriendToGroup(inviterId, inviterName, groupId, inviteeId)) {
+                is Result.Success -> onComplete(true, null)
+                is Result.Error -> onComplete(false, result.message)
+                is Result.Loading -> Unit
             }
         }
     }
