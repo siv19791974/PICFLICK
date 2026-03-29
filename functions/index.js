@@ -23,7 +23,7 @@ exports.sendPushNotification = functions.firestore
     }
     
     // ONLY send push for IMPORTANT notification types
-    const IMPORTANT_TYPES = ['FRIEND_REQUEST', 'MESSAGE', 'FOLLOW_ACCEPTED', 'MENTION', 'COMMENT'];
+    const IMPORTANT_TYPES = ['FRIEND_REQUEST', 'GROUP_INVITE', 'MESSAGE', 'FOLLOW_ACCEPTED', 'MENTION', 'COMMENT'];
 
     if (!IMPORTANT_TYPES.includes(notification.type)) {
       console.log('Skipping push - type not important enough:', notification.type,
@@ -79,8 +79,8 @@ exports.sendPushNotification = functions.firestore
           type === 'PROFILE_PHOTO_UPDATED'
         ) {
           targetScreen = 'profile'; // Opens sender profile
-        } else if (type === 'FRIEND_REQUEST') {
-          targetScreen = 'notifications'; // Opens request actions
+        } else if (type === 'FRIEND_REQUEST' || type === 'GROUP_INVITE') {
+          targetScreen = 'notifications'; // Opens actionable request cards
         }
       }
 

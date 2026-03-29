@@ -650,14 +650,14 @@ private fun NotificationItem(
                             shape = RoundedCornerShape(20.dp),
                             contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
                         ) {
-                            Text("Accept", fontSize = 12.sp)
+                            Text("Join", fontSize = 12.sp)
                         }
                         OutlinedButton(
                             onClick = onDeclineGroupInvite,
                             shape = RoundedCornerShape(20.dp),
                             contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
                         ) {
-                            Text("Deny", fontSize = 12.sp)
+                            Text("Refuse", fontSize = 12.sp)
                         }
                     }
                 }

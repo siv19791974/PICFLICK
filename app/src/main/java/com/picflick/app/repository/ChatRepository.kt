@@ -6,6 +6,7 @@ import com.picflick.app.data.Result
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
+import com.google.firebase.firestore.SetOptions
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
@@ -341,69 +342,9 @@ class ChatRepository {
                 return Result.Error(Exception("Group has no participants"), "Group has no participants")
             }
 
-            // Use deterministic group chat id to avoid permission-sensitive collection queries.
+            // Use deterministic group chat id and upsert directly to avoid read-permission edge cases
+            // on older chat docs that may not yet contain group fields.
             val deterministicChatId = "group_$groupId"
-            val existingById = db.collection("chatSessions")
-                .document(deterministicChatId)
-                .get()
-                .await()
-
-            if (existingById.exists()) {
-                val existingParticipants = (existingById.get("participants") as? List<*>)
-                    ?.filterIsInstance<String>()
-                    ?.distinct()
-                    ?: emptyList()
-
-                if (ownerUserId !in existingParticipants) {
-                    val mergedParticipants = (existingParticipants + ownerUserId + groupMemberIds)
-                        .distinct()
-                        .filter { it.isNotBlank() }
-
-                    val participantNames = (existingById.get("participantNames") as? Map<*, *>)
-                        ?.mapNotNull { (k, v) ->
-                            val key = k as? String ?: return@mapNotNull null
-                            val value = v as? String ?: return@mapNotNull null
-                            key to value
-                        }
-                        ?.toMap()
-                        ?.toMutableMap()
-                        ?: mutableMapOf()
-
-                    val participantPhotos = (existingById.get("participantPhotos") as? Map<*, *>)
-                        ?.mapNotNull { (k, v) ->
-                            val key = k as? String ?: return@mapNotNull null
-                            val value = v as? String ?: return@mapNotNull null
-                            key to value
-                        }
-                        ?.toMap()
-                        ?.toMutableMap()
-                        ?: mutableMapOf()
-
-                    if (!participantNames.containsKey(ownerUserId)) {
-                        participantNames[ownerUserId] = ownerName
-                    }
-                    if (!participantPhotos.containsKey(ownerUserId)) {
-                        participantPhotos[ownerUserId] = ownerPhoto
-                    }
-
-                    val patch = hashMapOf<String, Any>(
-                        "participants" to mergedParticipants,
-                        "participantNames" to participantNames,
-                        "participantPhotos" to participantPhotos,
-                        "isGroup" to true,
-                        "groupId" to groupId,
-                        "groupName" to groupName,
-                        "groupIcon" to groupIcon
-                    )
-                    mergedParticipants.forEach { uid ->
-                        patch["unreadCount_$uid"] = (existingById.getLong("unreadCount_$uid") ?: 0L).toInt()
-                    }
-
-                    db.collection("chatSessions").document(deterministicChatId).update(patch).await()
-                }
-
-                return Result.Success(deterministicChatId)
-            }
 
             val participantNames = mutableMapOf<String, String>()
             val participantPhotos = mutableMapOf<String, String>()
@@ -424,8 +365,9 @@ class ChatRepository {
             }
 
             val unreadMap = participants.associateWith { 0 }
+            val now = System.currentTimeMillis()
             val newSession = hashMapOf(
-                "id" to "",
+                "id" to deterministicChatId,
                 "participants" to participants,
                 "participantNames" to participantNames,
                 "participantPhotos" to participantPhotos,
@@ -435,16 +377,16 @@ class ChatRepository {
                 "groupIcon" to groupIcon,
                 "unreadCount" to unreadMap,
                 "lastMessage" to "",
-                "lastTimestamp" to System.currentTimeMillis(),
-                "createdAt" to System.currentTimeMillis()
+                "lastTimestamp" to now,
+                "createdAt" to now,
+                "updatedAt" to now
             )
             participants.forEach { uid ->
                 newSession["unreadCount_$uid"] = 0
             }
 
             val docRef = db.collection("chatSessions").document(deterministicChatId)
-            newSession["id"] = deterministicChatId
-            docRef.set(newSession).await()
+            docRef.set(newSession, SetOptions.merge()).await()
             Result.Success(deterministicChatId)
         } catch (e: Exception) {
             Result.Error(e, e.message ?: "Failed to create group chat session")

@@ -2985,11 +2985,15 @@ android.util.Log.e("FlickRepository", "Failed to submit feedback", e)
             if (!groupDoc.exists()) return Result.Error(Exception("Group not found"), "Group not found")
 
             val group = groupDoc.toObject(FriendGroup::class.java) ?: FriendGroup()
-            if (!group.isOwner(userId)) {
+            val hasExplicitOwner = group.ownerId.isNotBlank() || group.userId.isNotBlank()
+            val isLegacyOwnerFallback = !hasExplicitOwner && (
+                group.memberIds.contains(userId) || group.friendIds.contains(userId)
+            )
+            if (!group.isOwner(userId) && !isLegacyOwnerFallback) {
                 return Result.Error(Exception("Permission denied"), "Only owner can assign admins")
             }
 
-            val ownerId = group.effectiveOwnerId()
+            val ownerId = if (hasExplicitOwner) group.effectiveOwnerId() else userId
             val validAdmins = adminIds
                 .filter { it.isNotBlank() && it != ownerId && group.isMember(it) }
                 .distinct()
@@ -3040,7 +3044,12 @@ android.util.Log.e("FlickRepository", "Failed to submit feedback", e)
             val group = groupRef.get().await().toObject(FriendGroup::class.java)
                 ?: return Result.Error(Exception("Group not found"), "Group not found")
 
-            if (!group.isOwner(userId)) {
+            val hasExplicitOwner = group.ownerId.isNotBlank() || group.userId.isNotBlank()
+            val isLegacyOwnerFallback = !hasExplicitOwner && (
+                group.memberIds.contains(userId) || group.friendIds.contains(userId)
+            )
+
+            if (!group.isOwner(userId) && !isLegacyOwnerFallback) {
                 return Result.Error(Exception("Permission denied"), "Only owner can delete this group")
             }
 
@@ -3104,22 +3113,31 @@ android.util.Log.e("FlickRepository", "Failed to submit feedback", e)
 
             invitesCollection.document(inviteId).set(invite).await()
 
-            db.collection("notifications").add(
-                mapOf(
-                    "userId" to inviteeId,
-                    "type" to "GROUP_INVITE",
-                    "title" to "Group invite",
-                    "message" to "$inviterName invited you to ${group.name}",
-                    "senderId" to inviterId,
-                    "senderName" to inviterName,
-                    "chatId" to group.id,
-                    "timestamp" to now,
-                    "isRead" to false,
-                    "groupId" to group.id,
-                    "groupName" to group.name,
-                    "inviteId" to inviteId
+            // Local-only/legacy docs should not generate invite notifications.
+            val isSharedGroup = groupDoc.exists() && (
+                groupDoc.contains("ownerId") ||
+                    groupDoc.contains("memberIds") ||
+                    groupDoc.contains("adminIds")
                 )
-            ).await()
+
+            if (isSharedGroup) {
+                db.collection("notifications").add(
+                    mapOf(
+                        "userId" to inviteeId,
+                        "type" to "GROUP_INVITE",
+                        "title" to "Group invite",
+                        "message" to "$inviterName invited you to ${group.name}",
+                        "senderId" to inviterId,
+                        "senderName" to inviterName,
+                        "chatId" to group.id,
+                        "timestamp" to now,
+                        "isRead" to false,
+                        "groupId" to group.id,
+                        "groupName" to group.name,
+                        "inviteId" to inviteId
+                    )
+                ).await()
+            }
 
             Result.Success(invite)
         } catch (e: Exception) {
