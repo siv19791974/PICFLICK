@@ -349,6 +349,59 @@ class ChatRepository {
                 .await()
 
             if (existingById.exists()) {
+                val existingParticipants = (existingById.get("participants") as? List<*>)
+                    ?.filterIsInstance<String>()
+                    ?.distinct()
+                    ?: emptyList()
+
+                if (ownerUserId !in existingParticipants) {
+                    val mergedParticipants = (existingParticipants + ownerUserId + groupMemberIds)
+                        .distinct()
+                        .filter { it.isNotBlank() }
+
+                    val participantNames = (existingById.get("participantNames") as? Map<*, *>)
+                        ?.mapNotNull { (k, v) ->
+                            val key = k as? String ?: return@mapNotNull null
+                            val value = v as? String ?: return@mapNotNull null
+                            key to value
+                        }
+                        ?.toMap()
+                        ?.toMutableMap()
+                        ?: mutableMapOf()
+
+                    val participantPhotos = (existingById.get("participantPhotos") as? Map<*, *>)
+                        ?.mapNotNull { (k, v) ->
+                            val key = k as? String ?: return@mapNotNull null
+                            val value = v as? String ?: return@mapNotNull null
+                            key to value
+                        }
+                        ?.toMap()
+                        ?.toMutableMap()
+                        ?: mutableMapOf()
+
+                    if (!participantNames.containsKey(ownerUserId)) {
+                        participantNames[ownerUserId] = ownerName
+                    }
+                    if (!participantPhotos.containsKey(ownerUserId)) {
+                        participantPhotos[ownerUserId] = ownerPhoto
+                    }
+
+                    val patch = hashMapOf<String, Any>(
+                        "participants" to mergedParticipants,
+                        "participantNames" to participantNames,
+                        "participantPhotos" to participantPhotos,
+                        "isGroup" to true,
+                        "groupId" to groupId,
+                        "groupName" to groupName,
+                        "groupIcon" to groupIcon
+                    )
+                    mergedParticipants.forEach { uid ->
+                        patch["unreadCount_$uid"] = (existingById.getLong("unreadCount_$uid") ?: 0L).toInt()
+                    }
+
+                    db.collection("chatSessions").document(deterministicChatId).update(patch).await()
+                }
+
                 return Result.Success(deterministicChatId)
             }
 

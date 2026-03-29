@@ -91,16 +91,36 @@ service cloud.firestore {
       );
 
       // Admin/owner can update core group fields.
+      // Only owner can assign adminIds.
       // Legacy fallback: if older docs are missing owner/admin markers, allow existing member updates.
       allow update: if isAuth() && (
-        ('adminIds' in resource.data && request.auth.uid in resource.data.adminIds) ||
-        ('ownerId' in resource.data && request.auth.uid == resource.data.ownerId) ||
-        ('userId' in resource.data && request.auth.uid == resource.data.userId) ||
         (
-          ('memberIds' in resource.data && request.auth.uid in resource.data.memberIds) &&
-          !('adminIds' in resource.data) &&
-          !('ownerId' in resource.data) &&
-          !('userId' in resource.data)
+          ('adminIds' in request.resource.data && request.resource.data.adminIds != resource.data.adminIds) &&
+          (
+            ('ownerId' in resource.data && request.auth.uid == resource.data.ownerId) ||
+            ('userId' in resource.data && request.auth.uid == resource.data.userId)
+          )
+        ) ||
+        (
+          (!('adminIds' in request.resource.data) || request.resource.data.adminIds == resource.data.adminIds) &&
+          (
+            ('adminIds' in resource.data && request.auth.uid in resource.data.adminIds) ||
+            ('ownerId' in resource.data && request.auth.uid == resource.data.ownerId) ||
+            ('userId' in resource.data && request.auth.uid == resource.data.userId) ||
+            (
+              ('memberIds' in resource.data && request.auth.uid in resource.data.memberIds) &&
+              !('adminIds' in resource.data) &&
+              !('ownerId' in resource.data) &&
+              !('userId' in resource.data)
+            ) ||
+            (
+              ('friendIds' in resource.data && request.auth.uid in resource.data.friendIds) &&
+              !('memberIds' in resource.data) &&
+              !('adminIds' in resource.data) &&
+              !('ownerId' in resource.data) &&
+              !('userId' in resource.data)
+            )
+          )
         )
       );
 

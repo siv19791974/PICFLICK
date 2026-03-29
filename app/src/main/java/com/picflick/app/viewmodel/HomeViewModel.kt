@@ -358,6 +358,31 @@ class HomeViewModel : ViewModel() {
         }
     }
 
+    fun updateGroupAdmins(
+        userId: String,
+        groupId: String,
+        adminIds: List<String>,
+        onComplete: (Boolean, String?) -> Unit = { _, _ -> }
+    ) {
+        viewModelScope.launch {
+            when (val result = repository.updateGroupAdmins(userId, groupId, adminIds)) {
+                is Result.Success -> {
+                    val idx = friendGroups.indexOfFirst { it.id == groupId }
+                    if (idx != -1) {
+                        val existing = friendGroups[idx]
+                        friendGroups[idx] = existing.copy(
+                            adminIds = adminIds.filter { it.isNotBlank() && it != existing.effectiveOwnerId() && existing.isMember(it) }.distinct(),
+                            updatedAt = System.currentTimeMillis()
+                        )
+                    }
+                    onComplete(true, null)
+                }
+                is Result.Error -> onComplete(false, result.message)
+                is Result.Loading -> Unit
+            }
+        }
+    }
+
     /**
      * Delete a friend group
      */
