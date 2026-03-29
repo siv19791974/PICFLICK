@@ -25,6 +25,7 @@ enum class NotificationType {
     REACTION,       // Someone reacted to your photo (emoji reactions)
     COMMENT,        // Someone commented on your photo
     FOLLOW,         // Someone followed you
+    FOLLOW_ACCEPTED, // Your follow/friend request was accepted ("You are now connected")
     FRIEND_REQUEST, // Someone sent friend request
     MESSAGE,        // Someone sent you a message
     PHOTO_ADDED,    // Someone you follow added a photo
@@ -32,6 +33,7 @@ enum class NotificationType {
     MENTION,        // Someone mentioned you in comment
     STREAK_REMINDER,// Reminder to maintain streak
     ACHIEVEMENT,    // Achievement unlocked
+    GROUP_INVITE,   // Invitation to join a shared group
     SYSTEM          // System announcements
 }
 

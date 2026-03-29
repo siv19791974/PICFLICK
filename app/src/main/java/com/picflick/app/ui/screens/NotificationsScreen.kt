@@ -16,6 +16,7 @@ import androidx.compose.material.pullrefresh.pullRefresh
 import androidx.compose.material.pullrefresh.rememberPullRefreshState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Email
@@ -73,6 +74,7 @@ fun NotificationsScreen(
     onChatClick: (chatId: String, otherUserId: String, otherUserName: String, otherUserPhoto: String) -> Unit = { _, _, _, _ -> },
     onFindFriendsClick: (String?) -> Unit = {},
     onAddFirstPhotoClick: () -> Unit = {},
+    onOpenGroupsScreen: () -> Unit = {},
     viewModel: NotificationViewModel = viewModel()
 ) {
     val notifications = viewModel.notifications
@@ -291,6 +293,7 @@ fun NotificationsScreen(
                                                     }
                                                 }
                                                 NotificationType.FOLLOW,
+                                                NotificationType.FOLLOW_ACCEPTED,
                                                 NotificationType.PROFILE_PHOTO_UPDATED -> onUserProfileClick(notification.senderId)
                                                 NotificationType.MESSAGE -> onChatClick("", notification.senderId, notification.senderName, notification.senderPhotoUrl)
                                                 NotificationType.SYSTEM -> {
@@ -309,6 +312,7 @@ fun NotificationsScreen(
                                                     }
                                                 }
                                                 NotificationType.FRIEND_REQUEST -> onFindFriendsClick(notification.senderId)
+                                                NotificationType.GROUP_INVITE -> onOpenGroupsScreen()
                                                 else -> Unit
                                             }
                                         }
@@ -365,6 +369,7 @@ fun NotificationsScreen(
                                                     }
                                                 }
                                                 NotificationType.FOLLOW,
+                                                NotificationType.FOLLOW_ACCEPTED,
                                                 NotificationType.PROFILE_PHOTO_UPDATED -> onUserProfileClick(notification.senderId)
                                                 NotificationType.MESSAGE -> onChatClick("", notification.senderId, notification.senderName, notification.senderPhotoUrl)
                                                 NotificationType.SYSTEM -> {
@@ -383,6 +388,7 @@ fun NotificationsScreen(
                                                     }
                                                 }
                                                 NotificationType.FRIEND_REQUEST -> onFindFriendsClick(notification.senderId)
+                                                NotificationType.GROUP_INVITE -> onOpenGroupsScreen()
                                                 else -> Unit
                                             }
                                         }
@@ -498,6 +504,7 @@ private fun NotificationItem(
         NotificationType.PROFILE_PHOTO_UPDATED -> "$senderName updated their profile photo"
         NotificationType.MENTION -> "You're tagged in a photo"
         NotificationType.FRIEND_REQUEST -> "$senderName has requested to be your friend"
+        NotificationType.GROUP_INVITE -> notification.message.ifBlank { "$senderName invited you to a group" }
         else -> notification.message.ifBlank { notification.title.ifBlank { "Notification" } }
     }
 
@@ -722,6 +729,7 @@ private fun getNotificationIcon(type: NotificationType) = when (type) {
     NotificationType.REACTION -> Icons.Default.Favorite // Will show emoji instead
     NotificationType.COMMENT -> Icons.Default.Email
     NotificationType.FOLLOW -> Icons.Default.Person
+    NotificationType.FOLLOW_ACCEPTED -> Icons.Default.Person
     NotificationType.FRIEND_REQUEST -> Icons.Default.Person
     NotificationType.MESSAGE -> Icons.Default.Email
     NotificationType.PHOTO_ADDED -> Icons.Default.Info
@@ -729,6 +737,7 @@ private fun getNotificationIcon(type: NotificationType) = when (type) {
     NotificationType.MENTION -> Icons.Default.Email
     NotificationType.STREAK_REMINDER -> Icons.Default.Notifications
     NotificationType.ACHIEVEMENT -> Icons.Default.Notifications
+    NotificationType.GROUP_INVITE -> Icons.AutoMirrored.Filled.Send
     NotificationType.SYSTEM -> Icons.Default.Info
 }
 
@@ -738,6 +747,7 @@ private fun getNotificationColor(type: NotificationType) = when (type) {
     NotificationType.REACTION -> Color(0xFFE91E63) // Pink (same as LIKE)
     NotificationType.COMMENT -> Color(0xFF4FC3F7) // Light Blue
     NotificationType.FOLLOW -> Color(0xFF4CAF50) // Green
+    NotificationType.FOLLOW_ACCEPTED -> Color(0xFF4CAF50) // Green
     NotificationType.FRIEND_REQUEST -> Color(0xFF9C27B0) // Purple
     NotificationType.MESSAGE -> Color(0xFFFF9800) // Orange
     NotificationType.PHOTO_ADDED -> Color(0xFF00BCD4) // Cyan
@@ -745,6 +755,7 @@ private fun getNotificationColor(type: NotificationType) = when (type) {
     NotificationType.MENTION -> Color(0xFFFF5722) // Deep Orange
     NotificationType.STREAK_REMINDER -> Color(0xFFFFD700) // Gold
     NotificationType.ACHIEVEMENT -> Color(0xFFFFD700) // Gold
+    NotificationType.GROUP_INVITE -> Color(0xFF1565C0) // PicFlick blue
     NotificationType.SYSTEM -> Color(0xFF607D8B) // Blue Grey
 }
 

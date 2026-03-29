@@ -81,6 +81,8 @@ import com.picflick.app.ui.theme.ThemeManager
 import com.picflick.app.util.rememberLiveUserPhotoUrl
 import com.picflick.app.util.rememberLiveUserTierColor
 import com.picflick.app.util.withCacheBust
+import java.text.SimpleDateFormat
+import java.util.Date
 import java.util.Locale
 import com.picflick.app.utils.Analytics
 import com.picflick.app.viewmodel.HomeViewModel
@@ -123,6 +125,7 @@ fun HomeScreen(
     }
     var showCreateGroupDialog by remember { mutableStateOf(false) }
     var editingGroup by remember { mutableStateOf<FriendGroup?>(null) }
+    var inviteTargetGroup by remember { mutableStateOf<FriendGroup?>(null) }
     var tempCameraUri by remember { mutableStateOf<Uri?>(null) }
     var pendingGroupIconSourceUri by remember { mutableStateOf<Uri?>(null) }
     var showGroupIconCropDialog by remember { mutableStateOf(false) }
@@ -531,6 +534,7 @@ fun HomeScreen(
             },
             onCreateGroup = { showCreateGroupDialog = true },
             onEditGroup = { group -> editingGroup = group },
+            onInviteToGroup = { group -> inviteTargetGroup = group },
             onDeleteGroup = { group -> viewModel.deleteFriendGroup(userProfile.uid, group.id) },
             onDeleteTemporaryGroup = { title -> temporaryGroupExamples.remove(title) }
         )
@@ -545,6 +549,7 @@ fun HomeScreen(
             initialName = "",
             initialIcon = createDialogIconOverride ?: "👥",
             initialColor = "#4FC3F7",
+            initialEventAt = null,
             initialSelectedFriendIds = emptyList(),
             onDismiss = {
                 showCreateGroupDialog = false
@@ -554,13 +559,14 @@ fun HomeScreen(
                 pendingGroupIconTarget = "create"
                 groupIconPickerLauncher.launch("image/*")
             },
-            onSubmit = { name, icon, selectedFriendIds, color ->
+            onSubmit = { name, icon, selectedFriendIds, color, eventAt ->
                 viewModel.createFriendGroup(
                     userId = userProfile.uid,
                     name = name,
                     icon = icon,
                     friendIds = selectedFriendIds,
-                    color = color
+                    color = color,
+                    eventAt = eventAt
                 ) { success, createdGroup ->
                     if (success) {
                         if (createdGroup != null) {
@@ -590,7 +596,8 @@ fun HomeScreen(
             initialName = group.name,
             initialIcon = editDialogIconOverride ?: group.icon,
             initialColor = group.color,
-            initialSelectedFriendIds = group.friendIds,
+            initialEventAt = group.eventAt,
+            initialSelectedFriendIds = group.membersExcludingOwner(),
             onDismiss = {
                 editingGroup = null
                 editDialogIconOverride = null
@@ -599,14 +606,15 @@ fun HomeScreen(
                 pendingGroupIconTarget = "edit"
                 groupIconPickerLauncher.launch("image/*")
             },
-            onSubmit = { name, icon, selectedFriendIds, color ->
+            onSubmit = { name, icon, selectedFriendIds, color, eventAt ->
                 viewModel.updateFriendGroup(
                     userId = userProfile.uid,
                     groupId = group.id,
                     name = name,
                     icon = icon,
                     friendIds = selectedFriendIds,
-                    color = color
+                    color = color,
+                    eventAt = eventAt
                 ) { success ->
                     if (success) {
                         editingGroup = null
@@ -630,6 +638,73 @@ fun HomeScreen(
                 if (croppedUri != null) {
                     pendingGroupIconSourceUri = croppedUri
                 }
+            }
+        )
+    }
+
+    inviteTargetGroup?.let { group ->
+        val eligibleFriends = friends
+            .filter { it.uid.isNotBlank() }
+            .filter { !group.effectiveMemberIds().contains(it.uid) }
+            .sortedBy { it.displayName.lowercase(Locale.getDefault()) }
+
+        AlertDialog(
+            onDismissRequest = { inviteTargetGroup = null },
+            title = { Text("Invite friends to ${group.name}") },
+            text = {
+                if (eligibleFriends.isEmpty()) {
+                    Text("All your friends are already in this group.")
+                } else {
+                    LazyColumn(modifier = Modifier.heightIn(max = 320.dp)) {
+                        items(eligibleFriends, key = { it.uid }) { friend ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        viewModel.inviteFriendToGroup(
+                                            inviterId = userProfile.uid,
+                                            inviterName = userProfile.displayName,
+                                            groupId = group.id,
+                                            inviteeId = friend.uid
+                                        ) { success, message ->
+                                            Toast.makeText(
+                                                context,
+                                                if (success) "Invite sent to ${friend.displayName}" else (message ?: "Failed to send invite"),
+                                                Toast.LENGTH_SHORT
+                                            ).show()
+                                        }
+                                    }
+                                    .padding(vertical = 10.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Surface(
+                                    shape = CircleShape,
+                                    color = if (isDarkMode) Color(0xFF2A2A2A) else Color(0xFFF1F1F1),
+                                    modifier = Modifier.size(34.dp)
+                                ) {
+                                    if (friend.photoUrl.isNotBlank()) {
+                                        AsyncImage(
+                                            model = withCacheBust(friend.photoUrl, System.currentTimeMillis()),
+                                            contentDescription = friend.displayName,
+                                            contentScale = ContentScale.Crop,
+                                            modifier = Modifier.fillMaxSize()
+                                        )
+                                    } else {
+                                        Box(contentAlignment = Alignment.Center) {
+                                            Icon(Icons.Default.Person, contentDescription = null, modifier = Modifier.size(18.dp))
+                                        }
+                                    }
+                                }
+                                Spacer(modifier = Modifier.width(10.dp))
+                                Text(friend.displayName, modifier = Modifier.weight(1f))
+                                Icon(Icons.AutoMirrored.Filled.Send, contentDescription = "Invite")
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { inviteTargetGroup = null }) { Text("Close") }
             }
         )
     }
@@ -908,12 +983,16 @@ private fun GroupManagerSheet(
     onSelectGroup: (FeedFilter) -> Unit,
     onCreateGroup: () -> Unit,
     onEditGroup: (FriendGroup) -> Unit,
+    onInviteToGroup: (FriendGroup) -> Unit,
     onDeleteGroup: (FriendGroup) -> Unit,
     onDeleteTemporaryGroup: (String) -> Unit
 ) {
     val backgroundColor = if (isDarkMode) Color(0xFF121212) else PicFlickLightBackground
     val textColor = if (isDarkMode) Color.White else Color(0xFF111111)
     val sortedGroups = groups.sortedBy { it.name.lowercase(Locale.getDefault()) }
+    var actionsTarget by remember { mutableStateOf<String?>(null) } // group:<id> or temp:<title>
+    var confirmDeleteGroup by remember { mutableStateOf<FriendGroup?>(null) }
+    var confirmDeleteTempTitle by remember { mutableStateOf<String?>(null) }
 
     Box(
         modifier = Modifier
@@ -921,6 +1000,42 @@ private fun GroupManagerSheet(
             .background(Color.Black.copy(alpha = 0.45f))
             .clickable { onDismiss() }
     ) {
+        confirmDeleteGroup?.let { group ->
+            AlertDialog(
+                onDismissRequest = { confirmDeleteGroup = null },
+                title = { Text("Delete group?") },
+                text = { Text("Are you sure you want to delete '${group.name}'?") },
+                confirmButton = {
+                    TextButton(onClick = {
+                        onDeleteGroup(group)
+                        actionsTarget = null
+                        confirmDeleteGroup = null
+                    }) { Text("Delete", color = Color(0xFFD84343)) }
+                },
+                dismissButton = {
+                    TextButton(onClick = { confirmDeleteGroup = null }) { Text("Cancel") }
+                }
+            )
+        }
+
+        confirmDeleteTempTitle?.let { tempTitle ->
+            AlertDialog(
+                onDismissRequest = { confirmDeleteTempTitle = null },
+                title = { Text("Delete group?") },
+                text = { Text("Are you sure you want to delete '$tempTitle'?") },
+                confirmButton = {
+                    TextButton(onClick = {
+                        onDeleteTemporaryGroup(tempTitle)
+                        actionsTarget = null
+                        confirmDeleteTempTitle = null
+                    }) { Text("Delete", color = Color(0xFFD84343)) }
+                },
+                dismissButton = {
+                    TextButton(onClick = { confirmDeleteTempTitle = null }) { Text("Cancel") }
+                }
+            )
+        }
+
         Surface(
             modifier = Modifier
                 .fillMaxWidth()
@@ -984,18 +1099,24 @@ private fun GroupManagerSheet(
 
                     items(temporaryExampleGroups, key = { "temp_$it" }) { tempTitle ->
                         val tempIcon = if (tempTitle == "Uncle John's wedding") "👰🤵" else "⚽"
+                        val tempKey = "temp:$tempTitle"
                         GroupRowCard(
                             title = tempTitle,
                             subtitle = "Group example. Delete when you want 🙂",
                             icon = tempIcon,
                             colour = "#9E9E9E",
                             selected = false,
-                            onClick = {},
+                            onClick = {
+                                if (actionsTarget == tempKey) actionsTarget = null
+                            },
+                            onLongClick = { actionsTarget = tempKey },
                             textColor = textColor,
-                            enabled = false,
+                            enabled = true,
                             trailingContent = {
-                                IconButton(onClick = { onDeleteTemporaryGroup(tempTitle) }) {
-                                    Icon(Icons.Default.Delete, contentDescription = "Delete temporary group", tint = Color(0xFFD84343))
+                                if (actionsTarget == tempKey) {
+                                    IconButton(onClick = { confirmDeleteTempTitle = tempTitle }) {
+                                        Icon(Icons.Default.Delete, contentDescription = "Delete temporary group", tint = Color(0xFFD84343))
+                                    }
                                 }
                             }
                         )
@@ -1003,20 +1124,33 @@ private fun GroupManagerSheet(
 
                     items(sortedGroups, key = { it.id }) { group ->
                         val isSelected = selectedFilter is FeedFilter.ByGroup && selectedFilter.group.id == group.id
+                        val groupKey = "group:${group.id}"
                         GroupRowCard(
                             title = group.name,
-                            subtitle = "${group.friendIds.size} friends",
+                            subtitle = "${group.membersExcludingOwner().size} friends",
                             icon = group.icon,
                             colour = group.color,
                             selected = isSelected,
-                            onClick = { onSelectGroup(FeedFilter.ByGroup(group)) },
+                            onClick = {
+                                if (actionsTarget == groupKey) {
+                                    actionsTarget = null
+                                } else {
+                                    onSelectGroup(FeedFilter.ByGroup(group))
+                                }
+                            },
+                            onLongClick = { actionsTarget = groupKey },
                             textColor = textColor,
                             trailingContent = {
-                                IconButton(onClick = { onEditGroup(group) }) {
-                                    Icon(Icons.Default.Edit, contentDescription = "Edit group", tint = textColor)
-                                }
-                                IconButton(onClick = { onDeleteGroup(group) }) {
-                                    Icon(Icons.Default.Delete, contentDescription = "Delete group", tint = Color(0xFFD84343))
+                                if (actionsTarget == groupKey) {
+                                    IconButton(onClick = { onInviteToGroup(group) }) {
+                                        Icon(Icons.AutoMirrored.Filled.Send, contentDescription = "Invite friends", tint = textColor)
+                                    }
+                                    IconButton(onClick = { onEditGroup(group) }) {
+                                        Icon(Icons.Default.Edit, contentDescription = "Edit group", tint = textColor)
+                                    }
+                                    IconButton(onClick = { confirmDeleteGroup = group }) {
+                                        Icon(Icons.Default.Delete, contentDescription = "Delete group", tint = Color(0xFFD84343))
+                                    }
                                 }
                             }
                         )
@@ -1028,6 +1162,7 @@ private fun GroupManagerSheet(
 }
 
 @Composable
+@OptIn(ExperimentalFoundationApi::class)
 private fun GroupRowCard(
     title: String,
     subtitle: String,
@@ -1035,6 +1170,7 @@ private fun GroupRowCard(
     colour: String,
     selected: Boolean,
     onClick: () -> Unit,
+    onLongClick: (() -> Unit)? = null,
     textColor: Color,
     enabled: Boolean = true,
     trailingContent: @Composable RowScope.() -> Unit
@@ -1047,7 +1183,11 @@ private fun GroupRowCard(
             modifier = Modifier
                 .fillMaxWidth()
                 .background(rowBackground)
-                .clickable(enabled = enabled) { onClick() }
+                .combinedClickable(
+                    enabled = enabled,
+                    onClick = { onClick() },
+                    onLongClick = { onLongClick?.invoke() }
+                )
                 .padding(horizontal = 16.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -1092,23 +1232,32 @@ private fun CreateOrEditGroupDialog(
     initialColor: String,
     initialSelectedFriendIds: List<String>,
     onDismiss: () -> Unit,
+    initialEventAt: Long?,
     onAddPhoto: () -> Unit,
-    onSubmit: (name: String, icon: String, selectedFriendIds: List<String>, color: String) -> Unit
+    onSubmit: (name: String, icon: String, selectedFriendIds: List<String>, color: String, eventAt: Long?) -> Unit
 ) {
     var groupName by remember(initialName) { mutableStateOf(initialName) }
     var selectedIcon by remember(initialIcon) { mutableStateOf(initialIcon) }
     var selectedColor by remember(initialColor) { mutableStateOf(initialColor) }
+    var selectedEventAt by remember(initialEventAt) { mutableStateOf(initialEventAt) }
     var selectedFriends by remember(initialSelectedFriendIds) { mutableStateOf(initialSelectedFriendIds.toSet()) }
 
     val icons = listOf(
         "👥", "👨‍👩‍👧‍👦", "💼", "🎓", "⭐", "✈️", "⚽", "🎨", "🏠", "🎵", "📚", "🎮",
         "🍔", "🍷", "🛫", "🏋️", "🏖️", "🎬", "🐶", "🚗", "🛍️", "🧠", "🧑‍💻", "📷"
     )
-    val colors = listOf("#4FC3F7", "#FF6B6B", "#4CAF50", "#FFD93D", "#FF9F43", "#A55EEA", "#FF6B9D", "#26D0CE")
 
     val pageBackground = if (isDarkMode) Color(0xFF121212) else PicFlickLightBackground
     val textColor = if (isDarkMode) Color.White else Color(0xFF111111)
-    val selectedColourValue = try { Color(android.graphics.Color.parseColor(selectedColor)) } catch (_: Exception) { Color(0xFF4FC3F7) }
+    val sortedFriends = remember(friends) {
+        friends.sortedWith(
+            compareBy<UserProfile>(
+                { it.displayName.trim().substringAfterLast(" ").lowercase(Locale.getDefault()) },
+                { it.displayName.trim().substringBeforeLast(" ").lowercase(Locale.getDefault()) },
+                { it.displayName.lowercase(Locale.getDefault()) }
+            )
+        )
+    }
 
     Box(
         modifier = Modifier
@@ -1144,7 +1293,7 @@ private fun CreateOrEditGroupDialog(
                         TextButton(onClick = onDismiss) { Text("Cancel") }
                         Button(
                             onClick = {
-                                onSubmit(groupName.trim(), selectedIcon, selectedFriends.toList(), selectedColor)
+                                onSubmit(groupName.trim(), selectedIcon, selectedFriends.toList(), selectedColor, selectedEventAt)
                             },
                             enabled = groupName.isNotBlank(),
                             colors = ButtonDefaults.buttonColors(
@@ -1188,7 +1337,7 @@ private fun CreateOrEditGroupDialog(
                             Box(
                                 modifier = Modifier
                                     .size(40.dp)
-                                    .border(2.dp, selectedColourValue, CircleShape)
+                                    .border(2.dp, Color.Black, CircleShape)
                                     .clip(CircleShape)
                                     .background(if (isDarkMode) Color(0xFF2A2A2A) else Color(0xFFF1F1F1))
                                     .clickable { onAddPhoto() },
@@ -1231,36 +1380,37 @@ private fun CreateOrEditGroupDialog(
                             }
                         }
 
-                        Text(
-                            text = "Colour",
-                            fontWeight = FontWeight.SemiBold,
-                            color = textColor,
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        OutlinedTextField(
+                            value = selectedEventAt?.let {
+                                SimpleDateFormat("dd MMM yyyy HH:mm", Locale.getDefault()).format(Date(it))
+                            } ?: "",
+                            onValueChange = {},
+                            readOnly = true,
+                            singleLine = true,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 8.dp)
+                                .clickable { selectedEventAt = System.currentTimeMillis() + (7L * 24L * 60L * 60L * 1000L) },
+                            label = { Text("Event date & time") },
+                            placeholder = { Text("Tap to set (defaults +7 days)") },
+                            trailingIcon = {
+                                IconButton(onClick = {
+                                    selectedEventAt = if (selectedEventAt == null) {
+                                        System.currentTimeMillis() + (7L * 24L * 60L * 60L * 1000L)
+                                    } else {
+                                        null
+                                    }
+                                }) {
+                                    Icon(
+                                        imageVector = if (selectedEventAt == null) Icons.Default.Add else Icons.Default.Close,
+                                        contentDescription = if (selectedEventAt == null) "Set event" else "Clear event"
+                                    )
+                                }
+                            }
                         )
 
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            modifier = Modifier.padding(horizontal = 16.dp)
-                        ) {
-                            colors.forEach { colourHex ->
-                                val colour = try { Color(android.graphics.Color.parseColor(colourHex)) } catch (_: Exception) { Color.Gray }
-                                Box(
-                                    modifier = Modifier
-                                        .size(28.dp)
-                                        .background(colour, CircleShape)
-                                        .border(
-                                            width = if (selectedColor == colourHex) 2.dp else 0.dp,
-                                            color = MaterialTheme.colorScheme.onSurface,
-                                            shape = CircleShape
-                                        )
-                                        .clickable {
-                                            selectedColor = colourHex
-                                        }
-                                )
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.height(8.dp))
                         HorizontalDivider()
 
                         Text(
@@ -1271,7 +1421,7 @@ private fun CreateOrEditGroupDialog(
                         )
                     }
 
-                    items(friends, key = { it.uid }) { friend ->
+                    items(sortedFriends, key = { it.uid }) { friend ->
                         val isSelected = selectedFriends.contains(friend.uid)
                         Row(
                             modifier = Modifier

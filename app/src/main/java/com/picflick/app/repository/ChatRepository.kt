@@ -59,6 +59,10 @@ class ChatRepository {
             participants = participants,
             participantNames = getStringMap("participantNames"),
             participantPhotos = getStringMap("participantPhotos"),
+            isGroup = getBoolean("isGroup") ?: false,
+            groupId = getString("groupId").orEmpty(),
+            groupName = getString("groupName").orEmpty(),
+            groupIcon = getString("groupIcon").orEmpty().ifBlank { "👥" },
             lastMessage = getString("lastMessage").orEmpty(),
             lastTimestamp = getLong("lastTimestamp") ?: 0L,
             lastSenderId = getString("lastSenderId").orEmpty(),
@@ -85,14 +89,13 @@ class ChatRepository {
                         runCatching { doc.toChatSessionSafe(userId) }.getOrNull()
                     } ?: emptyList()
 
-                    // Keep valid 1:1 chat sessions visible even if friendship changes later.
-                    val filteredSessions = rawSessions.filter { session ->
-                        val otherUserId = session.participants.firstOrNull { it != userId }
-                        otherUserId != null && session.participants.size == 2
+                    // Include both 1:1 and group sessions.
+                    val validSessions = rawSessions.filter { session ->
+                        session.participants.contains(userId)
                     }
 
                     // Sort client-side by lastTimestamp descending
-                    val sortedSessions = filteredSessions.sortedByDescending { it.lastTimestamp }
+                    val sortedSessions = validSessions.sortedByDescending { it.lastTimestamp }
                     trySend(sortedSessions)
                 }
 }
@@ -288,7 +291,7 @@ class ChatRepository {
                 .await()
                 .documents
                 .find { doc ->
-                    val participants = doc.get("participants") as? List<String>
+                    val participants = (doc.get("participants") as? List<*>)?.filterIsInstance<String>()
                     participants?.contains(userId2) == true
                 }
 
@@ -315,6 +318,158 @@ class ChatRepository {
             Result.Success(docRef.id)
         } catch (e: Exception) {
             Result.Error(e, e.message ?: "Failed to create chat session")
+        }
+    }
+
+    /**
+     * Create or get existing group chat session for a FriendGroup.
+     */
+    suspend fun getOrCreateGroupChatSession(
+        ownerUserId: String,
+        groupId: String,
+        groupName: String,
+        groupIcon: String,
+        groupMemberIds: List<String>,
+        ownerName: String,
+        ownerPhoto: String = ""
+    ): Result<String> {
+        return try {
+            val participants = groupMemberIds.distinct().filter { it.isNotBlank() }
+            if (participants.isEmpty()) {
+                return Result.Error(Exception("Group has no participants"), "Group has no participants")
+            }
+
+            val existing = db.collection("chatSessions")
+                .whereEqualTo("groupId", groupId)
+                .whereEqualTo("isGroup", true)
+                .limit(1)
+                .get()
+                .await()
+                .documents
+                .firstOrNull()
+
+            if (existing != null) {
+                return Result.Success(existing.id)
+            }
+
+            val participantNames = mutableMapOf<String, String>()
+            val participantPhotos = mutableMapOf<String, String>()
+
+            participants.forEach { uid ->
+                if (uid == ownerUserId) {
+                    participantNames[uid] = ownerName
+                    participantPhotos[uid] = ownerPhoto
+                } else {
+                    val userDoc = db.collection("users").document(uid).get().await()
+                    participantNames[uid] = userDoc.getString("displayName")
+                        ?.takeIf { it.isNotBlank() }
+                        ?: userDoc.getString("username")
+                        ?.takeIf { it.isNotBlank() }
+                        ?: "User"
+                    participantPhotos[uid] = userDoc.getString("photoUrl").orEmpty()
+                }
+            }
+
+            val unreadMap = participants.associateWith { 0 }
+            val newSession = hashMapOf(
+                "id" to "",
+                "participants" to participants,
+                "participantNames" to participantNames,
+                "participantPhotos" to participantPhotos,
+                "isGroup" to true,
+                "groupId" to groupId,
+                "groupName" to groupName,
+                "groupIcon" to groupIcon,
+                "unreadCount" to unreadMap,
+                "lastMessage" to "",
+                "lastTimestamp" to System.currentTimeMillis(),
+                "createdAt" to System.currentTimeMillis()
+            )
+            participants.forEach { uid ->
+                newSession["unreadCount_$uid"] = 0
+            }
+
+            val docRef = db.collection("chatSessions").add(newSession).await()
+            docRef.update("id", docRef.id).await()
+            Result.Success(docRef.id)
+        } catch (e: Exception) {
+            Result.Error(e, e.message ?: "Failed to create group chat session")
+        }
+    }
+
+    /**
+     * Send a message to a group chat and notify all members except sender.
+     */
+    suspend fun sendGroupMessage(
+        chatId: String,
+        message: ChatMessage
+    ): Result<Unit> {
+        return try {
+            val sessionDoc = db.collection("chatSessions").document(chatId)
+            val sessionSnapshot = sessionDoc.get().await()
+            val participants = (sessionSnapshot.get("participants") as? List<*>)
+                ?.filterIsInstance<String>()
+                ?: emptyList()
+
+            if (participants.isEmpty()) {
+                return Result.Error(Exception("No participants found"), "No participants found")
+            }
+
+            val resolvedMessageId = message.id.ifBlank {
+                sessionDoc.collection("messages").document().id
+            }
+            val messageWithId = message.copy(id = resolvedMessageId)
+
+            sessionDoc.collection("messages").document(messageWithId.id)
+                .set(messageWithId)
+                .await()
+
+            val updates = mutableMapOf<String, Any>(
+                "lastMessage" to if (message.text.isBlank() && message.imageUrl.isNotEmpty()) "📷 Photo" else message.text,
+                "lastTimestamp" to message.timestamp,
+                "lastSenderId" to message.senderId,
+                "lastMessageRead" to false
+            )
+
+            participants.forEach { participantId ->
+                if (participantId == message.senderId) {
+                    updates["unreadCount_$participantId"] = 0
+                    updates["unreadCount.$participantId"] = 0
+                } else {
+                    updates["unreadCount_$participantId"] = FieldValue.increment(1)
+                    updates["unreadCount.$participantId"] = FieldValue.increment(1)
+                }
+            }
+            sessionDoc.update(updates).await()
+
+            val notificationMessage = when {
+                message.imageUrl.isNotEmpty() && message.text.isBlank() -> "📷 Photo"
+                message.imageUrl.isNotEmpty() -> "📷 ${message.text.take(50)}"
+                message.text.length > 50 -> message.text.take(50) + "..."
+                else -> message.text
+            }
+
+            participants
+                .filter { it != message.senderId }
+                .forEach { recipientId ->
+                    val notification = hashMapOf(
+                        "userId" to recipientId,
+                        "type" to "MESSAGE",
+                        "title" to "New Group Message from ${message.senderName}",
+                        "message" to notificationMessage,
+                        "senderId" to message.senderId,
+                        "senderName" to message.senderName,
+                        "senderPhotoUrl" to message.senderPhotoUrl,
+                        "chatId" to chatId,
+                        "timestamp" to System.currentTimeMillis(),
+                        "isRead" to false
+                    )
+                    db.collection("notifications").add(notification).await()
+                }
+
+            Result.Success(Unit)
+        } catch (e: Exception) {
+            Result.Error(e, e.message ?: "Failed to send group message")
         }
     }
 

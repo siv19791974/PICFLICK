@@ -745,7 +745,7 @@ private fun ChatsScreenContent(
                 groupId = group.id,
                 groupName = group.name,
                 groupIcon = group.icon,
-                memberIds = group.friendIds
+                memberIds = group.effectiveMemberIds()
             ) { chatId ->
                 val session = chatViewModel.chatSessions.firstOrNull { it.id == chatId } ?: ChatSession(
                     id = chatId,
@@ -1013,6 +1013,9 @@ private fun NotificationsScreenContent(
         onAddFirstPhotoClick = {
             onScreenChange(Screen.Home)
             onOpenUploadSourceDialog()
+        },
+        onOpenGroupsScreen = {
+            onScreenChange(Screen.Home)
         }
     )
 

@@ -120,15 +120,20 @@ fun ChatsScreen(
             viewModel.chatSessions
         } else {
             viewModel.chatSessions.filter { session ->
-                val otherId = session.participants.firstOrNull { it != userProfile.uid } ?: ""
-                val otherName = session.participantNames[otherId].orEmpty()
-                otherName.lowercase(Locale.getDefault()).contains(q)
+                val searchableName = if (session.isGroup) {
+                    session.groupName
+                } else {
+                    val otherId = session.participants.firstOrNull { it != userProfile.uid } ?: ""
+                    session.participantNames[otherId].orEmpty()
+                }
+                searchableName.lowercase(Locale.getDefault()).contains(q)
             }
         }
     }
 
     val existingChatUserIds = remember(viewModel.chatSessions, userProfile.uid) {
         viewModel.chatSessions
+            .filter { !it.isGroup }
             .mapNotNull { session -> session.participants.firstOrNull { it != userProfile.uid } }
             .toSet()
     }
@@ -352,22 +357,35 @@ fun ChatsScreen(
                                 key = { it.id },
                                 contentType = { "chat_session" }
                             ) { session ->
-                                val otherUserId = session.participants.find { it != userProfile.uid } ?: ""
+                                val isGroupSession = session.isGroup
+                                val otherUserId = if (isGroupSession) {
+                                    "group:${session.groupId.ifBlank { session.id }}"
+                                } else {
+                                    session.participants.find { it != userProfile.uid } ?: ""
+                                }
                                 var otherUserName by remember(session.id, otherUserId) {
                                     mutableStateOf(
-                                        session.participantNames[otherUserId]
-                                            ?.takeIf { it.isNotBlank() }
-                                            ?: "Unknown"
+                                        if (isGroupSession) {
+                                            session.groupName.ifBlank { "Group chat" }
+                                        } else {
+                                            session.participantNames[otherUserId]
+                                                ?.takeIf { it.isNotBlank() }
+                                                ?: "Unknown"
+                                        }
                                     )
                                 }
-                                val otherUserPhoto = rememberLiveUserPhotoUrl(
-                                    userId = otherUserId,
-                                    fallbackPhotoUrl = session.participantPhotos[otherUserId]
-                                )
+                                val otherUserPhoto = if (isGroupSession) {
+                                    ""
+                                } else {
+                                    rememberLiveUserPhotoUrl(
+                                        userId = otherUserId,
+                                        fallbackPhotoUrl = session.participantPhotos[otherUserId]
+                                    )
+                                }
 
-                                // Backfill name from users collection for older or incomplete chat sessions
-                                LaunchedEffect(otherUserId) {
-                                    if (otherUserId.isNotBlank() && otherUserName == "Unknown") {
+                                // Backfill name from users collection for older or incomplete 1:1 chat sessions
+                                LaunchedEffect(otherUserId, isGroupSession) {
+                                    if (!isGroupSession && otherUserId.isNotBlank() && otherUserName == "Unknown") {
                                         try {
                                             com.google.firebase.firestore.FirebaseFirestore.getInstance()
                                                 .collection("users")
@@ -413,7 +431,11 @@ fun ChatsScreen(
                                             selectedChatIds.add(session.id)
                                         }
                                     },
-                                    onProfilePhotoClick = { onUserProfileClick(otherUserId) }
+                                    onProfilePhotoClick = {
+                                        if (!isGroupSession && otherUserId.isNotBlank()) {
+                                            onUserProfileClick(otherUserId)
+                                        }
+                                    }
                                 )
 
                                 HorizontalDivider(
@@ -576,13 +598,27 @@ private fun ChatListItem(
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Profile photo - clickable to view profile
+        // Avatar / group badge
         Box(
             modifier = Modifier
                 .size(56.dp)
                 .clickable { onProfilePhotoClick() }
         ) {
-            if (otherUserPhoto.isNotEmpty()) {
+            if (session.isGroup) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .clip(CircleShape)
+                        .border(2.dp, Color(0xFF1565C0), CircleShape)
+                        .background(Color(0xFF1565C0).copy(alpha = 0.15f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = session.groupIcon.ifBlank { "👥" },
+                        fontSize = 22.sp
+                    )
+                }
+            } else if (otherUserPhoto.isNotEmpty()) {
                 AsyncImage(
                     model = otherUserPhoto,
                     contentDescription = otherUserName,
@@ -609,8 +645,6 @@ private fun ChatListItem(
                     )
                 }
             }
-
-
         }
 
         Spacer(modifier = Modifier.width(16.dp))
@@ -805,6 +839,16 @@ private fun NewChatDialog(
                     .fillMaxWidth()
                     .weight(1f)
             ) {
+                    item("groups_label") {
+                        Text(
+                            text = "Groups",
+                            modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 10.dp, bottom = 6.dp),
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                        )
+                    }
+
                     item("new_group_action") {
                         NewContactActionItem(
                             icon = {
@@ -829,16 +873,6 @@ private fun NewChatDialog(
                         )
                     }
 
-                    item("groups_label") {
-                        Text(
-                            text = "Groups",
-                            modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 10.dp, bottom = 6.dp),
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-                        )
-                    }
-
                     item("existing_groups_action") {
                         NewContactActionItem(
                             icon = {
@@ -859,7 +893,13 @@ private fun NewChatDialog(
                             },
                             title = "Group chats",
                             isDarkMode = isDarkMode,
-                            onClick = onOpenGroupsList
+                            onClick = {
+                                if (groups.isNotEmpty()) {
+                                    onOpenGroupChat(groups.sortedBy { it.name.lowercase(Locale.getDefault()) }.first())
+                                } else {
+                                    onOpenGroupsList()
+                                }
+                            }
                         )
                     }
 

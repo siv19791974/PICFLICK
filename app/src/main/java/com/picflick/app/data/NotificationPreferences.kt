@@ -63,6 +63,7 @@ data class NotificationPreferences(
             NotificationType.REACTION -> pushReactions
             NotificationType.COMMENT -> pushComments
             NotificationType.FOLLOW -> pushFollows
+            NotificationType.FOLLOW_ACCEPTED -> pushFollows
             NotificationType.FRIEND_REQUEST -> pushFollows
             NotificationType.MESSAGE -> pushMessages
             NotificationType.PHOTO_ADDED -> pushNewPhotos
@@ -70,6 +71,7 @@ data class NotificationPreferences(
             NotificationType.MENTION -> pushMentions
             NotificationType.STREAK_REMINDER -> pushStreakReminders
             NotificationType.ACHIEVEMENT -> pushAchievements
+            NotificationType.GROUP_INVITE -> pushFollows
             NotificationType.SYSTEM -> pushSystemAnnouncements
         }
     }
@@ -85,6 +87,7 @@ data class NotificationPreferences(
             NotificationType.REACTION -> reactions
             NotificationType.COMMENT -> comments
             NotificationType.FOLLOW -> follows
+            NotificationType.FOLLOW_ACCEPTED -> follows
             NotificationType.FRIEND_REQUEST -> follows
             NotificationType.MESSAGE -> messages
             NotificationType.PHOTO_ADDED -> newPhotos
@@ -92,6 +95,7 @@ data class NotificationPreferences(
             NotificationType.MENTION -> mentions
             NotificationType.STREAK_REMINDER -> streakReminders
             NotificationType.ACHIEVEMENT -> achievements
+            NotificationType.GROUP_INVITE -> follows
             NotificationType.SYSTEM -> systemAnnouncements
         }
     }
