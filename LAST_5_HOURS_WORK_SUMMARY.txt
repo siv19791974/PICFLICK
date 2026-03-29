@@ -1,0 +1,143 @@
+PICFLICK3 — DETAILED COMPLETED JOBS (LAST ~5 HOURS)
+Timestamp: 2026-03-29
+
+====================================================
+1) GROUPS / ALBUMS PERMISSIONS + FIREBASE RULES STABILIZATION
+====================================================
+
+A) RULES PATCHES DEPLOYED (MULTIPLE ITERATIONS)
+- Patched Firestore `groups` rules to better support mixed schema docs:
+  - New shared docs (`ownerId`, `memberIds`, `adminIds`)
+  - Legacy docs (`userId`, `friendIds`)
+- Added safe fallback checks in read/update/delete conditions to reduce `PERMISSION_DENIED` on legacy data.
+- Added reorder-only update allowance (`orderIndex`, `updatedAt`) for valid members/admin/owner.
+- Tightened `adminIds` updates so owner/admin behavior is controlled and legacy fallback is handled.
+- Re-deployed Firestore rules after each critical permission fix via:
+  - `firebase.cmd deploy --only firestore:rules`
+
+B) GROUP/ALBUM ERROR FIXES HANDLED
+- Fixed “Failed to reorder group — permission denied”.
+- Fixed “Failed to delete group” from 3-dot menu for legacy-owner scenarios.
+- Fixed “Failed to update admins” for mixed/legacy group docs.
+- Fixed repeated “Failed to get group flicks” by hardening repository fallback paths and legacy resolution behavior.
+
+====================================================
+2) GROUP CHAT START / OPEN RELIABILITY
+====================================================
+
+A) GROUP CHAT PERMISSION PATH HARDENED
+- Patched group chat session open/create flow to avoid fragile read-first logic.
+- Switched deterministic group session path to safer upsert-style behavior (`group_<groupId>` + merge semantics).
+- Ensured participant list is corrected/updated when existing group session docs are stale.
+
+B) RESULT
+- Reduced `FAILED TO START GROUP CHAT - PERMISSION_DENIED` edge cases caused by old chat session docs and schema drift.
+
+====================================================
+3) HOME GROUPS/ALBUMS UX IMPROVEMENTS
+====================================================
+
+A) MENU + ACTION MODEL
+- Replaced long-press-only action flow with 3-dot menu actions.
+- Added `View album` option to menu and restored row tap-to-view album.
+- Kept drag behavior for reorder and auto-save on release.
+
+B) LABELING / TERMINOLOGY
+- Updated Home/group-management wording from Group to Album where applicable:
+  - Groups -> Albums
+  - Add group -> New album
+  - Create/Edit/Delete group -> Create/Edit/Delete album
+  - Group name -> Album name
+- Kept Group wording in chat context where appropriate.
+
+C) TEMP EXAMPLES
+- Moved sample albums to bottom of list.
+- Updated wedding sample icon to single bride emoji (`👰`).
+
+====================================================
+4) CREATE / EDIT ALBUM FLOW CHANGES
+====================================================
+
+A) CREATE MODE ACTION REDESIGN
+- Removed Cancel button in Create mode (dismiss by tap outside/back).
+- Added dual create actions:
+  - `Create local`
+  - `Create shared`
+- Kept Edit mode with standard Save/Cancel behavior.
+
+B) BACKEND WIRING
+- Added local-only create path in repository/viewmodel:
+  - `createLocalFriendGroup(...)`
+- Kept shared create path for social/invite/chat behavior:
+  - `createFriendGroup(...)`
+- Fixed create header/action layout after initial UI regression (restored proper spacing/alignment).
+
+====================================================
+5) ICON PHOTO SAVE / DISPLAY STABILIZATION
+====================================================
+
+A) ROOT ISSUE ADDRESSED
+- Photo icon upload worked, but some local-only albums were still handled through shared-only update/delete code paths.
+- This made photo icons appear unsaved/not showing after reopen in mixed schema conditions.
+
+B) FIXES APPLIED
+- Repository update flow now handles:
+  - shared doc update (`groups/{groupId}`) OR
+  - fallback local update (`users/{uid}/friendGroups/{groupId}`)
+- Repository delete flow now handles:
+  - shared doc delete OR
+  - fallback local delete
+- Group loading hardened to return robust `Result` and merge available sources.
+
+====================================================
+6) MESSAGING / COMPOSE / NOTIFICATION CHANGES
+====================================================
+
+A) COMPOSE + GROUPS
+- Ensured groups are represented in My Messages flow (with inbox behavior adjustments made earlier in session chain).
+- Kept create-group flow in messaging aligned with shared-group model.
+
+B) GROUP INVITE NOTIFICATIONS
+- Local-only groups do NOT generate invite notifications.
+- Shared-group invites create in-app notification payload with required metadata (`groupId`, `groupName`, `inviteId`).
+- Invite action labels in UI standardized to:
+  - `Join`
+  - `Refuse`
+
+C) GROUP MESSAGE NOTIFICATION TITLE
+- Changed notification title behavior for group messages to:
+  - `New message "GroupName"`
+  instead of:
+  - `New message from Username`
+- Updated app-side notification payload and cloud function push-title logic to use `groupName` when present.
+
+====================================================
+7) FILES TOUCHED DURING THIS PERIOD (HIGH-IMPACT)
+====================================================
+
+- `app/src/main/java/com/picflick/app/ui/screens/HomeScreen.kt`
+- `app/src/main/java/com/picflick/app/ui/screens/ChatsScreen.kt`
+- `app/src/main/java/com/picflick/app/ui/screens/ChatDetailScreen.kt`
+- `app/src/main/java/com/picflick/app/viewmodel/HomeViewModel.kt`
+- `app/src/main/java/com/picflick/app/viewmodel/ChatViewModel.kt`
+- `app/src/main/java/com/picflick/app/repository/FlickRepository.kt`
+- `app/src/main/java/com/picflick/app/repository/ChatRepository.kt`
+- `app/src/main/java/com/picflick/app/MainContent.kt`
+- `app/src/main/java/com/picflick/app/data/FriendGroup.kt`
+- `app/src/main/java/com/picflick/app/data/Notification.kt`
+- `app/src/main/java/com/picflick/app/data/NotificationPreferences.kt`
+- `functions/index.js`
+- `firestore.rules`
+
+====================================================
+8) CURRENT CHECK RESULT REQUESTED BY USER
+====================================================
+
+`ChatsScreen.kt` check status:
+- Fixed the active compile-blocking issue:
+  - Added required opt-in for experimental foundation API where `combinedClickable` is used in `NewGroupFromComposeDialog`.
+- Current diagnostics in file are now warnings/info only (no blocking errors).
+
+====================================================
+END
+====================================================
