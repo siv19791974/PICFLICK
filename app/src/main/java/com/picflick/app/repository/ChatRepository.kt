@@ -229,10 +229,8 @@ class ChatRepository {
 
             participants.forEach { participantId ->
                 if (participantId == senderId) {
-                    updates["unreadCount_$participantId"] = 0
                     updates["unreadCount.$participantId"] = 0
                 } else {
-                    updates["unreadCount_$participantId"] = FieldValue.increment(1)
                     updates["unreadCount.$participantId"] = FieldValue.increment(1)
                 }
             }
@@ -307,8 +305,6 @@ class ChatRepository {
                 "participantNames" to mapOf(userId1 to user1Name, userId2 to user2Name),
                 "participantPhotos" to mapOf(userId1 to user1Photo, userId2 to user2Photo),
                 "unreadCount" to mapOf(userId1 to 0, userId2 to 0),
-                "unreadCount_$userId1" to 0,
-                "unreadCount_$userId2" to 0,
                 "lastMessage" to "",
                 "lastTimestamp" to System.currentTimeMillis(),
                 "createdAt" to System.currentTimeMillis()
@@ -381,9 +377,6 @@ class ChatRepository {
                 "createdAt" to now,
                 "updatedAt" to now
             )
-            participants.forEach { uid ->
-                newSession["unreadCount_$uid"] = 0
-            }
 
             val docRef = db.collection("chatSessions").document(deterministicChatId)
             docRef.set(newSession, SetOptions.merge()).await()
@@ -445,18 +438,23 @@ class ChatRepository {
                 else -> message.text
             }
 
+            val groupDisplayName = sessionSnapshot.getString("groupName")
+                ?.takeIf { it.isNotBlank() }
+                ?: "Group"
+
             participants
                 .filter { it != message.senderId }
                 .forEach { recipientId ->
                     val notification = hashMapOf(
                         "userId" to recipientId,
                         "type" to "MESSAGE",
-                        "title" to "New Group Message from ${message.senderName}",
-                        "message" to notificationMessage,
+                        "title" to "New message \"$groupDisplayName\"",
+                        "message" to "${message.senderName}: $notificationMessage",
                         "senderId" to message.senderId,
                         "senderName" to message.senderName,
                         "senderPhotoUrl" to message.senderPhotoUrl,
                         "chatId" to chatId,
+                        "groupName" to groupDisplayName,
                         "timestamp" to System.currentTimeMillis(),
                         "isRead" to false
                     )
@@ -466,6 +464,30 @@ class ChatRepository {
             Result.Success(Unit)
         } catch (e: Exception) {
             Result.Error(e, e.message ?: "Failed to send group message")
+        }
+    }
+
+    suspend fun muteChat(userId: String, chatId: String, muteUntilEpochMs: Long): Result<Unit> {
+        return try {
+            db.collection("users")
+                .document(userId)
+                .update("mutedChats.$chatId", muteUntilEpochMs)
+                .await()
+            Result.Success(Unit)
+        } catch (e: Exception) {
+            Result.Error(e, e.message ?: "Failed to mute chat")
+        }
+    }
+
+    suspend fun unmuteChat(userId: String, chatId: String): Result<Unit> {
+        return try {
+            db.collection("users")
+                .document(userId)
+                .update("mutedChats.$chatId", FieldValue.delete())
+                .await()
+            Result.Success(Unit)
+        } catch (e: Exception) {
+            Result.Error(e, e.message ?: "Failed to unmute chat")
         }
     }
 
@@ -559,7 +581,6 @@ class ChatRepository {
                     .update(
                         mapOf(
                             "lastMessageRead" to true,
-                            "unreadCount_$userId" to 0,
                             "unreadCount.$userId" to 0
                         )
                     )

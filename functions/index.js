@@ -86,10 +86,15 @@ exports.sendPushNotification = functions.firestore
 
       console.log('Push will open screen:', targetScreen, 'for type:', notification.type);
       
+      const isGroupMessage = type === 'MESSAGE' && (notification.groupName || '').trim().length > 0;
+      const pushTitle = isGroupMessage
+        ? `New message "${notification.groupName}"`
+        : (notification.title || 'PicFlick');
+
       const message = {
         token: fcmToken,
         notification: {
-          title: notification.title || 'PicFlick',
+          title: pushTitle,
           body: notification.message || 'You have a new notification',
         },
         data: {
@@ -97,6 +102,7 @@ exports.sendPushNotification = functions.firestore
           type: notification.type || 'GENERIC',
           senderId: notification.senderId || '',
           senderName: notification.senderName || '',
+          groupName: notification.groupName || '',
           flickId: notification.flickId || '',
           targetScreen: targetScreen,
           click_action: 'FLUTTER_NOTIFICATION_CLICK',
@@ -330,6 +336,259 @@ exports.sendFeedbackPushToDeveloper = functions.firestore
       return null;
     }
   });
+
+function isNonEmptyString(value) {
+  return typeof value === 'string' && value.trim().length > 0;
+}
+
+function isStringArray(value) {
+  return Array.isArray(value) && value.every((v) => typeof v === 'string');
+}
+
+function isValidCanonicalGroup(group) {
+  return !!group &&
+    isNonEmptyString(group.ownerId) &&
+    isStringArray(group.memberIds) &&
+    isStringArray(group.adminIds) &&
+    group.memberIds.includes(group.ownerId) &&
+    Number(group.schemaVersion) === 2;
+}
+
+function isValidChatSessionSchema(session) {
+  if (!session || !isStringArray(session.participants)) return false;
+
+  const unreadMap = session.unreadCount;
+  if (!unreadMap || typeof unreadMap !== 'object' || Array.isArray(unreadMap)) return false;
+
+  const hasLegacyUnreadKey = Object.keys(session).some((k) => k.startsWith('unreadCount_'));
+  if (hasLegacyUnreadKey) return false;
+
+  return session.participants.every((uid) => Number.isFinite(Number(unreadMap[uid] ?? 0)));
+}
+
+/**
+ * Validation guard: flag malformed canonical group writes.
+ * This is a temporary safety net until strict rules are fully rolled out.
+ */
+exports.validateCanonicalGroupWrite = functions.firestore
+  .document('groups/{groupId}')
+  .onWrite(async (change, context) => {
+    if (!change.after.exists) return null;
+
+    const data = change.after.data() || {};
+    if (isValidCanonicalGroup(data)) return null;
+
+    const now = Date.now();
+    console.error('Invalid group schema detected', {
+      groupId: context.params.groupId,
+      ownerId: data.ownerId,
+      schemaVersion: data.schemaVersion
+    });
+
+    await change.after.ref.set({
+      invalidSchema: true,
+      invalidSchemaReason: 'Missing/invalid canonical group fields',
+      invalidSchemaDetectedAt: now,
+      validationVersion: 1
+    }, { merge: true });
+
+    await admin.firestore().collection('schemaValidationErrors').add({
+      entity: 'groups',
+      entityId: context.params.groupId,
+      detectedAt: now,
+      reason: 'Missing/invalid canonical group fields'
+    });
+
+    return null;
+  });
+
+/**
+ * Validation guard: flag malformed chat session writes.
+ * Enforces map-based unreadCount and blocks legacy unreadCount_<uid> keys.
+ */
+exports.validateChatSessionSchema = functions.firestore
+  .document('chatSessions/{chatId}')
+  .onWrite(async (change, context) => {
+    if (!change.after.exists) return null;
+
+    const data = change.after.data() || {};
+    if (isValidChatSessionSchema(data)) return null;
+
+    const now = Date.now();
+    console.error('Invalid chat session schema detected', {
+      chatId: context.params.chatId,
+      participantsCount: Array.isArray(data.participants) ? data.participants.length : 0
+    });
+
+    await change.after.ref.set({
+      invalidSchema: true,
+      invalidSchemaReason: 'Invalid unreadCount map or legacy unreadCount_<uid> keys present',
+      invalidSchemaDetectedAt: now,
+      validationVersion: 1
+    }, { merge: true });
+
+    await admin.firestore().collection('schemaValidationErrors').add({
+      entity: 'chatSessions',
+      entityId: context.params.chatId,
+      detectedAt: now,
+      reason: 'Invalid unreadCount map or legacy unreadCount_<uid> keys present'
+    });
+
+    return null;
+  });
+
+/**
+ * Admin-only callable: migrate legacy group schemas to canonical shape.
+ * Idempotent and safe to run multiple times.
+ */
+exports.migrateGroupsToCanonicalSchema = functions.https.onCall(async (data, context) => {
+  if (!context.auth) {
+    throw new functions.https.HttpsError('unauthenticated', 'Authentication required');
+  }
+
+  const callerDoc = await admin.firestore().collection('users').doc(context.auth.uid).get();
+  const caller = callerDoc.data() || {};
+  const isAdmin = caller.isAdmin === true || caller.role === 'admin';
+  if (!isAdmin) {
+    throw new functions.https.HttpsError('permission-denied', 'Admin access required');
+  }
+
+  const dryRun = data?.dryRun === true;
+  const limit = Math.max(1, Math.min(Number(data?.limit || 200), 500));
+
+  const snapshot = await admin.firestore().collection('groups').limit(limit).get();
+  let scanned = 0;
+  let updated = 0;
+
+  const batch = admin.firestore().batch();
+
+  snapshot.docs.forEach((doc) => {
+    scanned += 1;
+    const g = doc.data() || {};
+
+    const ownerId = String(g.ownerId || g.userId || '').trim();
+    const memberIds = Array.isArray(g.memberIds)
+      ? g.memberIds.filter(Boolean)
+      : [...new Set([...(Array.isArray(g.friendIds) ? g.friendIds : []), ownerId].filter(Boolean))];
+    const adminIds = Array.isArray(g.adminIds)
+      ? g.adminIds.filter((id) => !!id && id !== ownerId && memberIds.includes(id))
+      : [];
+
+    const canonical = {
+      id: g.id || doc.id,
+      ownerId,
+      name: g.name || '',
+      memberIds,
+      adminIds,
+      icon: g.icon || '👥',
+      color: g.color || '#4FC3F7',
+      eventAt: g.eventAt || null,
+      orderIndex: typeof g.orderIndex === 'number' ? g.orderIndex : Date.now(),
+      createdAt: typeof g.createdAt === 'number' ? g.createdAt : Date.now(),
+      updatedAt: Date.now(),
+      schemaVersion: 2
+    };
+
+    const hasDiff = (
+      g.ownerId !== canonical.ownerId ||
+      JSON.stringify(g.memberIds || []) !== JSON.stringify(canonical.memberIds) ||
+      JSON.stringify(g.adminIds || []) !== JSON.stringify(canonical.adminIds) ||
+      g.schemaVersion !== 2 ||
+      ('userId' in g) ||
+      ('friendIds' in g)
+    );
+
+    if (hasDiff) {
+      updated += 1;
+      if (!dryRun) {
+        batch.set(doc.ref, canonical, { merge: true });
+        batch.update(doc.ref, {
+          userId: admin.firestore.FieldValue.delete(),
+          friendIds: admin.firestore.FieldValue.delete()
+        });
+      }
+    }
+  });
+
+  if (!dryRun && updated > 0) {
+    await batch.commit();
+  }
+
+  return { success: true, dryRun, scanned, updated };
+});
+
+/**
+ * Admin-only callable: migrate chat unread counters to canonical map-only format.
+ * Reads legacy unreadCount_<uid> values and stores them into unreadCount.{uid}.
+ */
+exports.migrateChatUnreadToMap = functions.https.onCall(async (data, context) => {
+  if (!context.auth) {
+    throw new functions.https.HttpsError('unauthenticated', 'Authentication required');
+  }
+
+  const callerDoc = await admin.firestore().collection('users').doc(context.auth.uid).get();
+  const caller = callerDoc.data() || {};
+  const isAdmin = caller.isAdmin === true || caller.role === 'admin';
+  if (!isAdmin) {
+    throw new functions.https.HttpsError('permission-denied', 'Admin access required');
+  }
+
+  const dryRun = data?.dryRun === true;
+  const limit = Math.max(1, Math.min(Number(data?.limit || 300), 500));
+
+  const snapshot = await admin.firestore().collection('chatSessions').limit(limit).get();
+  let scanned = 0;
+  let updated = 0;
+
+  const batch = admin.firestore().batch();
+
+  snapshot.docs.forEach((doc) => {
+    scanned += 1;
+    const session = doc.data() || {};
+    const participants = Array.isArray(session.participants) ? session.participants.filter(Boolean) : [];
+    const unreadMap = { ...(session.unreadCount || {}) };
+
+    let changed = false;
+
+    participants.forEach((uid) => {
+      const legacyKey = `unreadCount_${uid}`;
+      const legacyVal = session[legacyKey];
+      const parsedLegacy = Number.isFinite(Number(legacyVal)) ? Number(legacyVal) : null;
+      const currentVal = Number.isFinite(Number(unreadMap[uid])) ? Number(unreadMap[uid]) : null;
+
+      if (currentVal == null && parsedLegacy != null) {
+        unreadMap[uid] = parsedLegacy;
+        changed = true;
+      } else if (currentVal == null) {
+        unreadMap[uid] = 0;
+        changed = true;
+      }
+    });
+
+    if (changed || session.schemaVersion !== 2) {
+      updated += 1;
+      if (!dryRun) {
+        const payload = {
+          unreadCount: unreadMap,
+          schemaVersion: 2,
+          updatedAt: Date.now()
+        };
+
+        participants.forEach((uid) => {
+          payload[`unreadCount_${uid}`] = admin.firestore.FieldValue.delete();
+        });
+
+        batch.update(doc.ref, payload);
+      }
+    }
+  });
+
+  if (!dryRun && updated > 0) {
+    await batch.commit();
+  }
+
+  return { success: true, dryRun, scanned, updated };
+});
 
 // Export purchase/subscription validation callables from the dedicated module.
 Object.assign(exports, require('./purchaseValidation'));
