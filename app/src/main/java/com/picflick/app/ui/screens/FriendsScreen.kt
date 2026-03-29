@@ -395,9 +395,15 @@ private fun EmptyFriendsState() {
             )
             Spacer(modifier = Modifier.height(16.dp))
             Text(
-                text = "No friends yet. Find some!",
+                text = "No friends yet",
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+            )
+            Spacer(modifier = Modifier.height(6.dp))
+            Text(
+                text = "Tap Find Friends to connect with people.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
             )
         }
     }

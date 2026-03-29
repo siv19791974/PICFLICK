@@ -370,7 +370,7 @@ fun ChatsScreen(
                                 )
                                 Spacer(modifier = Modifier.height(8.dp))
                                 Text(
-                                    text = "Tap + to start chatting with friends!",
+                                    text = "Tap + to start a new chat.",
                                     fontSize = 14.sp,
                                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
                                 )
@@ -413,28 +413,6 @@ fun ChatsScreen(
                                     )
                                 }
 
-                                // Backfill name from users collection for older or incomplete 1:1 chat sessions
-                                LaunchedEffect(otherUserId, isGroupSession) {
-                                    if (!isGroupSession && otherUserId.isNotBlank() && otherUserName == "Unknown") {
-                                        try {
-                                            com.google.firebase.firestore.FirebaseFirestore.getInstance()
-                                                .collection("users")
-                                                .document(otherUserId)
-                                                .get()
-                                                .addOnSuccessListener { userDoc ->
-                                                    otherUserName = userDoc.getString("displayName")
-                                                        ?.takeIf { it.isNotBlank() }
-                                                        ?: userDoc.getString("username")
-                                                            ?.takeIf { it.isNotBlank() }
-                                                        ?: userDoc.getString("name")
-                                                            ?.takeIf { it.isNotBlank() }
-                                                        ?: otherUserName
-                                                }
-                                        } catch (_: Exception) {
-                                            // Keep current fallback values if fetch fails
-                                        }
-                                    }
-                                }
 
                                 ChatListItem(
                                     session = session,
@@ -1038,7 +1016,7 @@ private fun NewChatDialog(
                         )
                     }
                     Text(
-                        text = "Compose Message",
+                        text = "New message",
                         modifier = Modifier.weight(1f),
                         color = Color.White,
                         fontSize = 15.sp,
@@ -1082,7 +1060,7 @@ private fun NewChatDialog(
                                     )
                                 }
                             },
-                            title = "Create new group",
+                            title = "Create group",
                             isDarkMode = isDarkMode,
                             onClick = onOpenGroupFlow
                         )
@@ -1121,7 +1099,7 @@ private fun NewChatDialog(
                                     horizontalAlignment = Alignment.CenterHorizontally
                                 ) {
                                     Text(
-                                        text = "No available users",
+                                        text = "No available friends",
                                         fontSize = 15.sp,
                                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                                     )
