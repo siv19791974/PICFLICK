@@ -91,14 +91,33 @@ service cloud.firestore {
       );
 
       // Admin/owner can update core group fields.
+      // Members can perform reorder-only updates (orderIndex/updatedAt).
       // Only owner can assign adminIds.
       // Legacy fallback: if older docs are missing owner/admin markers, allow existing member updates.
       allow update: if isAuth() && (
         (
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['orderIndex', 'updatedAt']) &&
+          (
+            ('memberIds' in resource.data && request.auth.uid in resource.data.memberIds) ||
+            ('friendIds' in resource.data && request.auth.uid in resource.data.friendIds) ||
+            ('adminIds' in resource.data && request.auth.uid in resource.data.adminIds) ||
+            ('ownerId' in resource.data && request.auth.uid == resource.data.ownerId) ||
+            ('userId' in resource.data && request.auth.uid == resource.data.userId)
+          )
+        ) ||
+        (
           ('adminIds' in request.resource.data && request.resource.data.adminIds != resource.data.adminIds) &&
           (
             ('ownerId' in resource.data && request.auth.uid == resource.data.ownerId) ||
-            ('userId' in resource.data && request.auth.uid == resource.data.userId)
+            ('userId' in resource.data && request.auth.uid == resource.data.userId) ||
+            (
+              !('ownerId' in resource.data) &&
+              !('userId' in resource.data) &&
+              (
+                ('memberIds' in resource.data && request.auth.uid in resource.data.memberIds) ||
+                ('friendIds' in resource.data && request.auth.uid in resource.data.friendIds)
+              )
+            )
           )
         ) ||
         (
@@ -124,10 +143,20 @@ service cloud.firestore {
         )
       );
 
-      // Only owner can delete group (ownerId or legacy userId)
+      // Only owner can delete group (ownerId or legacy userId).
+      // Legacy fallback for migrated docs missing explicit owner fields:
+      // if no ownerId/userId exists, allow a listed member to delete.
       allow delete: if isAuth() && (
         ('ownerId' in resource.data && request.auth.uid == resource.data.ownerId) ||
-        ('userId' in resource.data && request.auth.uid == resource.data.userId)
+        ('userId' in resource.data && request.auth.uid == resource.data.userId) ||
+        (
+          !('ownerId' in resource.data) &&
+          !('userId' in resource.data) &&
+          (
+            ('memberIds' in resource.data && request.auth.uid in resource.data.memberIds) ||
+            ('friendIds' in resource.data && request.auth.uid in resource.data.friendIds)
+          )
+        )
       );
 
       // Members subcollection
