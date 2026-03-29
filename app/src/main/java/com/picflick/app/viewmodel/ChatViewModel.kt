@@ -385,6 +385,19 @@ class ChatViewModel : ViewModel() {
         }
     }
 
+    fun muteChat(userId: String, chatId: String, muteUntilEpochMs: Long, onComplete: (Boolean) -> Unit = {}) {
+        viewModelScope.launch {
+            when (repository.muteChat(userId, chatId, muteUntilEpochMs)) {
+                is Result.Success -> onComplete(true)
+                is Result.Error -> {
+                    errorMessage = "Failed to mute chat"
+                    onComplete(false)
+                }
+                is Result.Loading -> Unit
+            }
+        }
+    }
+
     /**
      * Mark messages as delivered and reload to refresh UI
      */

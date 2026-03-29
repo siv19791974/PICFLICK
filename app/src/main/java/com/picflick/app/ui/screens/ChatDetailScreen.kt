@@ -52,6 +52,7 @@ import com.picflick.app.data.ChatSession
 import com.picflick.app.data.Flick
 import com.picflick.app.data.Result
 import com.picflick.app.data.UserProfile
+import com.picflick.app.data.FriendGroup
 import com.picflick.app.repository.FlickRepository
 import com.picflick.app.ui.theme.PicFlickBannerBackground
 import com.picflick.app.ui.theme.ThemeManager
@@ -107,6 +108,7 @@ fun ChatDetailScreen(
     var replyToMessage by remember { mutableStateOf<ChatMessage?>(null) }
     var editingMessageId by remember { mutableStateOf<String?>(null) }
     var showHeaderMenu by remember { mutableStateOf(false) }
+    var showGroupInfoDialog by remember { mutableStateOf(false) }
     var activeReactionMessageId by remember { mutableStateOf<String?>(null) }
     val selectedMessageIds = remember { mutableStateListOf<String>() }
     var isSelectionMode by remember { mutableStateOf(false) }
@@ -426,17 +428,31 @@ val listState = rememberLazyListState()
                                     expanded = showHeaderMenu,
                                     onDismissRequest = { showHeaderMenu = false }
                                 ) {
-                                    DropdownMenuItem(
-                                        text = { Text(if (isGroupChat) "View group" else "View profile") },
-                                        onClick = {
-                                            showHeaderMenu = false
-                                            if (!isGroupChat) {
-                                                onUserProfileClick(otherUserId)
-                                            } else {
-                                                onBack()
+                                    if (isGroupChat) {
+                                        DropdownMenuItem(
+                                            text = { Text("Mute chat") },
+                                            onClick = {
+                                                showHeaderMenu = false
+                                                val muteUntil = System.currentTimeMillis() + (7L * 24L * 60L * 60L * 1000L)
+                                                viewModel.muteChat(currentUser.uid, chatId, muteUntil)
                                             }
-                                        }
-                                    )
+                                        )
+                                        DropdownMenuItem(
+                                            text = { Text("View group information") },
+                                            onClick = {
+                                                showHeaderMenu = false
+                                                showGroupInfoDialog = true
+                                            }
+                                        )
+                                    } else {
+                                        DropdownMenuItem(
+                                            text = { Text("View profile") },
+                                            onClick = {
+                                                showHeaderMenu = false
+                                                onUserProfileClick(otherUserId)
+                                            }
+                                        )
+                                    }
 
                                     DropdownMenuItem(
                                         text = { Text("Select messages") },
@@ -958,6 +974,34 @@ AlertDialog(
             },
             dismissButton = {
                 TextButton(onClick = { showBlockUserConfirm = false }) { Text("Cancel") }
+            }
+        )
+    }
+
+    if (showGroupInfoDialog && isGroupChat) {
+        AlertDialog(
+            onDismissRequest = { showGroupInfoDialog = false },
+            title = { Text("Group information") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text("Name: ${chatSession.groupName.ifBlank { "Group" }}")
+                    Text("Icon: ${chatSession.groupIcon.ifBlank { "👥" }}")
+                    Text("Members: ${chatSession.participants.size}")
+                    val memberPreview = chatSession.participantNames
+                        .filterKeys { it != currentUser.uid }
+                        .values
+                        .filter { it.isNotBlank() }
+                        .take(8)
+                        .joinToString(", ")
+                    if (memberPreview.isNotBlank()) {
+                        Text("People: $memberPreview")
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showGroupInfoDialog = false }) {
+                    Text("Close")
+                }
             }
         )
     }

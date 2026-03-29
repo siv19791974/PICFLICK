@@ -548,7 +548,7 @@ fun HomeScreen(
     if (showCreateGroupDialog) {
         CreateOrEditGroupDialog(
             title = "Create album",
-            submitLabel = "Create album",
+            submitLabel = "Save",
             friends = friends,
             isDarkMode = isDarkMode,
             initialName = "",
@@ -563,7 +563,32 @@ fun HomeScreen(
                 pendingGroupIconTarget = "create"
                 groupIconPickerLauncher.launch("image/*")
             },
-            onSubmit = { name, icon, selectedFriendIds, color ->
+            onSubmit = { _, _, _, _ -> },
+            onCreateLocal = { name, icon, selectedFriendIds, color ->
+                viewModel.createLocalFriendGroup(
+                    userId = userProfile.uid,
+                    name = name,
+                    icon = icon,
+                    friendIds = selectedFriendIds,
+                    color = color
+                ) { success, createdGroup ->
+                    if (success) {
+                        if (createdGroup != null) {
+                            viewModel.setFilter(FeedFilter.ByGroup(createdGroup))
+                        }
+                        showCreateGroupDialog = false
+                        showGroupsManager = false
+                        createDialogIconOverride = null
+                    } else {
+                        Toast.makeText(
+                            context,
+                            viewModel.errorMessage ?: "Failed to create local album",
+                            Toast.LENGTH_LONG
+                        ).show()
+                    }
+                }
+            },
+            onCreateShared = { name, icon, selectedFriendIds, color ->
                 viewModel.createFriendGroup(
                     userId = userProfile.uid,
                     name = name,
@@ -581,7 +606,7 @@ fun HomeScreen(
                     } else {
                         Toast.makeText(
                             context,
-                            viewModel.errorMessage ?: "Failed to create album",
+                            viewModel.errorMessage ?: "Failed to create shared album",
                             Toast.LENGTH_LONG
                         ).show()
                     }
@@ -622,7 +647,9 @@ fun HomeScreen(
                         editDialogIconOverride = null
                     }
                 }
-            }
+            },
+            onCreateLocal = null,
+            onCreateShared = null
         )
     }
 
@@ -1446,7 +1473,9 @@ private fun CreateOrEditGroupDialog(
     initialSelectedFriendIds: List<String>,
     onDismiss: () -> Unit,
     onAddPhoto: () -> Unit,
-    onSubmit: (name: String, icon: String, selectedFriendIds: List<String>, color: String) -> Unit
+    onSubmit: (name: String, icon: String, selectedFriendIds: List<String>, color: String) -> Unit,
+    onCreateLocal: ((name: String, icon: String, selectedFriendIds: List<String>, color: String) -> Unit)? = null,
+    onCreateShared: ((name: String, icon: String, selectedFriendIds: List<String>, color: String) -> Unit)? = null
 ) {
     var groupName by remember(initialName) { mutableStateOf(initialName) }
     var selectedIcon by remember(initialIcon) { mutableStateOf(initialIcon) }
@@ -1458,6 +1487,7 @@ private fun CreateOrEditGroupDialog(
         "🍔", "🍷", "🛫", "🏋️", "🏖️", "🎬", "🐶", "🚗", "🛍️", "🧠", "🧑‍💻", "📷"
     )
 
+    val isCreateMode = onCreateLocal != null && onCreateShared != null
     val pageBackground = if (isDarkMode) Color(0xFF121212) else PicFlickLightBackground
     val textColor = if (isDarkMode) Color.White else Color(0xFF111111)
     val sortedFriends = remember(friends) {
@@ -1487,12 +1517,11 @@ private fun CreateOrEditGroupDialog(
             tonalElevation = 4.dp
         ) {
             Column(modifier = Modifier.fillMaxSize()) {
-                Row(
+                Column(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp, vertical = 14.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     Text(
                         text = title,
@@ -1500,19 +1529,52 @@ private fun CreateOrEditGroupDialog(
                         fontWeight = FontWeight.Bold,
                         color = textColor
                     )
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        TextButton(onClick = onDismiss) { Text("Cancel") }
-                        Button(
-                            onClick = {
-                                onSubmit(groupName.trim(), selectedIcon, selectedFriends.toList(), selectedColor)
-                            },
-                            enabled = groupName.isNotBlank(),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = Color(0xFF2A4A73),
-                                contentColor = Color.White
-                            )
+
+                    if (isCreateMode) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            Text(submitLabel)
+                            OutlinedButton(
+                                onClick = {
+                                    onCreateLocal?.invoke(groupName.trim(), selectedIcon, selectedFriends.toList(), selectedColor)
+                                },
+                                enabled = groupName.isNotBlank(),
+                                modifier = Modifier.weight(1f),
+                                border = ButtonDefaults.outlinedButtonBorder,
+                                colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFF2A4A73))
+                            ) {
+                                Text("Create local")
+                            }
+                            Button(
+                                onClick = {
+                                    onCreateShared?.invoke(groupName.trim(), selectedIcon, selectedFriends.toList(), selectedColor)
+                                },
+                                enabled = groupName.isNotBlank(),
+                                modifier = Modifier.weight(1f),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = Color(0xFF2A4A73),
+                                    contentColor = Color.White
+                                )
+                            ) {
+                                Text("Create shared")
+                            }
+                        }
+                    } else {
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            TextButton(onClick = onDismiss) { Text("Cancel") }
+                            Button(
+                                onClick = {
+                                    onSubmit(groupName.trim(), selectedIcon, selectedFriends.toList(), selectedColor)
+                                },
+                                enabled = groupName.isNotBlank(),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = Color(0xFF2A4A73),
+                                    contentColor = Color.White
+                                )
+                            ) {
+                                Text(submitLabel)
+                            }
                         }
                     }
                 }
