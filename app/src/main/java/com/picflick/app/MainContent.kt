@@ -248,6 +248,8 @@ fun AuthenticatedContent(
         is Screen.Notifications -> NotificationsScreenContent(
             userProfile = userProfile,
             homeViewModel = homeViewModel,
+            chatViewModel = chatViewModel,
+            onSetSelectedChat = onSetSelectedChat,
             onScreenChange = onScreenChange,
             onOpenUploadSourceDialog = onOpenUploadSourceDialog
         )
@@ -963,6 +965,8 @@ private fun FindFriendsScreenContent(
 private fun NotificationsScreenContent(
     userProfile: UserProfile,
     homeViewModel: HomeViewModel,
+    chatViewModel: ChatViewModel,
+    onSetSelectedChat: (ChatSession, String) -> Unit,
     onScreenChange: (Screen) -> Unit,
     onOpenUploadSourceDialog: () -> Unit
 ) {
@@ -1016,6 +1020,33 @@ private fun NotificationsScreenContent(
         },
         onOpenGroupsScreen = {
             onScreenChange(Screen.Home)
+        },
+        onGroupInviteAccepted = { groupId, groupName ->
+            val group = homeViewModel.friendGroups.firstOrNull { it.id == groupId }
+            val memberIds = group?.effectiveMemberIds() ?: listOf(userProfile.uid)
+
+            chatViewModel.startGroupChat(
+                ownerUserId = userProfile.uid,
+                ownerName = userProfile.displayName,
+                ownerPhoto = userProfile.photoUrl,
+                groupId = groupId,
+                groupName = groupName.ifBlank { "Group" },
+                groupIcon = group?.icon ?: "👥",
+                memberIds = memberIds
+            ) { chatId ->
+                val session = chatViewModel.chatSessions.firstOrNull { it.id == chatId } ?: ChatSession(
+                    id = chatId,
+                    participants = listOf(userProfile.uid),
+                    participantNames = mapOf(userProfile.uid to userProfile.displayName),
+                    participantPhotos = mapOf(userProfile.uid to userProfile.photoUrl),
+                    isGroup = true,
+                    groupId = groupId,
+                    groupName = groupName,
+                    groupIcon = "👥"
+                )
+                onSetSelectedChat(session, "group:$groupId")
+                onScreenChange(Screen.ChatDetail)
+            }
         }
     )
 

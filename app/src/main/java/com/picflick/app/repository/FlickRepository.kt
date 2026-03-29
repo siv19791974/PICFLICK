@@ -2876,18 +2876,54 @@ android.util.Log.e("FlickRepository", "Failed to submit feedback", e)
      * Get all shared groups where user is a member.
      */
     suspend fun getFriendGroups(userId: String): Result<List<FriendGroup>> {
-        return try {
-            val snapshot = db.collection("groups")
+        fun parseDocs(docs: List<com.google.firebase.firestore.DocumentSnapshot>): List<FriendGroup> {
+            return docs.mapNotNull { doc ->
+                doc.toObject(FriendGroup::class.java)?.let { group ->
+                    if (group.id.isBlank()) group.copy(id = doc.id) else group
+                }
+            }
+        }
+
+        // Run each source independently so one permission/schema issue does not hide all groups.
+        val byMember = runCatching {
+            db.collection("groups")
                 .whereArrayContains("memberIds", userId)
                 .get()
                 .await()
+                .documents
+        }.getOrDefault(emptyList())
 
-            val groups = snapshot.toObjects(FriendGroup::class.java)
-                .sortedByDescending { it.updatedAt }
-            Result.Success(groups)
-        } catch (e: Exception) {
-            Result.Error(e, "Failed to get friend groups")
-        }
+        val byOwner = runCatching {
+            db.collection("groups")
+                .whereEqualTo("ownerId", userId)
+                .get()
+                .await()
+                .documents
+        }.getOrDefault(emptyList())
+
+        val byLegacyOwner = runCatching {
+            db.collection("groups")
+                .whereEqualTo("userId", userId)
+                .get()
+                .await()
+                .documents
+        }.getOrDefault(emptyList())
+
+        val legacyPerUser = runCatching {
+            db.collection("users")
+                .document(userId)
+                .collection("friendGroups")
+                .get()
+                .await()
+                .documents
+        }.getOrDefault(emptyList())
+
+        val merged = parseDocs(byMember + byOwner + byLegacyOwner + legacyPerUser)
+            .associateBy { it.id }
+            .values
+            .sortedByDescending { it.updatedAt }
+
+        return Result.Success(merged)
     }
 
     /**

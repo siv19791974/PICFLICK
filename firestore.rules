@@ -60,36 +60,62 @@ service cloud.firestore {
 
     // SHARED GROUPS (MVP social groups)
     match /groups/{groupId} {
-      allow read: if isAuth() && request.auth.uid in resource.data.memberIds;
-
-      // Any authenticated user can create a group they own
-      allow create: if isAuth() && request.resource.data.ownerId == request.auth.uid;
-
-      // Only admins can update core group fields
-      allow update: if isAuth() && (
-        request.auth.uid in resource.data.adminIds ||
-        request.auth.uid == resource.data.ownerId
+      allow read: if isAuth() && (
+        ('memberIds' in resource.data && request.auth.uid in resource.data.memberIds) ||
+        ('adminIds' in resource.data && request.auth.uid in resource.data.adminIds) ||
+        ('ownerId' in resource.data && request.auth.uid == resource.data.ownerId) ||
+        ('userId' in resource.data && request.auth.uid == resource.data.userId)
       );
 
-      // Only owner can delete group
-      allow delete: if isAuth() && request.auth.uid == resource.data.ownerId;
+      // Any authenticated user can create a group they own
+      allow create: if isAuth() && (
+        request.resource.data.ownerId == request.auth.uid ||
+        request.resource.data.userId == request.auth.uid
+      );
+
+      // Only admins/owner can update core group fields
+      allow update: if isAuth() && (
+        ('adminIds' in resource.data && request.auth.uid in resource.data.adminIds) ||
+        ('ownerId' in resource.data && request.auth.uid == resource.data.ownerId) ||
+        ('userId' in resource.data && request.auth.uid == resource.data.userId)
+      );
+
+      // Only owner can delete group (ownerId or legacy userId)
+      allow delete: if isAuth() && (
+        ('ownerId' in resource.data && request.auth.uid == resource.data.ownerId) ||
+        ('userId' in resource.data && request.auth.uid == resource.data.userId)
+      );
 
       // Members subcollection
       match /members/{memberId} {
-        allow read: if isAuth() &&
-          request.auth.uid in get(/databases/$(database)/documents/groups/$(groupId)).data.memberIds;
+        allow read: if isAuth() && (
+          ('memberIds' in get(/databases/$(database)/documents/groups/$(groupId)).data &&
+            request.auth.uid in get(/databases/$(database)/documents/groups/$(groupId)).data.memberIds) ||
+          ('ownerId' in get(/databases/$(database)/documents/groups/$(groupId)).data &&
+            request.auth.uid == get(/databases/$(database)/documents/groups/$(groupId)).data.ownerId) ||
+          ('userId' in get(/databases/$(database)/documents/groups/$(groupId)).data &&
+            request.auth.uid == get(/databases/$(database)/documents/groups/$(groupId)).data.userId)
+        );
 
         allow create, update: if isAuth() && (
           // Admin can manage membership
-          request.auth.uid in get(/databases/$(database)/documents/groups/$(groupId)).data.adminIds ||
-          request.auth.uid == get(/databases/$(database)/documents/groups/$(groupId)).data.ownerId ||
+          ('adminIds' in get(/databases/$(database)/documents/groups/$(groupId)).data &&
+            request.auth.uid in get(/databases/$(database)/documents/groups/$(groupId)).data.adminIds) ||
+          ('ownerId' in get(/databases/$(database)/documents/groups/$(groupId)).data &&
+            request.auth.uid == get(/databases/$(database)/documents/groups/$(groupId)).data.ownerId) ||
+          ('userId' in get(/databases/$(database)/documents/groups/$(groupId)).data &&
+            request.auth.uid == get(/databases/$(database)/documents/groups/$(groupId)).data.userId) ||
           // User can create/update their own member doc when accepting invite
           request.auth.uid == memberId
         );
 
         allow delete: if isAuth() && (
-          request.auth.uid in get(/databases/$(database)/documents/groups/$(groupId)).data.adminIds ||
-          request.auth.uid == get(/databases/$(database)/documents/groups/$(groupId)).data.ownerId ||
+          ('adminIds' in get(/databases/$(database)/documents/groups/$(groupId)).data &&
+            request.auth.uid in get(/databases/$(database)/documents/groups/$(groupId)).data.adminIds) ||
+          ('ownerId' in get(/databases/$(database)/documents/groups/$(groupId)).data &&
+            request.auth.uid == get(/databases/$(database)/documents/groups/$(groupId)).data.ownerId) ||
+          ('userId' in get(/databases/$(database)/documents/groups/$(groupId)).data &&
+            request.auth.uid == get(/databases/$(database)/documents/groups/$(groupId)).data.userId) ||
           request.auth.uid == memberId
         );
       }
@@ -99,27 +125,43 @@ service cloud.firestore {
         allow read: if isAuth() && (
           request.auth.uid == resource.data.inviteeId ||
           request.auth.uid == resource.data.inviterId ||
-          request.auth.uid in get(/databases/$(database)/documents/groups/$(groupId)).data.adminIds ||
-          request.auth.uid == get(/databases/$(database)/documents/groups/$(groupId)).data.ownerId
+          ('adminIds' in get(/databases/$(database)/documents/groups/$(groupId)).data &&
+            request.auth.uid in get(/databases/$(database)/documents/groups/$(groupId)).data.adminIds) ||
+          ('ownerId' in get(/databases/$(database)/documents/groups/$(groupId)).data &&
+            request.auth.uid == get(/databases/$(database)/documents/groups/$(groupId)).data.ownerId) ||
+          ('userId' in get(/databases/$(database)/documents/groups/$(groupId)).data &&
+            request.auth.uid == get(/databases/$(database)/documents/groups/$(groupId)).data.userId)
         );
 
         // Admin/owner can create invites
         allow create: if isAuth() && (
-          request.auth.uid in get(/databases/$(database)/documents/groups/$(groupId)).data.adminIds ||
-          request.auth.uid == get(/databases/$(database)/documents/groups/$(groupId)).data.ownerId
+          ('adminIds' in get(/databases/$(database)/documents/groups/$(groupId)).data &&
+            request.auth.uid in get(/databases/$(database)/documents/groups/$(groupId)).data.adminIds) ||
+          ('ownerId' in get(/databases/$(database)/documents/groups/$(groupId)).data &&
+            request.auth.uid == get(/databases/$(database)/documents/groups/$(groupId)).data.ownerId) ||
+          ('userId' in get(/databases/$(database)/documents/groups/$(groupId)).data &&
+            request.auth.uid == get(/databases/$(database)/documents/groups/$(groupId)).data.userId)
         );
 
         // Invitee can respond, admin/owner can manage
         allow update: if isAuth() && (
           request.auth.uid == resource.data.inviteeId ||
-          request.auth.uid in get(/databases/$(database)/documents/groups/$(groupId)).data.adminIds ||
-          request.auth.uid == get(/databases/$(database)/documents/groups/$(groupId)).data.ownerId
+          ('adminIds' in get(/databases/$(database)/documents/groups/$(groupId)).data &&
+            request.auth.uid in get(/databases/$(database)/documents/groups/$(groupId)).data.adminIds) ||
+          ('ownerId' in get(/databases/$(database)/documents/groups/$(groupId)).data &&
+            request.auth.uid == get(/databases/$(database)/documents/groups/$(groupId)).data.ownerId) ||
+          ('userId' in get(/databases/$(database)/documents/groups/$(groupId)).data &&
+            request.auth.uid == get(/databases/$(database)/documents/groups/$(groupId)).data.userId)
         );
 
         allow delete: if isAuth() && (
           request.auth.uid == resource.data.inviterId ||
-          request.auth.uid in get(/databases/$(database)/documents/groups/$(groupId)).data.adminIds ||
-          request.auth.uid == get(/databases/$(database)/documents/groups/$(groupId)).data.ownerId
+          ('adminIds' in get(/databases/$(database)/documents/groups/$(groupId)).data &&
+            request.auth.uid in get(/databases/$(database)/documents/groups/$(groupId)).data.adminIds) ||
+          ('ownerId' in get(/databases/$(database)/documents/groups/$(groupId)).data &&
+            request.auth.uid == get(/databases/$(database)/documents/groups/$(groupId)).data.ownerId) ||
+          ('userId' in get(/databases/$(database)/documents/groups/$(groupId)).data &&
+            request.auth.uid == get(/databases/$(database)/documents/groups/$(groupId)).data.userId)
         );
       }
     }
