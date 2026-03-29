@@ -361,6 +361,30 @@ class HomeViewModel : ViewModel() {
     /**
      * Delete a friend group
      */
+    fun reorderFriendGroups(userId: String, orderedGroupIds: List<String>) {
+        if (orderedGroupIds.isEmpty()) return
+        viewModelScope.launch {
+            when (val result = repository.reorderFriendGroups(userId, orderedGroupIds)) {
+                is Result.Success -> {
+                    val orderedMap = friendGroups.associateBy { it.id }
+                    val reordered = orderedGroupIds.mapNotNull { orderedMap[it] }
+                    if (reordered.size == friendGroups.size) {
+                        friendGroups.clear()
+                        friendGroups.addAll(
+                            reordered.mapIndexed { index, group ->
+                                group.copy(orderIndex = index.toLong(), updatedAt = System.currentTimeMillis())
+                            }
+                        )
+                    }
+                }
+                is Result.Error -> {
+                    errorMessage = result.message
+                }
+                is Result.Loading -> Unit
+            }
+        }
+    }
+
     fun deleteFriendGroup(userId: String, groupId: String) {
         viewModelScope.launch {
             when (val result = repository.deleteFriendGroup(userId, groupId)) {
