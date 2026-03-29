@@ -257,7 +257,7 @@ class HomeViewModel : ViewModel() {
     }
 
     /**
-     * Create a new friend group
+     * Create a new shared album/group
      */
     fun createFriendGroup(
         userId: String,
@@ -282,6 +282,33 @@ class HomeViewModel : ViewModel() {
                     onComplete(false, null)
                 }
                 is Result.Loading -> { }
+            }
+        }
+    }
+
+    fun createLocalFriendGroup(
+        userId: String,
+        name: String,
+        icon: String,
+        friendIds: List<String>,
+        color: String = "#4FC3F7",
+        eventAt: Long? = null,
+        onComplete: (Boolean, FriendGroup?) -> Unit = { _, _ -> }
+    ) {
+        viewModelScope.launch {
+            isLoading = true
+            when (val result = repository.createLocalFriendGroup(userId, name, friendIds, icon, color, eventAt)) {
+                is Result.Success -> {
+                    friendGroups.add(result.data)
+                    isLoading = false
+                    onComplete(true, result.data)
+                }
+                is Result.Error -> {
+                    errorMessage = result.message
+                    isLoading = false
+                    onComplete(false, null)
+                }
+                is Result.Loading -> Unit
             }
         }
     }

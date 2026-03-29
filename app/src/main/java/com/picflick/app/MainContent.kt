@@ -733,8 +733,15 @@ private fun ChatsScreenContent(
                 }
             )
         },
-        onOpenGroupFlow = {
-            onScreenChange(Screen.Home)
+        onCreateSharedGroup = { name, icon, selectedFriendIds, onComplete ->
+            // Compose Message must create shared invite-capable groups only
+            homeViewModel.createFriendGroup(
+                userId = userProfile.uid,
+                name = name,
+                icon = icon,
+                friendIds = selectedFriendIds,
+                onComplete = onComplete
+            )
         },
 
         onOpenGroupChat = { group ->

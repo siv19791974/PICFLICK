@@ -10,7 +10,7 @@ class ConstantsTest {
 
     @Test
     fun `pagination constants have correct values`() {
-        assertEquals(50, Constants.Pagination.FLICKS_PER_PAGE)
+        assertEquals(120, Constants.Pagination.FLICKS_PER_PAGE)
         assertEquals(100, Constants.Pagination.EXPLORE_FLICKS_LIMIT)
         assertEquals(100, Constants.Pagination.USERS_PER_PAGE)
         assertEquals(20, Constants.Pagination.SUGGESTED_USERS_LIMIT)
