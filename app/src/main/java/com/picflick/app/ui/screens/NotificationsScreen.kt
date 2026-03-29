@@ -75,6 +75,7 @@ fun NotificationsScreen(
     onFindFriendsClick: (String?) -> Unit = {},
     onAddFirstPhotoClick: () -> Unit = {},
     onOpenGroupsScreen: () -> Unit = {},
+    onGroupInviteAccepted: (groupId: String, groupName: String) -> Unit = { _, _ -> },
     viewModel: NotificationViewModel = viewModel()
 ) {
     val notifications = viewModel.notifications
@@ -93,6 +94,13 @@ fun NotificationsScreen(
     // Load notifications
     LaunchedEffect(userProfile.uid) {
         viewModel.loadNotifications(userProfile.uid)
+    }
+
+    LaunchedEffect(viewModel.acceptedGroupSignal) {
+        viewModel.acceptedGroupSignal?.let { (groupId, groupName) ->
+            onGroupInviteAccepted(groupId, groupName)
+            viewModel.consumeAcceptedGroupSignal()
+        }
     }
 
     // Modern PullRefresh state
@@ -334,7 +342,9 @@ fun NotificationsScreen(
                                     },
                                     onDeclineFriendRequest = { senderId ->
                                         viewModel.declineFollowRequest(userProfile.uid, senderId, notification.id)
-                                    }
+                                    },
+                                    onAcceptGroupInvite = { viewModel.acceptGroupInvite(notification) },
+                                    onDeclineGroupInvite = { viewModel.declineGroupInvite(notification) }
                                 )
                             }
                         }
@@ -410,7 +420,9 @@ fun NotificationsScreen(
                                     },
                                     onDeclineFriendRequest = { senderId ->
                                         viewModel.declineFollowRequest(userProfile.uid, senderId, notification.id)
-                                    }
+                                    },
+                                    onAcceptGroupInvite = { viewModel.acceptGroupInvite(notification) },
+                                    onDeclineGroupInvite = { viewModel.declineGroupInvite(notification) }
                                 )
                             }
                         }
@@ -442,7 +454,9 @@ private fun NotificationItem(
     onUserProfileClick: (String) -> Unit = {},
     onPhotoClick: () -> Unit = {},
     onAcceptFriendRequest: (String) -> Unit = {},
-    onDeclineFriendRequest: (String) -> Unit = {}
+    onDeclineFriendRequest: (String) -> Unit = {},
+    onAcceptGroupInvite: () -> Unit = {},
+    onDeclineGroupInvite: () -> Unit = {}
 ) {
     var senderName by remember(notification.id, notification.senderName) {
         mutableStateOf(notification.senderName.ifBlank { "Someone" })
@@ -629,6 +643,24 @@ private fun NotificationItem(
                         }
                     }
                 }
+                notification.type == NotificationType.GROUP_INVITE -> {
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Button(
+                            onClick = onAcceptGroupInvite,
+                            shape = RoundedCornerShape(20.dp),
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                        ) {
+                            Text("Accept", fontSize = 12.sp)
+                        }
+                        OutlinedButton(
+                            onClick = onDeclineGroupInvite,
+                            shape = RoundedCornerShape(20.dp),
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                        ) {
+                            Text("Deny", fontSize = 12.sp)
+                        }
+                    }
+                }
                 notification.type == NotificationType.FOLLOW || notification.type == NotificationType.PROFILE_PHOTO_UPDATED -> {
                     Button(
                         onClick = { onUserProfileClick(notification.senderId) },
@@ -667,7 +699,9 @@ private fun SwipeableNotificationItem(
     onUserProfileClick: (String) -> Unit = {},
     onPhotoClick: () -> Unit = {},
     onAcceptFriendRequest: (String) -> Unit = {},
-    onDeclineFriendRequest: (String) -> Unit = {}
+    onDeclineFriendRequest: (String) -> Unit = {},
+    onAcceptGroupInvite: () -> Unit = {},
+    onDeclineGroupInvite: () -> Unit = {}
 ) {
     val dismissState = rememberSwipeToDismissBoxState(
         confirmValueChange = { value ->
@@ -717,7 +751,9 @@ private fun SwipeableNotificationItem(
                 onUserProfileClick = onUserProfileClick,
                 onPhotoClick = onPhotoClick,
                 onAcceptFriendRequest = onAcceptFriendRequest,
-                onDeclineFriendRequest = onDeclineFriendRequest
+                onDeclineFriendRequest = onDeclineFriendRequest,
+                onAcceptGroupInvite = onAcceptGroupInvite,
+                onDeclineGroupInvite = onDeclineGroupInvite
             )
         }
     )

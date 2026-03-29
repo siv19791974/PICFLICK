@@ -9,6 +9,7 @@ import androidx.lifecycle.viewModelScope
 import com.picflick.app.data.Notification
 import com.picflick.app.data.NotificationType
 import com.picflick.app.data.Result
+import com.picflick.app.data.FriendGroup
 import com.picflick.app.repository.FlickRepository
 import com.picflick.app.repository.NotificationRepository
 import kotlinx.coroutines.launch
@@ -26,6 +27,7 @@ import kotlinx.coroutines.launch
 class NotificationViewModel : ViewModel() {
     
     private val flickRepository = FlickRepository.getInstance()
+    private val groupRepository = FlickRepository.getInstance()
     private val notificationRepository = NotificationRepository.getInstance()
     
     /** List of all notifications for current user */
@@ -46,6 +48,10 @@ class NotificationViewModel : ViewModel() {
     
     /** Firestore listener for real-time updates */
     private var listenerRegistration: com.google.firebase.firestore.ListenerRegistration? = null
+
+    /** Accepted group invite signal (UI can react and open group chat) */
+    var acceptedGroupSignal by mutableStateOf<Pair<String, String>?>(null)
+        private set
     
     /** Currently logged in user ID */
     private var currentUserId: String? = null
@@ -364,6 +370,51 @@ class NotificationViewModel : ViewModel() {
         }
     }
     
+    fun acceptGroupInvite(notification: Notification) {
+        val userId = currentUserId ?: return
+        val groupId = notification.groupId ?: return
+        val inviteId = notification.inviteId ?: return
+
+        viewModelScope.launch {
+            when (val result = groupRepository.respondToGroupInvite(groupId, inviteId, userId, accept = true)) {
+                is Result.Success -> {
+                    flickRepository.deleteNotification(notification.id)
+                    notifications.removeAll { it.id == notification.id }
+                    unreadCount = notifications.count { !it.isRead }
+                    acceptedGroupSignal = groupId to (notification.groupName ?: "")
+                }
+                is Result.Error -> {
+                    errorMessage = result.message
+                }
+                is Result.Loading -> Unit
+            }
+        }
+    }
+
+    fun declineGroupInvite(notification: Notification) {
+        val userId = currentUserId ?: return
+        val groupId = notification.groupId ?: return
+        val inviteId = notification.inviteId ?: return
+
+        viewModelScope.launch {
+            when (val result = groupRepository.respondToGroupInvite(groupId, inviteId, userId, accept = false)) {
+                is Result.Success -> {
+                    flickRepository.deleteNotification(notification.id)
+                    notifications.removeAll { it.id == notification.id }
+                    unreadCount = notifications.count { !it.isRead }
+                }
+                is Result.Error -> {
+                    errorMessage = result.message
+                }
+                is Result.Loading -> Unit
+            }
+        }
+    }
+
+    fun consumeAcceptedGroupSignal() {
+        acceptedGroupSignal = null
+    }
+
     /**
      * Clear error message
      */
