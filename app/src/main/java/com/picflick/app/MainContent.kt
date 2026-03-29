@@ -736,9 +736,7 @@ private fun ChatsScreenContent(
         onOpenGroupFlow = {
             onScreenChange(Screen.Home)
         },
-        onOpenGroupsList = {
-            onScreenChange(Screen.Home)
-        },
+
         onOpenGroupChat = { group ->
             chatViewModel.startGroupChat(
                 ownerUserId = userProfile.uid,

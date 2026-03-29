@@ -80,7 +80,6 @@ fun ChatsScreen(
     onStartNewChat: ((String, String, String) -> Unit)? = null,
     onOpenGroupFlow: (() -> Unit)? = null,
     onOpenGroupChat: ((FriendGroup) -> Unit)? = null,
-    onOpenGroupsList: (() -> Unit)? = null,
     onUserProfileClick: (String) -> Unit = {},
     onBottomNavNavigate: (String) -> Unit = {}
 ) {
@@ -114,12 +113,41 @@ fun ChatsScreen(
         selectedSession?.participants?.firstOrNull { it != userProfile.uid }
     }
 
-    val filteredChatSessions = remember(viewModel.chatSessions, searchQuery, userProfile.uid) {
+    val inboxChatSessions = remember(viewModel.chatSessions, friendGroups, userProfile.uid) {
+        val existingGroupSessionsByGroupId = viewModel.chatSessions
+            .filter { it.isGroup }
+            .associateBy { session ->
+                session.groupId.ifBlank {
+                    session.id.removePrefix("group_")
+                }
+            }
+
+        val seededGroupSessions = friendGroups.map { group ->
+            existingGroupSessionsByGroupId[group.id] ?: ChatSession(
+                id = "group_${group.id}",
+                participants = group.effectiveMemberIds().ifEmpty { listOf(userProfile.uid) },
+                participantNames = mapOf(userProfile.uid to userProfile.displayName),
+                participantPhotos = mapOf(userProfile.uid to userProfile.photoUrl),
+                lastMessage = "",
+                lastTimestamp = 0L,
+                unreadCount = 0,
+                isGroup = true,
+                groupId = group.id,
+                groupName = group.name,
+                groupIcon = group.icon
+            )
+        }
+
+        (viewModel.chatSessions.filter { !it.isGroup } + seededGroupSessions)
+            .sortedByDescending { it.lastTimestamp }
+    }
+
+    val filteredChatSessions = remember(inboxChatSessions, searchQuery, userProfile.uid) {
         val q = searchQuery.trim().lowercase(Locale.getDefault())
         if (q.isBlank()) {
-            viewModel.chatSessions
+            inboxChatSessions
         } else {
-            viewModel.chatSessions.filter { session ->
+            inboxChatSessions.filter { session ->
                 val searchableName = if (session.isGroup) {
                     session.groupName
                 } else {
@@ -131,8 +159,8 @@ fun ChatsScreen(
         }
     }
 
-    val existingChatUserIds = remember(viewModel.chatSessions, userProfile.uid) {
-        viewModel.chatSessions
+    val existingChatUserIds = remember(inboxChatSessions, userProfile.uid) {
+        inboxChatSessions
             .filter { !it.isGroup }
             .mapNotNull { session -> session.participants.firstOrNull { it != userProfile.uid } }
             .toSet()
@@ -554,10 +582,7 @@ fun ChatsScreen(
                 showNewChatDialog = false
                 onOpenGroupChat?.invoke(group)
             },
-            onOpenGroupsList = {
-                showNewChatDialog = false
-                onOpenGroupsList?.invoke()
-            },
+
             onUserProfileClick = onUserProfileClick
         )
     }
@@ -791,7 +816,6 @@ private fun NewChatDialog(
     onFriendSelected: (String, String, String) -> Unit,
     onOpenGroupFlow: () -> Unit,
     onOpenGroupChat: (FriendGroup) -> Unit,
-    onOpenGroupsList: () -> Unit,
     onUserProfileClick: (String) -> Unit
 ) {
     val backgroundColor = if (isDarkMode) Color.Black else PicFlickLightBackground
@@ -870,36 +894,6 @@ private fun NewChatDialog(
                             title = "Create new group",
                             isDarkMode = isDarkMode,
                             onClick = onOpenGroupFlow
-                        )
-                    }
-
-                    item("existing_groups_action") {
-                        NewContactActionItem(
-                            icon = {
-                                Box(
-                                    modifier = Modifier
-                                        .size(44.dp)
-                                        .clip(CircleShape)
-                                        .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.AutoMirrored.Filled.Chat,
-                                        contentDescription = null,
-                                        tint = if (isDarkMode) Color.White else Color.Black,
-                                        modifier = Modifier.size(22.dp)
-                                    )
-                                }
-                            },
-                            title = "Group chats",
-                            isDarkMode = isDarkMode,
-                            onClick = {
-                                if (groups.isNotEmpty()) {
-                                    onOpenGroupChat(groups.sortedBy { it.name.lowercase(Locale.getDefault()) }.first())
-                                } else {
-                                    onOpenGroupsList()
-                                }
-                            }
                         )
                     }
 
