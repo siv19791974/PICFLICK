@@ -334,7 +334,9 @@ class ChatRepository {
         ownerPhoto: String = ""
     ): Result<String> {
         return try {
-            val participants = groupMemberIds.distinct().filter { it.isNotBlank() }
+            val participants = (groupMemberIds + ownerUserId)
+                .distinct()
+                .filter { it.isNotBlank() }
             if (participants.isEmpty()) {
                 return Result.Error(Exception("Group has no participants"), "Group has no participants")
             }
