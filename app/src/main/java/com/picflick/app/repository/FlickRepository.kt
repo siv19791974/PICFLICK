@@ -2820,6 +2820,7 @@ android.util.Log.e("FlickRepository", "Failed to submit feedback", e)
                 "icon" to icon,
                 "color" to color,
                 "eventAt" to eventAt,
+                "orderIndex" to now,
                 "createdAt" to now,
                 "updatedAt" to now
             )
@@ -2863,6 +2864,7 @@ android.util.Log.e("FlickRepository", "Failed to submit feedback", e)
                     icon = icon,
                     color = color,
                     eventAt = eventAt,
+                    orderIndex = now,
                     createdAt = now,
                     updatedAt = now
                 )
@@ -2921,7 +2923,10 @@ android.util.Log.e("FlickRepository", "Failed to submit feedback", e)
         val merged = parseDocs(byMember + byOwner + byLegacyOwner + legacyPerUser)
             .associateBy { it.id }
             .values
-            .sortedByDescending { it.updatedAt }
+            .sortedWith(
+                compareBy<FriendGroup> { it.orderIndex }
+                    .thenByDescending { it.updatedAt }
+            )
 
         return Result.Success(merged)
     }
@@ -2972,6 +2977,30 @@ android.util.Log.e("FlickRepository", "Failed to submit feedback", e)
     /**
      * Delete a shared group (owner only).
      */
+    suspend fun reorderFriendGroups(
+        userId: String,
+        orderedGroupIds: List<String>
+    ): Result<Unit> {
+        return try {
+            val batch = db.batch()
+            val now = System.currentTimeMillis()
+            orderedGroupIds.forEachIndexed { index, groupId ->
+                val groupRef = db.collection("groups").document(groupId)
+                batch.update(
+                    groupRef,
+                    mapOf(
+                        "orderIndex" to index.toLong(),
+                        "updatedAt" to now
+                    )
+                )
+            }
+            batch.commit().await()
+            Result.Success(Unit)
+        } catch (e: Exception) {
+            Result.Error(e, "Failed to reorder friend groups: ${e.message ?: "Unknown error"}")
+        }
+    }
+
     suspend fun deleteFriendGroup(userId: String, groupId: String): Result<Unit> {
         return try {
             val groupRef = db.collection("groups").document(groupId)

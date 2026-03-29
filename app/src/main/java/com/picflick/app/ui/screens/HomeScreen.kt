@@ -18,6 +18,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -535,7 +536,8 @@ fun HomeScreen(
             onEditGroup = { group -> editingGroup = group },
             onInviteToGroup = { group -> inviteTargetGroup = group },
             onDeleteGroup = { group -> viewModel.deleteFriendGroup(userProfile.uid, group.id) },
-            onDeleteTemporaryGroup = { title -> temporaryGroupExamples.remove(title) }
+            onDeleteTemporaryGroup = { title -> temporaryGroupExamples.remove(title) },
+            onReorderGroups = { orderedGroupIds -> viewModel.reorderFriendGroups(userProfile.uid, orderedGroupIds) }
         )
     }
 
@@ -980,11 +982,19 @@ private fun GroupManagerSheet(
     onEditGroup: (FriendGroup) -> Unit,
     onInviteToGroup: (FriendGroup) -> Unit,
     onDeleteGroup: (FriendGroup) -> Unit,
-    onDeleteTemporaryGroup: (String) -> Unit
+    onDeleteTemporaryGroup: (String) -> Unit,
+    onReorderGroups: (List<String>) -> Unit
 ) {
     val backgroundColor = if (isDarkMode) Color(0xFF121212) else PicFlickLightBackground
     val textColor = if (isDarkMode) Color.White else Color(0xFF111111)
-    val sortedGroups = groups.sortedBy { it.name.lowercase(Locale.getDefault()) }
+    val sortedGroups = remember(groups) {
+        groups.sortedWith(
+            compareBy<FriendGroup> { it.orderIndex }
+                .thenBy { it.name.lowercase(Locale.getDefault()) }
+        )
+    }
+    val orderedGroupIdsState = remember(sortedGroups) { mutableStateListOf<String>().apply { addAll(sortedGroups.map { it.id }) } }
+    var draggingGroupId by remember { mutableStateOf<String?>(null) }
     var confirmDeleteGroup by remember { mutableStateOf<FriendGroup?>(null) }
     var confirmDeleteTempTitle by remember { mutableStateOf<String?>(null) }
 
@@ -1124,58 +1134,99 @@ private fun GroupManagerSheet(
                         )
                     }
 
-                    items(sortedGroups, key = { it.id }) { group ->
+                    items(orderedGroupIdsState, key = { it }) { groupId ->
+                        val group = sortedGroups.firstOrNull { it.id == groupId } ?: return@items
                         val isSelected = selectedFilter is FeedFilter.ByGroup && selectedFilter.group.id == group.id
                         var showGroupMenu by remember(group.id) { mutableStateOf(false) }
+                        var dragDeltaY by remember(group.id) { mutableStateOf(0f) }
+
                         GroupRowCard(
                             title = group.name,
                             subtitle = "${group.membersExcludingOwner().size} friends",
                             icon = group.icon,
                             colour = group.color,
                             selected = isSelected,
-                            onClick = {},
+                            onClick = { onSelectGroup(FeedFilter.ByGroup(group)) },
+                            onLongPress = {
+                                draggingGroupId = group.id
+                            },
+                            onDrag = { deltaY ->
+                                if (draggingGroupId == group.id) {
+                                    dragDeltaY += deltaY
+                                    val moveThreshold = 28f
+                                    val currentIndex = orderedGroupIdsState.indexOf(group.id)
+                                    if (dragDeltaY <= -moveThreshold && currentIndex > 0) {
+                                        orderedGroupIdsState.removeAt(currentIndex)
+                                        orderedGroupIdsState.add(currentIndex - 1, group.id)
+                                        dragDeltaY = 0f
+                                    } else if (dragDeltaY >= moveThreshold && currentIndex in 0 until orderedGroupIdsState.lastIndex) {
+                                        orderedGroupIdsState.removeAt(currentIndex)
+                                        orderedGroupIdsState.add(currentIndex + 1, group.id)
+                                        dragDeltaY = 0f
+                                    }
+                                }
+                            },
+                            onDragEnd = {
+                                if (draggingGroupId == group.id) {
+                                    draggingGroupId = null
+                                    dragDeltaY = 0f
+                                    onReorderGroups(orderedGroupIdsState.toList())
+                                }
+                            },
                             textColor = textColor,
                             trailingContent = {
-                                Box {
-                                    IconButton(onClick = { showGroupMenu = true }) {
-                                        Icon(Icons.Default.MoreVert, contentDescription = "Group menu", tint = textColor)
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    if (draggingGroupId == group.id) {
+                                        Text(
+                                            text = "Moving…",
+                                            color = textColor.copy(alpha = 0.8f),
+                                            fontSize = 12.sp,
+                                            fontWeight = FontWeight.Medium,
+                                            modifier = Modifier.padding(end = 8.dp)
+                                        )
                                     }
-                                    DropdownMenu(
-                                        expanded = showGroupMenu,
-                                        onDismissRequest = { showGroupMenu = false }
-                                    ) {
-                                        DropdownMenuItem(
-                                            text = { Text("View album") },
-                                            onClick = {
-                                                showGroupMenu = false
-                                                onSelectGroup(FeedFilter.ByGroup(group))
-                                            },
-                                            leadingIcon = { Icon(Icons.Default.Chat, contentDescription = null) }
-                                        )
-                                        DropdownMenuItem(
-                                            text = { Text("Share") },
-                                            onClick = {
-                                                showGroupMenu = false
-                                                onInviteToGroup(group)
-                                            },
-                                            leadingIcon = { Icon(Icons.AutoMirrored.Filled.Send, contentDescription = null) }
-                                        )
-                                        DropdownMenuItem(
-                                            text = { Text("Edit") },
-                                            onClick = {
-                                                showGroupMenu = false
-                                                onEditGroup(group)
-                                            },
-                                            leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null) }
-                                        )
-                                        DropdownMenuItem(
-                                            text = { Text("Delete") },
-                                            onClick = {
-                                                showGroupMenu = false
-                                                confirmDeleteGroup = group
-                                            },
-                                            leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null, tint = Color(0xFFD84343)) }
-                                        )
+
+                                    Box {
+                                        IconButton(onClick = { showGroupMenu = true }) {
+                                            Icon(Icons.Default.MoreVert, contentDescription = "Group menu", tint = textColor)
+                                        }
+                                        DropdownMenu(
+                                            expanded = showGroupMenu,
+                                            onDismissRequest = { showGroupMenu = false }
+                                        ) {
+                                            DropdownMenuItem(
+                                                text = { Text("View album") },
+                                                onClick = {
+                                                    showGroupMenu = false
+                                                    onSelectGroup(FeedFilter.ByGroup(group))
+                                                },
+                                                leadingIcon = { Icon(Icons.Default.Chat, contentDescription = null) }
+                                            )
+                                            DropdownMenuItem(
+                                                text = { Text("Share") },
+                                                onClick = {
+                                                    showGroupMenu = false
+                                                    onInviteToGroup(group)
+                                                },
+                                                leadingIcon = { Icon(Icons.AutoMirrored.Filled.Send, contentDescription = null) }
+                                            )
+                                            DropdownMenuItem(
+                                                text = { Text("Edit") },
+                                                onClick = {
+                                                    showGroupMenu = false
+                                                    onEditGroup(group)
+                                                },
+                                                leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null) }
+                                            )
+                                            DropdownMenuItem(
+                                                text = { Text("Delete") },
+                                                onClick = {
+                                                    showGroupMenu = false
+                                                    confirmDeleteGroup = group
+                                                },
+                                                leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null, tint = Color(0xFFD84343)) }
+                                            )
+                                        }
                                     }
                                 }
                             }
@@ -1187,6 +1238,7 @@ private fun GroupManagerSheet(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun GroupRowCard(
     title: String,
@@ -1195,6 +1247,9 @@ private fun GroupRowCard(
     colour: String,
     selected: Boolean,
     onClick: () -> Unit,
+    onLongPress: (() -> Unit)? = null,
+    onDrag: ((Float) -> Unit)? = null,
+    onDragEnd: (() -> Unit)? = null,
     textColor: Color,
     enabled: Boolean = true,
     trailingContent: @Composable RowScope.() -> Unit
@@ -1207,7 +1262,23 @@ private fun GroupRowCard(
             modifier = Modifier
                 .fillMaxWidth()
                 .background(rowBackground)
-                .clickable(enabled = enabled) { onClick() }
+                .pointerInput(enabled, onDrag, onDragEnd) {
+                    if (enabled && onDrag != null) {
+                        detectDragGesturesAfterLongPress(
+                            onDragEnd = { onDragEnd?.invoke() },
+                            onDragCancel = { onDragEnd?.invoke() },
+                            onDrag = { change, dragAmount ->
+                                change.consume()
+                                onDrag(dragAmount.y)
+                            }
+                        )
+                    }
+                }
+                .combinedClickable(
+                    enabled = enabled,
+                    onClick = { onClick() },
+                    onLongClick = { onLongPress?.invoke() }
+                )
                 .padding(horizontal = 16.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
