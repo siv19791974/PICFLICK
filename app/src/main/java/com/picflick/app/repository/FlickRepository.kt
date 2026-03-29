@@ -24,6 +24,87 @@ class FlickRepository private constructor() {
 
     private val db = FirebaseFirestore.getInstance()
     private val storage = FirebaseStorage.getInstance()
+
+    private fun com.google.firebase.firestore.DocumentSnapshot.toNormalizedFriendGroup(): FriendGroup? {
+        val parsed = toObject(FriendGroup::class.java) ?: return null
+        val resolvedId = parsed.id.ifBlank { id }
+        val resolvedOwnerId = parsed.ownerId.ifBlank { parsed.userId }
+        val normalizedMemberIds = if (parsed.memberIds.isNotEmpty()) {
+            parsed.memberIds.filter { it.isNotBlank() }.distinct()
+        } else {
+            (parsed.friendIds + resolvedOwnerId).filter { it.isNotBlank() }.distinct()
+        }
+        val normalizedAdminIds = if (parsed.adminIds.isNotEmpty()) {
+            parsed.adminIds.filter { it.isNotBlank() && it != resolvedOwnerId && it in normalizedMemberIds }.distinct()
+        } else {
+            emptyList()
+        }
+
+        return parsed.copy(
+            id = resolvedId,
+            ownerId = resolvedOwnerId,
+            userId = if (parsed.userId.isNotBlank()) parsed.userId else resolvedOwnerId,
+            memberIds = normalizedMemberIds,
+            friendIds = normalizedMemberIds.filter { it != resolvedOwnerId },
+            adminIds = normalizedAdminIds
+        )
+    }
+
+    private fun FriendGroup.toCanonicalGroupDoc(): Map<String, Any?> {
+        val owner = ownerId.ifBlank { userId }
+        val members = if (memberIds.isNotEmpty()) {
+            memberIds.filter { it.isNotBlank() }.distinct()
+        } else {
+            (friendIds + owner).filter { it.isNotBlank() }.distinct()
+        }
+        val admins = adminIds
+            .filter { it.isNotBlank() && it != owner && it in members }
+            .distinct()
+
+        return mapOf(
+            "id" to id,
+            "ownerId" to owner,
+            "name" to name,
+            "memberIds" to members,
+            "adminIds" to admins,
+            "icon" to icon,
+            "color" to color,
+            "eventAt" to eventAt,
+            "orderIndex" to orderIndex,
+            "createdAt" to createdAt,
+            "updatedAt" to updatedAt,
+            "schemaVersion" to 2
+        )
+    }
+
+    private fun FriendGroup.toLegacyLocalDoc(): Map<String, Any?> {
+        val owner = ownerId.ifBlank { userId }
+        val members = if (memberIds.isNotEmpty()) {
+            memberIds.filter { it.isNotBlank() }.distinct()
+        } else {
+            (friendIds + owner).filter { it.isNotBlank() }.distinct()
+        }
+        val admins = adminIds
+            .filter { it.isNotBlank() && it != owner && it in members }
+            .distinct()
+
+        return mapOf(
+            "id" to id,
+            "userId" to owner,
+            "ownerId" to owner,
+            "name" to name,
+            "friendIds" to members.filter { it != owner },
+            "memberIds" to members,
+            "adminIds" to admins,
+            "icon" to icon,
+            "color" to color,
+            "eventAt" to eventAt,
+            "orderIndex" to orderIndex,
+            "createdAt" to createdAt,
+            "updatedAt" to updatedAt,
+            "schemaVersion" to 2
+        )
+    }
     
     // Coroutine scope for repository operations (replaces GlobalScope)
     private val repositoryScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -2793,6 +2874,51 @@ android.util.Log.e("FlickRepository", "Failed to submit feedback", e)
     // ==================== SHARED GROUPS (SOCIAL) ====================
 
     /**
+     * Create a local-only album under the user's private profile path.
+     */
+    suspend fun createLocalFriendGroup(
+        userId: String,
+        name: String,
+        friendIds: List<String>,
+        icon: String = "👥",
+        color: String = "#4FC3F7",
+        eventAt: Long? = null
+    ): Result<FriendGroup> {
+        return try {
+            val groupId = UUID.randomUUID().toString()
+            val now = System.currentTimeMillis()
+            val memberIds = (friendIds + userId).filter { it.isNotBlank() }.distinct()
+
+            val localGroup = FriendGroup(
+                id = groupId,
+                userId = userId,
+                ownerId = userId,
+                name = name,
+                friendIds = memberIds.filter { it != userId },
+                memberIds = memberIds,
+                adminIds = emptyList(),
+                icon = icon,
+                color = color,
+                eventAt = eventAt,
+                orderIndex = now,
+                createdAt = now,
+                updatedAt = now
+            )
+
+            db.collection("users")
+                .document(userId)
+                .collection("friendGroups")
+                .document(groupId)
+                .set(localGroup.toLegacyLocalDoc())
+                .await()
+
+            Result.Success(localGroup)
+        } catch (e: Exception) {
+            Result.Error(e, "Failed to create local album: ${e.message ?: "Unknown error"}")
+        }
+    }
+
+    /**
      * Create a shared social group and owner membership.
      */
     suspend fun createFriendGroup(
@@ -2807,27 +2933,25 @@ android.util.Log.e("FlickRepository", "Failed to submit feedback", e)
             val groupId = UUID.randomUUID().toString()
             val now = System.currentTimeMillis()
             val memberIds = (friendIds + userId).filter { it.isNotBlank() }.distinct()
-            val adminIds = listOf(userId)
-
-            val groupDoc = hashMapOf<String, Any?>(
-                "id" to groupId,
-                "ownerId" to userId,
-                "userId" to userId, // legacy compatibility
-                "name" to name,
-                "memberIds" to memberIds,
-                "friendIds" to memberIds.filter { it != userId }, // legacy compatibility
-                "adminIds" to adminIds,
-                "icon" to icon,
-                "color" to color,
-                "eventAt" to eventAt,
-                "orderIndex" to now,
-                "createdAt" to now,
-                "updatedAt" to now
+            val canonicalGroup = FriendGroup(
+                id = groupId,
+                userId = userId,
+                ownerId = userId,
+                name = name,
+                friendIds = memberIds.filter { it != userId },
+                memberIds = memberIds,
+                adminIds = emptyList(),
+                icon = icon,
+                color = color,
+                eventAt = eventAt,
+                orderIndex = now,
+                createdAt = now,
+                updatedAt = now
             )
 
             db.collection("groups")
                 .document(groupId)
-                .set(groupDoc)
+                .set(canonicalGroup.toCanonicalGroupDoc())
                 .await()
 
             memberIds.forEach { memberId ->
@@ -2841,7 +2965,6 @@ android.util.Log.e("FlickRepository", "Failed to submit feedback", e)
                             "groupId" to groupId,
                             "role" to when {
                                 memberId == userId -> GroupRole.OWNER.name
-                                adminIds.contains(memberId) -> GroupRole.ADMIN.name
                                 else -> GroupRole.MEMBER.name
                             },
                             "status" to "active",
@@ -2852,23 +2975,7 @@ android.util.Log.e("FlickRepository", "Failed to submit feedback", e)
                     .await()
             }
 
-            Result.Success(
-                FriendGroup(
-                    id = groupId,
-                    userId = userId,
-                    ownerId = userId,
-                    name = name,
-                    friendIds = memberIds.filter { it != userId },
-                    memberIds = memberIds,
-                    adminIds = adminIds,
-                    icon = icon,
-                    color = color,
-                    eventAt = eventAt,
-                    orderIndex = now,
-                    createdAt = now,
-                    updatedAt = now
-                )
-            )
+            Result.Success(canonicalGroup)
         } catch (e: Exception) {
             Result.Error(e, "Failed to create friend group: ${e.message ?: "Unknown error"}")
         }
@@ -2879,60 +2986,43 @@ android.util.Log.e("FlickRepository", "Failed to submit feedback", e)
      */
     suspend fun getFriendGroups(userId: String): Result<List<FriendGroup>> {
         fun parseDocs(docs: List<com.google.firebase.firestore.DocumentSnapshot>): List<FriendGroup> {
-            return docs.mapNotNull { doc ->
-                doc.toObject(FriendGroup::class.java)?.let { group ->
-                    if (group.id.isBlank()) group.copy(id = doc.id) else group
-                }
-            }
+            return docs.mapNotNull { it.toNormalizedFriendGroup() }
         }
 
         // Run each source independently so one permission/schema issue does not hide all groups.
-        val byMember = runCatching {
-            db.collection("groups")
-                .whereArrayContains("memberIds", userId)
-                .get()
-                .await()
-                .documents
-        }.getOrDefault(emptyList())
+        return try {
+            val byMember = runCatching {
+                db.collection("groups")
+                    .whereArrayContains("memberIds", userId)
+                    .get()
+                    .await()
+                    .documents
+            }.getOrDefault(emptyList())
 
-        val byOwner = runCatching {
-            db.collection("groups")
-                .whereEqualTo("ownerId", userId)
-                .get()
-                .await()
-                .documents
-        }.getOrDefault(emptyList())
+            val byOwner = runCatching {
+                db.collection("groups")
+                    .whereEqualTo("ownerId", userId)
+                    .get()
+                    .await()
+                    .documents
+            }.getOrDefault(emptyList())
 
-        val byLegacyOwner = runCatching {
-            db.collection("groups")
-                .whereEqualTo("userId", userId)
-                .get()
-                .await()
-                .documents
-        }.getOrDefault(emptyList())
+            val merged = parseDocs(byMember + byOwner)
+                .associateBy { it.id }
+                .values
+                .sortedWith(
+                    compareBy<FriendGroup> { it.orderIndex }
+                        .thenByDescending { it.updatedAt }
+                )
 
-        val legacyPerUser = runCatching {
-            db.collection("users")
-                .document(userId)
-                .collection("friendGroups")
-                .get()
-                .await()
-                .documents
-        }.getOrDefault(emptyList())
-
-        val merged = parseDocs(byMember + byOwner + byLegacyOwner + legacyPerUser)
-            .associateBy { it.id }
-            .values
-            .sortedWith(
-                compareBy<FriendGroup> { it.orderIndex }
-                    .thenByDescending { it.updatedAt }
-            )
-
-        return Result.Success(merged)
+            Result.Success(merged)
+        } catch (e: Exception) {
+            Result.Error(e, "Failed to load friend groups: ${e.message ?: "Unknown error"}")
+        }
     }
 
     /**
-     * Update a shared group (admin only).
+     * Update a shared group or legacy local album.
      */
     suspend fun updateFriendGroup(
         userId: String,
@@ -2944,14 +3034,8 @@ android.util.Log.e("FlickRepository", "Failed to submit feedback", e)
         eventAt: Long? = null
     ): Result<Unit> {
         return try {
-            val groupRef = db.collection("groups").document(groupId)
-            val groupDoc = groupRef.get().await()
-            if (!groupDoc.exists()) return Result.Error(Exception("Group not found"), "Group not found")
-
-            val group = groupDoc.toObject(FriendGroup::class.java) ?: FriendGroup()
-            if (!group.isOwner(userId) && !group.isAdmin(userId)) {
-                return Result.Error(Exception("Permission denied"), "Only owner/admin can edit this group")
-            }
+            val sharedRef = db.collection("groups").document(groupId)
+            val sharedDoc = sharedRef.get().await()
 
             val updates = hashMapOf<String, Any>(
                 "updatedAt" to System.currentTimeMillis()
@@ -2961,14 +3045,23 @@ android.util.Log.e("FlickRepository", "Failed to submit feedback", e)
             color?.let { updates["color"] = it }
             eventAt?.let { updates["eventAt"] = it }
 
-            friendIds?.let {
-                val memberIds = (it + group.effectiveOwnerId()).filter { id -> id.isNotBlank() }.distinct()
-                updates["memberIds"] = memberIds
-                updates["friendIds"] = memberIds.filter { id -> id != group.effectiveOwnerId() }
+            if (sharedDoc.exists()) {
+                val group = sharedDoc.toNormalizedFriendGroup() ?: FriendGroup()
+                if (!group.isOwner(userId) && !group.isAdmin(userId)) {
+                    return Result.Error(Exception("Permission denied"), "Only owner/admin can edit this group")
+                }
+
+                friendIds?.let {
+                    val ownerId = group.effectiveOwnerId().ifBlank { userId }
+                    val memberIds = (it + ownerId).filter { id -> id.isNotBlank() }.distinct()
+                    updates["memberIds"] = memberIds
+                }
+
+                sharedRef.update(updates).await()
+                return Result.Success(Unit)
             }
 
-            groupRef.update(updates).await()
-            Result.Success(Unit)
+            Result.Error(Exception("Group not found"), "Group not found")
         } catch (e: Exception) {
             Result.Error(e, "Failed to update friend group: ${e.message ?: "Unknown error"}")
         }
@@ -2984,16 +3077,12 @@ android.util.Log.e("FlickRepository", "Failed to submit feedback", e)
             val groupDoc = groupRef.get().await()
             if (!groupDoc.exists()) return Result.Error(Exception("Group not found"), "Group not found")
 
-            val group = groupDoc.toObject(FriendGroup::class.java) ?: FriendGroup()
-            val hasExplicitOwner = group.ownerId.isNotBlank() || group.userId.isNotBlank()
-            val isLegacyOwnerFallback = !hasExplicitOwner && (
-                group.memberIds.contains(userId) || group.friendIds.contains(userId)
-            )
-            if (!group.isOwner(userId) && !isLegacyOwnerFallback) {
+            val group = groupDoc.toNormalizedFriendGroup() ?: FriendGroup()
+            if (!group.isOwner(userId)) {
                 return Result.Error(Exception("Permission denied"), "Only owner can assign admins")
             }
 
-            val ownerId = if (hasExplicitOwner) group.effectiveOwnerId() else userId
+            val ownerId = group.effectiveOwnerId()
             val validAdmins = adminIds
                 .filter { it.isNotBlank() && it != ownerId && group.isMember(it) }
                 .distinct()
@@ -3041,20 +3130,21 @@ android.util.Log.e("FlickRepository", "Failed to submit feedback", e)
     suspend fun deleteFriendGroup(userId: String, groupId: String): Result<Unit> {
         return try {
             val groupRef = db.collection("groups").document(groupId)
-            val group = groupRef.get().await().toObject(FriendGroup::class.java)
-                ?: return Result.Error(Exception("Group not found"), "Group not found")
+            val sharedDoc = groupRef.get().await()
 
-            val hasExplicitOwner = group.ownerId.isNotBlank() || group.userId.isNotBlank()
-            val isLegacyOwnerFallback = !hasExplicitOwner && (
-                group.memberIds.contains(userId) || group.friendIds.contains(userId)
-            )
+            if (sharedDoc.exists()) {
+                val group = sharedDoc.toNormalizedFriendGroup()
+                    ?: return Result.Error(Exception("Group not found"), "Group not found")
 
-            if (!group.isOwner(userId) && !isLegacyOwnerFallback) {
-                return Result.Error(Exception("Permission denied"), "Only owner can delete this group")
+                if (!group.isOwner(userId)) {
+                    return Result.Error(Exception("Permission denied"), "Only owner can delete this group")
+                }
+
+                groupRef.delete().await()
+                return Result.Success(Unit)
             }
 
-            groupRef.delete().await()
-            Result.Success(Unit)
+            Result.Error(Exception("Group not found"), "Group not found")
         } catch (e: Exception) {
             Result.Error(e, "Failed to delete friend group")
         }
@@ -3071,7 +3161,7 @@ android.util.Log.e("FlickRepository", "Failed to submit feedback", e)
     ): Result<GroupInvite> {
         return try {
             val groupDoc = db.collection("groups").document(groupId).get().await()
-            val group = groupDoc.toObject(FriendGroup::class.java)
+                            val group = groupDoc.toNormalizedFriendGroup()
                 ?: return Result.Error(Exception("Group not found"), "Group not found")
 
             if (!group.isAdmin(inviterId)) {
@@ -3113,31 +3203,22 @@ android.util.Log.e("FlickRepository", "Failed to submit feedback", e)
 
             invitesCollection.document(inviteId).set(invite).await()
 
-            // Local-only/legacy docs should not generate invite notifications.
-            val isSharedGroup = groupDoc.exists() && (
-                groupDoc.contains("ownerId") ||
-                    groupDoc.contains("memberIds") ||
-                    groupDoc.contains("adminIds")
+            db.collection("notifications").add(
+                mapOf(
+                    "userId" to inviteeId,
+                    "type" to "GROUP_INVITE",
+                    "title" to "Group invite",
+                    "message" to "$inviterName invited you to ${group.name}",
+                    "senderId" to inviterId,
+                    "senderName" to inviterName,
+                    "chatId" to group.id,
+                    "timestamp" to now,
+                    "isRead" to false,
+                    "groupId" to group.id,
+                    "groupName" to group.name,
+                    "inviteId" to inviteId
                 )
-
-            if (isSharedGroup) {
-                db.collection("notifications").add(
-                    mapOf(
-                        "userId" to inviteeId,
-                        "type" to "GROUP_INVITE",
-                        "title" to "Group invite",
-                        "message" to "$inviterName invited you to ${group.name}",
-                        "senderId" to inviterId,
-                        "senderName" to inviterName,
-                        "chatId" to group.id,
-                        "timestamp" to now,
-                        "isRead" to false,
-                        "groupId" to group.id,
-                        "groupName" to group.name,
-                        "inviteId" to inviteId
-                    )
-                ).await()
-            }
+            ).await()
 
             Result.Success(invite)
         } catch (e: Exception) {
@@ -3178,7 +3259,6 @@ android.util.Log.e("FlickRepository", "Failed to submit feedback", e)
                 groupRef.update(
                     mapOf(
                         "memberIds" to FieldValue.arrayUnion(userId),
-                        "friendIds" to FieldValue.arrayUnion(userId),
                         "updatedAt" to now
                     )
                 ).await()
@@ -3249,7 +3329,7 @@ android.util.Log.e("FlickRepository", "Failed to submit feedback", e)
                     .get()
                     .await()
                 if (groupDoc.exists()) {
-                    groupDoc.toObject(FriendGroup::class.java)?.effectiveMemberIds().orEmpty()
+                    groupDoc.toNormalizedFriendGroup()?.effectiveMemberIds().orEmpty()
                 } else {
                     emptyList()
                 }
@@ -3270,7 +3350,7 @@ android.util.Log.e("FlickRepository", "Failed to submit feedback", e)
                         .get()
                         .await()
                         .takeIf { it.exists() }
-                        ?.toObject(FriendGroup::class.java)
+                        ?.toNormalizedFriendGroup()
                         ?.effectiveMemberIds()
                         .orEmpty()
                 }.getOrElse { emptyList() }
@@ -3300,7 +3380,7 @@ android.util.Log.e("FlickRepository", "Failed to submit feedback", e)
                         }.getOrNull()
 
                         if (legacyDoc != null && legacyDoc.exists()) {
-                            foundLegacy = legacyDoc.toObject(FriendGroup::class.java)
+                            foundLegacy = legacyDoc.toNormalizedFriendGroup()
                         }
                     }
 
