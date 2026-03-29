@@ -984,7 +984,6 @@ private fun GroupManagerSheet(
     val backgroundColor = if (isDarkMode) Color(0xFF121212) else PicFlickLightBackground
     val textColor = if (isDarkMode) Color.White else Color(0xFF111111)
     val sortedGroups = groups.sortedBy { it.name.lowercase(Locale.getDefault()) }
-    var actionsTarget by remember { mutableStateOf<String?>(null) } // group:<id> or temp:<title>
     var confirmDeleteGroup by remember { mutableStateOf<FriendGroup?>(null) }
     var confirmDeleteTempTitle by remember { mutableStateOf<String?>(null) }
 
@@ -1002,7 +1001,6 @@ private fun GroupManagerSheet(
                 confirmButton = {
                     TextButton(onClick = {
                         onDeleteGroup(group)
-                        actionsTarget = null
                         confirmDeleteGroup = null
                     }) { Text("Delete", color = Color(0xFFD84343)) }
                 },
@@ -1020,7 +1018,6 @@ private fun GroupManagerSheet(
                 confirmButton = {
                     TextButton(onClick = {
                         onDeleteTemporaryGroup(tempTitle)
-                        actionsTarget = null
                         confirmDeleteTempTitle = null
                     }) { Text("Delete", color = Color(0xFFD84343)) }
                 },
@@ -1093,23 +1090,33 @@ private fun GroupManagerSheet(
 
                     items(temporaryExampleGroups, key = { "temp_$it" }) { tempTitle ->
                         val tempIcon = if (tempTitle == "Uncle John's wedding") "👰🤵" else "⚽"
-                        val tempKey = "temp:$tempTitle"
+                        var showTempMenu by remember(tempTitle) { mutableStateOf(false) }
                         GroupRowCard(
                             title = tempTitle,
                             subtitle = "Group example. Delete when you want 🙂",
                             icon = tempIcon,
                             colour = "#9E9E9E",
                             selected = false,
-                            onClick = {
-                                if (actionsTarget == tempKey) actionsTarget = null
-                            },
-                            onLongClick = { actionsTarget = tempKey },
+                            onClick = {},
                             textColor = textColor,
                             enabled = true,
                             trailingContent = {
-                                if (actionsTarget == tempKey) {
-                                    IconButton(onClick = { confirmDeleteTempTitle = tempTitle }) {
-                                        Icon(Icons.Default.Delete, contentDescription = "Delete temporary group", tint = Color(0xFFD84343))
+                                Box {
+                                    IconButton(onClick = { showTempMenu = true }) {
+                                        Icon(Icons.Default.MoreVert, contentDescription = "Group menu", tint = textColor)
+                                    }
+                                    DropdownMenu(
+                                        expanded = showTempMenu,
+                                        onDismissRequest = { showTempMenu = false }
+                                    ) {
+                                        DropdownMenuItem(
+                                            text = { Text("Delete") },
+                                            onClick = {
+                                                showTempMenu = false
+                                                confirmDeleteTempTitle = tempTitle
+                                            },
+                                            leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null, tint = Color(0xFFD84343)) }
+                                        )
                                     }
                                 }
                             }
@@ -1118,32 +1125,48 @@ private fun GroupManagerSheet(
 
                     items(sortedGroups, key = { it.id }) { group ->
                         val isSelected = selectedFilter is FeedFilter.ByGroup && selectedFilter.group.id == group.id
-                        val groupKey = "group:${group.id}"
+                        var showGroupMenu by remember(group.id) { mutableStateOf(false) }
                         GroupRowCard(
                             title = group.name,
                             subtitle = "${group.membersExcludingOwner().size} friends",
                             icon = group.icon,
                             colour = group.color,
                             selected = isSelected,
-                            onClick = {
-                                if (actionsTarget == groupKey) {
-                                    actionsTarget = null
-                                } else {
-                                    onSelectGroup(FeedFilter.ByGroup(group))
-                                }
-                            },
-                            onLongClick = { actionsTarget = groupKey },
+                            onClick = { onSelectGroup(FeedFilter.ByGroup(group)) },
                             textColor = textColor,
                             trailingContent = {
-                                if (actionsTarget == groupKey) {
-                                    IconButton(onClick = { onInviteToGroup(group) }) {
-                                        Icon(Icons.AutoMirrored.Filled.Send, contentDescription = "Invite friends", tint = textColor)
+                                Box {
+                                    IconButton(onClick = { showGroupMenu = true }) {
+                                        Icon(Icons.Default.MoreVert, contentDescription = "Group menu", tint = textColor)
                                     }
-                                    IconButton(onClick = { onEditGroup(group) }) {
-                                        Icon(Icons.Default.Edit, contentDescription = "Edit group", tint = textColor)
-                                    }
-                                    IconButton(onClick = { confirmDeleteGroup = group }) {
-                                        Icon(Icons.Default.Delete, contentDescription = "Delete group", tint = Color(0xFFD84343))
+                                    DropdownMenu(
+                                        expanded = showGroupMenu,
+                                        onDismissRequest = { showGroupMenu = false }
+                                    ) {
+                                        DropdownMenuItem(
+                                            text = { Text("Share") },
+                                            onClick = {
+                                                showGroupMenu = false
+                                                onInviteToGroup(group)
+                                            },
+                                            leadingIcon = { Icon(Icons.AutoMirrored.Filled.Send, contentDescription = null) }
+                                        )
+                                        DropdownMenuItem(
+                                            text = { Text("Edit") },
+                                            onClick = {
+                                                showGroupMenu = false
+                                                onEditGroup(group)
+                                            },
+                                            leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null) }
+                                        )
+                                        DropdownMenuItem(
+                                            text = { Text("Delete") },
+                                            onClick = {
+                                                showGroupMenu = false
+                                                confirmDeleteGroup = group
+                                            },
+                                            leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null, tint = Color(0xFFD84343)) }
+                                        )
                                     }
                                 }
                             }
@@ -1156,7 +1179,6 @@ private fun GroupManagerSheet(
 }
 
 @Composable
-@OptIn(ExperimentalFoundationApi::class)
 private fun GroupRowCard(
     title: String,
     subtitle: String,
@@ -1164,7 +1186,6 @@ private fun GroupRowCard(
     colour: String,
     selected: Boolean,
     onClick: () -> Unit,
-    onLongClick: (() -> Unit)? = null,
     textColor: Color,
     enabled: Boolean = true,
     trailingContent: @Composable RowScope.() -> Unit
@@ -1177,11 +1198,7 @@ private fun GroupRowCard(
             modifier = Modifier
                 .fillMaxWidth()
                 .background(rowBackground)
-                .combinedClickable(
-                    enabled = enabled,
-                    onClick = { onClick() },
-                    onLongClick = { onLongClick?.invoke() }
-                )
+                .clickable(enabled = enabled) { onClick() }
                 .padding(horizontal = 16.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {

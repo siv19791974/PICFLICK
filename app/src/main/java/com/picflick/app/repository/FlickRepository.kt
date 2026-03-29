@@ -3163,30 +3163,83 @@ android.util.Log.e("FlickRepository", "Failed to submit feedback", e)
         onResult: (Result<List<Flick>>) -> Unit
     ) {
         try {
-            val groupDoc = db.collection("groups")
-                .document(groupId)
-                .get()
-                .await()
-
-            val group = groupDoc.toObject(FriendGroup::class.java)
-            if (group == null) {
-                onResult(Result.Error(Exception("Group not found"), "Group not found"))
-                return
+            val memberIds: List<String> = runCatching {
+                val groupDoc = db.collection("groups")
+                    .document(groupId)
+                    .get()
+                    .await()
+                if (groupDoc.exists()) {
+                    groupDoc.toObject(FriendGroup::class.java)?.effectiveMemberIds().orEmpty()
+                } else {
+                    emptyList()
+                }
+            }.getOrElse {
+                emptyList()
             }
 
-            val memberIds = group.effectiveMemberIds()
-            if (!memberIds.contains(userId)) {
+            // Legacy fallback: group may still exist only under users/{uid}/friendGroups/{groupId}
+            val resolvedMemberIds = if (memberIds.isNotEmpty()) {
+                memberIds
+            } else {
+                // First try current user's own legacy groups directly
+                val ownLegacyMembers = runCatching {
+                    db.collection("users")
+                        .document(userId)
+                        .collection("friendGroups")
+                        .document(groupId)
+                        .get()
+                        .await()
+                        .takeIf { it.exists() }
+                        ?.toObject(FriendGroup::class.java)
+                        ?.effectiveMemberIds()
+                        .orEmpty()
+                }.getOrElse { emptyList() }
+
+                if (ownLegacyMembers.isNotEmpty()) {
+                    ownLegacyMembers
+                } else {
+                    val legacyCandidates = runCatching {
+                        db.collection("users")
+                            .whereArrayContains("following", userId)
+                            .limit(40)
+                            .get()
+                            .await()
+                            .documents
+                    }.getOrElse { emptyList() }
+
+                    var foundLegacy: FriendGroup? = null
+                    legacyCandidates.forEach { userDoc ->
+                        if (foundLegacy != null) return@forEach
+                        val legacyDoc = runCatching {
+                            db.collection("users")
+                                .document(userDoc.id)
+                                .collection("friendGroups")
+                                .document(groupId)
+                                .get()
+                                .await()
+                        }.getOrNull()
+
+                        if (legacyDoc != null && legacyDoc.exists()) {
+                            foundLegacy = legacyDoc.toObject(FriendGroup::class.java)
+                        }
+                    }
+
+                    foundLegacy?.effectiveMemberIds().orEmpty()
+                }
+            }
+
+            if (!resolvedMemberIds.contains(userId)) {
                 onResult(Result.Error(Exception("Permission denied"), "You are not a member of this group"))
                 return
             }
 
-            if (memberIds.isEmpty()) {
+            if (resolvedMemberIds.isEmpty()) {
                 onResult(Result.Success(emptyList()))
                 return
             }
 
             db.collection(Constants.FirebaseCollections.FLICKS)
-                .whereIn("userId", memberIds)
+                .whereIn("userId", resolvedMemberIds)
                 .limit(250)
                 .get()
                 .addOnSuccessListener { snapshot ->
