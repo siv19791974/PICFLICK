@@ -2,6 +2,7 @@ package com.picflick.app.ui.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -33,13 +34,22 @@ fun UploadSourceDialog(
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-        containerColor = Color(0xFF1C1C1E),
-        contentColor = Color.White
+        containerColor = Color(0xFF121212),
+        contentColor = Color.White,
+        dragHandle = {
+            Surface(
+                modifier = Modifier
+                    .padding(top = 8.dp)
+                    .size(width = 44.dp, height = 5.dp),
+                shape = RoundedCornerShape(50),
+                color = Color.White.copy(alpha = 0.28f)
+            ) {}
+        }
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 24.dp, vertical = 24.dp),
+                .padding(horizontal = 24.dp, vertical = 20.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
@@ -47,7 +57,7 @@ fun UploadSourceDialog(
                 color = Color.White,
                 fontSize = 20.sp,
                 fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(bottom = 24.dp)
+                modifier = Modifier.padding(bottom = 20.dp)
             )
 
             // Camera Option
@@ -56,10 +66,10 @@ fun UploadSourceDialog(
                 title = "Take Photo",
                 subtitle = "Use your camera",
                 onClick = onCameraClick,
-                backgroundColor = Color(0xFF5FB9FF)
+                accentColor = Color(0xFF2E86DE)
             )
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(12.dp))
 
             // Gallery Option
             UploadOptionRow(
@@ -67,10 +77,10 @@ fun UploadSourceDialog(
                 title = "Choose from Gallery",
                 subtitle = "Select existing photo",
                 onClick = onGalleryClick,
-                backgroundColor = Color(0xFF6EC2FF)
+                accentColor = Color(0xFF2E86DE)
             )
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(12.dp))
 
             // Private share option
             UploadOptionRow(
@@ -78,20 +88,20 @@ fun UploadSourceDialog(
                 title = "Share privately 🎭",
                 subtitle = "Send to individual or group only",
                 onClick = onSharePrivatelyClick,
-                backgroundColor = Color(0xFF7BC9FF)
+                accentColor = Color(0xFF2E86DE)
             )
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(12.dp))
 
             UploadOptionRow(
                 icon = Icons.Outlined.Menu,
                 title = "Cancel",
                 subtitle = "Close add photo",
                 onClick = onDismiss,
-                backgroundColor = Color(0xFF89D0FF)
+                accentColor = Color(0xFF4B5563)
             )
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(10.dp))
         }
     }
 }
@@ -102,25 +112,26 @@ private fun UploadOptionRow(
     title: String,
     subtitle: String,
     onClick: () -> Unit,
-    backgroundColor: Color
+    accentColor: Color
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
-            .background(backgroundColor)
+            .clip(RoundedCornerShape(16.dp))
+            .background(Color(0xFF1C1F26))
+            .border(1.dp, accentColor.copy(alpha = 0.38f), RoundedCornerShape(16.dp))
             .clickable(onClick = onClick)
-            .padding(16.dp),
+            .padding(horizontal = 16.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(
             imageVector = icon,
             contentDescription = title,
-            tint = Color.White,
+            tint = accentColor,
             modifier = Modifier.size(28.dp)
         )
 
-        Spacer(modifier = Modifier.width(16.dp))
+        Spacer(modifier = Modifier.width(14.dp))
 
         Column {
             Text(
@@ -131,7 +142,7 @@ private fun UploadOptionRow(
             )
             Text(
                 text = subtitle,
-                color = Color.Gray,
+                color = Color(0xFFB7BDC9),
                 fontSize = 14.sp
             )
         }
