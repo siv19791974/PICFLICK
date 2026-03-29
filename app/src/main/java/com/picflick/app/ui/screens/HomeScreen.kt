@@ -21,6 +21,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
@@ -1132,7 +1133,7 @@ private fun GroupManagerSheet(
                             icon = group.icon,
                             colour = group.color,
                             selected = isSelected,
-                            onClick = { onSelectGroup(FeedFilter.ByGroup(group)) },
+                            onClick = {},
                             textColor = textColor,
                             trailingContent = {
                                 Box {
@@ -1143,6 +1144,14 @@ private fun GroupManagerSheet(
                                         expanded = showGroupMenu,
                                         onDismissRequest = { showGroupMenu = false }
                                     ) {
+                                        DropdownMenuItem(
+                                            text = { Text("View album") },
+                                            onClick = {
+                                                showGroupMenu = false
+                                                onSelectGroup(FeedFilter.ByGroup(group))
+                                            },
+                                            leadingIcon = { Icon(Icons.Default.Chat, contentDescription = null) }
+                                        )
                                         DropdownMenuItem(
                                             text = { Text("Share") },
                                             onClick = {
@@ -1364,26 +1373,23 @@ private fun CreateOrEditGroupDialog(
                                 }
                             }
 
-                            LazyColumn(
+                            LazyRow(
                                 modifier = Modifier
                                     .weight(1f)
-                                    .heightIn(max = 66.dp)
+                                    .height(48.dp),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
-                                item {
-                                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                        icons.forEach { icon ->
-                                            Surface(
-                                                modifier = Modifier
-                                                    .size(40.dp)
-                                                    .clickable { selectedIcon = icon },
-                                                shape = CircleShape,
-                                                color = if (selectedIcon == icon) MaterialTheme.colorScheme.primary.copy(alpha = 0.22f)
-                                                else if (isDarkMode) Color(0xFF2A2A2A) else Color(0xFFF1F1F1),
-                                                border = if (selectedIcon == icon) androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.primary) else null
-                                            ) {
-                                                Box(contentAlignment = Alignment.Center) { Text(icon, fontSize = 20.sp) }
-                                            }
-                                        }
+                                items(icons, key = { it }) { icon ->
+                                    Surface(
+                                        modifier = Modifier
+                                            .size(40.dp)
+                                            .clickable { selectedIcon = icon },
+                                        shape = CircleShape,
+                                        color = if (selectedIcon == icon) MaterialTheme.colorScheme.primary.copy(alpha = 0.22f)
+                                        else if (isDarkMode) Color(0xFF2A2A2A) else Color(0xFFF1F1F1),
+                                        border = if (selectedIcon == icon) androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.primary) else null
+                                    ) {
+                                        Box(contentAlignment = Alignment.Center) { Text(icon, fontSize = 20.sp) }
                                     }
                                 }
                             }
