@@ -81,8 +81,6 @@ import com.picflick.app.ui.theme.ThemeManager
 import com.picflick.app.util.rememberLiveUserPhotoUrl
 import com.picflick.app.util.rememberLiveUserTierColor
 import com.picflick.app.util.withCacheBust
-import java.text.SimpleDateFormat
-import java.util.Date
 import java.util.Locale
 import com.picflick.app.utils.Analytics
 import com.picflick.app.viewmodel.HomeViewModel
@@ -549,7 +547,6 @@ fun HomeScreen(
             initialName = "",
             initialIcon = createDialogIconOverride ?: "👥",
             initialColor = "#4FC3F7",
-            initialEventAt = null,
             initialSelectedFriendIds = emptyList(),
             onDismiss = {
                 showCreateGroupDialog = false
@@ -559,14 +556,13 @@ fun HomeScreen(
                 pendingGroupIconTarget = "create"
                 groupIconPickerLauncher.launch("image/*")
             },
-            onSubmit = { name, icon, selectedFriendIds, color, eventAt ->
+            onSubmit = { name, icon, selectedFriendIds, color ->
                 viewModel.createFriendGroup(
                     userId = userProfile.uid,
                     name = name,
                     icon = icon,
                     friendIds = selectedFriendIds,
-                    color = color,
-                    eventAt = eventAt
+                    color = color
                 ) { success, createdGroup ->
                     if (success) {
                         if (createdGroup != null) {
@@ -596,7 +592,6 @@ fun HomeScreen(
             initialName = group.name,
             initialIcon = editDialogIconOverride ?: group.icon,
             initialColor = group.color,
-            initialEventAt = group.eventAt,
             initialSelectedFriendIds = group.membersExcludingOwner(),
             onDismiss = {
                 editingGroup = null
@@ -606,15 +601,14 @@ fun HomeScreen(
                 pendingGroupIconTarget = "edit"
                 groupIconPickerLauncher.launch("image/*")
             },
-            onSubmit = { name, icon, selectedFriendIds, color, eventAt ->
+            onSubmit = { name, icon, selectedFriendIds, color ->
                 viewModel.updateFriendGroup(
                     userId = userProfile.uid,
                     groupId = group.id,
                     name = name,
                     icon = icon,
                     friendIds = selectedFriendIds,
-                    color = color,
-                    eventAt = eventAt
+                    color = color
                 ) { success ->
                     if (success) {
                         editingGroup = null
@@ -1232,14 +1226,12 @@ private fun CreateOrEditGroupDialog(
     initialColor: String,
     initialSelectedFriendIds: List<String>,
     onDismiss: () -> Unit,
-    initialEventAt: Long?,
     onAddPhoto: () -> Unit,
-    onSubmit: (name: String, icon: String, selectedFriendIds: List<String>, color: String, eventAt: Long?) -> Unit
+    onSubmit: (name: String, icon: String, selectedFriendIds: List<String>, color: String) -> Unit
 ) {
     var groupName by remember(initialName) { mutableStateOf(initialName) }
     var selectedIcon by remember(initialIcon) { mutableStateOf(initialIcon) }
     var selectedColor by remember(initialColor) { mutableStateOf(initialColor) }
-    var selectedEventAt by remember(initialEventAt) { mutableStateOf(initialEventAt) }
     var selectedFriends by remember(initialSelectedFriendIds) { mutableStateOf(initialSelectedFriendIds.toSet()) }
 
     val icons = listOf(
@@ -1293,7 +1285,7 @@ private fun CreateOrEditGroupDialog(
                         TextButton(onClick = onDismiss) { Text("Cancel") }
                         Button(
                             onClick = {
-                                onSubmit(groupName.trim(), selectedIcon, selectedFriends.toList(), selectedColor, selectedEventAt)
+                                onSubmit(groupName.trim(), selectedIcon, selectedFriends.toList(), selectedColor)
                             },
                             enabled = groupName.isNotBlank(),
                             colors = ButtonDefaults.buttonColors(
@@ -1381,35 +1373,6 @@ private fun CreateOrEditGroupDialog(
                         }
 
                         Spacer(modifier = Modifier.height(8.dp))
-
-                        OutlinedTextField(
-                            value = selectedEventAt?.let {
-                                SimpleDateFormat("dd MMM yyyy HH:mm", Locale.getDefault()).format(Date(it))
-                            } ?: "",
-                            onValueChange = {},
-                            readOnly = true,
-                            singleLine = true,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 8.dp)
-                                .clickable { selectedEventAt = System.currentTimeMillis() + (7L * 24L * 60L * 60L * 1000L) },
-                            label = { Text("Event date & time") },
-                            placeholder = { Text("Tap to set (defaults +7 days)") },
-                            trailingIcon = {
-                                IconButton(onClick = {
-                                    selectedEventAt = if (selectedEventAt == null) {
-                                        System.currentTimeMillis() + (7L * 24L * 60L * 60L * 1000L)
-                                    } else {
-                                        null
-                                    }
-                                }) {
-                                    Icon(
-                                        imageVector = if (selectedEventAt == null) Icons.Default.Add else Icons.Default.Close,
-                                        contentDescription = if (selectedEventAt == null) "Set event" else "Clear event"
-                                    )
-                                }
-                            }
-                        )
 
                         HorizontalDivider()
 

@@ -339,17 +339,15 @@ class ChatRepository {
                 return Result.Error(Exception("Group has no participants"), "Group has no participants")
             }
 
-            val existing = db.collection("chatSessions")
-                .whereEqualTo("groupId", groupId)
-                .whereEqualTo("isGroup", true)
-                .limit(1)
+            // Use deterministic group chat id to avoid permission-sensitive collection queries.
+            val deterministicChatId = "group_$groupId"
+            val existingById = db.collection("chatSessions")
+                .document(deterministicChatId)
                 .get()
                 .await()
-                .documents
-                .firstOrNull()
 
-            if (existing != null) {
-                return Result.Success(existing.id)
+            if (existingById.exists()) {
+                return Result.Success(deterministicChatId)
             }
 
             val participantNames = mutableMapOf<String, String>()
@@ -389,9 +387,10 @@ class ChatRepository {
                 newSession["unreadCount_$uid"] = 0
             }
 
-            val docRef = db.collection("chatSessions").add(newSession).await()
-            docRef.update("id", docRef.id).await()
-            Result.Success(docRef.id)
+            val docRef = db.collection("chatSessions").document(deterministicChatId)
+            newSession["id"] = deterministicChatId
+            docRef.set(newSession).await()
+            Result.Success(deterministicChatId)
         } catch (e: Exception) {
             Result.Error(e, e.message ?: "Failed to create group chat session")
         }
