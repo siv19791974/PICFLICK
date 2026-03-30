@@ -1051,8 +1051,8 @@ private fun NotificationsScreenContent(
                         isGroup = false,
                         unreadCount = 0,
                         lastMessage = "",
-                        lastMessageTimestamp = System.currentTimeMillis(),
-                        lastMessageSenderId = ""
+                        lastTimestamp = System.currentTimeMillis(),
+                        lastSenderId = ""
                     )
 
                 onSetSelectedChat(session, otherUserId)
