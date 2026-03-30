@@ -71,6 +71,19 @@
                 <data android:scheme="picflick" android:host="profile" />
                 <data android:scheme="picflick" android:host="chat" />
             </intent-filter>
+
+            <!-- Android share target: Share images from Gallery into PicFlick -->
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="image/*" />
+            </intent-filter>
+
+            <intent-filter>
+                <action android:name="android.intent.action.SEND_MULTIPLE" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="image/*" />
+            </intent-filter>
             
 
         </activity>

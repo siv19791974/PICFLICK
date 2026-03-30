@@ -1006,17 +1006,74 @@ private fun NotificationsScreenContent(
                 )
             }
 
+            if (flickId.isBlank()) return@NotificationsScreen
+
             com.picflick.app.repository.FlickRepository.getInstance().getFlickById(flickId) { result ->
                 when (result) {
                     is com.picflick.app.data.Result.Success -> {
                         selectedNotificationPhoto = result.data
                     }
-                    else -> Unit
+                    else -> {
+                        if (selectedNotificationPhoto == null && !imageUrl.isNullOrBlank()) {
+                            selectedNotificationPhoto = Flick(
+                                id = flickId,
+                                userId = userId,
+                                userName = "",
+                                userPhotoUrl = "",
+                                imageUrl = imageUrl,
+                                description = "",
+                                timestamp = System.currentTimeMillis(),
+                                reactions = emptyMap(),
+                                commentCount = 0,
+                                privacy = "friends",
+                                taggedFriends = emptyList(),
+                                reportCount = 0
+                            )
+                        }
+                    }
                 }
             }
         },
-        onChatClick = { _, _, _, _ ->
-            onScreenChange(Screen.Chats)
+        onChatClick = { chatId, otherUserId, otherUserName, otherUserPhoto ->
+            fun openChatDetail(targetChatId: String) {
+                val session = chatViewModel.chatSessions.firstOrNull { it.id == targetChatId }
+                    ?: ChatSession(
+                        id = targetChatId,
+                        participants = listOf(userProfile.uid, otherUserId),
+                        participantNames = mapOf(
+                            userProfile.uid to userProfile.displayName,
+                            otherUserId to otherUserName
+                        ),
+                        participantPhotos = mapOf(
+                            userProfile.uid to userProfile.photoUrl,
+                            otherUserId to otherUserPhoto
+                        ),
+                        isGroup = false,
+                        unreadCount = 0,
+                        lastMessage = "",
+                        lastMessageTimestamp = System.currentTimeMillis(),
+                        lastMessageSenderId = ""
+                    )
+
+                onSetSelectedChat(session, otherUserId)
+                onScreenChange(Screen.ChatDetail)
+            }
+
+            when {
+                chatId.isNotBlank() -> openChatDetail(chatId)
+                otherUserId.isNotBlank() -> {
+                    chatViewModel.startChat(
+                        userId = userProfile.uid,
+                        otherUserId = otherUserId,
+                        userName = userProfile.displayName,
+                        otherUserName = otherUserName.ifBlank { "User" },
+                        userPhoto = userProfile.photoUrl,
+                        otherUserPhoto = otherUserPhoto,
+                        onChatReady = { readyChatId -> openChatDetail(readyChatId) }
+                    )
+                }
+                else -> onScreenChange(Screen.Chats)
+            }
         },
         onFindFriendsClick = { requesterId ->
             onScreenChange(Screen.FindFriends(priorityRequesterId = requesterId))

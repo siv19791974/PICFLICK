@@ -64,6 +64,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.edit
 import com.google.firebase.firestore.FirebaseFirestore
+import com.picflick.app.data.Feedback
 import com.picflick.app.data.UserProfile
 import com.picflick.app.navigation.Screen
 import com.picflick.app.ui.theme.ThemeManager
@@ -106,11 +107,67 @@ fun DeveloperScreen(
     var showClearCacheDialog by remember { mutableStateOf(false) }
     var showResetLocalDialog by remember { mutableStateOf(false) }
 
+    val feedbackAssigneeUid = "LpSqE40IZGeAGMknTAEzysqp5l33"
+    var feedbackItems by remember { mutableStateOf<List<Feedback>>(emptyList()) }
+    var feedbackLoading by remember { mutableStateOf(false) }
+    var feedbackError by remember { mutableStateOf<String?>(null) }
+    var selectedFeedback by remember { mutableStateOf<Feedback?>(null) }
+
     val devLogs = remember { mutableStateListOf<String>() }
 
     var flagFastRefresh by rememberSaveable { mutableStateOf(false) }
     var flagAggressiveReconcile by rememberSaveable { mutableStateOf(false) }
     var flagVerboseLogging by rememberSaveable { mutableStateOf(true) }
+
+    fun loadFeedbackInbox() {
+        scope.launch {
+            feedbackLoading = true
+            feedbackError = null
+            try {
+                val snapshot = withContext(Dispatchers.IO) {
+                    FirebaseFirestore.getInstance()
+                        .collection("feedback")
+                        .whereEqualTo("assignedToUid", feedbackAssigneeUid)
+                        .orderBy("timestamp", com.google.firebase.firestore.Query.Direction.DESCENDING)
+                        .limit(80)
+                        .get()
+                        .await()
+                }
+
+                feedbackItems = snapshot.documents.mapNotNull { doc ->
+                    doc.toObject(Feedback::class.java)?.copy(id = doc.getString("id") ?: doc.id)
+                }
+                devLogs.add(0, "Feedback inbox loaded (${feedbackItems.size})")
+            } catch (e: Exception) {
+                feedbackError = e.message ?: "Failed to load feedback inbox"
+                devLogs.add(0, "Feedback inbox load failed: ${e.message}")
+            } finally {
+                feedbackLoading = false
+            }
+        }
+    }
+
+    fun markFeedbackResolved(feedback: Feedback) {
+        scope.launch {
+            try {
+                withContext(Dispatchers.IO) {
+                    FirebaseFirestore.getInstance()
+                        .collection("feedback")
+                        .document(feedback.id)
+                        .update("status", "RESOLVED")
+                        .await()
+                }
+                feedbackItems = feedbackItems.map {
+                    if (it.id == feedback.id) it.copy(status = "RESOLVED") else it
+                }
+                selectedFeedback = selectedFeedback?.takeIf { it.id != feedback.id } ?: feedback.copy(status = "RESOLVED")
+                devLogs.add(0, "Feedback marked RESOLVED: ${feedback.id}")
+                Toast.makeText(context, "Marked resolved", Toast.LENGTH_SHORT).show()
+            } catch (e: Exception) {
+                Toast.makeText(context, "Failed: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
 
     LaunchedEffect(Unit) {
         val pInfo = context.packageManager.getPackageInfo(context.packageName, 0)
@@ -129,6 +186,7 @@ fun DeveloperScreen(
         }
 
         networkStatus = if (isOnline(context)) "Online" else "Offline"
+        loadFeedbackInbox()
     }
 
     Scaffold(
@@ -191,7 +249,68 @@ fun DeveloperScreen(
 
             DevSectionCard("SUPPORT / FEEDBACK", isDarkMode) {
                 DevActionRow(Icons.Default.Info, "Open Contact / Feedback") { onNavigate(Screen.Contact) }
-                DevInfo("Assignee UID", "LpSqE40IZGeAGMknTAEzysqp5l33", isDarkMode)
+                DevActionRow(Icons.Default.Refresh, "Refresh Feedback Inbox") { loadFeedbackInbox() }
+                DevInfo("Assignee UID", feedbackAssigneeUid, isDarkMode)
+                DevInfo("Inbox count", feedbackItems.size.toString(), isDarkMode)
+
+                when {
+                    feedbackLoading -> {
+                        Text(
+                            text = "Loading inbox...",
+                            color = if (isDarkMode) Color.LightGray else Color.DarkGray,
+                            fontSize = 13.sp
+                        )
+                    }
+                    feedbackError != null -> {
+                        Text(
+                            text = feedbackError ?: "Unknown error",
+                            color = Color(0xFFFF6B6B),
+                            fontSize = 13.sp
+                        )
+                    }
+                    feedbackItems.isEmpty() -> {
+                        Text(
+                            text = "No feedback assigned.",
+                            color = if (isDarkMode) Color.Gray else Color.DarkGray,
+                            fontSize = 13.sp
+                        )
+                    }
+                    else -> {
+                        feedbackItems.take(12).forEach { item ->
+                            Card(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(top = 8.dp)
+                                    .clickable { selectedFeedback = item },
+                                colors = CardDefaults.cardColors(
+                                    containerColor = if (isDarkMode) Color(0xFF2A2A2D) else Color(0xFFF5F5F5)
+                                )
+                            ) {
+                                Column(modifier = Modifier.padding(12.dp)) {
+                                    Text(
+                                        text = item.subject.ifBlank { "(No subject)" },
+                                        color = if (isDarkMode) Color.White else Color.Black,
+                                        fontWeight = FontWeight.SemiBold,
+                                        fontSize = 14.sp
+                                    )
+                                    Spacer(modifier = Modifier.height(2.dp))
+                                    Text(
+                                        text = "${item.userName} • ${item.category} • ${item.status}",
+                                        color = if (isDarkMode) Color.LightGray else Color.DarkGray,
+                                        fontSize = 12.sp
+                                    )
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Text(
+                                        text = item.message,
+                                        color = if (isDarkMode) Color(0xFFCCCCCC) else Color(0xFF555555),
+                                        fontSize = 12.sp,
+                                        maxLines = 2
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
             }
 
             DevSectionCard("UPLOAD / FEED RECONCILE DEBUG", isDarkMode) {
@@ -334,6 +453,44 @@ fun DeveloperScreen(
 
             Spacer(modifier = Modifier.height(80.dp))
         }
+    }
+
+    selectedFeedback?.let { feedback ->
+        AlertDialog(
+            onDismissRequest = { selectedFeedback = null },
+            title = { Text(feedback.subject.ifBlank { "Feedback detail" }) },
+            text = {
+                Column {
+                    Text("From: ${feedback.userName} (${feedback.userEmail})")
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text("Category: ${feedback.category}")
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text("Status: ${feedback.status}")
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Text(feedback.message)
+                    if (feedback.appVersion.isNotBlank()) {
+                        Spacer(modifier = Modifier.height(10.dp))
+                        Text("App: ${feedback.appVersion}")
+                    }
+                    if (feedback.deviceInfo.isNotBlank()) {
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text("Device: ${feedback.deviceInfo}")
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    markFeedbackResolved(feedback)
+                }) {
+                    Text("Mark RESOLVED")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { selectedFeedback = null }) {
+                    Text("Close")
+                }
+            }
+        )
     }
 
     if (showClearCacheDialog) {

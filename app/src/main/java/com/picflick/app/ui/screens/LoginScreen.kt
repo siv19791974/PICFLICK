@@ -17,7 +17,9 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -63,6 +65,10 @@ fun LoginScreen(
     val coroutineScope = rememberCoroutineScope()
     var isLoading by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
+    var email by remember { mutableStateOf("") }
+    var password by remember { mutableStateOf("") }
+    var displayName by remember { mutableStateOf("") }
+    var isSignUpMode by remember { mutableStateOf(false) }
 
     // Get web client ID from secure string resources
     val webClientId = stringResource(id = R.string.default_web_client_id)
@@ -151,7 +157,58 @@ fun LoginScreen(
         }
     }
 
-    // Show error if any
+    fun signInWithEmail() {
+        coroutineScope.launch {
+            isLoading = true
+            errorMessage = null
+            authViewModel.signInWithEmail(
+                email = email,
+                password = password,
+                context = context
+            ) { success, message ->
+                isLoading = false
+                if (success) {
+                    onLoginSuccess()
+                } else {
+                    errorMessage = message ?: "Email sign in failed"
+                }
+            }
+        }
+    }
+
+    fun signUpWithEmail() {
+        coroutineScope.launch {
+            isLoading = true
+            errorMessage = null
+            authViewModel.signUpWithEmail(
+                email = email,
+                password = password,
+                displayName = displayName,
+                context = context
+            ) { success, message ->
+                isLoading = false
+                if (success) {
+                    onLoginSuccess()
+                } else {
+                    errorMessage = message ?: "Email sign up failed"
+                }
+            }
+        }
+    }
+
+    fun resetPassword() {
+        coroutineScope.launch {
+            authViewModel.resetPassword(email) { success, message ->
+                errorMessage = if (success) {
+                    "Password reset email sent"
+                } else {
+                    message ?: "Could not send reset email"
+                }
+            }
+        }
+    }
+
+    // Show error/status if any
     LaunchedEffect(errorMessage) {
         errorMessage?.let {
             delay(3000)
@@ -200,12 +257,48 @@ fun LoginScreen(
             )
         }
 
-        Spacer(modifier = Modifier.height(48.dp))
+        Spacer(modifier = Modifier.height(32.dp))
+
+        if (isSignUpMode) {
+            OutlinedTextField(
+                value = displayName,
+                onValueChange = { displayName = it },
+                label = { Text("Display Name") },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+                enabled = !isLoading
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+        }
+
+        OutlinedTextField(
+            value = email,
+            onValueChange = { email = it },
+            label = { Text("Email") },
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true,
+            enabled = !isLoading
+        )
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        OutlinedTextField(
+            value = password,
+            onValueChange = { password = it },
+            label = { Text("Password") },
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true,
+            enabled = !isLoading
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
 
         Button(
-            onClick = { signInWithGoogle() },
+            onClick = {
+                if (isSignUpMode) signUpWithEmail() else signInWithEmail()
+            },
             modifier = Modifier.fillMaxWidth(),
-            enabled = !isLoading
+            enabled = !isLoading && email.isNotBlank() && password.isNotBlank()
         ) {
             if (isLoading) {
                 CircularProgressIndicator(
@@ -213,10 +306,36 @@ fun LoginScreen(
                     color = Color.White
                 )
             } else {
-                Icon(Icons.Default.AccountCircle, contentDescription = null)
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(stringResource(R.string.login_sign_in_button))
+                Text(if (isSignUpMode) "Create account" else "Sign in with Email")
             }
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        TextButton(
+            onClick = { isSignUpMode = !isSignUpMode },
+            enabled = !isLoading
+        ) {
+            Text(if (isSignUpMode) "Already have an account? Sign in" else "No account? Create one")
+        }
+
+        TextButton(
+            onClick = { resetPassword() },
+            enabled = !isLoading && email.isNotBlank()
+        ) {
+            Text("Forgot password?")
+        }
+
+        Spacer(modifier = Modifier.height(20.dp))
+
+        Button(
+            onClick = { signInWithGoogle() },
+            modifier = Modifier.fillMaxWidth(),
+            enabled = !isLoading
+        ) {
+            Icon(Icons.Default.AccountCircle, contentDescription = null)
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(stringResource(R.string.login_sign_in_button))
         }
     }
 }

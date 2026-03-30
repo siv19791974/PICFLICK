@@ -296,14 +296,12 @@ fun NotificationsScreen(
                                                 NotificationType.MENTION,
                                                 NotificationType.PHOTO_ADDED -> {
                                                     val fallbackId = notification.flickId ?: notification.id
-                                                    if (!notification.flickImageUrl.isNullOrBlank()) {
-                                                        onPhotoClick(fallbackId, notification.flickImageUrl, notification.senderId)
-                                                    }
+                                                    onPhotoClick(fallbackId, notification.flickImageUrl, notification.senderId)
                                                 }
                                                 NotificationType.FOLLOW,
                                                 NotificationType.FOLLOW_ACCEPTED,
                                                 NotificationType.PROFILE_PHOTO_UPDATED -> onUserProfileClick(notification.senderId)
-                                                NotificationType.MESSAGE -> onChatClick("", notification.senderId, notification.senderName, notification.senderPhotoUrl)
+                                                NotificationType.MESSAGE -> onChatClick(notification.chatId.orEmpty(), notification.senderId, notification.senderName, notification.senderPhotoUrl)
                                                 NotificationType.SYSTEM -> {
                                                     val target = notification.targetScreen?.lowercase().orEmpty()
                                                     val hint = "${notification.title} ${notification.message}".lowercase()
@@ -333,9 +331,7 @@ fun NotificationsScreen(
                                     onUserProfileClick = onUserProfileClick,
                                     onPhotoClick = {
                                         val fallbackId = notification.flickId ?: notification.id
-                                        if (!notification.flickImageUrl.isNullOrBlank()) {
-                                            onPhotoClick(fallbackId, notification.flickImageUrl, notification.senderId)
-                                        }
+                                        onPhotoClick(fallbackId, notification.flickImageUrl, notification.senderId)
                                     },
                                     onAcceptFriendRequest = { senderId ->
                                         viewModel.acceptFollowRequest(userProfile.uid, senderId, notification.id)
@@ -374,14 +370,12 @@ fun NotificationsScreen(
                                                 NotificationType.MENTION,
                                                 NotificationType.PHOTO_ADDED -> {
                                                     val fallbackId = notification.flickId ?: notification.id
-                                                    if (!notification.flickImageUrl.isNullOrBlank()) {
-                                                        onPhotoClick(fallbackId, notification.flickImageUrl, notification.senderId)
-                                                    }
+                                                    onPhotoClick(fallbackId, notification.flickImageUrl, notification.senderId)
                                                 }
                                                 NotificationType.FOLLOW,
                                                 NotificationType.FOLLOW_ACCEPTED,
                                                 NotificationType.PROFILE_PHOTO_UPDATED -> onUserProfileClick(notification.senderId)
-                                                NotificationType.MESSAGE -> onChatClick("", notification.senderId, notification.senderName, notification.senderPhotoUrl)
+                                                NotificationType.MESSAGE -> onChatClick(notification.chatId.orEmpty(), notification.senderId, notification.senderName, notification.senderPhotoUrl)
                                                 NotificationType.SYSTEM -> {
                                                     val target = notification.targetScreen?.lowercase().orEmpty()
                                                     val hint = "${notification.title} ${notification.message}".lowercase()
@@ -411,9 +405,7 @@ fun NotificationsScreen(
                                     onUserProfileClick = onUserProfileClick,
                                     onPhotoClick = {
                                         val fallbackId = notification.flickId ?: notification.id
-                                        if (!notification.flickImageUrl.isNullOrBlank()) {
-                                            onPhotoClick(fallbackId, notification.flickImageUrl, notification.senderId)
-                                        }
+                                        onPhotoClick(fallbackId, notification.flickImageUrl, notification.senderId)
                                     },
                                     onAcceptFriendRequest = { senderId ->
                                         viewModel.acceptFollowRequest(userProfile.uid, senderId, notification.id)
@@ -509,16 +501,21 @@ private fun NotificationItem(
         }
     }
 
-    val displayMessage = when (notification.type) {
-        NotificationType.MESSAGE -> {
+    val isCommentHeartNotification = notification.type == NotificationType.REACTION &&
+        (notification.title.contains("comment", ignoreCase = true) || !notification.commentId.isNullOrBlank())
+    val commentReactionEmoji = notification.reactionEmoji?.takeIf { it.isNotBlank() } ?: "❤️"
+
+    val displayMessage = when {
+        notification.type == NotificationType.MESSAGE -> {
             val body = notification.message.ifBlank { "New message" }
             "New message: $body"
         }
-        NotificationType.PHOTO_ADDED -> "New flick uploaded"
-        NotificationType.PROFILE_PHOTO_UPDATED -> "$senderName updated their profile photo"
-        NotificationType.MENTION -> "You're tagged in a photo"
-        NotificationType.FRIEND_REQUEST -> "$senderName has requested to be your friend"
-        NotificationType.GROUP_INVITE -> notification.message.ifBlank { "$senderName invited you to a group" }
+        notification.type == NotificationType.PHOTO_ADDED -> "New flick uploaded"
+        notification.type == NotificationType.PROFILE_PHOTO_UPDATED -> "$senderName updated their profile photo"
+        notification.type == NotificationType.MENTION -> "You're tagged in a photo"
+        notification.type == NotificationType.FRIEND_REQUEST -> "$senderName has requested to be your friend"
+        notification.type == NotificationType.GROUP_INVITE -> notification.message.ifBlank { "$senderName invited you to a group" }
+        isCommentHeartNotification -> "your comment \"$commentReactionEmoji\""
         else -> notification.message.ifBlank { notification.title.ifBlank { "Notification" } }
     }
 

@@ -2,6 +2,9 @@ package com.picflick.app.ui.screens
 
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
+import java.io.File
+import java.io.FileOutputStream
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.material.ExperimentalMaterialApi
@@ -741,23 +744,47 @@ https://play.google.com/store/apps/details?id=com.picflick.app
 
 My username: ${userProfile.displayName}"""
 
+    val logoShareUri = remember {
+        runCatching {
+            val logoFile = File(context.cacheDir, "picflick_logo_512.png")
+            context.resources.openRawResource(com.picflick.app.R.drawable.ic_launcher_phone_box).use { input ->
+                FileOutputStream(logoFile).use { output ->
+                    input.copyTo(output)
+                }
+            }
+            androidx.core.content.FileProvider.getUriForFile(
+                context,
+                "${context.packageName}.fileprovider",
+                logoFile
+            )
+        }.getOrNull()
+    }
+
     fun shareGeneral() {
         val intent = Intent(Intent.ACTION_SEND).apply {
-            type = "text/plain"
+            type = if (logoShareUri != null) "image/png" else "text/plain"
             putExtra(Intent.EXTRA_TEXT, inviteMessage)
+            logoShareUri?.let {
+                putExtra(Intent.EXTRA_STREAM, it)
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
         }
         context.startActivity(Intent.createChooser(intent, "Invite friends to PicFlick"))
     }
 
     fun shareViaWhatsApp() {
         val intent = Intent(Intent.ACTION_SEND).apply {
-            type = "text/plain"
+            type = if (logoShareUri != null) "image/png" else "text/plain"
             setPackage("com.whatsapp")
             putExtra(Intent.EXTRA_TEXT, inviteMessage)
+            logoShareUri?.let {
+                putExtra(Intent.EXTRA_STREAM, it)
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
         }
         try {
             context.startActivity(intent)
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             // WhatsApp not installed, fallback to general share
             shareGeneral()
         }

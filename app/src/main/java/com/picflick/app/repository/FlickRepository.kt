@@ -1640,6 +1640,8 @@ class FlickRepository private constructor() {
                                 message = data["message"] as? String ?: "",
                                 flickId = data["flickId"] as? String,
                                 flickImageUrl = data["flickImageUrl"] as? String,
+                                commentId = data["commentId"] as? String,
+                                reactionEmoji = data["reactionEmoji"] as? String,
                                 chatId = data["chatId"] as? String,
                                 isRead = data["isRead"] as? Boolean ?: false,
                                 timestamp = (data["timestamp"] as? Long) ?: System.currentTimeMillis()
@@ -2298,32 +2300,39 @@ class FlickRepository private constructor() {
             .addOnSuccessListener { commentDoc ->
                 val commentOwnerId = commentDoc.getString("userId")
                 val commentText = commentDoc.getString("text") ?: ""
-                
+
                 // Don't notify if user likes their own comment
                 if (commentOwnerId != null && commentOwnerId != likerId) {
-                    val truncatedComment = if (commentText.length > 50)
-                        commentText.take(50) + "..."
-                    else
-                        commentText
+                    db.collection("flicks").document(flickId).get()
+                        .addOnSuccessListener { flickDoc ->
+                            val flickImageUrl = flickDoc.getString("imageUrl")
+                            val truncatedComment = if (commentText.length > 50)
+                                commentText.take(50) + "..."
+                            else
+                                commentText
 
-                    val notification = hashMapOf<String, Any?>(
-                        "id" to UUID.randomUUID().toString(),
-                        "userId" to commentOwnerId,
-                        "type" to "COMMENT_LIKE",
-                        "title" to "$likerName reacted to your comment",
-                        "message" to truncatedComment,
-                        "senderId" to likerId,
-                        "senderName" to likerName,
-                        "senderPhotoUrl" to likerPhotoUrl,
-                        "flickId" to flickId,
-                        "commentId" to commentId,
-                        "isRead" to false,
-                        "timestamp" to System.currentTimeMillis()
-                    )
+                            val notification = hashMapOf<String, Any?>(
+                                "id" to UUID.randomUUID().toString(),
+                                "userId" to commentOwnerId,
+                                "type" to "COMMENT_LIKE",
+                                "title" to "$likerName hearted your comment",
+                                "message" to "your comment \"❤️\"",
+                                "senderId" to likerId,
+                                "senderName" to likerName,
+                                "senderPhotoUrl" to likerPhotoUrl,
+                                "flickId" to flickId,
+                                "flickImageUrl" to flickImageUrl,
+                                "commentId" to commentId,
+                                "reactionEmoji" to "❤️",
+                                "commentPreview" to truncatedComment,
+                                "isRead" to false,
+                                "timestamp" to System.currentTimeMillis()
+                            )
 
-                    createNotificationIfAllowed(commentOwnerId, NotificationType.REACTION) {
-                        notification
-                    }
+                            createNotificationIfAllowed(commentOwnerId, NotificationType.REACTION) {
+                                notification
+                            }
+                        }
                 }
             }
     }
