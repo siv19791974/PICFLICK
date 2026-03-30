@@ -1305,6 +1305,38 @@ class FlickRepository private constructor() {
             }
     }
 
+    private suspend fun shouldCreateNotificationForUser(
+        userId: String,
+        type: NotificationType
+    ): Boolean {
+        return try {
+            val userDoc = db.collection("users").document(userId).get().await()
+            val profile = userDoc.toObject(UserProfile::class.java)
+            profile?.notificationPreferences?.shouldShowInApp(type) ?: true
+        } catch (_: Exception) {
+            true
+        }
+    }
+
+    private fun createNotificationIfAllowed(
+        userId: String,
+        type: NotificationType,
+        buildNotification: () -> HashMap<String, Any?>
+    ) {
+        repositoryScope.launch {
+            if (!shouldCreateNotificationForUser(userId, type)) {
+                android.util.Log.d("NotificationDebug", "Skipped $type notification for $userId due to preferences")
+                return@launch
+            }
+
+            try {
+                db.collection("notifications").add(buildNotification()).await()
+            } catch (e: Exception) {
+                android.util.Log.e("NotificationDebug", "FAILED to create $type notification: ${e.message}")
+            }
+        }
+    }
+
     /**
      * Create friend request notification
      */
@@ -1316,26 +1348,20 @@ class FlickRepository private constructor() {
     ) {
         android.util.Log.d("NotificationDebug", "Creating FRIEND_REQUEST notification: $requesterId -> $targetUserId")
         
-        val notification = hashMapOf(
-            "id" to UUID.randomUUID().toString(),
-            "userId" to targetUserId,
-            "senderId" to requesterId,
-            "senderName" to requesterName,
-            "senderPhotoUrl" to requesterPhotoUrl,
-            "type" to "FRIEND_REQUEST",
-            "title" to "Friend request from $requesterName",
-            "message" to "Accept or decline",
-            "isRead" to false,
-            "timestamp" to System.currentTimeMillis()
-        )
-
-        db.collection("notifications").add(notification)
-            .addOnSuccessListener { docRef ->
-                android.util.Log.d("NotificationDebug", "FRIEND_REQUEST notification created successfully: ${docRef.id}")
-            }
-            .addOnFailureListener { e ->
-                android.util.Log.e("NotificationDebug", "FAILED to create FRIEND_REQUEST notification: ${e.message}")
-            }
+        createNotificationIfAllowed(targetUserId, NotificationType.FRIEND_REQUEST) {
+            hashMapOf(
+                "id" to UUID.randomUUID().toString(),
+                "userId" to targetUserId,
+                "senderId" to requesterId,
+                "senderName" to requesterName,
+                "senderPhotoUrl" to requesterPhotoUrl,
+                "type" to "FRIEND_REQUEST",
+                "title" to "Friend request from $requesterName",
+                "message" to "Accept or decline",
+                "isRead" to false,
+                "timestamp" to System.currentTimeMillis()
+            )
+        }
     }
 
     /**
@@ -1348,25 +1374,19 @@ class FlickRepository private constructor() {
     ) {
         android.util.Log.d("NotificationDebug", "Creating FOLLOW_ACCEPTED notification: $accepterName accepted $requesterId")
         
-        val notification = hashMapOf(
-            "id" to UUID.randomUUID().toString(),
-            "userId" to requesterId,
-            "senderId" to accepterId,
-            "senderName" to accepterName,
-            "type" to "FOLLOW_ACCEPTED",
-            "title" to "$accepterName accepted your request",
-            "message" to "You're now connected",
-            "isRead" to false,
-            "timestamp" to System.currentTimeMillis()
-        )
-
-        db.collection("notifications").add(notification)
-            .addOnSuccessListener { docRef ->
-                android.util.Log.d("NotificationDebug", "FOLLOW_ACCEPTED notification created: ${docRef.id}")
-            }
-            .addOnFailureListener { e ->
-                android.util.Log.e("NotificationDebug", "FAILED to create FOLLOW_ACCEPTED notification: ${e.message}")
-            }
+        createNotificationIfAllowed(requesterId, NotificationType.FOLLOW_ACCEPTED) {
+            hashMapOf(
+                "id" to UUID.randomUUID().toString(),
+                "userId" to requesterId,
+                "senderId" to accepterId,
+                "senderName" to accepterName,
+                "type" to "FOLLOW_ACCEPTED",
+                "title" to "$accepterName accepted your request",
+                "message" to "You're now connected",
+                "isRead" to false,
+                "timestamp" to System.currentTimeMillis()
+            )
+        }
     }
 
     // ==================== END FRIEND REQUEST SYSTEM ====================
@@ -1501,26 +1521,30 @@ class FlickRepository private constructor() {
                 followers.forEach { followerId ->
                     android.util.Log.d("NotificationDebug", "Creating notification for follower: $followerId")
                     
-                    val notification = hashMapOf(
-                        "id" to UUID.randomUUID().toString(),
-                        "userId" to followerId,
-                        "senderId" to flick.userId,
-                        "senderName" to flick.userName,
-                        "senderPhotoUrl" to userPhotoUrl,
-                        "type" to "PHOTO_ADDED",
-                        "title" to "${flick.userName} added a new photo",
-                        "message" to "Check it out!",
-                        "flickId" to flick.id,
-                        "flickImageUrl" to flick.imageUrl,
-                        "isRead" to false,
-                        "timestamp" to System.currentTimeMillis()
-                    )
+                    if (shouldCreateNotificationForUser(followerId, NotificationType.PHOTO_ADDED)) {
+                        val notification = hashMapOf(
+                            "id" to UUID.randomUUID().toString(),
+                            "userId" to followerId,
+                            "senderId" to flick.userId,
+                            "senderName" to flick.userName,
+                            "senderPhotoUrl" to userPhotoUrl,
+                            "type" to "PHOTO_ADDED",
+                            "title" to "${flick.userName} added a new photo",
+                            "message" to "Check it out!",
+                            "flickId" to flick.id,
+                            "flickImageUrl" to flick.imageUrl,
+                            "isRead" to false,
+                            "timestamp" to System.currentTimeMillis()
+                        )
 
-                    try {
-                        db.collection("notifications").add(notification).await()
-                        android.util.Log.d("NotificationDebug", "PHOTO_ADDED notification created for $followerId")
-                    } catch (e: Exception) {
-                        android.util.Log.e("NotificationDebug", "Failed to create notification for $followerId: ${e.message}")
+                        try {
+                            db.collection("notifications").add(notification).await()
+                            android.util.Log.d("NotificationDebug", "PHOTO_ADDED notification created for $followerId")
+                        } catch (e: Exception) {
+                            android.util.Log.e("NotificationDebug", "Failed to create notification for $followerId: ${e.message}")
+                        }
+                    } else {
+                        android.util.Log.d("NotificationDebug", "Skipped PHOTO_ADDED notification for $followerId due to preferences")
                     }
                 }
             } catch (e: Exception) {
@@ -1553,20 +1577,22 @@ class FlickRepository private constructor() {
             for (friendId in mutualFriends) {
                 if (friendId == userId) continue
 
-                val notification = hashMapOf(
-                    "id" to UUID.randomUUID().toString(),
-                    "userId" to friendId,
-                    "senderId" to userId,
-                    "senderName" to userName,
-                    "senderPhotoUrl" to userPhotoUrl,
-                    "type" to "PROFILE_PHOTO_UPDATED",
-                    "title" to "$userName updated their profile picture",
-                    "message" to "Tap to view profile",
-                    "isRead" to false,
-                    "timestamp" to now
-                )
+                if (shouldCreateNotificationForUser(friendId, NotificationType.PROFILE_PHOTO_UPDATED)) {
+                    val notification = hashMapOf(
+                        "id" to UUID.randomUUID().toString(),
+                        "userId" to friendId,
+                        "senderId" to userId,
+                        "senderName" to userName,
+                        "senderPhotoUrl" to userPhotoUrl,
+                        "type" to "PROFILE_PHOTO_UPDATED",
+                        "title" to "$userName updated their profile picture",
+                        "message" to "Tap to view profile",
+                        "isRead" to false,
+                        "timestamp" to now
+                    )
 
-                db.collection("notifications").add(notification).await()
+                    db.collection("notifications").add(notification).await()
+                }
             }
 
             Result.Success(Unit)
@@ -1766,29 +1792,23 @@ class FlickRepository private constructor() {
                 val emoji = reactionType.toEmoji()
                 val displayName = reactionType.toDisplayName()
 
-                val notification = hashMapOf(
-                    "id" to UUID.randomUUID().toString(),
-                    "userId" to ownerId,
-                    "senderId" to reactorId,
-                    "senderName" to reactorName,
-                    "senderPhotoUrl" to reactorPhotoUrl,
-                    "type" to "REACTION",
-                    "title" to "$reactorName reacted $emoji to your photo",
-                    "message" to "$displayName reaction",
-                    "flickId" to flickId,
-                    "flickImageUrl" to flickImageUrl,
-                    "reactionType" to reactionType.name,
-                    "isRead" to false,
-                    "timestamp" to System.currentTimeMillis()
-                )
-
-                db.collection("notifications").add(notification)
-                    .addOnSuccessListener { docRef ->
-                        android.util.Log.d("NotificationDebug", "REACTION notification created: ${docRef.id}")
-                    }
-                    .addOnFailureListener { e ->
-                        android.util.Log.e("NotificationDebug", "FAILED to create REACTION notification: ${e.message}")
-                    }
+                createNotificationIfAllowed(ownerId, NotificationType.REACTION) {
+                    hashMapOf(
+                        "id" to UUID.randomUUID().toString(),
+                        "userId" to ownerId,
+                        "senderId" to reactorId,
+                        "senderName" to reactorName,
+                        "senderPhotoUrl" to reactorPhotoUrl,
+                        "type" to "REACTION",
+                        "title" to "$reactorName reacted $emoji to your photo",
+                        "message" to "$displayName reaction",
+                        "flickId" to flickId,
+                        "flickImageUrl" to flickImageUrl,
+                        "reactionType" to reactionType.name,
+                        "isRead" to false,
+                        "timestamp" to System.currentTimeMillis()
+                    )
+                }
             }
             .addOnFailureListener { e ->
                 android.util.Log.e("NotificationDebug", "Failed to get flick for reaction notification: ${e.message}")
@@ -1866,30 +1886,24 @@ class FlickRepository private constructor() {
                 val flickImageUrl = flickDoc.getString("imageUrl")
                 val truncatedComment = if (commentText.length > 30) commentText.take(30) + "..." else commentText
 
-                val notification = hashMapOf(
-                    "id" to UUID.randomUUID().toString(),
-                    "userId" to ownerId,
-                    "senderId" to reactorId,
-                    "senderName" to reactorName,
-                    "senderPhotoUrl" to reactorPhotoUrl,
-                    "type" to "REACTION",
-                    "title" to "$reactorName reacted $emoji to your comment",
-                    "message" to "$emoji \"$truncatedComment\"",
-                    "flickId" to flickId,
-                    "flickImageUrl" to flickImageUrl,
-                    "commentId" to commentId,
-                    "reactionEmoji" to emoji,
-                    "isRead" to false,
-                    "timestamp" to System.currentTimeMillis()
-                )
-
-                db.collection("notifications").add(notification)
-                    .addOnSuccessListener { docRef ->
-                        android.util.Log.d("NotificationDebug", "COMMENT REACTION notification created: ${docRef.id}")
-                    }
-                    .addOnFailureListener { e ->
-                        android.util.Log.e("NotificationDebug", "FAILED to create comment reaction notification: ${e.message}")
-                    }
+                createNotificationIfAllowed(ownerId, NotificationType.REACTION) {
+                    hashMapOf(
+                        "id" to UUID.randomUUID().toString(),
+                        "userId" to ownerId,
+                        "senderId" to reactorId,
+                        "senderName" to reactorName,
+                        "senderPhotoUrl" to reactorPhotoUrl,
+                        "type" to "REACTION",
+                        "title" to "$reactorName reacted $emoji to your comment",
+                        "message" to "$emoji \"$truncatedComment\"",
+                        "flickId" to flickId,
+                        "flickImageUrl" to flickImageUrl,
+                        "commentId" to commentId,
+                        "reactionEmoji" to emoji,
+                        "isRead" to false,
+                        "timestamp" to System.currentTimeMillis()
+                    )
+                }
             }
     }
 
@@ -1917,28 +1931,22 @@ class FlickRepository private constructor() {
                     else
                         commentText
 
-                    val notification = hashMapOf(
-                        "id" to UUID.randomUUID().toString(),
-                        "userId" to ownerId,
-                        "senderId" to commenterId,
-                        "senderName" to commenterName,
-                        "senderPhotoUrl" to commenterPhotoUrl,
-                        "type" to "COMMENT",
-                        "title" to "$commenterName commented on your photo",
-                        "message" to truncatedComment,
-                        "flickId" to flickId,
-                        "flickImageUrl" to flickImageUrl,
-                        "isRead" to false,
-                        "timestamp" to System.currentTimeMillis()
-                    )
-
-                    db.collection("notifications").add(notification)
-                        .addOnSuccessListener { docRef ->
-                            android.util.Log.d("NotificationDebug", "COMMENT notification created: ${docRef.id}")
-                        }
-                        .addOnFailureListener { e ->
-                            android.util.Log.e("NotificationDebug", "FAILED to create COMMENT notification: ${e.message}")
-                        }
+                    createNotificationIfAllowed(ownerId, NotificationType.COMMENT) {
+                        hashMapOf(
+                            "id" to UUID.randomUUID().toString(),
+                            "userId" to ownerId,
+                            "senderId" to commenterId,
+                            "senderName" to commenterName,
+                            "senderPhotoUrl" to commenterPhotoUrl,
+                            "type" to "COMMENT",
+                            "title" to "$commenterName commented on your photo",
+                            "message" to truncatedComment,
+                            "flickId" to flickId,
+                            "flickImageUrl" to flickImageUrl,
+                            "isRead" to false,
+                            "timestamp" to System.currentTimeMillis()
+                        )
+                    }
                 } else {
                     android.util.Log.d("NotificationDebug", "Skipping comment notification - user commented on own photo")
                 }
@@ -1962,21 +1970,23 @@ class FlickRepository private constructor() {
             
             val randomMessage = motivationalMessages.random()
             
-            val notification = hashMapOf(
-                "id" to UUID.randomUUID().toString(),
-                "userId" to userId,
-                "senderId" to "system",
-                "senderName" to "PicFlick",
-                "senderPhotoUrl" to "",
-                "type" to "STREAK_REMINDER",
-                "title" to "���� Streak Alert!",
-                "message" to randomMessage,
-                "isRead" to false,
-                "timestamp" to System.currentTimeMillis(),
-                "streakCount" to currentStreak
-            )
+            if (shouldCreateNotificationForUser(userId, NotificationType.STREAK_REMINDER)) {
+                val notification = hashMapOf(
+                    "id" to UUID.randomUUID().toString(),
+                    "userId" to userId,
+                    "senderId" to "system",
+                    "senderName" to "PicFlick",
+                    "senderPhotoUrl" to "",
+                    "type" to "STREAK_REMINDER",
+                    "title" to "���� Streak Alert!",
+                    "message" to randomMessage,
+                    "isRead" to false,
+                    "timestamp" to System.currentTimeMillis(),
+                    "streakCount" to currentStreak
+                )
 
-            db.collection("notifications").add(notification).await()
+                db.collection("notifications").add(notification).await()
+            }
             Result.Success(Unit)
         } catch (e: Exception) {
             Result.Error(e, "Failed to create streak reminder")
@@ -1999,28 +2009,22 @@ class FlickRepository private constructor() {
             .addOnSuccessListener { flickDoc ->
                 val flickImageUrl = flickDoc.getString("imageUrl")
 
-                val notification = hashMapOf(
-                    "id" to UUID.randomUUID().toString(),
-                    "userId" to taggedUserId,
-                    "senderId" to photoOwnerId,
-                    "senderName" to photoOwnerName,
-                    "senderPhotoUrl" to photoOwnerPhotoUrl,
-                    "type" to "MENTION",
-                    "title" to "$photoOwnerName tagged you",
-                    "message" to "You're in a photo!",
-                    "flickId" to flickId,
-                    "flickImageUrl" to flickImageUrl,
-                    "isRead" to false,
-                    "timestamp" to System.currentTimeMillis()
-                )
-
-                db.collection("notifications").add(notification)
-                    .addOnSuccessListener { docRef ->
-                        android.util.Log.d("NotificationDebug", "TAG notification created: ${docRef.id}")
-                    }
-                    .addOnFailureListener { e ->
-                        android.util.Log.e("NotificationDebug", "FAILED to create TAG notification: ${e.message}")
-                    }
+                createNotificationIfAllowed(taggedUserId, NotificationType.MENTION) {
+                    hashMapOf(
+                        "id" to UUID.randomUUID().toString(),
+                        "userId" to taggedUserId,
+                        "senderId" to photoOwnerId,
+                        "senderName" to photoOwnerName,
+                        "senderPhotoUrl" to photoOwnerPhotoUrl,
+                        "type" to "MENTION",
+                        "title" to "$photoOwnerName tagged you",
+                        "message" to "You're in a photo!",
+                        "flickId" to flickId,
+                        "flickImageUrl" to flickImageUrl,
+                        "isRead" to false,
+                        "timestamp" to System.currentTimeMillis()
+                    )
+                }
             }
             .addOnFailureListener { e ->
                 android.util.Log.e("NotificationDebug", "Failed to get flick for TAG notification: ${e.message}")
@@ -2035,20 +2039,20 @@ class FlickRepository private constructor() {
         followerName: String,
         targetUserId: String
     ) {
-        val notification = hashMapOf(
-            "id" to UUID.randomUUID().toString(),
-            "userId" to targetUserId,
-            "senderId" to followerId,
-            "senderName" to followerName,
-            "senderPhotoUrl" to "",
-            "type" to "FOLLOW",
-            "title" to "$followerName started following you",
-            "message" to "You have a new follower!",
-            "isRead" to false,
-            "timestamp" to System.currentTimeMillis()
-        )
-
-        db.collection("notifications").add(notification)
+        createNotificationIfAllowed(targetUserId, NotificationType.FOLLOW) {
+            hashMapOf(
+                "id" to UUID.randomUUID().toString(),
+                "userId" to targetUserId,
+                "senderId" to followerId,
+                "senderName" to followerName,
+                "senderPhotoUrl" to "",
+                "type" to "FOLLOW",
+                "title" to "$followerName started following you",
+                "message" to "You have a new follower!",
+                "isRead" to false,
+                "timestamp" to System.currentTimeMillis()
+            )
+        }
     }
 
     /**
@@ -2234,13 +2238,9 @@ class FlickRepository private constructor() {
                         "timestamp" to System.currentTimeMillis()
                     )
 
-                    db.collection("notifications").add(notification)
-                        .addOnSuccessListener { docRef ->
-                            android.util.Log.d("NotificationDebug", "COMMENT_REPLY notification created: ${docRef.id}")
-                        }
-                        .addOnFailureListener { e ->
-                            android.util.Log.e("NotificationDebug", "FAILED to create comment reply notification: ${e.message}")
-                        }
+                    createNotificationIfAllowed(commentOwnerId, NotificationType.COMMENT) {
+                        notification
+                    }
                 }
             }
     }
@@ -2321,13 +2321,9 @@ class FlickRepository private constructor() {
                         "timestamp" to System.currentTimeMillis()
                     )
 
-                    db.collection("notifications").add(notification)
-                        .addOnSuccessListener { docRef ->
-                            android.util.Log.d("NotificationDebug", "COMMENT_LIKE notification created: ${docRef.id}")
-                        }
-                        .addOnFailureListener { e ->
-                            android.util.Log.e("NotificationDebug", "FAILED to create comment like notification: ${e.message}")
-                        }
+                    createNotificationIfAllowed(commentOwnerId, NotificationType.REACTION) {
+                        notification
+                    }
                 }
             }
     }
