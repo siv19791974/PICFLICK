@@ -17,6 +17,7 @@ import com.picflick.app.data.UserProfile
 import com.picflick.app.repository.FlickRepository
 import com.picflick.app.utils.Analytics
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.FirebaseAuthException
 import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.firestore.ListenerRegistration
 import kotlinx.coroutines.launch
@@ -305,6 +306,103 @@ class AuthViewModel : ViewModel() {
                 }
             }
         }
+    }
+
+    fun signInWithEmail(
+        email: String,
+        password: String,
+        context: Context,
+        onResult: (Boolean, String?) -> Unit
+    ) {
+        val normalizedEmail = email.trim()
+        if (normalizedEmail.isBlank() || password.isBlank()) {
+            onResult(false, "Email and password are required")
+            return
+        }
+
+        auth.signInWithEmailAndPassword(normalizedEmail, password)
+            .addOnCompleteListener { task ->
+                if (task.isSuccessful) {
+                    auth.currentUser?.let { user ->
+                        saveUserToFirestore(user, context)
+                        onResult(true, null)
+                    } ?: onResult(false, "Signed in but user not available")
+                } else {
+                    val message = (task.exception as? FirebaseAuthException)?.localizedMessage
+                        ?: task.exception?.message
+                        ?: "Email sign in failed"
+                    onResult(false, message)
+                }
+            }
+    }
+
+    fun signUpWithEmail(
+        email: String,
+        password: String,
+        displayName: String,
+        context: Context,
+        onResult: (Boolean, String?) -> Unit
+    ) {
+        val normalizedEmail = email.trim()
+        val normalizedName = displayName.trim()
+        if (normalizedEmail.isBlank() || password.isBlank()) {
+            onResult(false, "Email and password are required")
+            return
+        }
+        if (password.length < 6) {
+            onResult(false, "Password must be at least 6 characters")
+            return
+        }
+
+        auth.createUserWithEmailAndPassword(normalizedEmail, password)
+            .addOnCompleteListener { task ->
+                if (task.isSuccessful) {
+                    val user = auth.currentUser
+                    if (user == null) {
+                        onResult(false, "Account created but user not available")
+                        return@addOnCompleteListener
+                    }
+
+                    if (normalizedName.isNotBlank()) {
+                        val profileUpdates = com.google.firebase.auth.UserProfileChangeRequest.Builder()
+                            .setDisplayName(normalizedName)
+                            .build()
+                        user.updateProfile(profileUpdates)
+                            .addOnCompleteListener {
+                                saveUserToFirestore(user, context)
+                                onResult(true, null)
+                            }
+                    } else {
+                        saveUserToFirestore(user, context)
+                        onResult(true, null)
+                    }
+                } else {
+                    val message = (task.exception as? FirebaseAuthException)?.localizedMessage
+                        ?: task.exception?.message
+                        ?: "Email sign up failed"
+                    onResult(false, message)
+                }
+            }
+    }
+
+    fun resetPassword(email: String, onResult: (Boolean, String?) -> Unit) {
+        val normalizedEmail = email.trim()
+        if (normalizedEmail.isBlank()) {
+            onResult(false, "Enter your email first")
+            return
+        }
+
+        auth.sendPasswordResetEmail(normalizedEmail)
+            .addOnCompleteListener { task ->
+                if (task.isSuccessful) {
+                    onResult(true, null)
+                } else {
+                    val message = (task.exception as? FirebaseAuthException)?.localizedMessage
+                        ?: task.exception?.message
+                        ?: "Failed to send reset email"
+                    onResult(false, message)
+                }
+            }
     }
 
     /**

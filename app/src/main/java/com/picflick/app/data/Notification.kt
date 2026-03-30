@@ -14,6 +14,8 @@ data class Notification(
     val message: String = "",
     val flickId: String? = null,       // Related photo (if any)
     val flickImageUrl: String? = null,   // Thumbnail of related photo
+    val commentId: String? = null,       // Related comment id (if any)
+    val reactionEmoji: String? = null,   // Related reaction emoji
     val chatId: String? = null,          // Related chat (for MESSAGE notifications)
     val groupId: String? = null,         // Related group (for GROUP_INVITE)
     val groupName: String? = null,       // Group display name
@@ -44,10 +46,14 @@ enum class NotificationType {
  * Safely parse notification type from string value
  */
 fun parseNotificationType(value: String?): NotificationType {
-    return try {
-        value?.let { NotificationType.valueOf(it) } ?: NotificationType.LIKE
-    } catch (_: IllegalArgumentException) {
-        NotificationType.LIKE
+    val normalized = value?.uppercase()
+    return when (normalized) {
+        "COMMENT_LIKE" -> NotificationType.REACTION
+        else -> try {
+            normalized?.let { NotificationType.valueOf(it) } ?: NotificationType.LIKE
+        } catch (_: IllegalArgumentException) {
+            NotificationType.LIKE
+        }
     }
 }
 

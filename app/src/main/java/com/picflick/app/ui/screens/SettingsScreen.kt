@@ -3,6 +3,7 @@ package com.picflick.app.ui.screens
 import android.app.Activity
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.os.Build
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -49,6 +50,7 @@ import com.picflick.app.data.getColor
 import com.picflick.app.data.getDarkColor
 import com.picflick.app.data.getDisplayName
 import com.picflick.app.data.getLightColor
+import com.picflick.app.repository.FlickRepository
 import com.picflick.app.ui.theme.ThemeManager
 import com.picflick.app.ui.theme.isDarkModeBackground
 import com.picflick.app.ui.components.AddPhotoStyleActionSheet
@@ -62,6 +64,7 @@ import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ListenerRegistration
 import com.google.firebase.storage.FirebaseStorage
 import com.google.firebase.storage.StorageReference
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import java.util.Locale
 
@@ -99,6 +102,29 @@ fun SettingsScreen(
     var showDeleteAccountFinalDialog by remember { mutableStateOf(false) }
     var showClearCacheDialog by remember { mutableStateOf(false) }
     var showAppearanceDialog by remember { mutableStateOf(false) }
+    var showContactPopup by remember { mutableStateOf(false) }
+    var contactSubject by remember { mutableStateOf("") }
+    var contactMessage by remember { mutableStateOf("") }
+    var contactCategory by remember { mutableStateOf("GENERAL") }
+    var isContactSubmitting by remember { mutableStateOf(false) }
+    var contactErrorMessage by remember { mutableStateOf<String?>(null) }
+    var showContactCategoryPopup by remember { mutableStateOf(false) }
+    val contactCategories = listOf(
+        "GENERAL" to "General Feedback",
+        "BUG" to "Bug Report",
+        "FEATURE" to "Feature Request",
+        "BILLING" to "Billing Issue",
+        "OTHER" to "Other"
+    )
+    val contactAppVersion = remember {
+        runCatching { context.packageManager.getPackageInfo(context.packageName, 0).versionName ?: "Unknown" }
+            .getOrDefault("Unknown")
+    }
+    val contactDeviceInfo = remember {
+        "Android ${Build.VERSION.RELEASE} (${Build.MANUFACTURER} ${Build.MODEL})"
+    }
+    val contactRepository = remember { FlickRepository.getInstance() }
+    val settingsScope = rememberCoroutineScope()
     var showLanguageDialog by remember { mutableStateOf(false) }
     var showDeveloperPasswordDialog by remember { mutableStateOf(false) }
     var developerPasswordInput by remember { mutableStateOf("") }
@@ -263,7 +289,10 @@ fun SettingsScreen(
                     icon = Icons.Default.Info,
                     title = "Contact Us",
                     subtitle = "Get help and support",
-                    onClick = onHelpSupport
+                    onClick = {
+                        contactErrorMessage = null
+                        showContactPopup = true
+                    }
                 )
                 SettingsItem(
                     icon = Icons.Default.Menu,
@@ -528,6 +557,196 @@ fun SettingsScreen(
             containerColor = if (isDarkMode) Color(0xFF1C1C1E) else Color.White,
             titleContentColor = if (isDarkMode) Color.White else Color.Black,
             textContentColor = if (isDarkMode) Color.White else Color.Black
+        )
+    }
+
+    if (showContactPopup) {
+        ModalBottomSheet(
+            onDismissRequest = { showContactPopup = false },
+            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+            containerColor = Color(0xFF121212),
+            contentColor = Color.White,
+            dragHandle = {
+                Surface(
+                    modifier = Modifier
+                        .padding(top = 8.dp)
+                        .size(width = 44.dp, height = 5.dp),
+                    shape = RoundedCornerShape(50),
+                    color = Color.White.copy(alpha = 0.28f)
+                ) {}
+            }
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp, vertical = 16.dp)
+            ) {
+                Text(
+                    text = "Contact Us",
+                    color = Color.White,
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold
+                )
+
+                Spacer(modifier = Modifier.height(14.dp))
+
+                OutlinedTextField(
+                    value = contactCategories.find { it.first == contactCategory }?.second ?: "General Feedback",
+                    onValueChange = {},
+                    readOnly = true,
+                    label = { Text("Category") },
+                    trailingIcon = {
+                        IconButton(onClick = { if (!isContactSubmitting) showContactCategoryPopup = true }) {
+                            Icon(Icons.Default.Edit, contentDescription = "Choose category")
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = !isContactSubmitting,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = Color.White,
+                        unfocusedTextColor = Color.White,
+                        focusedBorderColor = Color(0xFF2E86DE),
+                        unfocusedBorderColor = Color(0xFF2E86DE).copy(alpha = 0.45f),
+                        focusedLabelColor = Color(0xFFB7BDC9),
+                        unfocusedLabelColor = Color(0xFFB7BDC9)
+                    )
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                OutlinedTextField(
+                    value = contactSubject,
+                    onValueChange = { contactSubject = it },
+                    label = { Text("Subject") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    enabled = !isContactSubmitting,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = Color.White,
+                        unfocusedTextColor = Color.White,
+                        focusedBorderColor = Color(0xFF2E86DE),
+                        unfocusedBorderColor = Color(0xFF2E86DE).copy(alpha = 0.45f),
+                        focusedLabelColor = Color(0xFFB7BDC9),
+                        unfocusedLabelColor = Color(0xFFB7BDC9)
+                    )
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                OutlinedTextField(
+                    value = contactMessage,
+                    onValueChange = { contactMessage = it },
+                    label = { Text("Message") },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(170.dp),
+                    minLines = 4,
+                    maxLines = 8,
+                    enabled = !isContactSubmitting,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = Color.White,
+                        unfocusedTextColor = Color.White,
+                        focusedBorderColor = Color(0xFF2E86DE),
+                        unfocusedBorderColor = Color(0xFF2E86DE).copy(alpha = 0.45f),
+                        focusedLabelColor = Color(0xFFB7BDC9),
+                        unfocusedLabelColor = Color(0xFFB7BDC9)
+                    )
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Text(
+                    text = "App Version: $contactAppVersion\nDevice: $contactDeviceInfo",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color(0xFFB7BDC9)
+                )
+
+                contactErrorMessage?.let {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = it,
+                        color = Color(0xFFFF6B6B),
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(14.dp))
+
+                val canSubmitFeedback = contactSubject.isNotBlank() && contactMessage.isNotBlank() && !isContactSubmitting
+
+                Button(
+                    onClick = {
+                        isContactSubmitting = true
+                        contactErrorMessage = null
+                        settingsScope.launch {
+                            val result = contactRepository.submitFeedback(
+                                userId = userProfile.uid,
+                                userName = userProfile.displayName.ifBlank { "Anonymous" },
+                                userEmail = userProfile.email.ifBlank { "no-email@picflick.app" },
+                                subject = contactSubject,
+                                message = contactMessage,
+                                category = contactCategory,
+                                appVersion = contactAppVersion,
+                                deviceInfo = contactDeviceInfo
+                            )
+
+                            when (result) {
+                                is com.picflick.app.data.Result.Success -> {
+                                    android.widget.Toast.makeText(context, "Feedback sent", android.widget.Toast.LENGTH_SHORT).show()
+                                    showContactPopup = false
+                                    contactSubject = ""
+                                    contactMessage = ""
+                                }
+                                is com.picflick.app.data.Result.Error -> {
+                                    contactErrorMessage = result.message ?: "Failed to submit feedback"
+                                }
+                                else -> Unit
+                            }
+
+                            isContactSubmitting = false
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = canSubmitFeedback,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFF2E86DE),
+                        disabledContainerColor = Color(0xFFD3D3D3),
+                        contentColor = Color.White,
+                        disabledContentColor = Color.White
+                    )
+                ) {
+                    if (isContactSubmitting) {
+                        CircularProgressIndicator(modifier = Modifier.size(20.dp), color = Color.White)
+                    } else {
+                        Icon(Icons.AutoMirrored.Filled.Send, contentDescription = null)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Submit Feedback", color = Color.White)
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(10.dp))
+            }
+        }
+    }
+
+    if (showContactCategoryPopup) {
+        AddPhotoStyleActionSheet(
+            title = "Select category",
+            options = contactCategories.map { (value, label) ->
+                ActionSheetOption(
+                    icon = Icons.Default.Edit,
+                    title = label,
+                    subtitle = if (value == contactCategory) "Currently selected" else "Use for this message",
+                    accentColor = Color(0xFF2E86DE),
+                    onClick = {
+                        contactCategory = value
+                        showContactCategoryPopup = false
+                    }
+                )
+            },
+            onDismiss = { showContactCategoryPopup = false },
+            cancelTitle = "Close",
+            cancelSubtitle = "Keep current category"
         )
     }
 
@@ -930,6 +1149,7 @@ private fun ProfileHeaderWithStorage(
                             .size(8.dp)
                             .clip(CircleShape)
                             .background(tierColor)
+                            .border(1.dp, Color.Black, CircleShape)
                     )
                     Spacer(modifier = Modifier.width(6.dp))
                     // Tier Name

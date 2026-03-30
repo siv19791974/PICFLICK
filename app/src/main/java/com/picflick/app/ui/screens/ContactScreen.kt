@@ -2,13 +2,14 @@ package com.picflick.app.ui.screens
 
 import android.os.Build
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Email
+import androidx.compose.material.icons.outlined.Menu
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -18,6 +19,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.picflick.app.data.UserProfile
 import com.picflick.app.repository.FlickRepository
+import com.picflick.app.ui.components.AddPhotoStyleActionSheet
+import com.picflick.app.ui.components.ActionSheetOption
 import com.picflick.app.ui.theme.ThemeManager
 import com.picflick.app.ui.theme.isDarkModeBackground
 import kotlinx.coroutines.launch
@@ -44,8 +47,8 @@ fun ContactScreen(
     var showSuccess by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
 
-    // Category dropdown state
-    var categoryExpanded by remember { mutableStateOf(false) }
+    // Category popup state
+    var showCategoryPopup by remember { mutableStateOf(false) }
     val categories = listOf(
         "GENERAL" to "General Feedback",
         "BUG" to "Bug Report",
@@ -74,6 +77,28 @@ fun ContactScreen(
             .fillMaxSize()
             .background(isDarkModeBackground(isDarkMode))
     ) {
+        if (showCategoryPopup) {
+            AddPhotoStyleActionSheet(
+                title = "Select category",
+                options = categories.map { (value, label) ->
+                    ActionSheetOption(
+                        icon = Icons.Default.Email,
+                        title = label,
+                        subtitle = if (value == selectedCategory) "Currently selected" else "Use for this message",
+                        accentColor = Color(0xFF2E86DE),
+                        onClick = {
+                            selectedCategory = value
+                            showCategoryPopup = false
+                        }
+                    )
+                },
+                onDismiss = { showCategoryPopup = false },
+                cancelTitle = "Close",
+                cancelSubtitle = "Keep current category",
+                cancelIcon = Icons.Outlined.Menu,
+                cancelAccentColor = Color(0xFF4B5563)
+            )
+        }
         // NO BANNER - banner is in MainActivity
 
         if (showSuccess) {
@@ -122,37 +147,19 @@ fun ContactScreen(
             ) {
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Category dropdown
-                ExposedDropdownMenuBox(
-                    expanded = categoryExpanded,
-                    onExpandedChange = { categoryExpanded = it },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    OutlinedTextField(
-                        value = categories.find { it.first == selectedCategory }?.second ?: "General Feedback",
-                        onValueChange = {},
-                        readOnly = true,
-                        label = { Text("Category") },
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = categoryExpanded) },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .menuAnchor(MenuAnchorType.PrimaryNotEditable, true)
-                    )
-                    ExposedDropdownMenu(
-                        expanded = categoryExpanded,
-                        onDismissRequest = { categoryExpanded = false }
-                    ) {
-                        categories.forEach { (value, label) ->
-                            DropdownMenuItem(
-                                text = { Text(label) },
-                                onClick = {
-                                    selectedCategory = value
-                                    categoryExpanded = false
-                                }
-                            )
+                OutlinedTextField(
+                    value = categories.find { it.first == selectedCategory }?.second ?: "General Feedback",
+                    onValueChange = {},
+                    readOnly = true,
+                    label = { Text("Category") },
+                    trailingIcon = {
+                        IconButton(onClick = { if (!isSubmitting) showCategoryPopup = true }) {
+                            Icon(Icons.Default.Email, contentDescription = "Choose category")
                         }
-                    }
-                }
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = !isSubmitting
+                )
 
                 Spacer(modifier = Modifier.height(16.dp))
 

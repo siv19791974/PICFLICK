@@ -94,6 +94,8 @@ class MainActivity : ComponentActivity() {
 
         // Handle push tap when app is launched from a killed/background state
         handlePushNotification(intent)
+        // Handle images shared from other apps (Gallery -> Share -> PicFlick)
+        handleShareIntent(intent)
 
         // Enforce visible system bars across all screens/devices
         WindowCompat.setDecorFitsSystemWindows(window, true)
@@ -124,15 +126,57 @@ class MainActivity : ComponentActivity() {
     var pushEventVersion by mutableStateOf(0)
         private set
 
+    // Store shared image URIs from external apps (Gallery -> Share -> PicFlick)
+    private var pendingSharedImageUris by mutableStateOf<List<Uri>>(emptyList())
+    var shareEventVersion by mutableStateOf(0)
+        private set
+
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
         // Handle push notification clicks
         handlePushNotification(intent)
+        // Handle share intents while app is already running
+        handleShareIntent(intent)
     }
 
     private fun android.os.Bundle.getFirstString(vararg keys: String): String? {
         return keys.firstNotNullOfOrNull { key -> getString(key)?.takeIf { it.isNotBlank() } }
+    }
+
+    private fun handleShareIntent(intent: Intent) {
+        val action = intent.action ?: return
+        if (action != Intent.ACTION_SEND && action != Intent.ACTION_SEND_MULTIPLE) return
+
+        val mimeType = intent.type.orEmpty()
+        if (!mimeType.startsWith("image/")) return
+
+        val sharedUris = mutableListOf<Uri>()
+
+        if (action == Intent.ACTION_SEND) {
+            val uri = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+                intent.getParcelableExtra(Intent.EXTRA_STREAM, Uri::class.java)
+            } else {
+                @Suppress("DEPRECATION")
+                intent.getParcelableExtra<Uri>(Intent.EXTRA_STREAM)
+            }
+            uri?.let { sharedUris.add(it) }
+        } else if (action == Intent.ACTION_SEND_MULTIPLE) {
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+                intent.getParcelableArrayListExtra(Intent.EXTRA_STREAM, Uri::class.java)
+                    ?.let { sharedUris.addAll(it) }
+            } else {
+                @Suppress("DEPRECATION")
+                intent.getParcelableArrayListExtra<Uri>(Intent.EXTRA_STREAM)
+                    ?.let { sharedUris.addAll(it) }
+            }
+        }
+
+        val uniqueUris = sharedUris.distinct()
+        if (uniqueUris.isEmpty()) return
+
+        pendingSharedImageUris = uniqueUris
+        shareEventVersion++
     }
 
     private fun handlePushNotification(intent: Intent) {
@@ -235,6 +279,14 @@ class MainActivity : ComponentActivity() {
 
     fun hasPendingPushData(): Boolean = pendingPushData != null
 
+    fun consumeSharedImageUris(): List<Uri> {
+        val uris = pendingSharedImageUris
+        pendingSharedImageUris = emptyList()
+        return uris
+    }
+
+    fun hasPendingSharedImages(): Boolean = pendingSharedImageUris.isNotEmpty()
+
     /**
      * Get current user ID from Firebase Auth
      */
@@ -282,6 +334,29 @@ fun MainScreen(
 
     var forceHomeResetVersion by remember { mutableIntStateOf(0) }
 
+    // In-app navigation history for one-step phone back behavior
+    var navigationHistory by remember { mutableStateOf<List<Screen>>(emptyList()) }
+    var lastObservedScreen by remember { mutableStateOf<Screen?>(null) }
+    var isPerformingBackNavigation by remember { mutableStateOf(false) }
+
+    fun navigateTo(screen: Screen) {
+        if (screen == currentScreen) return
+        navigationHistory = (navigationHistory + currentScreen).takeLast(120)
+        currentScreen = screen
+    }
+
+    fun navigateBackOneScreen() {
+        if (navigationHistory.isNotEmpty()) {
+            val previous = navigationHistory.last()
+            navigationHistory = navigationHistory.dropLast(1)
+            isPerformingBackNavigation = true
+            currentScreen = previous
+        } else if (currentScreen != Screen.Home) {
+            isPerformingBackNavigation = true
+            currentScreen = Screen.Home
+        }
+    }
+
     // State for push notification photo (opens FullScreenPhotoViewer directly)
     var pushPhoto by remember { mutableStateOf<Flick?>(null) }
     var pushPhotoOpenComments by remember { mutableStateOf(false) }
@@ -297,6 +372,13 @@ fun MainScreen(
 
     val userProfile = authViewModel.userProfile
 
+    // Shared upload/dialog states (declared early because they're used by effects below)
+    var selectedPhotoUri by remember { mutableStateOf<Uri?>(null) }
+    var privateSharePhotoUris by remember { mutableStateOf<List<Uri>>(emptyList()) }
+    var showPrivateShareTargetDialog by remember { mutableStateOf(false) }
+    var pendingSharedImportUris by remember { mutableStateOf<List<Uri>>(emptyList()) }
+    var showSharedImportChoiceDialog by remember { mutableStateOf(false) }
+
     // On app foreground, default back to Home + reset feed top unless a push route is pending.
     DisposableEffect(lifecycleOwner, currentUser) {
         val observer = LifecycleEventObserver { _, event ->
@@ -310,7 +392,7 @@ fun MainScreen(
                             currentScreen is Screen.UserProfile
 
                     if (!shouldPreserveCurrentScreen) {
-                        currentScreen = Screen.Home
+                        navigateTo(Screen.Home)
                         forceHomeResetVersion += 1
                     }
                 }
@@ -322,7 +404,51 @@ fun MainScreen(
         }
     }
 
+    val context = LocalContext.current
+
     val pushEventVersion = activity?.pushEventVersion ?: 0
+    val shareEventVersion = activity?.shareEventVersion ?: 0
+
+    LaunchedEffect(shareEventVersion, currentUser?.uid) {
+        if (currentUser == null) return@LaunchedEffect
+
+        val sharedUris = activity?.consumeSharedImageUris().orEmpty().distinct()
+        if (sharedUris.isEmpty()) return@LaunchedEffect
+
+        val profile = userProfile
+        if (profile == null) {
+            Toast.makeText(context, "Profile not ready yet", Toast.LENGTH_SHORT).show()
+            return@LaunchedEffect
+        }
+
+        val tier = profile.getEffectiveTier()
+        val dailyLimit = tier.getDailyUploadLimit()
+        val remainingDaily = if (dailyLimit == Int.MAX_VALUE) Int.MAX_VALUE else (dailyLimit - uploadViewModel.dailyUploadCount).coerceAtLeast(0)
+        val allowedCount = if (tier == SubscriptionTier.ULTRA) minOf(100, remainingDaily) else remainingDaily
+
+        if (allowedCount <= 0) {
+            Toast.makeText(context, "Daily upload limit reached", Toast.LENGTH_LONG).show()
+            return@LaunchedEffect
+        }
+
+        val cappedUris = sharedUris.take(allowedCount)
+        if (sharedUris.size > allowedCount) {
+            Toast.makeText(
+                context,
+                "Shared ${sharedUris.size}. Using first $allowedCount due to daily limit.",
+                Toast.LENGTH_LONG
+            ).show()
+        }
+
+        pendingSharedImportUris = cappedUris
+
+        if (cappedUris.size == 1) {
+            selectedPhotoUri = cappedUris.first()
+            navigateTo(Screen.Filter)
+        } else {
+            showSharedImportChoiceDialog = true
+        }
+    }
 
     LaunchedEffect(pushEventVersion, currentUser?.uid) {
         if (currentUser == null) return@LaunchedEffect
@@ -408,53 +534,32 @@ fun MainScreen(
         }
     }
 
-    // Handle back button - navigate within app instead of exiting
-    BackHandler(enabled = currentScreen != Screen.Home) {
-        when {
-            // Most screens go back to Home
-            currentScreen is Screen.Profile ||
-            currentScreen is Screen.MyPhotos ||
-            currentScreen is Screen.Friends ||
-            currentScreen is Screen.UserFriends ||
-            currentScreen is Screen.Chats ||
-            currentScreen is Screen.Contact ||
-            currentScreen is Screen.Notifications ||
-            currentScreen is Screen.Explore ||
-            currentScreen is Screen.Settings ||
-            currentScreen is Screen.Privacy ||
-            currentScreen is Screen.NotificationSettings ||
-            currentScreen is Screen.ManageStorage ||
-            currentScreen is Screen.SubscriptionStatus ||
-            currentScreen is Screen.PlanOptions ||
-            currentScreen is Screen.StreakAchievements ||
-            currentScreen is Screen.Filter ||
-            currentScreen is Screen.Philosophy ||
-            currentScreen is Screen.Legal ||
-            currentScreen is Screen.Developer -> {
-                currentScreen = Screen.Home
+    // Keep navigation history in sync for one-step back behavior everywhere
+    LaunchedEffect(currentScreen) {
+        if (lastObservedScreen == null) {
+            lastObservedScreen = currentScreen
+            return@LaunchedEffect
+        }
+
+        if (isPerformingBackNavigation) {
+            isPerformingBackNavigation = false
+            lastObservedScreen = currentScreen
+            return@LaunchedEffect
+        }
+
+        if (lastObservedScreen != currentScreen) {
+            val previous = lastObservedScreen
+            if (previous != null) {
+                navigationHistory = (navigationHistory + previous).takeLast(120)
             }
-            // FindFriends goes back to Friends
-            currentScreen is Screen.FindFriends -> {
-                currentScreen = Screen.Friends
-            }
-            // About goes back to Settings
-            currentScreen is Screen.About -> {
-                currentScreen = Screen.Settings
-            }
-            // UserProfile goes back to Friends
-            currentScreen is Screen.UserProfile -> {
-                currentScreen = Screen.Friends
-            }
-            // ChatDetail goes back to Chats list
-            currentScreen is Screen.ChatDetail -> {
-                currentScreen = Screen.Chats
-            }
-            // Already on Home - let Android handle (exit app)
-            else -> {}
+            lastObservedScreen = currentScreen
         }
     }
 
-    val context = LocalContext.current
+    // Handle phone back: always go back exactly one screen in app history
+    BackHandler(enabled = currentScreen != Screen.Home || navigationHistory.isNotEmpty()) {
+        navigateBackOneScreen()
+    }
 
     // Initialize billing client
     LaunchedEffect(Unit) {
@@ -551,9 +656,6 @@ fun MainScreen(
 
     // Upload flow states
     var showUploadSourceDialog by remember { mutableStateOf(false) }
-    var selectedPhotoUri by remember { mutableStateOf<Uri?>(null) }
-    var privateSharePhotoUris by remember { mutableStateOf<List<Uri>>(emptyList()) }
-    var showPrivateShareTargetDialog by remember { mutableStateOf(false) }
 
     // Android 13+ runtime permission for push notification display
     val notificationPermissionLauncher = rememberLauncherForActivityResult(
@@ -666,9 +768,11 @@ fun MainScreen(
         val selectedUris = uris.distinct()
         if (selectedUris.isEmpty()) return@rememberLauncherForActivityResult
 
+        pendingSharedImportUris = selectedUris
+
         if (selectedUris.size == 1) {
             selectedPhotoUri = selectedUris.first()
-            currentScreen = Screen.Filter
+            navigateTo(Screen.Filter)
             return@rememberLauncherForActivityResult
         }
 
@@ -724,6 +828,7 @@ fun MainScreen(
             }
         )
 
+        pendingSharedImportUris = emptyList()
         currentScreen = Screen.Home
     }
 
@@ -790,9 +895,9 @@ fun MainScreen(
     LaunchedEffect(uploadViewModel.uploadSuccess, currentScreen) {
         if (uploadViewModel.uploadSuccess) {
             uploadViewModel.resetUploadState()
-            if (currentScreen is Screen.Filter) {
-                currentScreen = Screen.Home
-            }
+                                if (currentScreen is Screen.Filter) {
+                        navigateTo(Screen.Home)
+                    }
         }
     }
 
@@ -830,6 +935,53 @@ fun MainScreen(
     // Snackbar state for error feedback
     val snackbarHostState = remember { SnackbarHostState() }
 
+    if (showSharedImportChoiceDialog && pendingSharedImportUris.isNotEmpty() && userProfile != null) {
+        AlertDialog(
+            onDismissRequest = {
+                showSharedImportChoiceDialog = false
+                pendingSharedImportUris = emptyList()
+            },
+            title = { Text("Import shared photos") },
+            text = {
+                Text("Choose what to do with ${pendingSharedImportUris.size} shared photo(s).")
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    val profile = userProfile
+                    if (profile != null) {
+                        val uploadUris = pendingSharedImportUris
+                        uploadViewModel.uploadPhotosBatch(
+                            context = context,
+                            photoUris = uploadUris,
+                            userProfile = profile,
+                            onOptimisticAdd = { optimisticFlick ->
+                                homeViewModel.addOptimisticFlick(optimisticFlick)
+                            },
+                            onOptimisticRemove = { flickId, uploadSucceeded ->
+                                if (!uploadSucceeded) {
+                                    homeViewModel.removeOptimisticFlick(flickId)
+                                }
+                            },
+                            onBatchSuccess = {
+                                homeViewModel.requestDebouncedFeedRefresh(profile.uid)
+                            }
+                        )
+                        navigateTo(Screen.Home)
+                    }
+                    showSharedImportChoiceDialog = false
+                    pendingSharedImportUris = emptyList()
+                }) { Text("Post") }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    privateSharePhotoUris = pendingSharedImportUris
+                    showPrivateShareTargetDialog = true
+                    showSharedImportChoiceDialog = false
+                }) { Text("Send privately") }
+            }
+        )
+    }
+
     if (showPrivateShareTargetDialog && privateSharePhotoUris.isNotEmpty() && userProfile != null) {
         PrivateShareTargetDialog(
             friends = friendsViewModel.followingUsers,
@@ -837,6 +989,7 @@ fun MainScreen(
             onDismiss = {
                 showPrivateShareTargetDialog = false
                 privateSharePhotoUris = emptyList()
+                pendingSharedImportUris = emptyList()
             },
             onShareToFriend = { friend ->
                 val imageUris = privateSharePhotoUris
@@ -866,6 +1019,7 @@ fun MainScreen(
                 }
                 showPrivateShareTargetDialog = false
                 privateSharePhotoUris = emptyList()
+                pendingSharedImportUris = emptyList()
             },
             onShareToGroup = { group ->
                 val imageUris = privateSharePhotoUris
@@ -999,7 +1153,7 @@ fun MainScreen(
                 ) {
                     // Settings wheel on LEFT
                     IconButton(
-                        onClick = { if (profileReady) currentScreen = Screen.Settings },
+                        onClick = { if (profileReady) navigateTo(Screen.Settings) },
                         enabled = profileReady,
                         modifier = Modifier
                             .align(Alignment.CenterStart)
@@ -1014,7 +1168,7 @@ fun MainScreen(
 
                     // Notifications bell on right - RED when unread, clickable
                     IconButton(
-                        onClick = { if (profileReady) currentScreen = Screen.Notifications },
+                        onClick = { if (profileReady) navigateTo(Screen.Notifications) },
                         enabled = profileReady,
                         modifier = Modifier
                             .align(Alignment.CenterEnd)
@@ -1076,13 +1230,13 @@ fun MainScreen(
                                     if (currentScreen is Screen.Home) {
                                         openHomeGroupsManager = true
                                     } else {
-                                        currentScreen = Screen.Home
+                                        navigateTo(Screen.Home)
                                     }
                                 }
-                                "chats" -> currentScreen = Screen.Chats
+                                "chats" -> navigateTo(Screen.Chats)
                                 "upload" -> showUploadSourceDialog = true
-                                "friends" -> currentScreen = Screen.Friends
-                                "profile" -> currentScreen = Screen.Profile
+                                "friends" -> navigateTo(Screen.Friends)
+                                "profile" -> navigateTo(Screen.Profile)
                             }
                         }
                     },
@@ -1119,7 +1273,7 @@ fun MainScreen(
                 // Authenticated - show main content with navigation
                 AuthenticatedContent(
                     currentScreen = currentScreen,
-                    onScreenChange = { currentScreen = it },
+                    onScreenChange = { target -> navigateTo(target) },
                     userProfile = userProfile,
                     billingViewModel = billingViewModel,
                     homeViewModel = homeViewModel,
