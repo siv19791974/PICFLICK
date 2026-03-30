@@ -33,5 +33,8 @@ sealed class Screen {
     data object Legal : Screen()                    // Legal/Terms screen
     data object Developer : Screen()                // Developer diagnostics and tools
     data object Preview : Screen()                    // Photo preview screen
-    data class EditPhoto(val flick: Flick) : Screen()  // Edit photo filters
+    data class EditPhoto(
+        val flick: Flick,
+        val returnTo: Screen = Home
+    ) : Screen()  // Edit photo filters
 }

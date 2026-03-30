@@ -74,7 +74,7 @@ fun EditPhotoScreen(
     _currentUser: UserProfile,
     _cloudName: String = "",
     onBack: () -> Unit,
-    onSave: (Flick, String, String, List<String>, Bitmap) -> Unit
+    onSave: suspend (Flick, String, String, List<String>, Bitmap) -> Boolean
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -208,30 +208,69 @@ val localFilters = listOf(
     
     // Save function
     fun triggerSave() {
-        if (!isSaving && bitmap != null) {
-            isSaving = true
-            scope.launch {
-                try {
-                    val filterTransformation = selectedFilter.name
-                    val finalBitmap = applyFilterToBitmap(bitmap!!, selectedFilter, thumbnailSize = 0)
-                    onSave(flick, filterTransformation, description.trim(), taggedFriendIds, finalBitmap)
+        val hasBitmap = bitmap != null
+
+        if (isSaving) {
+            android.widget.Toast.makeText(context, "Already saving...", android.widget.Toast.LENGTH_SHORT).show()
+            return
+        }
+        if (isCropping) {
+            android.widget.Toast.makeText(context, "Wait for crop to finish", android.widget.Toast.LENGTH_SHORT).show()
+            return
+        }
+        if (isLoading || !hasBitmap) {
+            android.widget.Toast.makeText(context, "Photo still loading", android.widget.Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        isSaving = true
+        scope.launch(Dispatchers.IO) {
+            try {
+                val sourceBitmap = bitmap ?: run {
                     withContext(Dispatchers.Main) {
-                        android.widget.Toast.makeText(
-                            context, 
-                            "Photo updated!", 
-                            android.widget.Toast.LENGTH_SHORT
-                        ).show()
+                        isSaving = false
+                        android.widget.Toast.makeText(context, "Photo missing", android.widget.Toast.LENGTH_SHORT).show()
                     }
-                } catch (_: Exception) {
-withContext(Dispatchers.Main) {
-                        android.widget.Toast.makeText(
-                            context, 
-                            "Failed to update photo", 
-                            android.widget.Toast.LENGTH_SHORT
-                        ).show()
-                    }
-                } finally {
+                    return@launch
+                }
+
+                val filterTransformation = selectedFilter.name
+                val finalBitmap = applyFilterToBitmap(sourceBitmap, selectedFilter, thumbnailSize = 0)
+                val success = onSave(flick, filterTransformation, description.trim(), taggedFriendIds, finalBitmap)
+                withContext(Dispatchers.Main) {
                     isSaving = false
+                    if (success) {
+                        android.widget.Toast.makeText(
+                            context,
+                            "Photo updated!",
+                            android.widget.Toast.LENGTH_SHORT
+                        ).show()
+                        onBack()
+                    } else {
+                        android.widget.Toast.makeText(
+                            context,
+                            "Failed to update photo",
+                            android.widget.Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                }
+            } catch (oom: OutOfMemoryError) {
+                withContext(Dispatchers.Main) {
+                    isSaving = false
+                    android.widget.Toast.makeText(
+                        context,
+                        "Photo too large to process. Try cropping smaller.",
+                        android.widget.Toast.LENGTH_LONG
+                    ).show()
+                }
+            } catch (_: Exception) {
+                withContext(Dispatchers.Main) {
+                    isSaving = false
+                    android.widget.Toast.makeText(
+                        context,
+                        "Failed to update photo",
+                        android.widget.Toast.LENGTH_SHORT
+                    ).show()
                 }
             }
         }
@@ -279,16 +318,16 @@ withContext(Dispatchers.Main) {
                     }
                     
                     // Save button
+                    val canSave = !isLoading && bitmap != null && !isSaving && !isCropping
                     IconButton(
                         onClick = { triggerSave() },
-                        enabled = !isLoading && bitmap != null && !isSaving,
                         modifier = Modifier.size(48.dp)
                     ) {
                         Box(
                             modifier = Modifier
                                 .size(36.dp)
                                 .background(
-                                    if (!isLoading && bitmap != null) {
+                                    if (canSave) {
                                         if (isDarkMode) Color(0xFF4CAF50) else Color(0xFF1565C0)
                                     } else Color.Gray,
                                     RoundedCornerShape(20.dp)
@@ -416,6 +455,9 @@ withContext(Dispatchers.Main) {
                                 }
                             }
 
+                            val editActionButtonBg = Color(0xFFB7D8F2)
+                            val editActionButtonFg = Color.Black
+
                             Column(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -429,17 +471,17 @@ withContext(Dispatchers.Main) {
                                         .fillMaxWidth()
                                         .defaultMinSize(minHeight = 52.dp)
                                         .clip(RoundedCornerShape(12.dp))
-                                        .background(Color.White)
+                                        .background(editActionButtonBg)
                                 ) {
                                     Icon(
                                         imageVector = Icons.Default.PersonAdd,
                                         contentDescription = null,
-                                        tint = Color.Black
+                                        tint = editActionButtonFg
                                     )
                                     Spacer(modifier = Modifier.width(8.dp))
                                     Text(
                                         text = if (followingUsers.isEmpty()) "No friends" else "Tag Friends (${taggedFriendIds.size})",
-                                        color = Color.Black,
+                                        color = editActionButtonFg,
                                         fontWeight = FontWeight.SemiBold,
                                         maxLines = 1,
                                         overflow = TextOverflow.Ellipsis
@@ -453,17 +495,17 @@ withContext(Dispatchers.Main) {
                                         .fillMaxWidth()
                                         .defaultMinSize(minHeight = 52.dp)
                                         .clip(RoundedCornerShape(12.dp))
-                                        .background(Color.White)
+                                        .background(editActionButtonBg)
                                 ) {
                                     Icon(
                                         painter = painterResource(id = android.R.drawable.ic_menu_crop),
                                         contentDescription = null,
-                                        tint = Color.Black
+                                        tint = editActionButtonFg
                                     )
                                     Spacer(modifier = Modifier.width(8.dp))
                                     Text(
                                         text = "Crop",
-                                        color = Color.Black,
+                                        color = editActionButtonFg,
                                         fontWeight = FontWeight.SemiBold,
                                         maxLines = 1
                                     )
@@ -475,17 +517,17 @@ withContext(Dispatchers.Main) {
                                         .fillMaxWidth()
                                         .defaultMinSize(minHeight = 52.dp)
                                         .clip(RoundedCornerShape(12.dp))
-                                        .background(Color.White)
+                                        .background(editActionButtonBg)
                                 ) {
                                     Icon(
                                         painter = painterResource(id = android.R.drawable.ic_menu_edit),
                                         contentDescription = null,
-                                        tint = Color.Black
+                                        tint = editActionButtonFg
                                     )
                                     Spacer(modifier = Modifier.width(8.dp))
                                     Text(
                                         text = if (description.isBlank()) "Add Description" else "Edit Description",
-                                        color = Color.Black,
+                                        color = editActionButtonFg,
                                         fontWeight = FontWeight.SemiBold,
                                         maxLines = 1,
                                         overflow = TextOverflow.Ellipsis
@@ -1066,6 +1108,10 @@ private fun applyFilterToBitmap(bitmap: Bitmap, filter: PhotoFilter, thumbnailSi
     val result = createBitmap(targetBitmap.width, targetBitmap.height)
     android.graphics.Canvas(result).apply {
         drawBitmap(targetBitmap, 0f, 0f, paint)
+    }
+
+    if (targetBitmap !== bitmap && !targetBitmap.isRecycled) {
+        targetBitmap.recycle()
     }
 
     return result

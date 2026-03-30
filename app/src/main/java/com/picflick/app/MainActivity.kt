@@ -303,8 +303,16 @@ fun MainScreen(
             if (event == Lifecycle.Event.ON_START && currentUser != null) {
                 val hasPushPending = activity?.hasPendingPushData() == true
                 if (!hasPushPending) {
-                    currentScreen = Screen.Home
-                    forceHomeResetVersion += 1
+                    val shouldPreserveCurrentScreen =
+                        currentScreen is Screen.EditPhoto ||
+                            currentScreen is Screen.Filter ||
+                            currentScreen is Screen.ChatDetail ||
+                            currentScreen is Screen.UserProfile
+
+                    if (!shouldPreserveCurrentScreen) {
+                        currentScreen = Screen.Home
+                        forceHomeResetVersion += 1
+                    }
                 }
             }
         }
@@ -778,10 +786,13 @@ fun MainScreen(
     }
 
     // Handle upload state silently for smoother optimistic UX
-    LaunchedEffect(uploadViewModel.uploadSuccess) {
+    // IMPORTANT: only auto-return to Home from upload flow screens.
+    LaunchedEffect(uploadViewModel.uploadSuccess, currentScreen) {
         if (uploadViewModel.uploadSuccess) {
             uploadViewModel.resetUploadState()
-            currentScreen = Screen.Home
+            if (currentScreen is Screen.Filter) {
+                currentScreen = Screen.Home
+            }
         }
     }
 

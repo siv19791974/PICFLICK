@@ -164,7 +164,7 @@ fun AuthenticatedContent(
             currentUser = userProfile,
             onBack = { onScreenChange(Screen.Home) },
             onEditPhotoClick = { flick ->
-                onScreenChange(Screen.EditPhoto(flick))
+                onScreenChange(Screen.EditPhoto(flick, returnTo = Screen.MyPhotos))
             }
         )
 
@@ -383,62 +383,63 @@ fun AuthenticatedContent(
             onScreenChange(Screen.Home)
         }
 
-        is Screen.EditPhoto -> EditPhotoScreen(
-            flick = currentScreen.flick,
-            _currentUser = userProfile,
-            _cloudName = "", // TODO: Get from BuildConfig or settings
-            onBack = { onScreenChange(Screen.Home) },
-            onSave = { flick, filterType, description, taggedFriends, filteredBitmap ->
-                scope.launch {
-                    val stream = java.io.ByteArrayOutputStream()
-                    filteredBitmap.compress(
-                        android.graphics.Bitmap.CompressFormat.JPEG,
-                        userProfile.getEffectiveTier().getImageQuality(),
-                        stream
-                    )
-                    val bytes = stream.toByteArray()
+        is Screen.EditPhoto -> {
+            val returnScreen = currentScreen.returnTo
 
-                    val uploadResult = repository.uploadFlickImage(flick.userId, bytes)
-                    when (uploadResult) {
-                        is com.picflick.app.data.Result.Success -> {
-                            val result = repository.updateFlickWithFilter(
-                                flickId = flick.id,
-                                description = description,
-                                filterType = filterType,
-                                newImageUrl = uploadResult.data,
-                                taggedFriends = taggedFriends
-                            )
-                            when (result) {
-                                is com.picflick.app.data.Result.Success -> {
-                                    android.widget.Toast.makeText(
-                                        context,
-                                        "Photo updated!",
-                                        android.widget.Toast.LENGTH_SHORT
-                                    ).show()
-                                    onScreenChange(Screen.Home)
-                                }
-                                is com.picflick.app.data.Result.Error -> {
-                                    android.widget.Toast.makeText(
-                                        context,
-                                        "Failed to update: ${result.message}",
-                                        android.widget.Toast.LENGTH_SHORT
-                                    ).show()
-                                }
-                                else -> {}
+            EditPhotoScreen(
+                flick = currentScreen.flick,
+                _currentUser = userProfile,
+                _cloudName = "", // TODO: Get from BuildConfig or settings
+                onBack = { onScreenChange(returnScreen) },
+                onSave = { flick, filterType, description, taggedFriends, filteredBitmap ->
+                val stream = java.io.ByteArrayOutputStream()
+                filteredBitmap.compress(
+                    android.graphics.Bitmap.CompressFormat.JPEG,
+                    userProfile.getEffectiveTier().getImageQuality(),
+                    stream
+                )
+                val bytes = stream.toByteArray()
+
+                val uploadResult = repository.uploadFlickImage(flick.userId, bytes)
+                when (uploadResult) {
+                    is com.picflick.app.data.Result.Success -> {
+                        val result = repository.updateFlickWithFilter(
+                            flickId = flick.id,
+                            description = description,
+                            filterType = filterType,
+                            newImageUrl = uploadResult.data,
+                            taggedFriends = taggedFriends
+                        )
+                        when (result) {
+                            is com.picflick.app.data.Result.Success -> {
+                                homeViewModel.loadFlicks(userProfile.uid)
+                                profileViewModel.loadUserPhotos(userProfile.uid)
+                                true
                             }
+                            is com.picflick.app.data.Result.Error -> {
+                                android.widget.Toast.makeText(
+                                    context,
+                                    "Failed to update: ${result.message}",
+                                    android.widget.Toast.LENGTH_SHORT
+                                ).show()
+                                false
+                            }
+                            else -> false
                         }
-                        is com.picflick.app.data.Result.Error -> {
-                            android.widget.Toast.makeText(
-                                context,
-                                "Image upload failed: ${uploadResult.message}",
-                                android.widget.Toast.LENGTH_SHORT
-                            ).show()
-                        }
-                        else -> {}
                     }
+                    is com.picflick.app.data.Result.Error -> {
+                        android.widget.Toast.makeText(
+                            context,
+                            "Image upload failed: ${uploadResult.message}",
+                            android.widget.Toast.LENGTH_SHORT
+                        ).show()
+                        false
+                    }
+                    else -> false
                 }
             }
         )
+    }
     }
 
     // FullScreenPhotoViewer for push notification photos (overlays any screen)
@@ -530,7 +531,7 @@ private fun HomeScreenContent(
         },
         friends = friendsViewModel.followingUsers, // Pass friends for profile picture lookup
         onEditPhotoClick = { flick ->
-            onScreenChange(Screen.EditPhoto(flick))
+            onScreenChange(Screen.EditPhoto(flick, returnTo = Screen.Home))
         },
         openGroupsManager = openGroupsManager,
         onOpenGroupsManagerConsumed = onOpenGroupsManagerConsumed
@@ -653,7 +654,7 @@ private fun ProfileScreenContent(
                 profileViewModel.updateCaption(flick.id, newCaption)
             },
             onEditPhotoClick = { flick ->
-                onScreenChange(Screen.EditPhoto(flick))
+                onScreenChange(Screen.EditPhoto(flick, returnTo = Screen.Profile))
             }
         )
     }
