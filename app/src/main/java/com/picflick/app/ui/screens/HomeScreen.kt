@@ -1434,7 +1434,7 @@ private fun GroupRowCard(
             Box(
                 modifier = Modifier
                     .size(40.dp)
-                    .border(2.dp, accentColour, CircleShape)
+                    .border(2.dp, Color.Black, CircleShape)
                     .clip(CircleShape)
                     .background(Color.Transparent),
                 contentAlignment = Alignment.Center
@@ -1535,29 +1535,45 @@ private fun CreateOrEditGroupDialog(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            OutlinedButton(
-                                onClick = {
-                                    onCreateLocal?.invoke(groupName.trim(), selectedIcon, selectedFriends.toList(), selectedColor)
-                                },
-                                enabled = groupName.isNotBlank(),
-                                modifier = Modifier.weight(1f),
-                                border = ButtonDefaults.outlinedButtonBorder,
-                                colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFF2A4A73))
-                            ) {
-                                Text("Create local")
-                            }
-                            Button(
-                                onClick = {
-                                    onCreateShared?.invoke(groupName.trim(), selectedIcon, selectedFriends.toList(), selectedColor)
-                                },
-                                enabled = groupName.isNotBlank(),
-                                modifier = Modifier.weight(1f),
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = Color(0xFF2A4A73),
-                                    contentColor = Color.White
+                            Column(modifier = Modifier.weight(1f)) {
+                                OutlinedButton(
+                                    onClick = {
+                                        onCreateLocal?.invoke(groupName.trim(), selectedIcon, selectedFriends.toList(), selectedColor)
+                                    },
+                                    enabled = groupName.isNotBlank(),
+                                    modifier = Modifier.height(36.dp),
+                                    border = ButtonDefaults.outlinedButtonBorder,
+                                    colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFF2A4A73))
+                                ) {
+                                    Text("Create Local", fontSize = 12.sp)
+                                }
+                                Text(
+                                    text = "ONLY FOR YOU",
+                                    fontSize = 10.sp,
+                                    color = textColor.copy(alpha = 0.7f),
+                                    modifier = Modifier.padding(top = 4.dp, start = 4.dp)
                                 )
-                            ) {
-                                Text("Create shared")
+                            }
+                            Column(modifier = Modifier.weight(1f)) {
+                                Button(
+                                    onClick = {
+                                        onCreateShared?.invoke(groupName.trim(), selectedIcon, selectedFriends.toList(), selectedColor)
+                                    },
+                                    enabled = groupName.isNotBlank(),
+                                    modifier = Modifier.height(36.dp),
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = Color(0xFF2A4A73),
+                                        contentColor = Color.White
+                                    )
+                                ) {
+                                    Text("Create Shared", fontSize = 12.sp)
+                                }
+                                Text(
+                                    text = "SHARE ALBUM WITH FRIENDS",
+                                    fontSize = 10.sp,
+                                    color = textColor.copy(alpha = 0.7f),
+                                    modifier = Modifier.padding(top = 4.dp, start = 4.dp)
+                                )
                             }
                         }
                     } else {
@@ -1588,7 +1604,17 @@ private fun CreateOrEditGroupDialog(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp, vertical = 12.dp),
-                    label = { Text("Album name") }
+                    label = { Text("Album name") },
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedContainerColor = Color.Black,
+                        unfocusedContainerColor = Color.Black,
+                        focusedTextColor = Color.White,
+                        unfocusedTextColor = Color.White,
+                        focusedLabelColor = Color(0xFFB0BEC5),
+                        unfocusedLabelColor = Color(0xFF90A4AE),
+                        focusedBorderColor = Color(0xFF4FC3F7),
+                        unfocusedBorderColor = Color(0xFF37474F)
+                    )
                 )
 
                 LazyColumn(modifier = Modifier.weight(1f)) {
@@ -1732,7 +1758,7 @@ private fun CreateOrEditGroupDialog(
 }
 
 @Composable
-private fun GroupPhotoCropDialog(
+fun GroupPhotoCropDialog(
     imageUri: Uri?,
     onDismiss: () -> Unit,
     onConfirm: (Uri?) -> Unit
@@ -2030,7 +2056,7 @@ private fun FlickGrid(
             columns = GridCells.Fixed(3),
             modifier = Modifier.fillMaxSize(),
             state = listState,
-            contentPadding = PaddingValues(top = 5.dp, bottom = 160.dp),
+            contentPadding = PaddingValues(top = 5.dp, bottom = 8.dp),
             horizontalArrangement = Arrangement.spacedBy(1.dp),
             verticalArrangement = Arrangement.spacedBy(1.dp)
         ) {

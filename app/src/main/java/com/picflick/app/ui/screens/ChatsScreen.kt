@@ -1,14 +1,21 @@
 package com.picflick.app.ui.screens
 
+import android.graphics.Bitmap
+import android.net.Uri
+import android.widget.Toast
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.border
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -28,6 +35,7 @@ import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.AddAPhoto
 import androidx.compose.material3.*
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.Settings
@@ -36,6 +44,10 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
@@ -43,6 +55,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
@@ -50,15 +63,21 @@ import androidx.compose.ui.window.DialogProperties
 import coil3.compose.AsyncImage
 import com.picflick.app.R
 import com.picflick.app.data.ChatSession
+import com.picflick.app.data.Result
 import com.picflick.app.data.FriendGroup
 import com.picflick.app.data.UserProfile
 import com.picflick.app.ui.components.BottomNavBar
 import com.picflick.app.ui.components.LogoImage
 import com.picflick.app.ui.theme.PicFlickBannerBackground
+import com.picflick.app.repository.FlickRepository
 import com.picflick.app.ui.theme.PicFlickLightBackground
 import com.picflick.app.util.rememberLiveUserPhotoUrl
 import com.picflick.app.util.rememberLiveUserTierColor
 import com.picflick.app.ui.theme.ThemeManager
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import kotlin.math.max
+import kotlin.math.roundToInt
 import com.picflick.app.ui.theme.isDarkModeBackground
 import com.picflick.app.viewmodel.ChatViewModel
 import com.picflick.app.viewmodel.FriendsViewModel
@@ -93,6 +112,10 @@ fun ChatsScreen(
 
     var showNewChatDialog by remember { mutableStateOf(false) }
     var showCreateGroupDialog by remember { mutableStateOf(false) }
+    var pendingGroupIconSourceUri by remember { mutableStateOf<Uri?>(null) }
+    var showGroupIconCropDialog by remember { mutableStateOf(false) }
+    var groupIconCropSourceUri by remember { mutableStateOf<Uri?>(null) }
+    var createDialogIconOverride by remember { mutableStateOf<String?>(null) }
     val selectedChatIds = remember { mutableStateListOf<String>() }
     var showHeaderMenu by remember { mutableStateOf(false) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
@@ -100,6 +123,7 @@ fun ChatsScreen(
     var searchQuery by remember { mutableStateOf("") }
     val isSelectionMode = selectedChatIds.isNotEmpty()
     val isDarkMode = ThemeManager.isDarkMode.value
+    val context = androidx.compose.ui.platform.LocalContext.current
 
     // Modern PullRefresh state
     val pullRefreshState = rememberPullRefreshState(
@@ -170,6 +194,40 @@ fun ChatsScreen(
 
     val availableFriendsForNewChat = remember(friendsViewModel.followingUsers, existingChatUserIds) {
         friendsViewModel.followingUsers.filter { it.uid !in existingChatUserIds }
+    }
+
+    val groupIconPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri ->
+        if (uri != null) {
+            groupIconCropSourceUri = uri
+            showGroupIconCropDialog = true
+        }
+    }
+
+    LaunchedEffect(pendingGroupIconSourceUri) {
+        val uri = pendingGroupIconSourceUri ?: return@LaunchedEffect
+        try {
+            val inputStream = context.contentResolver.openInputStream(uri)
+            val imageBytes = inputStream?.readBytes()
+            inputStream?.close()
+            if (imageBytes != null) {
+                when (val uploadResult = FlickRepository.getInstance().uploadFlickImage(userProfile.uid, imageBytes)) {
+                    is Result.Success -> {
+                        createDialogIconOverride = uploadResult.data
+                        Toast.makeText(context, "Group photo added", Toast.LENGTH_SHORT).show()
+                    }
+                    is Result.Error -> {
+                        Toast.makeText(context, "Failed to upload group photo", Toast.LENGTH_SHORT).show()
+                    }
+                    else -> Unit
+                }
+            }
+        } catch (_: Exception) {
+            Toast.makeText(context, "Failed to process group photo", Toast.LENGTH_SHORT).show()
+        } finally {
+            pendingGroupIconSourceUri = null
+        }
     }
 
     Box(
@@ -582,17 +640,42 @@ fun ChatsScreen(
             friends = friendsViewModel.followingUsers,
             isLoading = friendsViewModel.isLoading,
             isDarkMode = isDarkMode,
-            onDismiss = { showCreateGroupDialog = false },
+            initialIcon = createDialogIconOverride ?: "👥",
+            onDismiss = {
+                showCreateGroupDialog = false
+                createDialogIconOverride = null
+            },
+            onAddPhoto = {
+                groupIconPickerLauncher.launch("image/*")
+            },
             onCreateSharedGroup = { name, icon, selectedFriendIds, onDone ->
                 onCreateSharedGroup(name, icon, selectedFriendIds) { success, createdGroup ->
                     if (success && createdGroup != null) {
                         showCreateGroupDialog = false
+                        createDialogIconOverride = null
                         onOpenGroupChat?.invoke(createdGroup)
                     }
                     onDone(success, createdGroup)
                 }
             },
             onUserProfileClick = onUserProfileClick
+        )
+    }
+
+    if (showGroupIconCropDialog) {
+        GroupPhotoCropDialog(
+            imageUri = groupIconCropSourceUri,
+            onDismiss = {
+                showGroupIconCropDialog = false
+                groupIconCropSourceUri = null
+            },
+            onConfirm = { croppedUri ->
+                showGroupIconCropDialog = false
+                groupIconCropSourceUri = null
+                if (croppedUri != null) {
+                    pendingGroupIconSourceUri = croppedUri
+                }
+            }
         )
     }
 }
@@ -603,99 +686,181 @@ private fun NewGroupFromComposeDialog(
     friends: List<com.picflick.app.data.UserProfile>,
     isLoading: Boolean,
     isDarkMode: Boolean,
+    initialIcon: String,
     onDismiss: () -> Unit,
+    onAddPhoto: () -> Unit,
     onCreateSharedGroup: (String, String, List<String>, (Boolean, FriendGroup?) -> Unit) -> Unit,
     onUserProfileClick: (String) -> Unit
 ) {
     var groupName by remember { mutableStateOf("") }
     val selectedIds = remember { mutableStateListOf<String>() }
-    var selectedIcon by remember { mutableStateOf("👥") }
+    var selectedIcon by remember(initialIcon) { mutableStateOf(initialIcon) }
     var isSubmitting by remember { mutableStateOf(false) }
 
+    val pageBackground = if (isDarkMode) Color(0xFF121212) else PicFlickLightBackground
+    val textColor = if (isDarkMode) Color.White else Color(0xFF111111)
+    val icons = listOf(
+        "👥", "👨‍👩‍👧‍👦", "💼", "🎓", "⭐", "✈️", "⚽", "🎨", "🏠", "🎵", "📚", "🎮",
+        "🍔", "🍷", "🛫", "🏋️", "🏖️", "🎬", "🐶", "🚗", "🛍️", "🧠", "🧑‍💻", "📷"
+    )
     val canCreate = groupName.trim().isNotEmpty() && selectedIds.isNotEmpty() && !isSubmitting
+    val sortedFriends = remember(friends) {
+        friends.sortedWith(
+            compareBy<com.picflick.app.data.UserProfile>(
+                { it.displayName.trim().substringAfterLast(" ").lowercase(Locale.getDefault()) },
+                { it.displayName.trim().substringBeforeLast(" ").lowercase(Locale.getDefault()) },
+                { it.displayName.lowercase(Locale.getDefault()) }
+            )
+        )
+    }
 
-    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black.copy(alpha = 0.45f))
+            .clickable { onDismiss() }
+    ) {
         Surface(
             modifier = Modifier
                 .fillMaxWidth()
-                .fillMaxHeight(0.9f)
-                .padding(12.dp),
-            shape = RoundedCornerShape(16.dp),
-            color = if (isDarkMode) Color(0xFF121212) else Color.White
+                .fillMaxHeight(0.92f)
+                .align(Alignment.BottomCenter)
+                .clickable(enabled = false) {},
+            shape = RoundedCornerShape(topStart = 22.dp, topEnd = 22.dp),
+            color = pageBackground,
+            tonalElevation = 4.dp
         ) {
             Column(modifier = Modifier.fillMaxSize()) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(Color.Black)
-                        .height(48.dp),
+                        .padding(horizontal = 16.dp, vertical = 14.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    IconButton(onClick = onDismiss, modifier = Modifier.size(48.dp)) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
-                    }
                     Text(
-                        text = "Create new group",
-                        color = Color.White,
+                        text = "Create Chat Group",
+                        style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold,
-                        fontSize = 15.sp,
-                        modifier = Modifier.weight(1f),
-                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                        color = textColor
                     )
-                    Spacer(modifier = Modifier.size(48.dp))
+                    TextButton(onClick = onDismiss) {
+                        Text("Cancel")
+                    }
                 }
+
+                HorizontalDivider()
 
                 OutlinedTextField(
                     value = groupName,
                     onValueChange = { groupName = it },
-                    label = { Text("Group name") },
                     singleLine = true,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 12.dp)
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    label = { Text("Group name") },
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedContainerColor = Color.Black,
+                        unfocusedContainerColor = Color.Black,
+                        focusedTextColor = Color.White,
+                        unfocusedTextColor = Color.White,
+                        focusedLabelColor = Color(0xFFB0BEC5),
+                        unfocusedLabelColor = Color(0xFF90A4AE),
+                        focusedBorderColor = Color(0xFF4FC3F7),
+                        unfocusedBorderColor = Color(0xFF37474F)
+                    )
                 )
 
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    listOf("👥", "👨‍👩‍👧", "🎉", "📸", "⚽", "💬").forEach { icon ->
-                        FilterChip(
-                            selected = selectedIcon == icon,
-                            onClick = { selectedIcon = icon },
-                            label = { Text(icon) }
+                LazyColumn(modifier = Modifier.weight(1f)) {
+                    item {
+                        Text(
+                            text = "Icon",
+                            fontWeight = FontWeight.SemiBold,
+                            color = textColor,
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                        )
+
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(40.dp)
+                                    .border(2.dp, Color.Black, CircleShape)
+                                    .clip(CircleShape)
+                                    .background(if (isDarkMode) Color(0xFF2A2A2A) else Color(0xFFF1F1F1))
+                                    .clickable { onAddPhoto() },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                if (selectedIcon.startsWith("http")) {
+                                    AsyncImage(
+                                        model = selectedIcon,
+                                        contentDescription = "Group icon photo",
+                                        contentScale = ContentScale.Crop,
+                                        modifier = Modifier.fillMaxSize()
+                                    )
+                                } else {
+                                    Icon(Icons.Default.AddAPhoto, contentDescription = "Add photo", tint = textColor)
+                                }
+                            }
+
+                            LazyRow(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(48.dp),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                items(icons, key = { it }) { icon ->
+                                    Surface(
+                                        modifier = Modifier
+                                            .size(40.dp)
+                                            .clickable { selectedIcon = icon },
+                                        shape = CircleShape,
+                                        color = if (selectedIcon == icon) MaterialTheme.colorScheme.primary.copy(alpha = 0.22f)
+                                        else if (isDarkMode) Color(0xFF2A2A2A) else Color(0xFFF1F1F1),
+                                        border = if (selectedIcon == icon) androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.primary) else null
+                                    ) {
+                                        Box(contentAlignment = Alignment.Center) { Text(icon, fontSize = 20.sp) }
+                                    }
+                                }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(8.dp))
+                        HorizontalDivider()
+
+                        Text(
+                            text = "Members",
+                            fontWeight = FontWeight.SemiBold,
+                            color = textColor,
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp)
                         )
                     }
-                }
 
-                Text(
-                    text = "Select friends",
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
-                    modifier = Modifier.padding(start = 16.dp, top = 12.dp, end = 16.dp, bottom = 6.dp)
-                )
-
-                if (isLoading) {
-                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator()
-                    }
-                } else {
-                    LazyColumn(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .weight(1f)
-                    ) {
-                        items(friends, key = { it.uid }) { friend ->
-                            val checked = selectedIds.contains(friend.uid)
+                    if (isLoading) {
+                        item {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 24.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                CircularProgressIndicator()
+                            }
+                        }
+                    } else {
+                        items(sortedFriends, key = { it.uid }) { friend ->
+                            val isSelected = selectedIds.contains(friend.uid)
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .combinedClickable(
                                         onClick = {
-                                            if (checked) selectedIds.remove(friend.uid) else selectedIds.add(friend.uid)
+                                            if (isSelected) selectedIds.remove(friend.uid) else selectedIds.add(friend.uid)
                                         },
                                         onLongClick = { onUserProfileClick(friend.uid) }
                                     )
@@ -707,30 +872,44 @@ private fun NewGroupFromComposeDialog(
                                     model = livePhoto,
                                     contentDescription = friend.displayName,
                                     modifier = Modifier
-                                        .size(44.dp)
+                                        .size(36.dp)
                                         .clip(CircleShape)
-                                        .background(MaterialTheme.colorScheme.surfaceVariant),
+                                        .background(if (isDarkMode) Color(0xFF2A2A2A) else Color(0xFFF1F1F1)),
                                     contentScale = ContentScale.Crop
                                 )
+
                                 Spacer(modifier = Modifier.width(12.dp))
+
                                 Text(
                                     text = friend.displayName,
+                                    color = textColor,
+                                    fontWeight = FontWeight.Medium,
                                     modifier = Modifier.weight(1f),
-                                    fontSize = 15.sp,
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis
                                 )
-                                Checkbox(
-                                    checked = checked,
-                                    onCheckedChange = {
-                                        if (it) selectedIds.add(friend.uid) else selectedIds.remove(friend.uid)
-                                    }
-                                )
+
+                                FilledIconButton(
+                                    onClick = {
+                                        if (isSelected) selectedIds.remove(friend.uid) else selectedIds.add(friend.uid)
+                                    },
+                                    colors = IconButtonDefaults.filledIconButtonColors(
+                                        containerColor = if (isSelected) Color(0xFF2E7D32) else if (isDarkMode) Color(0xFF2A2A2A) else Color(0xFFF1F1F1),
+                                        contentColor = if (isSelected) Color.White else textColor
+                                    ),
+                                    modifier = Modifier.size(34.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = if (isSelected) Icons.Default.Close else Icons.Default.Add,
+                                        contentDescription = if (isSelected) "Remove" else "Add"
+                                    )
+                                }
                             }
-                            HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f))
                         }
                     }
                 }
+
+                HorizontalDivider()
 
                 Button(
                     onClick = {
@@ -744,13 +923,17 @@ private fun NewGroupFromComposeDialog(
                     enabled = canCreate,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(16.dp)
+                        .padding(16.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFF2A4A73),
+                        contentColor = Color.White
+                    )
                 ) {
                     if (isSubmitting) {
-                        CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                        CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp, color = Color.White)
                         Spacer(modifier = Modifier.width(8.dp))
                     }
-                    Text("Create shared group")
+                    Text("Create shared")
                 }
             }
         }
@@ -799,18 +982,28 @@ private fun ChatListItem(
                 .clickable { onProfilePhotoClick() }
         ) {
             if (session.isGroup) {
+                val groupIcon = session.groupIcon.ifBlank { "👥" }
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
                         .clip(CircleShape)
-                        .border(2.dp, Color(0xFF1565C0), CircleShape)
+                        .border(2.dp, Color.Black, CircleShape)
                         .background(Color(0xFF1565C0).copy(alpha = 0.15f)),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(
-                        text = session.groupIcon.ifBlank { "👥" },
-                        fontSize = 22.sp
-                    )
+                    if (groupIcon.startsWith("http")) {
+                        AsyncImage(
+                            model = groupIcon,
+                            contentDescription = otherUserName,
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop
+                        )
+                    } else {
+                        Text(
+                            text = groupIcon,
+                            fontSize = 22.sp
+                        )
+                    }
                 }
             } else if (otherUserPhoto.isNotEmpty()) {
                 AsyncImage(
