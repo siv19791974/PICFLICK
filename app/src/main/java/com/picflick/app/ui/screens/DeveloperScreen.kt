@@ -128,8 +128,7 @@ fun DeveloperScreen(
                     FirebaseFirestore.getInstance()
                         .collection("feedback")
                         .whereEqualTo("assignedToUid", feedbackAssigneeUid)
-                        .orderBy("timestamp", com.google.firebase.firestore.Query.Direction.DESCENDING)
-                        .limit(80)
+                        .limit(120)
                         .get()
                         .await()
                 }
@@ -137,6 +136,8 @@ fun DeveloperScreen(
                 feedbackItems = snapshot.documents.mapNotNull { doc ->
                     doc.toObject(Feedback::class.java)?.copy(id = doc.getString("id") ?: doc.id)
                 }
+                    .sortedByDescending { it.timestamp }
+                    .take(80)
                 devLogs.add(0, "Feedback inbox loaded (${feedbackItems.size})")
             } catch (e: Exception) {
                 feedbackError = e.message ?: "Failed to load feedback inbox"

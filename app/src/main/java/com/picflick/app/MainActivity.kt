@@ -11,13 +11,25 @@ import androidx.activity.compose.setContent
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.AlertDialog
@@ -43,8 +55,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
@@ -53,6 +68,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
+import coil3.compose.AsyncImage
 import com.picflick.app.data.ChatSession
 import com.picflick.app.data.FriendGroup
 import com.picflick.app.data.SubscriptionTier
@@ -1325,32 +1341,152 @@ private fun PrivateShareTargetDialog(
     onShareToFriend: (com.picflick.app.data.UserProfile) -> Unit,
     onShareToGroup: (FriendGroup) -> Unit
 ) {
+    val sheetBg = Color(0xFF0E1016)
+    val cardBg = Color(0xFF1A2030)
+    val borderColor = Color(0xFF4FC3F7)
+
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Share privately") },
+        containerColor = sheetBg,
+        title = {
+            Text(
+                text = "Share privately",
+                color = Color.White,
+                fontWeight = FontWeight.Bold
+            )
+        },
         text = {
             LazyColumn {
-                item {
-                    Text("Groups", fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
-                }
-                items(groups, key = { it.id }) { group ->
-                    TextButton(onClick = { onShareToGroup(group) }) {
-                        Text("${group.icon} ${group.name}")
+                if (groups.isNotEmpty()) {
+                    item {
+                        Text(
+                            "Groups",
+                            color = Color.White.copy(alpha = 0.9f),
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(bottom = 8.dp)
+                        )
+                    }
+                    items(groups, key = { it.id }) { group ->
+                        ShareTargetRow(
+                            title = group.name.ifBlank { "Group" },
+                            subtitle = "Send to group",
+                            iconEmoji = if (group.icon.startsWith("http")) null else group.icon,
+                            iconImageUrl = if (group.icon.startsWith("http")) group.icon else null,
+                            fallbackIcon = Icons.Default.Groups,
+                            cardBg = cardBg,
+                            borderColor = borderColor,
+                            onClick = { onShareToGroup(group) }
+                        )
                     }
                 }
-                item {
-                    Text("Individuals", fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+
+                if (friends.isNotEmpty()) {
+                    item {
+                        Text(
+                            "Individuals",
+                            color = Color.White.copy(alpha = 0.9f),
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(top = if (groups.isNotEmpty()) 14.dp else 0.dp, bottom = 8.dp)
+                        )
+                    }
+                    items(friends, key = { it.uid }) { friend ->
+                        ShareTargetRow(
+                            title = friend.displayName.ifBlank { "Friend" },
+                            subtitle = "Send to friend",
+                            iconEmoji = null,
+                            iconImageUrl = friend.photoUrl.takeIf { it.isNotBlank() },
+                            fallbackIcon = Icons.Default.Groups,
+                            cardBg = cardBg,
+                            borderColor = borderColor,
+                            fallbackLetter = friend.displayName.firstOrNull()?.uppercase(),
+                            onClick = { onShareToFriend(friend) }
+                        )
+                    }
                 }
-                items(friends, key = { it.uid }) { friend ->
-                    TextButton(onClick = { onShareToFriend(friend) }) {
-                        Text(friend.displayName)
+
+                if (groups.isEmpty() && friends.isEmpty()) {
+                    item {
+                        Text(
+                            text = "No groups or friends available",
+                            color = Color.White.copy(alpha = 0.7f),
+                            modifier = Modifier.padding(vertical = 8.dp)
+                        )
                     }
                 }
             }
         },
         confirmButton = {
-            TextButton(onClick = onDismiss) { Text("Close") }
+            TextButton(onClick = onDismiss) { Text("Close", color = Color(0xFF9FD8FF)) }
         }
     )
+}
+
+@Composable
+private fun ShareTargetRow(
+    title: String,
+    subtitle: String,
+    iconEmoji: String?,
+    iconImageUrl: String?,
+    fallbackIcon: androidx.compose.ui.graphics.vector.ImageVector,
+    cardBg: Color,
+    borderColor: Color,
+    fallbackLetter: String? = null,
+    onClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp)
+            .clip(RoundedCornerShape(14.dp))
+            .background(cardBg)
+            .border(1.dp, borderColor.copy(alpha = 0.45f), RoundedCornerShape(14.dp))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier
+                .size(40.dp)
+                .clip(CircleShape)
+                .background(Color(0xFF0F172A))
+                .border(1.dp, Color.Black, CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            when {
+                !iconImageUrl.isNullOrBlank() -> {
+                    AsyncImage(
+                        model = iconImageUrl,
+                        contentDescription = title,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .clip(CircleShape),
+                        contentScale = ContentScale.Crop
+                    )
+                }
+                !iconEmoji.isNullOrBlank() && !iconEmoji.startsWith("http") -> {
+                    Text(text = iconEmoji)
+                }
+                !fallbackLetter.isNullOrBlank() -> {
+                    Text(text = fallbackLetter, color = Color.White, fontWeight = FontWeight.Bold)
+                }
+                else -> {
+                    Icon(fallbackIcon, contentDescription = null, tint = Color(0xFF9FD8FF))
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.width(10.dp))
+
+        Column(modifier = Modifier.weight(1f)) {
+            Text(title, color = Color.White, fontWeight = FontWeight.SemiBold)
+            Text(subtitle, color = Color.White.copy(alpha = 0.72f))
+        }
+
+        Icon(
+            imageVector = Icons.AutoMirrored.Filled.Send,
+            contentDescription = "Send",
+            tint = Color(0xFF9FD8FF)
+        )
+    }
 }
 
