@@ -956,8 +956,6 @@ private fun ChatListItem(
     val isLastMessageFromMe = session.lastSenderId == currentUserId
     val unreadDisplayCount = if (session.unreadCount > 0) {
         session.unreadCount
-    } else if (!session.isGroup && !isLastMessageFromMe && !session.lastMessageRead) {
-        1
     } else {
         0
     }

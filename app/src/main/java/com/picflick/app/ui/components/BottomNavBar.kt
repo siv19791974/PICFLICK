@@ -59,7 +59,7 @@ fun BottomNavBar(
                 BadgedBox(
                     badge = {
                         if (unreadMessages > 0) {
-                            Badge(containerColor = Color(0xFF1565C0), contentColor = Color.White) {
+                            Badge(containerColor = Color.Red, contentColor = Color.White) {
                                 Text(if (unreadMessages > 99) "99+" else unreadMessages.toString())
                             }
                         }
