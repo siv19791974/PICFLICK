@@ -1606,14 +1606,14 @@ private fun CreateOrEditGroupDialog(
                         .padding(horizontal = 16.dp, vertical = 12.dp),
                     label = { Text("Album name") },
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedContainerColor = Color.Black,
-                        unfocusedContainerColor = Color.Black,
-                        focusedTextColor = Color.White,
-                        unfocusedTextColor = Color.White,
-                        focusedLabelColor = Color(0xFFB0BEC5),
-                        unfocusedLabelColor = Color(0xFF90A4AE),
-                        focusedBorderColor = Color(0xFF4FC3F7),
-                        unfocusedBorderColor = Color(0xFF37474F)
+                        focusedContainerColor = Color(0xFFB7D8F2),
+                        unfocusedContainerColor = Color(0xFFB7D8F2),
+                        focusedTextColor = Color.Black,
+                        unfocusedTextColor = Color.Black,
+                        focusedLabelColor = Color.Black,
+                        unfocusedLabelColor = Color.Black.copy(alpha = 0.8f),
+                        focusedBorderColor = Color.Black,
+                        unfocusedBorderColor = Color.Black.copy(alpha = 0.7f)
                     )
                 )
 
