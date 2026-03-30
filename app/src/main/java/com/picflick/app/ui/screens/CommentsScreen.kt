@@ -430,12 +430,7 @@ private fun CommentItem(
                         modifier = Modifier.size(16.dp),
                         tint = if (isLiked) Color.Red else subtitleColor
                     )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(
-                        text = comment.likeCount.toString(),
-                        fontSize = 12.sp,
-                        color = if (isLiked) Color.Red else subtitleColor
-                    )
+
                 }
 
                 Spacer(modifier = Modifier.width(16.dp))
@@ -448,15 +443,7 @@ private fun CommentItem(
                     modifier = Modifier.clickable { onReplyClick() }
                 )
 
-                if (comment.replyCount > 0) {
-                    Spacer(modifier = Modifier.width(16.dp))
-                    Text(
-                        text = "${comment.replyCount} replies",
-                        fontSize = 12.sp,
-                        color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.clickable { /* Show replies */ }
-                    )
-                }
+
             }
         }
     }

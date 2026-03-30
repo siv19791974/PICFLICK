@@ -2223,7 +2223,7 @@ class FlickRepository private constructor() {
                     else
                         replyText
 
-                    val notification = hashMapOf(
+                    val notification = hashMapOf<String, Any?>(
                         "id" to UUID.randomUUID().toString(),
                         "userId" to commentOwnerId,
                         "type" to "COMMENT_REPLY",
@@ -2306,7 +2306,7 @@ class FlickRepository private constructor() {
                     else
                         commentText
 
-                    val notification = hashMapOf(
+                    val notification = hashMapOf<String, Any?>(
                         "id" to UUID.randomUUID().toString(),
                         "userId" to commentOwnerId,
                         "type" to "COMMENT_LIKE",
