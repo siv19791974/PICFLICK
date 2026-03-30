@@ -374,7 +374,8 @@ fun AuthenticatedContent(
             homeViewModel = homeViewModel,
             uploadViewModel = uploadViewModel,
             billingViewModel = billingViewModel,
-            onBack = { onScreenChange(Screen.Settings) }
+            onBack = { onScreenChange(Screen.Settings) },
+            onNavigate = { screen -> onScreenChange(screen) }
         )
 
         is Screen.Preview -> {

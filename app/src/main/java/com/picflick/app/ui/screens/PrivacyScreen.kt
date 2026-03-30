@@ -578,7 +578,9 @@ private fun EmptyMutedUsers(isDarkMode: Boolean) {
     val subtitleColor = if (isDarkMode) Color.Gray else Color.DarkGray
 
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 172.dp),
         colors = CardDefaults.cardColors(
             containerColor = if (isDarkMode) Color(0xFF1C1C1E) else Color.White
         ),

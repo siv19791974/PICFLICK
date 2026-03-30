@@ -7,8 +7,10 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
-import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material.icons.filled.CameraAlt
+import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.outlined.Menu
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -23,13 +25,24 @@ import androidx.compose.ui.unit.sp
 /**
  * Bottom sheet dialog for selecting upload source - Camera or Gallery
  */
+data class ActionSheetOption(
+    val icon: ImageVector,
+    val title: String,
+    val subtitle: String,
+    val accentColor: Color,
+    val onClick: () -> Unit
+)
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun UploadSourceDialog(
+fun AddPhotoStyleActionSheet(
+    title: String,
+    options: List<ActionSheetOption>,
     onDismiss: () -> Unit,
-    onCameraClick: () -> Unit,
-    onGalleryClick: () -> Unit,
-    onSharePrivatelyClick: () -> Unit
+    cancelTitle: String = "Cancel",
+    cancelSubtitle: String,
+    cancelIcon: ImageVector = Icons.Outlined.Menu,
+    cancelAccentColor: Color = Color(0xFF4B5563)
 ) {
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -53,52 +66,34 @@ fun UploadSourceDialog(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
-                text = "Add Photo",
+                text = title,
                 color = Color.White,
                 fontSize = 20.sp,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.padding(bottom = 20.dp)
             )
 
-            // Camera Option
-            UploadOptionRow(
-                icon = Icons.Outlined.Add,
-                title = "Take Photo",
-                subtitle = "Use your camera",
-                onClick = onCameraClick,
-                accentColor = Color(0xFF2E86DE)
-            )
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            // Gallery Option
-            UploadOptionRow(
-                icon = Icons.Outlined.Menu,
-                title = "Choose from Gallery",
-                subtitle = "Select existing photo",
-                onClick = onGalleryClick,
-                accentColor = Color(0xFF2E86DE)
-            )
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            // Private share option
-            UploadOptionRow(
-                icon = Icons.AutoMirrored.Filled.Send,
-                title = "Share privately 🎭",
-                subtitle = "Send to individual or group only",
-                onClick = onSharePrivatelyClick,
-                accentColor = Color(0xFF2E86DE)
-            )
+            options.forEachIndexed { index, option ->
+                if (index > 0) {
+                    Spacer(modifier = Modifier.height(12.dp))
+                }
+                UploadOptionRow(
+                    icon = option.icon,
+                    title = option.title,
+                    subtitle = option.subtitle,
+                    onClick = option.onClick,
+                    accentColor = option.accentColor
+                )
+            }
 
             Spacer(modifier = Modifier.height(12.dp))
 
             UploadOptionRow(
-                icon = Icons.Outlined.Menu,
-                title = "Cancel",
-                subtitle = "Close add photo",
+                icon = cancelIcon,
+                title = cancelTitle,
+                subtitle = cancelSubtitle,
                 onClick = onDismiss,
-                accentColor = Color(0xFF4B5563)
+                accentColor = cancelAccentColor
             )
 
             Spacer(modifier = Modifier.height(10.dp))
@@ -106,9 +101,47 @@ fun UploadSourceDialog(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun UploadSourceDialog(
+    onDismiss: () -> Unit,
+    onCameraClick: () -> Unit,
+    onGalleryClick: () -> Unit,
+    onSharePrivatelyClick: () -> Unit
+) {
+    AddPhotoStyleActionSheet(
+        title = "Add Photo",
+        options = listOf(
+            ActionSheetOption(
+                icon = Icons.Default.CameraAlt,
+                title = "Take Photo",
+                subtitle = "Use your camera",
+                accentColor = Color(0xFF2E86DE),
+                onClick = onCameraClick
+            ),
+            ActionSheetOption(
+                icon = Icons.Default.PhotoLibrary,
+                title = "Choose from Gallery",
+                subtitle = "Select existing photo",
+                accentColor = Color(0xFF2E86DE),
+                onClick = onGalleryClick
+            ),
+            ActionSheetOption(
+                icon = Icons.AutoMirrored.Filled.Send,
+                title = "Share privately 🎭",
+                subtitle = "Send to individual or group only",
+                accentColor = Color(0xFF2E86DE),
+                onClick = onSharePrivatelyClick
+            )
+        ),
+        onDismiss = onDismiss,
+        cancelSubtitle = "Close add photo"
+    )
+}
+
 @Composable
 private fun UploadOptionRow(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    icon: ImageVector,
     title: String,
     subtitle: String,
     onClick: () -> Unit,

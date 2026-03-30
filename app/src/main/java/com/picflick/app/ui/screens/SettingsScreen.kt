@@ -2,7 +2,9 @@ package com.picflick.app.ui.screens
 
 import android.app.Activity
 import android.content.Intent
+import android.content.pm.PackageManager
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -21,8 +23,14 @@ import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Cloud
+import androidx.compose.material.icons.filled.DarkMode
+import androidx.compose.material.icons.filled.Smartphone
+import androidx.compose.material.icons.filled.WbSunny
 import androidx.compose.material.icons.filled.DeveloperMode
 import androidx.compose.material.icons.filled.Upgrade
+import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material.icons.outlined.Menu
+import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -43,6 +51,8 @@ import com.picflick.app.data.getDisplayName
 import com.picflick.app.data.getLightColor
 import com.picflick.app.ui.theme.ThemeManager
 import com.picflick.app.ui.theme.isDarkModeBackground
+import com.picflick.app.ui.components.AddPhotoStyleActionSheet
+import com.picflick.app.ui.components.ActionSheetOption
 import com.picflick.app.data.getStorageLimitBytes
 import com.picflick.app.data.getStorageLimitGB
 import com.picflick.app.utils.LocaleHelper
@@ -77,6 +87,11 @@ fun SettingsScreen(
     onDeveloper: () -> Unit = {}
 ) {
     val context = LocalContext.current
+    val appVersionName = remember {
+        runCatching {
+            context.packageManager.getPackageInfo(context.packageName, 0).versionName ?: "-"
+        }.getOrDefault("-")
+    }
     val developerUid = "LpSqE40IZGeAGMknTAEzysqp5l33"
     val isDeveloperUser = userProfile.uid == developerUid
     var showSignOutDialog by remember { mutableStateOf(false) }
@@ -85,8 +100,12 @@ fun SettingsScreen(
     var showClearCacheDialog by remember { mutableStateOf(false) }
     var showAppearanceDialog by remember { mutableStateOf(false) }
     var showLanguageDialog by remember { mutableStateOf(false) }
+    var showDeveloperPasswordDialog by remember { mutableStateOf(false) }
+    var developerPasswordInput by remember { mutableStateOf("") }
+    var developerPasswordError by remember { mutableStateOf<String?>(null) }
     // Use ThemeManager for theme state (persists across sessions)
     val isDarkMode by ThemeManager.isDarkMode
+    val developerAccessPassword = "687495"
     
     // Calculate actual cache size
     fun calculateDirSize(dir: java.io.File): Long {
@@ -218,7 +237,11 @@ fun SettingsScreen(
                 SettingsItem(
                     icon = Icons.Default.Menu,
                     title = "Appearance",
-                    subtitle = if (isDarkMode) "Dark mode (active)" else "Light mode",
+                    subtitle = when (ThemeManager.themeMode.value) {
+                        ThemeManager.ThemeMode.LIGHT -> "Light mode"
+                        ThemeManager.ThemeMode.DARK -> "Dark mode"
+                        ThemeManager.ThemeMode.SYSTEM -> "Use phone theme"
+                    },
                     onClick = { showAppearanceDialog = true },
                     showArrow = false
                 )
@@ -263,7 +286,7 @@ fun SettingsScreen(
                 SettingsItem(
                     icon = Icons.Default.Info,
                     title = "Version",
-                    subtitle = "1.0.0",
+                    subtitle = appVersionName,
                     onClick = onAbout
                 )
             }
@@ -274,9 +297,23 @@ fun SettingsScreen(
                 SettingsSection(title = "DEVELOPER", isDarkMode = isDarkMode) {
                     SettingsItem(
                         icon = Icons.Default.DeveloperMode,
-                        title = "DEVELOPER",
-                        subtitle = "PicFlick developer tools",
-                        onClick = onDeveloper
+                        title = "Developer Tools",
+                        subtitle = "Password protected access",
+                        onClick = {
+                            developerPasswordInput = ""
+                            developerPasswordError = null
+                            showDeveloperPasswordDialog = true
+                        }
+                    )
+                    SettingsItem(
+                        icon = Icons.Default.Info,
+                        title = "Feedback Inbox",
+                        subtitle = "Open Contact submissions",
+                        onClick = {
+                            developerPasswordInput = ""
+                            developerPasswordError = null
+                            showDeveloperPasswordDialog = true
+                        }
                     )
                 }
                 HorizontalDivider(color = if (isDarkMode) Color(0xFF2C2C2E) else Color.LightGray, thickness = 0.5.dp)
@@ -423,85 +460,115 @@ fun SettingsScreen(
         )
     }
 
-    // Appearance Settings Dialog
-    if (showAppearanceDialog) {
+    if (showDeveloperPasswordDialog) {
         AlertDialog(
-            onDismissRequest = { showAppearanceDialog = false },
-            title = { 
-                Text(
-                    "Appearance",
-                    color = if (isDarkMode) Color.White else Color.Black
-                ) 
+            onDismissRequest = {
+                showDeveloperPasswordDialog = false
+                developerPasswordInput = ""
+                developerPasswordError = null
             },
+            title = { Text("Developer Access") },
             text = {
                 Column {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { 
-                                ThemeManager.setDarkMode(context, false)
-                                showAppearanceDialog = false
-                                // Restart activity to apply theme
-                                val intent = Intent(context, MainActivity::class.java)
-                                intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_NEW_TASK)
-                                context.startActivity(intent)
-                                (context as? Activity)?.finish()
-                            }
-                            .padding(vertical = 12.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "☀️ Light Mode",
-                            modifier = Modifier.weight(1f),
-                            color = if (isDarkMode) Color.White else Color.Black
-                        )
-                        if (!isDarkMode) {
-                            Text("✓", color = Color(0xFF00D09C))
-                        }
-                    }
-                    
-                    HorizontalDivider(color = if (isDarkMode) Color(0xFF2C2C2E) else Color.LightGray)
-                    
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { 
-                                ThemeManager.setDarkMode(context, true)
-                                showAppearanceDialog = false
-                                // Restart activity to apply theme
-                                val intent = Intent(context, MainActivity::class.java)
-                                intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_NEW_TASK)
-                                context.startActivity(intent)
-                                (context as? Activity)?.finish()
-                            }
-                            .padding(vertical = 12.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "🌙 Dark Mode",
-                            modifier = Modifier.weight(1f),
-                            color = if (isDarkMode) Color.White else Color.Black
-                        )
-                        if (isDarkMode) {
-                            Text("✓", color = Color(0xFF00D09C))
-                        }
-                    }
-                    
                     Text(
-                        text = "Theme will be applied immediately",
-                        fontSize = 12.sp,
-                        color = if (isDarkMode) Color.Gray else Color.DarkGray,
-                        modifier = Modifier.padding(top = 8.dp)
+                        text = "Enter developer password",
+                        color = if (isDarkMode) Color.LightGray else Color.DarkGray,
+                        fontSize = 13.sp
                     )
+                    Spacer(modifier = Modifier.height(10.dp))
+                    OutlinedTextField(
+                        value = developerPasswordInput,
+                        onValueChange = {
+                            developerPasswordInput = it
+                            developerPasswordError = null
+                        },
+                        singleLine = true,
+                        label = { Text("Password") },
+                        visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation(),
+                        modifier = Modifier.fillMaxWidth(),
+                        isError = developerPasswordError != null
+                    )
+                    developerPasswordError?.let { err ->
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(
+                            text = err,
+                            color = MaterialTheme.colorScheme.error,
+                            fontSize = 12.sp
+                        )
+                    }
                 }
             },
-            confirmButton = {},
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        if (developerPasswordInput == developerAccessPassword) {
+                            showDeveloperPasswordDialog = false
+                            developerPasswordInput = ""
+                            developerPasswordError = null
+                            onDeveloper()
+                        } else {
+                            developerPasswordError = "Incorrect password"
+                        }
+                    }
+                ) {
+                    Text("Unlock")
+                }
+            },
             dismissButton = {
-                TextButton(onClick = { showAppearanceDialog = false }) {
-                    Text("Cancel", color = if (isDarkMode) Color.White else Color.Black)
+                TextButton(
+                    onClick = {
+                        showDeveloperPasswordDialog = false
+                        developerPasswordInput = ""
+                        developerPasswordError = null
+                    }
+                ) {
+                    Text("Cancel")
                 }
             },
-            containerColor = if (isDarkMode) Color(0xFF1C1C1E) else Color.White
+            containerColor = if (isDarkMode) Color(0xFF1C1C1E) else Color.White,
+            titleContentColor = if (isDarkMode) Color.White else Color.Black,
+            textContentColor = if (isDarkMode) Color.White else Color.Black
+        )
+    }
+
+    // Appearance popup - reusing Add Photo style component for exact visual parity
+    if (showAppearanceDialog) {
+        AddPhotoStyleActionSheet(
+            title = "Appearance",
+            options = listOf(
+                ActionSheetOption(
+                    icon = Icons.Default.WbSunny,
+                    title = "Light Mode",
+                    subtitle = if (ThemeManager.themeMode.value == ThemeManager.ThemeMode.LIGHT) "Always use light theme · Active" else "Always use light theme",
+                    accentColor = Color(0xFF2E86DE),
+                    onClick = {
+                        ThemeManager.setThemeMode(context, ThemeManager.ThemeMode.LIGHT)
+                        showAppearanceDialog = false
+                    }
+                ),
+                ActionSheetOption(
+                    icon = Icons.Default.DarkMode,
+                    title = "Dark Mode",
+                    subtitle = if (ThemeManager.themeMode.value == ThemeManager.ThemeMode.DARK) "Always use dark theme · Active" else "Always use dark theme",
+                    accentColor = Color(0xFF2E86DE),
+                    onClick = {
+                        ThemeManager.setThemeMode(context, ThemeManager.ThemeMode.DARK)
+                        showAppearanceDialog = false
+                    }
+                ),
+                ActionSheetOption(
+                    icon = Icons.Default.Smartphone,
+                    title = "Use Phone Theme",
+                    subtitle = if (ThemeManager.themeMode.value == ThemeManager.ThemeMode.SYSTEM) "Follow your device setting · Active" else "Follow your device setting",
+                    accentColor = Color(0xFF2E86DE),
+                    onClick = {
+                        ThemeManager.setThemeMode(context, ThemeManager.ThemeMode.SYSTEM)
+                        showAppearanceDialog = false
+                    }
+                )
+            ),
+            onDismiss = { showAppearanceDialog = false },
+            cancelSubtitle = "Close appearance"
         )
     }
 

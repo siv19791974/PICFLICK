@@ -26,6 +26,7 @@ import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.icons.filled.Flag
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.NetworkCheck
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Refresh
@@ -186,6 +187,11 @@ fun DeveloperScreen(
                 DevActionRow(Icons.Default.Build, "Go Settings") { onNavigate(Screen.Settings) }
                 DevActionRow(Icons.Default.Build, "Go Profile") { onNavigate(Screen.Profile) }
                 DevActionRow(Icons.Default.Notifications, "Go Notifications") { onNavigate(Screen.Notifications) }
+            }
+
+            DevSectionCard("SUPPORT / FEEDBACK", isDarkMode) {
+                DevActionRow(Icons.Default.Info, "Open Contact / Feedback") { onNavigate(Screen.Contact) }
+                DevInfo("Assignee UID", "LpSqE40IZGeAGMknTAEzysqp5l33", isDarkMode)
             }
 
             DevSectionCard("UPLOAD / FEED RECONCILE DEBUG", isDarkMode) {

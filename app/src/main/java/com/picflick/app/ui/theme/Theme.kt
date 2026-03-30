@@ -7,6 +7,7 @@ import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
@@ -50,13 +51,12 @@ fun PicFlickTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     content: @Composable () -> Unit
 ) {
-    val context = LocalContext.current
-    
-    // Use saved preference if available, otherwise use system default
-    val isDarkModeEnabled = ThemeManager.isDarkMode.value || 
-        (ThemeManager.isDarkMode.value == false && ThemeManager.isDarkModeEnabled(context)) ||
-        darkTheme
-    
+    LaunchedEffect(darkTheme, ThemeManager.themeMode.value) {
+        ThemeManager.syncWithSystem(darkTheme)
+    }
+
+    val isDarkModeEnabled = ThemeManager.isDarkMode.value
+
     val colorScheme = if (isDarkModeEnabled) {
         PicFlickDarkColorScheme
     } else {

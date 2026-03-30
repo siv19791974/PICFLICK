@@ -8,10 +8,12 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -26,7 +28,13 @@ import com.picflick.app.ui.theme.isDarkModeBackground
 fun AboutScreen(
     onBack: () -> Unit
 ) {
+    val context = LocalContext.current
     val isDarkMode = ThemeManager.isDarkMode.value
+    val appVersionName = remember(context) {
+        runCatching {
+            context.packageManager.getPackageInfo(context.packageName, 0).versionName ?: "-"
+        }.getOrDefault("-")
+    }
     val textColor = if (isDarkMode) Color.White else Color.Black
     val subtitleColor = if (isDarkMode) Color.Gray else Color.DarkGray
     val cardBackground = if (isDarkMode) Color(0xFF1C1C1E) else Color.White
@@ -73,7 +81,7 @@ fun AboutScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding),
-            contentPadding = PaddingValues(start = 16.dp, top = 24.dp, end = 16.dp, bottom = 0.dp),
+            contentPadding = PaddingValues(start = 16.dp, top = 8.dp, end = 16.dp, bottom = 0.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             // Version Header
@@ -82,7 +90,7 @@ fun AboutScreen(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.height(6.dp))
 
                     // Version Badge
                     Card(
@@ -92,7 +100,7 @@ fun AboutScreen(
                         shape = RoundedCornerShape(20.dp)
                     ) {
                         Text(
-                            text = "Version 1.0.0",
+                            text = "Version $appVersionName",
                             modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                             color = Color.White,
                             fontWeight = FontWeight.Bold,
@@ -101,12 +109,6 @@ fun AboutScreen(
                     }
 
                     Spacer(modifier = Modifier.height(8.dp))
-
-                    Text(
-                        text = "Build 20250309.1",
-                        fontSize = 12.sp,
-                        color = subtitleColor
-                    )
                 }
             }
 
@@ -130,60 +132,65 @@ fun AboutScreen(
                             modifier = Modifier.padding(bottom = 16.dp)
                         )
 
-                        // Changelog items
+                        // Changelog items (kept generic)
+                        ChangelogItem(
+                            icon = "💬",
+                            title = "Group Chats",
+                            description = "Create and manage group conversations with friends.",
+                            isDarkMode = isDarkMode
+                        )
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        ChangelogItem(
+                            icon = "🗂️",
+                            title = "Shared Albums",
+                            description = "Build albums and share memories with your circle.",
+                            isDarkMode = isDarkMode
+                        )
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
                         ChangelogItem(
                             icon = "📸",
-                            title = "Maximum Photo Quality",
-                            description = "Photos now upload at 100% JPEG quality for the best possible image quality",
+                            title = "High Photo Quality",
+                            description = "Enjoy clearer uploads with improved image quality.",
                             isDarkMode = isDarkMode
                         )
 
                         Spacer(modifier = Modifier.height(12.dp))
 
                         ChangelogItem(
-                            icon = "⚖️",
-                            title = "New Legal Section",
-                            description = "Added Terms, Content Policy, and clear rights information",
+                            icon = "🔔",
+                            title = "Smarter Notifications",
+                            description = "Control updates with flexible notification settings.",
                             isDarkMode = isDarkMode
                         )
 
                         Spacer(modifier = Modifier.height(12.dp))
 
                         ChangelogItem(
-                            icon = "🎯",
-                            title = "Philosophy Page",
-                            description = "Learn what makes PicFlick different from big social media",
+                            icon = "🎨",
+                            title = "Appearance Options",
+                            description = "Choose light, dark, or phone theme for your style.",
                             isDarkMode = isDarkMode
                         )
 
                         Spacer(modifier = Modifier.height(12.dp))
 
                         ChangelogItem(
-                            icon = "🔒",
-                            title = "Privacy Improvements",
-                            description = "Enhanced privacy controls and clearer data policies",
-                            isDarkMode = isDarkMode
-                        )
-
-                        Spacer(modifier = Modifier.height(12.dp))
-
-                        ChangelogItem(
-                            icon = "✓",
-                            title = "Upload Animation",
-                            description = "New countdown animation shows remaining daily uploads after posting",
-                            isDarkMode = isDarkMode
-                        )
-
-                        Spacer(modifier = Modifier.height(12.dp))
-
-                        ChangelogItem(
-                            icon = "🐛",
-                            title = "Bug Fixes",
-                            description = "Fixed profile photo disappearing and navigation color issues",
+                            icon = "🛡️",
+                            title = "Privacy Controls",
+                            description = "Mute and block tools help keep your space comfortable.",
                             isDarkMode = isDarkMode
                         )
                     }
                 }
+            }
+
+            // Push bottom card lower
+            item {
+                Spacer(modifier = Modifier.height(36.dp))
             }
 
             // Made With Love
@@ -210,7 +217,7 @@ fun AboutScreen(
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            text = "© 2025 PicFlick Team",
+                            text = "© 2026 PicFlick Team",
                             fontSize = 13.sp,
                             color = subtitleColor
                         )
@@ -218,9 +225,8 @@ fun AboutScreen(
                 }
             }
 
-            // Bottom spacing removed
             item {
-                Spacer(modifier = Modifier.height(80.dp))
+                Spacer(modifier = Modifier.height(18.dp))
             }
         }
     }

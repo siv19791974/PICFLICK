@@ -1199,6 +1199,7 @@ private fun ModernStatItem(
             modifier = Modifier
                 .size(74.dp)
                 .clip(CircleShape)
+                .border(1.dp, Color.Black, CircleShape)
                 .background(circleColor),
             contentAlignment = Alignment.Center
         ) {
