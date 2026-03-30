@@ -547,10 +547,6 @@ class FlickRepository private constructor() {
         return total
     }
 
-    /**
-     * Get a single flick by ID
-     * Used for opening specific photos from push notifications
-     */
     fun getFlickById(flickId: String, onResult: (Result<Flick>) -> Unit) {
         db.collection("flicks").document(flickId).get()
             .addOnSuccessListener { doc ->
