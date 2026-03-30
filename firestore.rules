@@ -239,12 +239,26 @@ service cloud.firestore {
 
     // FEEDBACK submissions from Contact Us
     match /feedback/{feedbackId} {
+      function isDevInboxUser() {
+        return isAuth() && request.auth.uid == "LpSqE40IZGeAGMknTAEzysqp5l33";
+      }
+
       // User can create feedback only for themselves
       allow create: if isAuth() && request.resource.data.userId == request.auth.uid;
-      // User can read only their own feedback entries
-      allow read: if isAuth() && resource.data.userId == request.auth.uid;
-      // No client-side updates/deletes (handled by admin tools)
-      allow update, delete: if false;
+
+      // Submitter can read their own entry, dev can read assigned inbox entries
+      allow read: if isAuth() && (
+        resource.data.userId == request.auth.uid ||
+        (isDevInboxUser() && resource.data.assignedToUid == request.auth.uid)
+      );
+
+      // Dev can update only status/updatedAt on assigned feedback
+      allow update: if isDevInboxUser() &&
+        resource.data.assignedToUid == request.auth.uid &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updatedAt']);
+
+      // No client-side deletes
+      allow delete: if false;
     }
 
     // REPORTS (photo/user reports)

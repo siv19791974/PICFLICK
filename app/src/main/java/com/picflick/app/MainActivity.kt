@@ -409,17 +409,13 @@ fun MainScreen(
     val pushEventVersion = activity?.pushEventVersion ?: 0
     val shareEventVersion = activity?.shareEventVersion ?: 0
 
-    LaunchedEffect(shareEventVersion, currentUser?.uid) {
+    LaunchedEffect(shareEventVersion, currentUser?.uid, userProfile?.uid) {
         if (currentUser == null) return@LaunchedEffect
+
+        val profile = userProfile ?: return@LaunchedEffect
 
         val sharedUris = activity?.consumeSharedImageUris().orEmpty().distinct()
         if (sharedUris.isEmpty()) return@LaunchedEffect
-
-        val profile = userProfile
-        if (profile == null) {
-            Toast.makeText(context, "Profile not ready yet", Toast.LENGTH_SHORT).show()
-            return@LaunchedEffect
-        }
 
         val tier = profile.getEffectiveTier()
         val dailyLimit = tier.getDailyUploadLimit()
@@ -776,11 +772,7 @@ fun MainScreen(
             return@rememberLauncherForActivityResult
         }
 
-        val profile = userProfile
-        if (profile == null) {
-            Toast.makeText(context, "Profile not ready yet", Toast.LENGTH_SHORT).show()
-            return@rememberLauncherForActivityResult
-        }
+        val profile = userProfile ?: return@rememberLauncherForActivityResult
 
         val tier = profile.getEffectiveTier()
         val dailyLimit = tier.getDailyUploadLimit()

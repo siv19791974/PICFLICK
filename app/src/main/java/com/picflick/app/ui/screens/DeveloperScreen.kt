@@ -154,7 +154,12 @@ fun DeveloperScreen(
                     FirebaseFirestore.getInstance()
                         .collection("feedback")
                         .document(feedback.id)
-                        .update("status", "RESOLVED")
+                        .update(
+                            mapOf(
+                                "status" to "RESOLVED",
+                                "updatedAt" to System.currentTimeMillis()
+                            )
+                        )
                         .await()
                 }
                 feedbackItems = feedbackItems.map {

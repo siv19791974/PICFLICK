@@ -504,6 +504,7 @@ private fun NotificationItem(
     val isCommentHeartNotification = notification.type == NotificationType.REACTION &&
         (notification.title.contains("comment", ignoreCase = true) || !notification.commentId.isNullOrBlank())
     val commentReactionEmoji = notification.reactionEmoji?.takeIf { it.isNotBlank() } ?: "❤️"
+    val commentPreview = notification.commentPreview?.takeIf { it.isNotBlank() }
 
     val displayMessage = when {
         notification.type == NotificationType.MESSAGE -> {
@@ -515,7 +516,13 @@ private fun NotificationItem(
         notification.type == NotificationType.MENTION -> "You're tagged in a photo"
         notification.type == NotificationType.FRIEND_REQUEST -> "$senderName has requested to be your friend"
         notification.type == NotificationType.GROUP_INVITE -> notification.message.ifBlank { "$senderName invited you to a group" }
-        isCommentHeartNotification -> "your comment \"$commentReactionEmoji\""
+        isCommentHeartNotification -> {
+            if (!commentPreview.isNullOrBlank()) {
+                "your comment \"$commentPreview\" \u2192 $commentReactionEmoji"
+            } else {
+                "your comment \"$commentReactionEmoji\""
+            }
+        }
         else -> notification.message.ifBlank { notification.title.ifBlank { "Notification" } }
     }
 
