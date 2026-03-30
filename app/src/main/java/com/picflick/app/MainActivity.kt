@@ -350,26 +350,44 @@ fun MainScreen(
 
     var forceHomeResetVersion by remember { mutableIntStateOf(0) }
 
-    // In-app navigation history for one-step phone back behavior
-    var navigationHistory by remember { mutableStateOf<List<Screen>>(emptyList()) }
-    var lastObservedScreen by remember { mutableStateOf<Screen?>(null) }
-    var isPerformingBackNavigation by remember { mutableStateOf(false) }
-
     fun navigateTo(screen: Screen) {
         if (screen == currentScreen) return
-        navigationHistory = (navigationHistory + currentScreen).takeLast(120)
         currentScreen = screen
     }
 
+    fun parentScreenFor(screen: Screen): Screen? = when (screen) {
+        is Screen.Home -> null
+        is Screen.ChatDetail -> Screen.Chats
+        is Screen.EditPhoto -> screen.returnTo
+        is Screen.About,
+        is Screen.Contact,
+        is Screen.Privacy,
+        is Screen.NotificationSettings,
+        is Screen.ManageStorage,
+        is Screen.SubscriptionStatus,
+        is Screen.PlanOptions,
+        is Screen.StreakAchievements,
+        is Screen.PrivacyPolicy,
+        is Screen.Philosophy,
+        is Screen.Legal,
+        is Screen.Developer -> Screen.Settings
+        is Screen.FindFriends,
+        is Screen.UserFriends,
+        is Screen.UserProfile -> Screen.Friends
+        is Screen.Profile,
+        is Screen.MyPhotos,
+        is Screen.Friends,
+        is Screen.Chats,
+        is Screen.Notifications,
+        is Screen.Filter,
+        is Screen.Explore,
+        is Screen.Preview,
+        is Screen.Settings -> Screen.Home
+    }
+
     fun navigateBackOneScreen() {
-        if (navigationHistory.isNotEmpty()) {
-            val previous = navigationHistory.last()
-            navigationHistory = navigationHistory.dropLast(1)
-            isPerformingBackNavigation = true
-            currentScreen = previous
-        } else if (currentScreen != Screen.Home) {
-            isPerformingBackNavigation = true
-            currentScreen = Screen.Home
+        parentScreenFor(currentScreen)?.let { parent ->
+            currentScreen = parent
         }
     }
 
@@ -546,30 +564,8 @@ fun MainScreen(
         }
     }
 
-    // Keep navigation history in sync for one-step back behavior everywhere
-    LaunchedEffect(currentScreen) {
-        if (lastObservedScreen == null) {
-            lastObservedScreen = currentScreen
-            return@LaunchedEffect
-        }
-
-        if (isPerformingBackNavigation) {
-            isPerformingBackNavigation = false
-            lastObservedScreen = currentScreen
-            return@LaunchedEffect
-        }
-
-        if (lastObservedScreen != currentScreen) {
-            val previous = lastObservedScreen
-            if (previous != null) {
-                navigationHistory = (navigationHistory + previous).takeLast(120)
-            }
-            lastObservedScreen = currentScreen
-        }
-    }
-
-    // Handle phone back: always go back exactly one screen in app history
-    BackHandler(enabled = currentScreen != Screen.Home || navigationHistory.isNotEmpty()) {
+    // Handle phone back: always go back exactly one parent level
+    BackHandler(enabled = parentScreenFor(currentScreen) != null) {
         navigateBackOneScreen()
     }
 
