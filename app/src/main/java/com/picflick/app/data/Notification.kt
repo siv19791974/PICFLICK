@@ -15,6 +15,7 @@ data class Notification(
     val flickId: String? = null,       // Related photo (if any)
     val flickImageUrl: String? = null,   // Thumbnail of related photo
     val commentId: String? = null,       // Related comment id (if any)
+    val commentPreview: String? = null,  // Optional comment text preview
     val reactionEmoji: String? = null,   // Related reaction emoji
     val chatId: String? = null,          // Related chat (for MESSAGE notifications)
     val groupId: String? = null,         // Related group (for GROUP_INVITE)

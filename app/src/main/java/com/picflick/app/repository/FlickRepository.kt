@@ -1641,6 +1641,7 @@ class FlickRepository private constructor() {
                                 flickId = data["flickId"] as? String,
                                 flickImageUrl = data["flickImageUrl"] as? String,
                                 commentId = data["commentId"] as? String,
+                                commentPreview = data["commentPreview"] as? String,
                                 reactionEmoji = data["reactionEmoji"] as? String,
                                 chatId = data["chatId"] as? String,
                                 isRead = data["isRead"] as? Boolean ?: false,

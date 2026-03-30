@@ -978,6 +978,7 @@ private fun NotificationsScreenContent(
     onOpenUploadSourceDialog: () -> Unit
 ) {
     var selectedNotificationPhoto by remember { mutableStateOf<Flick?>(null) }
+    var notificationOpenComments by remember { mutableStateOf(false) }
 
     NotificationsScreen(
         userProfile = userProfile,
@@ -989,6 +990,7 @@ private fun NotificationsScreenContent(
             )
         },
         onPhotoClick = { flickId, imageUrl, userId ->
+            notificationOpenComments = true
             if (!imageUrl.isNullOrBlank()) {
                 selectedNotificationPhoto = Flick(
                     id = flickId,
@@ -1120,7 +1122,10 @@ private fun NotificationsScreenContent(
         currentUser = userProfile,
         allPhotos = emptyList(),
         currentIndex = 0,
-        onDismiss = { selectedNotificationPhoto = null },
+        onDismiss = {
+            selectedNotificationPhoto = null
+            notificationOpenComments = false
+        },
         onNavigateToPhoto = { },
         onNavigateToFindFriends = {
             selectedNotificationPhoto = null
@@ -1143,7 +1148,8 @@ private fun NotificationsScreenContent(
         onShareClick = { },
         onDeleteClick = { selectedNotificationPhoto = null },
         canDelete = false,
-        onCaptionUpdated = { _, _ -> }
+        onCaptionUpdated = { _, _ -> },
+        openCommentPanelInitially = notificationOpenComments
     )
 }
 
