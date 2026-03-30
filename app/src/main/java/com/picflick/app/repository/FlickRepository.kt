@@ -3054,6 +3054,30 @@ android.util.Log.e("FlickRepository", "Failed to submit feedback", e)
                 }
 
                 sharedRef.update(updates).await()
+
+                // Keep group chat metadata in sync with album edits
+                if (name != null || icon != null) {
+                    val chatSessionsSnapshot = db.collection("chatSessions")
+                        .whereEqualTo("isGroup", true)
+                        .whereEqualTo("groupId", groupId)
+                        .get()
+                        .await()
+
+                    if (!chatSessionsSnapshot.isEmpty) {
+                        val chatUpdates = hashMapOf<String, Any>()
+                        name?.let { chatUpdates["groupName"] = it }
+                        icon?.let { chatUpdates["groupIcon"] = it }
+
+                        if (chatUpdates.isNotEmpty()) {
+                            val batch = db.batch()
+                            chatSessionsSnapshot.documents.forEach { doc ->
+                                batch.update(doc.reference, chatUpdates)
+                            }
+                            batch.commit().await()
+                        }
+                    }
+                }
+
                 return Result.Success(Unit)
             }
 

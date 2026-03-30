@@ -6,6 +6,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.border
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -23,9 +25,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil3.compose.AsyncImage
 import com.picflick.app.data.FeedFilter
 import com.picflick.app.data.FriendGroup
 
@@ -279,11 +283,30 @@ private fun AlbumItem(
             verticalAlignment = Alignment.CenterVertically
         ) {
             // Icon
-            Text(
-                text = icon,
-                fontSize = 28.sp,
-                modifier = Modifier.padding(end = 16.dp)
-            )
+            Box(
+                modifier = Modifier
+                    .size(36.dp)
+                    .clip(CircleShape)
+                    .border(2.dp, Color.Black, CircleShape)
+                    .background(Color.Transparent)
+                    .padding(end = 0.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                if (icon.startsWith("http")) {
+                    AsyncImage(
+                        model = icon,
+                        contentDescription = "$name icon",
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                } else {
+                    Text(
+                        text = icon,
+                        fontSize = 20.sp
+                    )
+                }
+            }
+            Spacer(modifier = Modifier.width(16.dp))
 
             // Name and subtitle
             Column(modifier = Modifier.weight(1f)) {
