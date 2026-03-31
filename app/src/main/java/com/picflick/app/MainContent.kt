@@ -62,6 +62,7 @@ import com.picflick.app.ui.screens.SettingsScreen
 import com.picflick.app.ui.screens.StreakAchievementsScreen
 import com.picflick.app.ui.screens.SubscriptionStatusScreen
 import com.picflick.app.ui.screens.UserProfileScreen
+import com.picflick.app.ui.theme.FeatureFlags
 import com.picflick.app.viewmodel.AuthViewModel
 import com.picflick.app.viewmodel.BillingViewModel
 import com.picflick.app.viewmodel.ChatViewModel
@@ -368,15 +369,21 @@ fun AuthenticatedContent(
             onBack = { onScreenChange(Screen.Settings) }
         )
 
-        is Screen.Developer -> DeveloperScreen(
-            userProfile = userProfile,
-            authViewModel = authViewModel,
-            homeViewModel = homeViewModel,
-            uploadViewModel = uploadViewModel,
-            billingViewModel = billingViewModel,
-            onBack = { onScreenChange(Screen.Settings) },
-            onNavigate = { screen -> onScreenChange(screen) }
-        )
+        is Screen.Developer -> {
+            if (!FeatureFlags.developerEntryEnabled.value) {
+                onScreenChange(Screen.Settings)
+            } else {
+                DeveloperScreen(
+                    userProfile = userProfile,
+                    authViewModel = authViewModel,
+                    homeViewModel = homeViewModel,
+                    uploadViewModel = uploadViewModel,
+                    billingViewModel = billingViewModel,
+                    onBack = { onScreenChange(Screen.Settings) },
+                    onNavigate = { screen -> onScreenChange(screen) }
+                )
+            }
+        }
 
         is Screen.Preview -> {
             // Preview screen - for now navigate to Home
@@ -989,8 +996,8 @@ private fun NotificationsScreenContent(
                 else Screen.UserProfile(userId)
             )
         },
-        onPhotoClick = { flickId, imageUrl, userId ->
-            notificationOpenComments = true
+        onPhotoClick = { flickId, imageUrl, userId, openCommentsFirst ->
+            notificationOpenComments = openCommentsFirst
             if (!imageUrl.isNullOrBlank()) {
                 selectedNotificationPhoto = Flick(
                     id = flickId,

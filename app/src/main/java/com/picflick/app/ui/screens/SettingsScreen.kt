@@ -51,6 +51,7 @@ import com.picflick.app.data.getDarkColor
 import com.picflick.app.data.getDisplayName
 import com.picflick.app.data.getLightColor
 import com.picflick.app.repository.FlickRepository
+import com.picflick.app.ui.theme.FeatureFlags
 import com.picflick.app.ui.theme.ThemeManager
 import com.picflick.app.ui.theme.isDarkModeBackground
 import com.picflick.app.ui.components.AddPhotoStyleActionSheet
@@ -96,7 +97,7 @@ fun SettingsScreen(
         }.getOrDefault("-")
     }
     val developerUid = "LpSqE40IZGeAGMknTAEzysqp5l33"
-    val isDeveloperUser = userProfile.uid == developerUid
+    val isDeveloperUser = userProfile.uid == developerUid && FeatureFlags.developerEntryEnabled.value
     var showSignOutDialog by remember { mutableStateOf(false) }
     var showDeleteAccountDialog by remember { mutableStateOf(false) }
     var showDeleteAccountFinalDialog by remember { mutableStateOf(false) }
@@ -456,17 +457,18 @@ fun SettingsScreen(
         )
     }
 
-    // Clear Cache Confirmation Dialog
+    // Clear Cache - dark sexy popup style
     if (showClearCacheDialog) {
-        AlertDialog(
-            onDismissRequest = { showClearCacheDialog = false },
-            title = { Text("Clear Cache?") },
-            text = { Text("This will free up $cacheSize of storage space. Your photos and data are safe.") },
-            confirmButton = {
-                TextButton(
+        AddPhotoStyleActionSheet(
+            title = "Clear Cache",
+            options = listOf(
+                ActionSheetOption(
+                    icon = Icons.Default.Delete,
+                    title = "Clear now",
+                    subtitle = "Free up $cacheSize (photos and data stay safe)",
+                    accentColor = Color(0xFFFF6B6B),
                     onClick = {
                         showClearCacheDialog = false
-                        // Clear app cache
                         val cacheDir = context.cacheDir
                         val deleted = cacheDir.deleteRecursively()
                         if (deleted) {
@@ -474,18 +476,10 @@ fun SettingsScreen(
                             android.widget.Toast.makeText(context, "Cache cleared successfully!", android.widget.Toast.LENGTH_SHORT).show()
                         }
                     }
-                ) {
-                    Text("Clear", color = Color.Red)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showClearCacheDialog = false }) {
-                    Text("Cancel")
-                }
-            },
-            containerColor = if (isDarkMode) Color(0xFF1C1C1E) else Color.White,
-            titleContentColor = if (isDarkMode) Color.White else Color.Black,
-            textContentColor = if (isDarkMode) Color.White else Color.Black
+                )
+            ),
+            onDismiss = { showClearCacheDialog = false },
+            cancelSubtitle = "Keep cache"
         )
     }
 
@@ -712,7 +706,7 @@ fun SettingsScreen(
                         containerColor = Color(0xFF2E86DE),
                         disabledContainerColor = Color(0xFFD3D3D3),
                         contentColor = Color.White,
-                        disabledContentColor = Color.White
+                        disabledContentColor = Color.Black
                     )
                 ) {
                     if (isContactSubmitting) {
@@ -720,7 +714,7 @@ fun SettingsScreen(
                     } else {
                         Icon(Icons.AutoMirrored.Filled.Send, contentDescription = null)
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("Submit Feedback", color = Color.White)
+                        Text("Submit Feedback", color = if (canSubmitFeedback) Color.White else Color.Black)
                     }
                 }
 

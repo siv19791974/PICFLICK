@@ -190,7 +190,7 @@ fun AboutScreen(
 
             // Push bottom card lower
             item {
-                Spacer(modifier = Modifier.height(36.dp))
+                Spacer(modifier = Modifier.height(48.dp))
             }
 
             // Made With Love

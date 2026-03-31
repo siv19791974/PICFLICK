@@ -70,7 +70,7 @@ fun NotificationsScreen(
     userProfile: UserProfile,
     onBack: () -> Unit,
     onUserProfileClick: (String) -> Unit = {},
-    onPhotoClick: (flickId: String, imageUrl: String?, userId: String) -> Unit = { _, _, _ -> },
+    onPhotoClick: (flickId: String, imageUrl: String?, userId: String, openCommentsFirst: Boolean) -> Unit = { _, _, _, _ -> },
     onChatClick: (chatId: String, otherUserId: String, otherUserName: String, otherUserPhoto: String) -> Unit = { _, _, _, _ -> },
     onFindFriendsClick: (String?) -> Unit = {},
     onAddFirstPhotoClick: () -> Unit = {},
@@ -296,7 +296,10 @@ fun NotificationsScreen(
                                                 NotificationType.MENTION,
                                                 NotificationType.PHOTO_ADDED -> {
                                                     val fallbackId = notification.flickId ?: notification.id
-                                                    onPhotoClick(fallbackId, notification.flickImageUrl, notification.senderId)
+                                                    val isCommentHeart = notification.type == NotificationType.REACTION &&
+                                                        (notification.title.contains("comment", ignoreCase = true) || !notification.commentId.isNullOrBlank())
+                                                    val openCommentsFirst = notification.type == NotificationType.COMMENT || isCommentHeart
+                                                    onPhotoClick(fallbackId, notification.flickImageUrl, notification.senderId, openCommentsFirst)
                                                 }
                                                 NotificationType.FOLLOW,
                                                 NotificationType.FOLLOW_ACCEPTED,
@@ -331,7 +334,10 @@ fun NotificationsScreen(
                                     onUserProfileClick = onUserProfileClick,
                                     onPhotoClick = {
                                         val fallbackId = notification.flickId ?: notification.id
-                                        onPhotoClick(fallbackId, notification.flickImageUrl, notification.senderId)
+                                        val isCommentHeart = notification.type == NotificationType.REACTION &&
+                                            (notification.title.contains("comment", ignoreCase = true) || !notification.commentId.isNullOrBlank())
+                                        val openCommentsFirst = notification.type == NotificationType.COMMENT || isCommentHeart
+                                        onPhotoClick(fallbackId, notification.flickImageUrl, notification.senderId, openCommentsFirst)
                                     },
                                     onAcceptFriendRequest = { senderId ->
                                         viewModel.acceptFollowRequest(userProfile.uid, senderId, notification.id)
@@ -370,7 +376,10 @@ fun NotificationsScreen(
                                                 NotificationType.MENTION,
                                                 NotificationType.PHOTO_ADDED -> {
                                                     val fallbackId = notification.flickId ?: notification.id
-                                                    onPhotoClick(fallbackId, notification.flickImageUrl, notification.senderId)
+                                                    val isCommentHeart = notification.type == NotificationType.REACTION &&
+                                                        (notification.title.contains("comment", ignoreCase = true) || !notification.commentId.isNullOrBlank())
+                                                    val openCommentsFirst = notification.type == NotificationType.COMMENT || isCommentHeart
+                                                    onPhotoClick(fallbackId, notification.flickImageUrl, notification.senderId, openCommentsFirst)
                                                 }
                                                 NotificationType.FOLLOW,
                                                 NotificationType.FOLLOW_ACCEPTED,
@@ -405,7 +414,10 @@ fun NotificationsScreen(
                                     onUserProfileClick = onUserProfileClick,
                                     onPhotoClick = {
                                         val fallbackId = notification.flickId ?: notification.id
-                                        onPhotoClick(fallbackId, notification.flickImageUrl, notification.senderId)
+                                        val isCommentHeart = notification.type == NotificationType.REACTION &&
+                                            (notification.title.contains("comment", ignoreCase = true) || !notification.commentId.isNullOrBlank())
+                                        val openCommentsFirst = notification.type == NotificationType.COMMENT || isCommentHeart
+                                        onPhotoClick(fallbackId, notification.flickImageUrl, notification.senderId, openCommentsFirst)
                                     },
                                     onAcceptFriendRequest = { senderId ->
                                         viewModel.acceptFollowRequest(userProfile.uid, senderId, notification.id)
