@@ -1972,9 +1972,9 @@ private fun FlickGrid(
 
         // Portrait: ~4 rows visible; Landscape: ~1 row visible (3 photos total)
         val rowHeight = if (isLandscape) {
-            this.maxHeight / 1.1f
+            this.maxHeight / 1.09f
         } else {
-            this.maxHeight / 4.07f
+            this.maxHeight / 4.03f
         }
 
         // Track scroll position for infinite scroll
@@ -2056,7 +2056,7 @@ private fun FlickGrid(
             columns = GridCells.Fixed(3),
             modifier = Modifier.fillMaxSize(),
             state = listState,
-            contentPadding = PaddingValues(top = 5.dp, bottom = 8.dp),
+            contentPadding = PaddingValues(top = 2.dp, bottom = 8.dp),
             horizontalArrangement = Arrangement.spacedBy(1.dp),
             verticalArrangement = Arrangement.spacedBy(1.dp)
         ) {
