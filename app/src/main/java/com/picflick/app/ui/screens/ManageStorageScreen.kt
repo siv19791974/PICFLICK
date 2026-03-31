@@ -1,6 +1,7 @@
 package com.picflick.app.ui.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -295,6 +296,7 @@ private fun StorageMeterCard(
                             .size(10.dp)
                             .clip(CircleShape)
                             .background(tierColor)
+                            .border(1.dp, Color.Black, CircleShape)
                     )
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
@@ -338,6 +340,7 @@ private fun StorageMeterCard(
                     .height(12.dp)
                     .clip(RoundedCornerShape(6.dp))
                     .background(Color(0xFFE0E0E0))
+                    .border(1.dp, Color.Black, RoundedCornerShape(6.dp))
             ) {
                 Box(
                     modifier = Modifier
@@ -433,7 +436,8 @@ private fun CurrentTierCard(
                                     tierColor
                                 )
                             )
-                        ),
+                        )
+                        .border(1.dp, Color.Black, CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(

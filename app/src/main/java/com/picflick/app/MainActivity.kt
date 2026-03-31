@@ -76,11 +76,14 @@ import com.picflick.app.navigation.Screen
 import com.picflick.app.repository.FlickRepository
 import com.picflick.app.data.Flick
 import com.picflick.app.data.getDailyUploadLimit
+import com.picflick.app.ui.components.ActionSheetOption
+import com.picflick.app.ui.components.AddPhotoStyleActionSheet
 import com.picflick.app.ui.components.BottomNavBar
 import com.picflick.app.ui.components.LogoImage
 import com.picflick.app.ui.components.UploadSourceDialog
 import com.picflick.app.ui.screens.LoginScreen
 import com.picflick.app.ui.screens.SplashScreen
+import com.picflick.app.ui.theme.FeatureFlags
 import com.picflick.app.ui.theme.PicFlickTheme
 import com.picflick.app.ui.theme.ThemeManager
 import com.picflick.app.utils.Analytics
@@ -117,8 +120,9 @@ class MainActivity : ComponentActivity() {
         WindowCompat.setDecorFitsSystemWindows(window, true)
         WindowInsetsControllerCompat(window, window.decorView).show(WindowInsetsCompat.Type.statusBars())
 
-        // Initialize theme manager before setting content
+        // Initialize theme/flags managers before setting content
         ThemeManager.init(this)
+        FeatureFlags.init(this)
 
         setContent {
             PicFlickTheme {
@@ -265,10 +269,12 @@ class MainActivity : ComponentActivity() {
             else -> "notifications"
         }
 
-        android.util.Log.d(
-            "MainActivity",
-            "Push notification clicked: type=$notificationType, screen=$targetScreen, flickId=$flickId, chatId=$chatId, sender=$senderId"
-        )
+        if (FeatureFlags.verboseLogs.value) {
+            android.util.Log.d(
+                "MainActivity",
+                "Push notification clicked: type=$notificationType, screen=$targetScreen, flickId=$flickId, chatId=$chatId, sender=$senderId"
+            )
+        }
 
         val normalizedExtras = android.os.Bundle(extras).apply {
             putString("targetScreen", targetScreen)
@@ -352,7 +358,29 @@ fun MainScreen(
 
     fun navigateTo(screen: Screen) {
         if (screen == currentScreen) return
-        currentScreen = screen
+
+        // Feature flag: force parent-level hops for flatter, deterministic navigation transitions.
+        val resolvedTarget = if (FeatureFlags.aggressiveReconcile.value) {
+            when (screen) {
+                is Screen.About,
+                is Screen.Contact,
+                is Screen.Privacy,
+                is Screen.NotificationSettings,
+                is Screen.ManageStorage,
+                is Screen.SubscriptionStatus,
+                is Screen.PlanOptions,
+                is Screen.StreakAchievements,
+                is Screen.PrivacyPolicy,
+                is Screen.Philosophy,
+                is Screen.Legal,
+                is Screen.Developer -> Screen.Settings
+                else -> screen
+            }
+        } else {
+            screen
+        }
+
+        currentScreen = resolvedTarget
     }
 
     fun parentScreenFor(screen: Screen): Screen? = when (screen) {
@@ -828,7 +856,8 @@ fun MainScreen(
                 }
             },
             onBatchSuccess = {
-                homeViewModel.requestDebouncedFeedRefresh(profile.uid)
+                val refreshDelay = if (FeatureFlags.fastRefreshMode.value) 0L else 1400L
+                homeViewModel.requestDebouncedFeedRefresh(profile.uid, delayMs = refreshDelay)
             }
         )
 
@@ -940,49 +969,58 @@ fun MainScreen(
     val snackbarHostState = remember { SnackbarHostState() }
 
     if (showSharedImportChoiceDialog && pendingSharedImportUris.isNotEmpty() && userProfile != null) {
-        AlertDialog(
-            onDismissRequest = {
+        AddPhotoStyleActionSheet(
+            title = "Import shared photos",
+            options = listOf(
+                ActionSheetOption(
+                    icon = Icons.AutoMirrored.Filled.Send,
+                    title = "Post",
+                    subtitle = "Upload ${pendingSharedImportUris.size} photo(s) to feed",
+                    accentColor = Color(0xFF2E86DE),
+                    onClick = {
+                        val profile = userProfile
+                        if (profile != null) {
+                            val uploadUris = pendingSharedImportUris
+                            uploadViewModel.uploadPhotosBatch(
+                                context = context,
+                                photoUris = uploadUris,
+                                userProfile = profile,
+                                onOptimisticAdd = { optimisticFlick ->
+                                    homeViewModel.addOptimisticFlick(optimisticFlick)
+                                },
+                                onOptimisticRemove = { flickId, uploadSucceeded ->
+                                    if (!uploadSucceeded) {
+                                        homeViewModel.removeOptimisticFlick(flickId)
+                                    }
+                                },
+                                onBatchSuccess = {
+                                    val refreshDelay = if (FeatureFlags.fastRefreshMode.value) 0L else 1400L
+                                    homeViewModel.requestDebouncedFeedRefresh(profile.uid, delayMs = refreshDelay)
+                                }
+                            )
+                            navigateTo(Screen.Home)
+                        }
+                        showSharedImportChoiceDialog = false
+                        pendingSharedImportUris = emptyList()
+                    }
+                ),
+                ActionSheetOption(
+                    icon = Icons.AutoMirrored.Filled.Send,
+                    title = "Send privately",
+                    subtitle = "Choose friend or group",
+                    accentColor = Color(0xFF2E86DE),
+                    onClick = {
+                        privateSharePhotoUris = pendingSharedImportUris
+                        showPrivateShareTargetDialog = true
+                        showSharedImportChoiceDialog = false
+                    }
+                )
+            ),
+            onDismiss = {
                 showSharedImportChoiceDialog = false
                 pendingSharedImportUris = emptyList()
             },
-            title = { Text("Import shared photos") },
-            text = {
-                Text("Choose what to do with ${pendingSharedImportUris.size} shared photo(s).")
-            },
-            confirmButton = {
-                TextButton(onClick = {
-                    val profile = userProfile
-                    if (profile != null) {
-                        val uploadUris = pendingSharedImportUris
-                        uploadViewModel.uploadPhotosBatch(
-                            context = context,
-                            photoUris = uploadUris,
-                            userProfile = profile,
-                            onOptimisticAdd = { optimisticFlick ->
-                                homeViewModel.addOptimisticFlick(optimisticFlick)
-                            },
-                            onOptimisticRemove = { flickId, uploadSucceeded ->
-                                if (!uploadSucceeded) {
-                                    homeViewModel.removeOptimisticFlick(flickId)
-                                }
-                            },
-                            onBatchSuccess = {
-                                homeViewModel.requestDebouncedFeedRefresh(profile.uid)
-                            }
-                        )
-                        navigateTo(Screen.Home)
-                    }
-                    showSharedImportChoiceDialog = false
-                    pendingSharedImportUris = emptyList()
-                }) { Text("Post") }
-            },
-            dismissButton = {
-                TextButton(onClick = {
-                    privateSharePhotoUris = pendingSharedImportUris
-                    showPrivateShareTargetDialog = true
-                    showSharedImportChoiceDialog = false
-                }) { Text("Send privately") }
-            }
+            cancelSubtitle = "Close import"
         )
     }
 

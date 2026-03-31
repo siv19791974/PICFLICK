@@ -51,7 +51,6 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -67,6 +66,7 @@ import com.google.firebase.firestore.FirebaseFirestore
 import com.picflick.app.data.Feedback
 import com.picflick.app.data.UserProfile
 import com.picflick.app.navigation.Screen
+import com.picflick.app.ui.theme.FeatureFlags
 import com.picflick.app.ui.theme.ThemeManager
 import com.picflick.app.ui.theme.isDarkModeBackground
 import com.picflick.app.viewmodel.AuthViewModel
@@ -115,9 +115,10 @@ fun DeveloperScreen(
 
     val devLogs = remember { mutableStateListOf<String>() }
 
-    var flagFastRefresh by rememberSaveable { mutableStateOf(false) }
-    var flagAggressiveReconcile by rememberSaveable { mutableStateOf(false) }
-    var flagVerboseLogging by rememberSaveable { mutableStateOf(true) }
+    val flagFastRefresh by FeatureFlags.fastRefreshMode
+    val flagAggressiveReconcile by FeatureFlags.aggressiveReconcile
+    val flagVerboseLogging by FeatureFlags.verboseLogs
+    val flagDeveloperEntry by FeatureFlags.developerEntryEnabled
 
     fun loadFeedbackInbox() {
         scope.launch {
@@ -328,16 +329,17 @@ fun DeveloperScreen(
 
                 DevActionRow(Icons.Default.Refresh, "Force feed refresh") {
                     homeViewModel.loadFlicks(userProfile.uid)
-                    devLogs.add(0, "Feed refresh forced")
+                    if (flagVerboseLogging) devLogs.add(0, "Feed refresh forced")
                 }
                 DevActionRow(Icons.Default.Sync, "Debounced refresh now") {
-                    homeViewModel.requestDebouncedFeedRefresh(userProfile.uid, delayMs = 0L)
-                    devLogs.add(0, "Debounced refresh requested (0ms)")
+                    val delay = if (flagFastRefresh) 0L else 1400L
+                    homeViewModel.requestDebouncedFeedRefresh(userProfile.uid, delayMs = delay)
+                    if (flagVerboseLogging) devLogs.add(0, "Debounced refresh requested (${delay}ms)")
                 }
                 DevActionRow(Icons.Default.DeleteSweep, "Clear feed error state") {
                     homeViewModel.clearError()
                     homeViewModel.clearLoadMoreFailure()
-                    devLogs.add(0, "Cleared feed error state")
+                    if (flagVerboseLogging) devLogs.add(0, "Cleared feed error state")
                 }
             }
 
@@ -400,15 +402,26 @@ fun DeveloperScreen(
                 }
             }
 
-            DevSectionCard("FEATURE FLAGS (LOCAL)", isDarkMode) {
-                DevToggleRow("Fast refresh mode", flagFastRefresh, isDarkMode) { flagFastRefresh = it }
-                DevToggleRow("Aggressive reconcile", flagAggressiveReconcile, isDarkMode) { flagAggressiveReconcile = it }
-                DevToggleRow("Verbose logs", flagVerboseLogging, isDarkMode) { flagVerboseLogging = it }
+            DevSectionCard("FEATURE FLAGS", isDarkMode) {
+                DevToggleRow("Fast refresh mode", flagFastRefresh, isDarkMode) {
+                    FeatureFlags.setFastRefreshMode(context, it)
+                    if (flagVerboseLogging) devLogs.add(0, "Flag fast_refresh_mode=$it")
+                }
+                DevToggleRow("Aggressive navigation reconcile", flagAggressiveReconcile, isDarkMode) {
+                    FeatureFlags.setAggressiveReconcile(context, it)
+                    if (flagVerboseLogging) devLogs.add(0, "Flag aggressive_reconcile=$it")
+                }
+                DevToggleRow("Verbose developer logs", flagVerboseLogging, isDarkMode) {
+                    FeatureFlags.setVerboseLogs(context, it)
+                    if (it) devLogs.add(0, "Flag verbose_logs=true")
+                }
+                DevToggleRow("Show Developer entry in Settings", flagDeveloperEntry, isDarkMode) {
+                    FeatureFlags.setDeveloperEntryEnabled(context, it)
+                    if (flagVerboseLogging) devLogs.add(0, "Flag developer_entry_enabled=$it")
+                }
                 DevActionRow(Icons.Default.Flag, "Reset flags to defaults") {
-                    flagFastRefresh = false
-                    flagAggressiveReconcile = false
-                    flagVerboseLogging = true
-                    devLogs.add(0, "Feature flags reset")
+                    FeatureFlags.resetDefaults(context)
+                    if (FeatureFlags.verboseLogs.value) devLogs.add(0, "Feature flags reset")
                 }
             }
 

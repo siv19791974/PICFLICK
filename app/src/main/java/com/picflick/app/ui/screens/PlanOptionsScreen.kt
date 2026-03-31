@@ -2,6 +2,7 @@ package com.picflick.app.ui.screens
 
 import android.widget.Toast
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -265,7 +266,9 @@ private fun CurrentPlanCard(
     val tierColor = tier.getColor()
     
     Card(
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier
+            .fillMaxWidth()
+            .border(1.dp, Color.Black, RoundedCornerShape(12.dp)),
         colors = CardDefaults.cardColors(
             containerColor = tierColor.copy(alpha = 0.15f)
         ),
@@ -277,12 +280,19 @@ private fun CurrentPlanCard(
                 .padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(
-                imageVector = Icons.Default.Star,
-                contentDescription = null,
-                tint = tierColor,
-                modifier = Modifier.size(24.dp)
-            )
+            Box(
+                modifier = Modifier
+                    .size(24.dp)
+                    .border(1.dp, Color.Black, CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Star,
+                    contentDescription = null,
+                    tint = tierColor,
+                    modifier = Modifier.size(18.dp)
+                )
+            }
             
             Spacer(modifier = Modifier.width(12.dp))
             
