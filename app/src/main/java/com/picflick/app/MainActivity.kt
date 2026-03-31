@@ -994,8 +994,8 @@ fun MainScreen(
                                     }
                                 },
                                 onBatchSuccess = {
-                                    val refreshDelay = if (FeatureFlags.fastRefreshMode.value) 0L else 1400L
-                                    homeViewModel.requestDebouncedFeedRefresh(profile.uid, delayMs = refreshDelay)
+                                    // External share import should appear in feed ASAP.
+                                    homeViewModel.requestDebouncedFeedRefresh(profile.uid, delayMs = 0L)
                                 }
                             )
                             navigateTo(Screen.Home)
