@@ -760,14 +760,15 @@ private fun NewGroupFromComposeDialog(
                         .padding(horizontal = 16.dp, vertical = 12.dp),
                     label = { Text("Group name") },
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedContainerColor = Color.Black,
-                        unfocusedContainerColor = Color.Black,
-                        focusedTextColor = Color.White,
-                        unfocusedTextColor = Color.White,
-                        focusedLabelColor = Color(0xFFB0BEC5),
-                        unfocusedLabelColor = Color(0xFF90A4AE),
-                        focusedBorderColor = Color(0xFF4FC3F7),
-                        unfocusedBorderColor = Color(0xFF37474F)
+                        focusedContainerColor = Color(0xFFB7D8F2),
+                        unfocusedContainerColor = Color(0xFFB7D8F2),
+                        focusedTextColor = Color(0xFF0D2A45),
+                        unfocusedTextColor = Color(0xFF0D2A45),
+                        focusedLabelColor = Color(0xFF1F4D74),
+                        unfocusedLabelColor = Color(0xFF3E6E96),
+                        focusedBorderColor = Color(0xFF1565C0),
+                        unfocusedBorderColor = Color(0xFF7FAFD6),
+                        cursorColor = Color(0xFF0D2A45)
                     )
                 )
 
@@ -787,24 +788,31 @@ private fun NewGroupFromComposeDialog(
                             horizontalArrangement = Arrangement.spacedBy(10.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Box(
+                            Surface(
                                 modifier = Modifier
-                                    .size(40.dp)
-                                    .border(2.dp, Color.Black, CircleShape)
-                                    .clip(CircleShape)
-                                    .background(if (isDarkMode) Color(0xFF2A2A2A) else Color(0xFFF1F1F1))
+                                    .size(44.dp)
+                                    .offset(y = (-4).dp)
                                     .clickable { onAddPhoto() },
-                                contentAlignment = Alignment.Center
+                                shape = CircleShape,
+                                color = if (isDarkMode) Color(0xFF2A2A2A) else Color(0xFFF1F1F1),
+                                border = androidx.compose.foundation.BorderStroke(1.dp, if (isDarkMode) Color(0xFF4A4A4A) else Color(0xFFB0BEC5))
                             ) {
-                                if (selectedIcon.startsWith("http")) {
-                                    AsyncImage(
-                                        model = selectedIcon,
-                                        contentDescription = "Group icon photo",
-                                        contentScale = ContentScale.Crop,
-                                        modifier = Modifier.fillMaxSize()
-                                    )
-                                } else {
-                                    Icon(Icons.Default.AddAPhoto, contentDescription = "Add photo", tint = textColor)
+                                Box(contentAlignment = Alignment.Center) {
+                                    if (selectedIcon.startsWith("http")) {
+                                        AsyncImage(
+                                            model = selectedIcon,
+                                            contentDescription = "Group icon photo",
+                                            contentScale = ContentScale.Crop,
+                                            modifier = Modifier.fillMaxSize()
+                                        )
+                                    } else {
+                                        Icon(
+                                            imageVector = Icons.Default.AddAPhoto,
+                                            contentDescription = "Add photo",
+                                            tint = textColor,
+                                            modifier = Modifier.size(22.dp)
+                                        )
+                                    }
                                 }
                             }
 

@@ -1717,11 +1717,16 @@ private fun QuickSwitchChatBar(
                             .background(Color.White.copy(alpha = 0.15f))
                     )
                 } else {
-                    val quickSwitchPhoto = rememberLiveUserPhotoUrl(
+                    val isGroupItem = item.chatSession.isGroup || item.otherUserId.startsWith("group:")
+                    val groupIcon = item.chatSession.groupIcon
+                    val groupIconUrl = if (isGroupItem && groupIcon.startsWith("http", ignoreCase = true)) groupIcon else ""
+                    val quickSwitchPhoto = if (isGroupItem) {
+                        if (groupIconUrl.isNotBlank()) groupIconUrl else item.otherUserPhoto
+                    } else rememberLiveUserPhotoUrl(
                         userId = item.otherUserId,
                         fallbackPhotoUrl = item.otherUserPhoto
                     )
-                    val avatarTierRingColor = rememberLiveUserTierColor(item.otherUserId)
+                    val avatarTierRingColor = if (isGroupItem) Color(0xFF4FC3F7) else rememberLiveUserTierColor(item.otherUserId)
                     Box(
                         modifier = Modifier
                             .size(avatarSize)
@@ -1746,12 +1751,19 @@ private fun QuickSwitchChatBar(
                                 contentScale = ContentScale.Crop
                             )
                         } else {
-                            Icon(
-                                imageVector = Icons.Default.Person,
-                                contentDescription = null,
-                                tint = Color.White,
-                                modifier = Modifier.size(if (isCenter) 22.dp else 18.dp)
+                            Text(
+                                text = if (isGroupItem) item.chatSession.groupIcon.takeIf { !it.startsWith("http", ignoreCase = true) }?.ifBlank { "👥" } ?: "👥" else "",
+                                fontSize = if (isCenter) 18.sp else 14.sp,
+                                color = Color.White
                             )
+                            if (!isGroupItem) {
+                                Icon(
+                                    imageVector = Icons.Default.Person,
+                                    contentDescription = null,
+                                    tint = Color.White,
+                                    modifier = Modifier.size(if (isCenter) 22.dp else 18.dp)
+                                )
+                            }
                         }
                     }
                 }

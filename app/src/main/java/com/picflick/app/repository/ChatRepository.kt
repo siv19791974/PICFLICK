@@ -575,19 +575,21 @@ class ChatRepository {
                 }
                 batch.commit().await()
                 android.util.Log.d("ChatRepository", "Batch commit SUCCESS - marked ${messagesToUpdate.size} messages as read")
-                
-                // Update chat session to mark last message as read + clear unread count for current user
-                db.collection("chatSessions").document(chatId)
-                    .update(
-                        mapOf(
-                            "lastMessageRead" to true,
-                            "unreadCount.$userId" to 0
-                        )
-                    )
-                    .await()
             } else {
                 android.util.Log.d("ChatRepository", "No messages to update")
             }
+
+            // Always clear unread counters for current user in session doc, even when
+            // messages were already read in docs (prevents sticky unread badges).
+            db.collection("chatSessions").document(chatId)
+                .update(
+                    mapOf(
+                        "lastMessageRead" to true,
+                        "unreadCount.$userId" to 0,
+                        "unreadCount_$userId" to 0
+                    )
+                )
+                .await()
 
             Result.Success(Unit)
         } catch (e: Exception) {
