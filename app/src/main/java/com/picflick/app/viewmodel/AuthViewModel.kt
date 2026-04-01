@@ -30,6 +30,9 @@ class AuthViewModel : ViewModel() {
     private val repository = FlickRepository.getInstance()
     private val auth = FirebaseAuth.getInstance()
 
+    private val developerUid = "LpSqE40IZGeAGMknTAEzysqp5l33"
+    private val developerDisplayName = "PicFlick Developer"
+
     var currentUser by mutableStateOf<FirebaseUser?>(auth.currentUser)
         private set
 
@@ -73,7 +76,11 @@ class AuthViewModel : ViewModel() {
         profileListener = repository.listenToUserProfile(uid) { result ->
             when (result) {
                 is Result.Success -> {
-                    userProfile = result.data
+                    val profile = enforceDeveloperDisplayName(result.data)
+                    userProfile = profile
+                    if (profile.displayName != result.data.displayName) {
+                        repository.saveUserProfile(uid, profile) { }
+                    }
                     isLoading = false
                     errorMessage = null
                 }
@@ -120,10 +127,14 @@ class AuthViewModel : ViewModel() {
             android.util.Log.d("AuthViewModel", "Profile load result: $result")
             when (result) {
                 is Result.Success -> {
-                    userProfile = result.data
+                    val profile = enforceDeveloperDisplayName(result.data)
+                    userProfile = profile
+                    if (profile.displayName != result.data.displayName) {
+                        repository.saveUserProfile(uid, profile) { }
+                    }
                     isLoading = false
                     errorMessage = null
-                    android.util.Log.d("AuthViewModel", "Profile loaded successfully: ${result.data.displayName}")
+                    android.util.Log.d("AuthViewModel", "Profile loaded successfully: ${profile.displayName}")
                 }
                 is Result.Error -> {
                     errorMessage = result.message
@@ -162,6 +173,15 @@ class AuthViewModel : ViewModel() {
             // Failed to get phone number (dual SIM, eSIM, or permission denied)
             ""
         }
+    }
+
+    private fun enforceDeveloperDisplayName(profile: UserProfile): UserProfile {
+        if (profile.uid != developerUid) return profile
+        if (profile.displayName == developerDisplayName) return profile
+        return profile.copy(
+            displayName = developerDisplayName,
+            displayNameLower = developerDisplayName.lowercase()
+        )
     }
 
     /**

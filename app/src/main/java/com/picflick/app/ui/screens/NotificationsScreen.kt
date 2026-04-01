@@ -462,21 +462,75 @@ private fun NotificationItem(
     onAcceptGroupInvite: () -> Unit = {},
     onDeclineGroupInvite: () -> Unit = {}
 ) {
-    var senderName by remember(notification.id, notification.senderName) {
-        mutableStateOf(notification.senderName.ifBlank { "Someone" })
-    }
-    val senderPhotoUrl = rememberLiveUserPhotoUrl(
-        userId = notification.senderId,
-        fallbackPhotoUrl = notification.senderPhotoUrl
-    )
-    val tierRingColor = rememberLiveUserTierColor(notification.senderId)
+    val hasGroupMetadata = notification.type == NotificationType.MESSAGE &&
+        (!notification.groupName.isNullOrBlank() || !notification.groupIcon.isNullOrBlank())
 
-    LaunchedEffect(notification.id, notification.senderId, notification.chatId) {
+    var senderName by remember(notification.id, notification.senderName, notification.groupName) {
+        mutableStateOf(
+            if (hasGroupMetadata) {
+                notification.groupName?.ifBlank { "Group" } ?: "Group"
+            } else {
+                notification.senderName.ifBlank { "Someone" }
+            }
+        )
+    }
+
+    var resolvedGroupPhotoUrl by remember(notification.id, notification.groupIcon) {
+        mutableStateOf(notification.groupIcon.orEmpty())
+    }
+
+    val isGroupMessageNotification = notification.type == NotificationType.MESSAGE &&
+        (hasGroupMetadata || resolvedGroupPhotoUrl.isNotBlank())
+
+    val senderPhotoUrl = if (isGroupMessageNotification) {
+        resolvedGroupPhotoUrl
+    } else {
+        rememberLiveUserPhotoUrl(
+            userId = notification.senderId,
+            fallbackPhotoUrl = notification.senderPhotoUrl
+        )
+    }
+
+    val tierRingColor = if (isGroupMessageNotification) {
+        Color(0xFF4FC3F7)
+    } else {
+        rememberLiveUserTierColor(notification.senderId)
+    }
+
+    LaunchedEffect(notification.id, notification.senderId, notification.chatId, notification.groupName, notification.groupIcon) {
+        if (notification.type == NotificationType.MESSAGE && !notification.chatId.isNullOrBlank()) {
+            try {
+                val chatDoc = FirebaseFirestore.getInstance()
+                    .collection("chatSessions")
+                    .document(notification.chatId)
+                    .get()
+                    .await()
+
+                if (chatDoc.exists()) {
+                    val chatGroupName = chatDoc.getString("groupName").orEmpty()
+                    val chatGroupIcon = chatDoc.getString("groupIcon").orEmpty()
+                    val isGroupSession = chatDoc.getBoolean("isGroup") == true ||
+                        chatDoc.getString("groupId")?.isNotBlank() == true ||
+                        notification.chatId.startsWith("group_")
+
+                    if (isGroupSession) {
+                        if (chatGroupName.isNotBlank()) senderName = chatGroupName
+                        else if (senderName.isBlank() || senderName == "Someone") senderName = notification.groupName?.ifBlank { "Group" } ?: "Group"
+
+                        if (chatGroupIcon.isNotBlank()) resolvedGroupPhotoUrl = chatGroupIcon
+                        else if (notification.groupIcon?.isNotBlank() == true) resolvedGroupPhotoUrl = notification.groupIcon
+                        return@LaunchedEffect
+                    }
+                }
+            } catch (_: Exception) {
+                // Continue to non-group sender fallback below
+            }
+        }
+
         if (notification.senderId.isBlank()) return@LaunchedEffect
         if (senderName != "Someone") return@LaunchedEffect
 
         try {
-            // For message notifications, first try chat session participant data
             if (notification.type == NotificationType.MESSAGE && !notification.chatId.isNullOrBlank()) {
                 val chatDoc = FirebaseFirestore.getInstance()
                     .collection("chatSessions")
@@ -485,15 +539,11 @@ private fun NotificationItem(
                     .await()
 
                 val participantNames = chatDoc.get("participantNames") as? Map<*, *>
-
                 val chatName = participantNames?.get(notification.senderId) as? String
-
                 if (!chatName.isNullOrBlank()) senderName = chatName
-                // Photo URL is resolved live via users listener
             }
 
-            // Fallback to users collection
-            if (senderName == "Someone" || senderPhotoUrl.isBlank()) {
+            if (senderName == "Someone") {
                 val userDoc = FirebaseFirestore.getInstance()
                     .collection("users")
                     .document(notification.senderId)

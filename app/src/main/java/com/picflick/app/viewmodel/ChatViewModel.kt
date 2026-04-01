@@ -48,10 +48,14 @@ class ChatViewModel : ViewModel() {
     var currentChatId by mutableStateOf<String?>(null)
         private set
     
-    /** Job for message collection - prevents duplicate listeners */
+    /** Jobs for realtime observers - prevent duplicate listeners */
+    private var chatSessionsJob: Job? = null
+    private var unreadCountJob: Job? = null
     private var messagesJob: Job? = null
     private var typingStatusJob: Job? = null
     private var typingUpdateJob: Job? = null
+    private var observingChatSessionsUserId: String? = null
+    private var observingUnreadUserId: String? = null
     private var isTypingPublished: Boolean = false
     private val typingInactivityTimeoutMs = 2000L
 
@@ -74,7 +78,15 @@ class ChatViewModel : ViewModel() {
             isLoading = false
             return
         }
-        viewModelScope.launch {
+
+        if (observingChatSessionsUserId == userId && chatSessionsJob?.isActive == true) {
+            return
+        }
+
+        chatSessionsJob?.cancel()
+        observingChatSessionsUserId = userId
+
+        chatSessionsJob = viewModelScope.launch {
             isLoading = true
             errorMessage = null // Clear previous error
             try {
@@ -85,9 +97,13 @@ class ChatViewModel : ViewModel() {
                     isLoading = false
                 }
             } catch (e: Exception) {
-                android.util.Log.e("ChatViewModel", "Failed to load conversations", e)
-                errorMessage = "Failed to load conversations: ${e.message}"
-                isLoading = false
+                if (e is kotlinx.coroutines.CancellationException) {
+                    android.util.Log.d("ChatViewModel", "Chat sessions listener cancelled")
+                } else {
+                    android.util.Log.e("ChatViewModel", "Failed to load conversations", e)
+                    errorMessage = "Failed to load conversations: ${e.message}"
+                    isLoading = false
+                }
             }
         }
     }
@@ -471,13 +487,24 @@ class ChatViewModel : ViewModel() {
      * Observe unread message count
      */
     fun observeUnreadCount(userId: String) {
-        viewModelScope.launch {
+        if (userId.isBlank()) return
+
+        if (observingUnreadUserId == userId && unreadCountJob?.isActive == true) {
+            return
+        }
+
+        unreadCountJob?.cancel()
+        observingUnreadUserId = userId
+
+        unreadCountJob = viewModelScope.launch {
             try {
                 repository.getUnreadMessageCount(userId).collectLatest { count ->
                     unreadCount = count
                 }
             } catch (e: Exception) {
-                // Silently fail
+                if (e is kotlinx.coroutines.CancellationException) {
+                    android.util.Log.d("ChatViewModel", "Unread listener cancelled")
+                }
             }
         }
     }
@@ -568,5 +595,14 @@ class ChatViewModel : ViewModel() {
         isTypingPublished = false
         currentChatId = null
         messages = emptyList()
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        chatSessionsJob?.cancel()
+        unreadCountJob?.cancel()
+        messagesJob?.cancel()
+        typingStatusJob?.cancel()
+        typingUpdateJob?.cancel()
     }
 }

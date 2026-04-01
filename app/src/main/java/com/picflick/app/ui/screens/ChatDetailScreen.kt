@@ -44,17 +44,20 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.input.pointer.pointerInput
 import android.content.res.Configuration
+import android.widget.Toast
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
 import kotlin.math.roundToInt
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import com.picflick.app.data.ChatMessage
 import com.picflick.app.data.ChatSession
 import com.picflick.app.data.Flick
+import com.picflick.app.data.FriendGroup
 import com.picflick.app.data.Result
 import com.picflick.app.data.UserProfile
 import com.picflick.app.repository.FlickRepository
@@ -65,6 +68,8 @@ import com.picflick.app.util.rememberChatImageModel
 import com.picflick.app.util.rememberLiveUserPhotoUrl
 import com.picflick.app.util.rememberLiveUserTierColor
 import com.picflick.app.viewmodel.ChatViewModel
+import com.picflick.app.viewmodel.FriendsViewModel
+import com.picflick.app.viewmodel.HomeViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
@@ -93,7 +98,9 @@ fun ChatDetailScreen(
     onPhotoClick: (ChatMessage) -> Unit = {},
     onAddNewPhoto: () -> Unit = {},
     quickSwitchChats: List<QuickSwitchChatItem> = emptyList(),
-    onQuickSwitchChat: (ChatSession, String) -> Unit = { _, _ -> }
+    onQuickSwitchChat: (ChatSession, String) -> Unit = { _, _ -> },
+    friendsViewModel: FriendsViewModel? = null,
+    homeViewModel: HomeViewModel? = null
 ) {
     val chatId = chatSession.id
     val isDarkMode = ThemeManager.isDarkMode.value
@@ -124,7 +131,50 @@ fun ChatDetailScreen(
     var myFlicks by remember { mutableStateOf<List<Flick>>(emptyList()) }
     val selectedMyFlickIds = remember { mutableStateListOf<String>() }
     val flickRepository = remember { FlickRepository.getInstance() }
-val listState = rememberLazyListState()
+
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val listState = rememberLazyListState()
+
+    val currentGroupId = remember(chatSession) {
+        chatSession.groupId.ifBlank { chatSession.id.removePrefix("group_") }
+    }
+    val fallbackGroupModel = remember(chatSession, currentGroupId, currentUser.uid) {
+        FriendGroup(
+            id = currentGroupId,
+            userId = currentUser.uid,
+            ownerId = chatSession.participants.firstOrNull().orEmpty(),
+            name = chatSession.groupName.ifBlank { "Group" },
+            friendIds = chatSession.participants.filter { it != currentUser.uid },
+            memberIds = chatSession.participants.distinct(),
+            adminIds = emptyList(),
+            icon = chatSession.groupIcon.ifBlank { "👥" }
+        )
+    }
+    val groupModel = remember(homeViewModel?.friendGroups, currentGroupId, fallbackGroupModel) {
+        homeViewModel?.friendGroups?.firstOrNull { it.id == currentGroupId } ?: fallbackGroupModel
+    }
+
+    var editableGroupName by remember(chatSession.id, chatSession.groupName) {
+        mutableStateOf(chatSession.groupName.ifBlank { "Group" })
+    }
+    var editableGroupIcon by remember(chatSession.id, chatSession.groupIcon) {
+        mutableStateOf(chatSession.groupIcon.ifBlank { "👥" })
+    }
+    var selectedInviteeIds by remember(chatSession.id) { mutableStateOf<Set<String>>(emptySet()) }
+    var selectedRemovableIds by remember(chatSession.id) { mutableStateOf<Set<String>>(emptySet()) }
+
+    val isOwner = remember(groupModel, currentUser.uid) { groupModel.isOwner(currentUser.uid) }
+    val isAdmin = remember(groupModel, currentUser.uid) { groupModel.isAdmin(currentUser.uid) }
+
+    val availableInviteCandidates = remember(friendsViewModel?.followingUsers, groupModel) {
+        (friendsViewModel?.followingUsers ?: emptyList())
+            .filter { !groupModel.isMember(it.uid) }
+    }
+    val removableMembers = remember(friendsViewModel?.followingUsers, groupModel) {
+        val byId = (friendsViewModel?.followingUsers ?: emptyList()).associateBy { it.uid }
+        groupModel.membersExcludingOwner()
+            .mapNotNull { byId[it] }
+    }
     val scope = rememberCoroutineScope()
     var composerHeightPx by remember { mutableStateOf(0) }
     var hasInitialBottomSnap by remember(chatId) { mutableStateOf(false) }
@@ -226,6 +276,12 @@ val listState = rememberLazyListState()
     DisposableEffect(chatId, currentUser.uid) {
         onDispose {
             viewModel.stopTyping(chatId, currentUser.uid)
+        }
+    }
+
+    LaunchedEffect(chatId, isGroupChat, friendsViewModel, currentUser.following) {
+        if (isGroupChat) {
+            friendsViewModel?.loadFollowingUsers(currentUser.following)
         }
     }
 
@@ -1116,31 +1172,364 @@ AlertDialog(
     }
 
     if (showGroupInfoDialog && isGroupChat) {
-        AlertDialog(
+        val groupName = editableGroupName.ifBlank { "Group" }
+        val groupIcon = editableGroupIcon.ifBlank { "👥" }
+        val groupIconUrl = if (groupIcon.startsWith("http", ignoreCase = true)) groupIcon else ""
+        val memberIds = groupModel.effectiveMemberIds().ifEmpty { chatSession.participants.distinct() }
+
+        Dialog(
             onDismissRequest = { showGroupInfoDialog = false },
-            title = { Text("Group information") },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text("Name: ${chatSession.groupName.ifBlank { "Group" }}")
-                    Text("Icon: ${chatSession.groupIcon.ifBlank { "👥" }}")
-                    Text("Members: ${chatSession.participants.size}")
-                    val memberPreview = chatSession.participantNames
-                        .filterKeys { it != currentUser.uid }
-                        .values
-                        .filter { it.isNotBlank() }
-                        .take(8)
-                        .joinToString(", ")
-                    if (memberPreview.isNotBlank()) {
-                        Text("People: $memberPreview")
+            properties = DialogProperties(usePlatformDefaultWidth = false)
+        ) {
+            Surface(
+                modifier = Modifier
+                    .fillMaxSize(),
+                color = Color(0xFF121212),
+                shape = RoundedCornerShape(24.dp),
+                tonalElevation = 0.dp,
+                shadowElevation = 16.dp
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                modifier = Modifier
+                                    .size(46.dp)
+                                    .clip(CircleShape)
+                                    .background(Color(0xFF2A2A2A)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                if (groupIconUrl.isNotBlank()) {
+                                    AsyncImage(
+                                        model = groupIconUrl,
+                                        contentDescription = groupName,
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .clip(CircleShape),
+                                        contentScale = ContentScale.Crop
+                                    )
+                                } else {
+                                    Text(
+                                        text = groupIcon,
+                                        color = Color.White,
+                                        fontSize = 24.sp
+                                    )
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.width(10.dp))
+
+                            Column {
+                                Text(
+                                    text = groupName,
+                                    color = Color.White,
+                                    fontSize = 18.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Text(
+                                    text = "${memberIds.size} members",
+                                    color = Color.White.copy(alpha = 0.7f),
+                                    fontSize = 13.sp
+                                )
+                            }
+                        }
+
+                        IconButton(onClick = { showGroupInfoDialog = false }) {
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = "Close",
+                                tint = Color.White
+                            )
+                        }
+                    }
+
+                    if ((isAdmin || isOwner) && homeViewModel != null) {
+                        Spacer(modifier = Modifier.height(10.dp))
+
+                        OutlinedTextField(
+                            value = editableGroupName,
+                            onValueChange = { editableGroupName = it },
+                            modifier = Modifier.fillMaxWidth(),
+                            label = { Text("Group name") },
+                            singleLine = true,
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedTextColor = Color.White,
+                                unfocusedTextColor = Color.White,
+                                focusedBorderColor = Color(0xFF4FC3F7),
+                                unfocusedBorderColor = Color.White.copy(alpha = 0.35f),
+                                focusedLabelColor = Color(0xFF4FC3F7),
+                                unfocusedLabelColor = Color.White.copy(alpha = 0.75f)
+                            )
+                        )
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        OutlinedTextField(
+                            value = editableGroupIcon,
+                            onValueChange = { editableGroupIcon = it },
+                            modifier = Modifier.fillMaxWidth(),
+                            label = { Text("Group icon (emoji or URL)") },
+                            singleLine = true,
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedTextColor = Color.White,
+                                unfocusedTextColor = Color.White,
+                                focusedBorderColor = Color(0xFF4FC3F7),
+                                unfocusedBorderColor = Color.White.copy(alpha = 0.35f),
+                                focusedLabelColor = Color(0xFF4FC3F7),
+                                unfocusedLabelColor = Color.White.copy(alpha = 0.75f)
+                            )
+                        )
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        Button(
+                            onClick = {
+                                val cleanName = editableGroupName.trim().ifBlank { "Group" }
+                                val cleanIcon = editableGroupIcon.trim().ifBlank { "👥" }
+                                homeViewModel.updateFriendGroup(
+                                    userId = currentUser.uid,
+                                    groupId = currentGroupId,
+                                    name = cleanName,
+                                    icon = cleanIcon,
+                                    friendIds = groupModel.membersExcludingOwner(),
+                                    color = "#4FC3F7"
+                                ) { success ->
+                                    Toast.makeText(
+                                        context,
+                                        if (success) "Group updated" else "Failed to update group",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color(0xFF4FC3F7),
+                                contentColor = Color.Black
+                            )
+                        ) {
+                            Text("Save group details")
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+                    HorizontalDivider(color = Color.White.copy(alpha = 0.14f))
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    if ((isAdmin || isOwner) && homeViewModel != null && friendsViewModel != null && availableInviteCandidates.isNotEmpty()) {
+                        Text(
+                            text = "Add members",
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.sp
+                        )
+                        Spacer(modifier = Modifier.height(6.dp))
+                        LazyColumn(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(max = 130.dp),
+                            verticalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            itemsIndexed(availableInviteCandidates) { _, profile ->
+                                val selected = selectedInviteeIds.contains(profile.uid)
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clip(RoundedCornerShape(12.dp))
+                                        .background(if (selected) Color(0xFF1F3240) else Color(0xFF1D1D1D))
+                                        .clickable {
+                                            selectedInviteeIds = if (selected) selectedInviteeIds - profile.uid else selectedInviteeIds + profile.uid
+                                        }
+                                        .padding(horizontal = 10.dp, vertical = 8.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = profile.displayName.ifBlank { "User" },
+                                        color = Color.White,
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                    if (selected) {
+                                        Icon(Icons.Default.Check, contentDescription = null, tint = Color(0xFF4FC3F7))
+                                    }
+                                }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Button(
+                            onClick = {
+                                selectedInviteeIds.forEach { inviteeId ->
+                                    homeViewModel.inviteFriendToGroup(
+                                        inviterId = currentUser.uid,
+                                        inviterName = currentUser.displayName.ifBlank { "User" },
+                                        groupId = currentGroupId,
+                                        inviteeId = inviteeId
+                                    ) { _, _ -> }
+                                }
+                                Toast.makeText(context, "Invites sent", Toast.LENGTH_SHORT).show()
+                                selectedInviteeIds = emptySet()
+                            },
+                            enabled = selectedInviteeIds.isNotEmpty(),
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color(0xFF4FC3F7),
+                                contentColor = Color.Black
+                            )
+                        ) {
+                            Text("Invite selected")
+                        }
+
+                        Spacer(modifier = Modifier.height(10.dp))
+                    }
+
+                    Text(
+                        text = "Members",
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 14.sp
+                    )
+                    Spacer(modifier = Modifier.height(6.dp))
+
+                    LazyColumn(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        itemsIndexed(memberIds) { _, memberId ->
+                            val memberName = chatSession.participantNames[memberId]
+                                ?.takeIf { it.isNotBlank() }
+                                ?: if (memberId == currentUser.uid) "You" else "Member"
+
+                            val fallbackPhoto = chatSession.participantPhotos[memberId].orEmpty()
+                            val memberPhotoUrl = rememberLiveUserPhotoUrl(
+                                userId = memberId,
+                                fallbackPhotoUrl = fallbackPhoto
+                            )
+                            val canRemove = (isAdmin || isOwner) && memberId != currentUser.uid && memberId != groupModel.effectiveOwnerId()
+                            val markedForRemoval = selectedRemovableIds.contains(memberId)
+
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(14.dp))
+                                    .background(if (markedForRemoval) Color(0xFF3B1F1F) else Color(0xFF1D1D1D))
+                                    .clickable { onUserProfileClick(memberId) }
+                                    .padding(horizontal = 12.dp, vertical = 10.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                if (memberPhotoUrl.isNotBlank()) {
+                                    AsyncImage(
+                                        model = memberPhotoUrl,
+                                        contentDescription = memberName,
+                                        modifier = Modifier
+                                            .size(38.dp)
+                                            .clip(CircleShape),
+                                        contentScale = ContentScale.Crop
+                                    )
+                                } else {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(38.dp)
+                                            .clip(CircleShape)
+                                            .background(Color(0xFF3A3A3A)),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            text = memberName.firstOrNull()?.uppercase() ?: "?",
+                                            color = Color.White,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    }
+                                }
+
+                                Spacer(modifier = Modifier.width(10.dp))
+
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = memberName,
+                                        color = Color.White,
+                                        fontSize = 15.sp,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                    Text(
+                                        text = when {
+                                            memberId == groupModel.effectiveOwnerId() -> "Owner"
+                                            groupModel.isAdmin(memberId) -> "Admin"
+                                            else -> "Member"
+                                        },
+                                        color = Color.White.copy(alpha = 0.65f),
+                                        fontSize = 12.sp
+                                    )
+                                }
+
+                                if (canRemove) {
+                                    TextButton(
+                                        onClick = {
+                                            selectedRemovableIds = if (markedForRemoval) {
+                                                selectedRemovableIds - memberId
+                                            } else {
+                                                selectedRemovableIds + memberId
+                                            }
+                                        }
+                                    ) {
+                                        Text(if (markedForRemoval) "Undo" else "Remove", color = Color.Red)
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    if ((isAdmin || isOwner) && homeViewModel != null) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Button(
+                            onClick = {
+                                val newFriendIds = groupModel.membersExcludingOwner()
+                                    .filter { it !in selectedRemovableIds }
+                                homeViewModel.updateFriendGroup(
+                                    userId = currentUser.uid,
+                                    groupId = currentGroupId,
+                                    name = editableGroupName.ifBlank { "Group" },
+                                    icon = editableGroupIcon.ifBlank { "👥" },
+                                    friendIds = newFriendIds,
+                                    color = "#4FC3F7"
+                                ) { success ->
+                                    Toast.makeText(
+                                        context,
+                                        if (success) "Members updated" else "Failed to update members",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                    if (success) selectedRemovableIds = emptySet()
+                                }
+                            },
+                            enabled = selectedRemovableIds.isNotEmpty(),
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color(0xFF7A2626),
+                                contentColor = Color.White
+                            )
+                        ) {
+                            Text("Remove selected members")
+                        }
+                    }
+
+                    if (!(isAdmin || isOwner)) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = "Only owner/admin can edit this group",
+                            color = Color.White.copy(alpha = 0.7f),
+                            fontSize = 12.sp
+                        )
                     }
                 }
-            },
-            confirmButton = {
-                TextButton(onClick = { showGroupInfoDialog = false }) {
-                    Text("Close")
-                }
             }
-        )
+        }
     }
 }
 
