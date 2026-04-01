@@ -692,7 +692,7 @@ fun SettingsScreen(
                     modifier = Modifier.fillMaxWidth(),
                     enabled = canSubmitFeedback,
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFF2E86DE),
+                        containerColor = Color(0xFF2A4A73),
                         disabledContainerColor = Color(0xFFD3D3D3),
                         contentColor = Color.White,
                         disabledContentColor = Color.White

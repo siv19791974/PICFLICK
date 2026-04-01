@@ -1125,6 +1125,9 @@ private fun NotificationsScreenContent(
         onOpenGroupsScreen = {
             onScreenChange(Screen.Home)
         },
+        onOpenAchievements = {
+            onScreenChange(Screen.StreakAchievements)
+        },
         onGroupInviteAccepted = { groupId, groupName ->
             val group = homeViewModel.friendGroups.firstOrNull { it.id == groupId }
             val memberIds = group?.effectiveMemberIds() ?: listOf(userProfile.uid)

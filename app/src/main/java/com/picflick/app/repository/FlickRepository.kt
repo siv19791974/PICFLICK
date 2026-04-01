@@ -2585,6 +2585,40 @@ class FlickRepository private constructor() {
         }
     }
 
+    private suspend fun createStreakAchievementNotificationIfNeeded(userId: String, newStreak: Int) {
+        val milestone = setOf(3, 7, 14, 30, 50, 100)
+        if (newStreak !in milestone) return
+        if (!shouldCreateNotificationForUser(userId, NotificationType.ACHIEVEMENT)) return
+
+        val title = "Well done! You have a $newStreak-day streak"
+        val message = when (newStreak) {
+            3 -> "Great start — keep it going!"
+            7 -> "One week strong!"
+            14 -> "Two weeks of consistency!"
+            30 -> "30-day legend status unlocked!"
+            50 -> "50 days! Huge consistency."
+            100 -> "100-day mythic streak!"
+            else -> "Keep your streak alive!"
+        }
+
+        db.collection("notifications").add(
+            hashMapOf(
+                "id" to UUID.randomUUID().toString(),
+                "userId" to userId,
+                "senderId" to "system",
+                "senderName" to "PicFlick",
+                "senderPhotoUrl" to "",
+                "type" to "ACHIEVEMENT",
+                "title" to title,
+                "message" to message,
+                "targetScreen" to "achievements",
+                "isRead" to false,
+                "timestamp" to System.currentTimeMillis(),
+                "streakCount" to newStreak
+            )
+        ).await()
+    }
+
     /**
      * Update user streak after upload
      */
@@ -2630,6 +2664,8 @@ class FlickRepository private constructor() {
             db.collection("users").document(userId)
                 .update("streak", newStreakData)
                 .await()
+
+            runCatching { createStreakAchievementNotificationIfNeeded(userId, newStreak) }
 
             Result.Success(Unit)
         } catch (e: Exception) {

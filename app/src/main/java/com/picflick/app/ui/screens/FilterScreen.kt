@@ -809,7 +809,8 @@ private fun FriendPickerDialog(
                                 onNavigateToFindFriends()
                             },
                             colors = ButtonDefaults.buttonColors(
-                                containerColor = Color(0xFF87CEEB)
+                                containerColor = Color(0xFF2A4A73),
+                                contentColor = Color.White
                             )
                         ) {
                             Icon(

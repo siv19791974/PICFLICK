@@ -36,6 +36,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -46,6 +47,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
+import coil3.request.ImageRequest
 import com.picflick.app.R
 import com.picflick.app.data.Flick
 import com.picflick.app.data.ReactionType
@@ -224,7 +226,11 @@ fun UserProfileScreen(
                     onClick = onMessageClick,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = sidePadding)
+                        .padding(horizontal = sidePadding),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFF2A4A73),
+                        contentColor = Color.White
+                    )
                 ) {
                     Text("Send Message")
                 }
@@ -245,7 +251,7 @@ fun UserProfileScreen(
                             contentColor = Color.White
                         )
                     ) {
-                        Text("Confirm delete")
+                        Text("Confirm Remove Friend")
                     }
                 } else {
                     OutlinedButton(
@@ -254,7 +260,10 @@ fun UserProfileScreen(
                             .fillMaxWidth()
                             .padding(horizontal = 32.dp),
                         colors = ButtonDefaults.outlinedButtonColors(
-                            contentColor = Color.Gray
+                            contentColor = Color(0xFFC62828)
+                        ),
+                        border = ButtonDefaults.outlinedButtonBorder.copy(
+                            brush = androidx.compose.ui.graphics.SolidColor(Color(0xFFC62828))
                         )
                     ) {
                         Text("Remove Friend")
@@ -410,7 +419,7 @@ fun UserProfileScreen(
                     .fillMaxWidth()
                     .padding(horizontal = 32.dp),
                 colors = ButtonDefaults.outlinedButtonColors(
-                    contentColor = Color(0xFFFFB347)
+                    contentColor = Color(0xFF2A4A73)
                 )
             ) {
                 Icon(
@@ -531,6 +540,14 @@ private fun ProfilePhotoCard(
         .filter { it.value > 0 }
         .sortedByDescending { it.value }
         .take(5)
+    val context = LocalContext.current
+    val rowHeightPx = with(LocalDensity.current) { rowHeight.roundToPx() }
+    val imageModel = remember(flick.imageUrl, flick.timestamp, rowHeightPx) {
+        ImageRequest.Builder(context)
+            .data(withCacheBust(flick.imageUrl, flick.timestamp))
+            .size(rowHeightPx)
+            .build()
+    }
 
     Card(
         modifier = Modifier
@@ -549,9 +566,8 @@ private fun ProfilePhotoCard(
         Box(
             modifier = Modifier.fillMaxSize()
         ) {
-            val model = withCacheBust(flick.imageUrl, flick.timestamp)
             AsyncImage(
-                model = model,
+                model = imageModel,
                 contentDescription = "Photo",
                 modifier = Modifier.fillMaxSize(),
                 contentScale = ContentScale.Crop,

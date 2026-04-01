@@ -986,9 +986,9 @@ private fun UserResultItem(
             }
             
             // Action button - aligned with User B friends list styles
-            val addColor = Color(0xFF1E88E5)      // Light blue outline/text for ADD
+            val addColor = Color(0xFF2A4A73)      // Light blue outline/text for ADD
             val waitingColor = Color(0xFF2A4A73)  // Standard mid-blue for WAITING
-            val friendsColor = Color(0xFF2E7D32)  // Green for FRIENDS
+            val friendsColor = Color(0xFF2A4A73)  // Standard mid-blue for FRIENDS
 
             when {
                 isProcessing -> {
@@ -1020,7 +1020,7 @@ private fun UserResultItem(
                             shape = RoundedCornerShape(20.dp),
                             modifier = Modifier.wrapContentWidth(),
                             colors = ButtonDefaults.buttonColors(
-                                containerColor = Color(0xFF2E7D32),
+                                containerColor = Color(0xFF2A4A73),
                                 contentColor = Color.White
                             )
                         ) {
