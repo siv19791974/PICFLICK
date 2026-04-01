@@ -51,7 +51,6 @@ import com.picflick.app.data.getDarkColor
 import com.picflick.app.data.getDisplayName
 import com.picflick.app.data.getLightColor
 import com.picflick.app.repository.FlickRepository
-import com.picflick.app.ui.theme.FeatureFlags
 import com.picflick.app.ui.theme.ThemeManager
 import com.picflick.app.ui.theme.isDarkModeBackground
 import com.picflick.app.ui.components.AddPhotoStyleActionSheet
@@ -97,7 +96,7 @@ fun SettingsScreen(
         }.getOrDefault("-")
     }
     val developerUid = "LpSqE40IZGeAGMknTAEzysqp5l33"
-    val isDeveloperUser = userProfile.uid == developerUid && FeatureFlags.developerEntryEnabled.value
+    val isDeveloperUser = userProfile.uid == developerUid
     var showSignOutDialog by remember { mutableStateOf(false) }
     var showDeleteAccountDialog by remember { mutableStateOf(false) }
     var showDeleteAccountFinalDialog by remember { mutableStateOf(false) }
@@ -465,8 +464,8 @@ fun SettingsScreen(
                 ActionSheetOption(
                     icon = Icons.Default.Delete,
                     title = "Clear now",
-                    subtitle = "Free up $cacheSize (photos and data stay safe)",
-                    accentColor = Color(0xFFFF6B6B),
+                    subtitle = "Free up $cacheSize (photos/data stay safe)",
+                    accentColor = Color.Red,
                     onClick = {
                         showClearCacheDialog = false
                         val cacheDir = context.cacheDir
@@ -479,6 +478,7 @@ fun SettingsScreen(
                 )
             ),
             onDismiss = { showClearCacheDialog = false },
+            cancelTitle = "Cancel",
             cancelSubtitle = "Keep cache"
         )
     }
@@ -706,7 +706,7 @@ fun SettingsScreen(
                         containerColor = Color(0xFF2E86DE),
                         disabledContainerColor = Color(0xFFD3D3D3),
                         contentColor = Color.White,
-                        disabledContentColor = Color.Black
+                        disabledContentColor = Color.White
                     )
                 ) {
                     if (isContactSubmitting) {
@@ -714,7 +714,7 @@ fun SettingsScreen(
                     } else {
                         Icon(Icons.AutoMirrored.Filled.Send, contentDescription = null)
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("Submit Feedback", color = if (canSubmitFeedback) Color.White else Color.Black)
+                        Text("Submit Feedback", color = Color.White)
                     }
                 }
 
