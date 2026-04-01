@@ -434,7 +434,7 @@ fun ProfileScreen(
                         ) {
                             Text("Cancel")
                         }
-                        if (selectedPhotoIds.size >= 2) {
+                        if (selectedPhotoIds.isNotEmpty()) {
                             OutlinedButton(
                                 onClick = { showBatchDeleteConfirm = true },
                                 enabled = !isDeletingSelection,
@@ -607,7 +607,7 @@ fun ProfileScreen(
                     subtitle = "Delete ${selectedPhotoIds.size} photos. This action is irreversible.",
                     accentColor = Color.Red,
                     onClick = {
-                        if (selectedPhotoIds.size < 2 || isDeletingSelection) return@ActionSheetOption
+                        if (selectedPhotoIds.isEmpty() || isDeletingSelection) return@ActionSheetOption
                         val deletingIds = selectedPhotoIds.toSet()
                         isDeletingSelection = true
                         showBatchDeleteConfirm = false
