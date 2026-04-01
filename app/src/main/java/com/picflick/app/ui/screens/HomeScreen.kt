@@ -37,7 +37,6 @@ import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.pullrefresh.PullRefreshIndicator
 import androidx.compose.material.pullrefresh.pullRefresh
 import androidx.compose.material.pullrefresh.rememberPullRefreshState
-import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -874,7 +873,8 @@ fun HomeScreen(
         }
     }
 
-    inviteTargetGroup?.let { group ->
+    if (inviteTargetGroup != null) {
+        val group = inviteTargetGroup!!
         val isDarkMode = ThemeManager.isDarkMode.value
         val eligibleFriends = friends
             .filter { it.uid.isNotBlank() }
@@ -885,185 +885,163 @@ fun HomeScreen(
         var processingInviteUserId by remember(group.id) { mutableStateOf<String?>(null) }
         var invitedUserIds by remember(group.id) { mutableStateOf(setOf<String>()) }
 
-        Dialog(
-            onDismissRequest = { inviteTargetGroup = null },
-            properties = DialogProperties(usePlatformDefaultWidth = false)
+        Surface(
+            modifier = Modifier.fillMaxSize(),
+            color = isDarkModeBackground(isDarkMode)
         ) {
-            Surface(
-                modifier = Modifier.fillMaxSize(),
-                shape = RectangleShape,
-                color = if (isDarkMode) Color(0xFF121212) else MaterialTheme.colorScheme.background,
-                tonalElevation = 0.dp,
-                shadowElevation = 0.dp
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(horizontal = 12.dp, vertical = 16.dp)
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically
+            Column(modifier = Modifier.fillMaxSize()) {
+                Text(
+                    text = "Invite friends to ${group.name}",
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = if (isDarkMode) Color.White else Color.Black,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp)
+                )
+
+                Text(
+                    text = "People on PicFlick",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = if (isDarkMode) Color.White else Color.Black,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                )
+
+                if (eligibleFriends.isEmpty()) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f),
+                        contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = "Invite friends to ${group.name}",
-                            style = MaterialTheme.typography.headlineSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = if (isDarkMode) Color.White else Color.Black,
-                            modifier = Modifier.weight(1f)
+                            text = "All your friends are already in this album.",
+                            color = if (isDarkMode) Color.Gray else Color.DarkGray,
+                            style = MaterialTheme.typography.bodyLarge
                         )
-                        IconButton(onClick = { inviteTargetGroup = null }) {
-                            Icon(
-                                imageVector = Icons.Default.Close,
-                                contentDescription = "Close",
-                                tint = if (isDarkMode) Color.White else Color.Black
-                            )
-                        }
                     }
-                    Text(
-                        text = "Send album invites to your friends",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = if (isDarkMode) Color.Gray else Color.DarkGray
-                    )
-                    Spacer(modifier = Modifier.height(10.dp))
-
-                    if (eligibleFriends.isEmpty()) {
-                        Text(
-                            text = "All your friends are already in this group.",
-                            color = if (isDarkMode) Color.Gray else Color.DarkGray
-                        )
-                    } else {
-                        LazyColumn(modifier = Modifier.weight(1f)) {
-                            items(eligibleFriends, key = { it.uid }) { friend ->
-                                val isInvited = invitedUserIds.contains(friend.uid)
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(horizontal = 16.dp, vertical = 12.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Box(
-                                        modifier = Modifier.size(56.dp)
-                                    ) {
-                                        if (friend.photoUrl.isNotBlank()) {
-                                            AsyncImage(
-                                                model = withCacheBust(friend.photoUrl, System.currentTimeMillis()),
-                                                contentDescription = friend.displayName,
-                                                modifier = Modifier
-                                                    .fillMaxSize()
-                                                    .clip(CircleShape),
-                                                contentScale = ContentScale.Crop
-                                            )
-                                        } else {
-                                            Box(
-                                                modifier = Modifier
-                                                    .fillMaxSize()
-                                                    .clip(CircleShape)
-                                                    .background(if (isDarkMode) Color(0xFF3A3A3C) else Color(0xFFE0E0E0)),
-                                                contentAlignment = Alignment.Center
-                                            ) {
-                                                Icon(
-                                                    imageVector = Icons.Default.Person,
-                                                    contentDescription = null,
-                                                    modifier = Modifier.size(28.dp),
-                                                    tint = if (isDarkMode) Color.Gray else Color.DarkGray
-                                                )
-                                            }
-                                        }
-                                    }
-
-                                    Spacer(modifier = Modifier.width(16.dp))
-
-                                    Column(modifier = Modifier.weight(1f)) {
-                                        Text(
-                                            text = friend.displayName,
-                                            fontSize = 16.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            color = if (isDarkMode) Color.White else Color.Black,
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis,
-                                            modifier = Modifier.fillMaxWidth()
-                                        )
-                                        Spacer(modifier = Modifier.height(4.dp))
-                                        Text(
-                                            text = "${friend.followers.size} followers",
-                                            fontSize = 14.sp,
-                                            color = if (isDarkMode) Color.Gray else Color.DarkGray,
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis,
-                                            modifier = Modifier.fillMaxWidth()
-                                        )
-                                    }
-
-                                    if (processingInviteUserId == friend.uid) {
-                                        CircularProgressIndicator(
-                                            modifier = Modifier.size(24.dp),
-                                            strokeWidth = 2.dp
+                } else {
+                    LazyColumn(modifier = Modifier.weight(1f)) {
+                        items(eligibleFriends, key = { it.uid }) { friend ->
+                            val isInvited = invitedUserIds.contains(friend.uid)
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Box(modifier = Modifier.size(56.dp)) {
+                                    if (friend.photoUrl.isNotBlank()) {
+                                        AsyncImage(
+                                            model = withCacheBust(friend.photoUrl, System.currentTimeMillis()),
+                                            contentDescription = friend.displayName,
+                                            modifier = Modifier
+                                                .fillMaxSize()
+                                                .clip(CircleShape),
+                                            contentScale = ContentScale.Crop
                                         )
                                     } else {
-                                        OutlinedButton(
-                                            onClick = {
-                                                processingInviteUserId = friend.uid
-                                                if (isInvited) {
-                                                    viewModel.cancelGroupInvite(
-                                                        inviterId = userProfile.uid,
-                                                        groupId = group.id,
-                                                        inviteeId = friend.uid
-                                                    ) { success, message ->
-                                                        processingInviteUserId = null
-                                                        if (success) {
-                                                            invitedUserIds = invitedUserIds - friend.uid
-                                                        }
-                                                        Toast.makeText(
-                                                            context,
-                                                            if (success) "Invite canceled for ${friend.displayName}" else (message ?: "Failed to cancel invite"),
-                                                            Toast.LENGTH_SHORT
-                                                        ).show()
-                                                    }
-                                                } else {
-                                                    viewModel.inviteFriendToGroup(
-                                                        inviterId = userProfile.uid,
-                                                        inviterName = userProfile.displayName,
-                                                        groupId = group.id,
-                                                        inviteeId = friend.uid
-                                                    ) { success, message ->
-                                                        processingInviteUserId = null
-                                                        if (success) {
-                                                            invitedUserIds = invitedUserIds + friend.uid
-                                                        }
-                                                        Toast.makeText(
-                                                            context,
-                                                            if (success) "Invite sent to ${friend.displayName}" else (message ?: "Failed to send invite"),
-                                                            Toast.LENGTH_SHORT
-                                                        ).show()
-                                                    }
-                                                }
-                                            },
-                                            shape = RoundedCornerShape(20.dp),
-                                            modifier = Modifier.wrapContentWidth(),
-                                            colors = ButtonDefaults.outlinedButtonColors(
-                                                containerColor = if (isInvited) waitingColor else Color.Transparent,
-                                                contentColor = if (isInvited) Color.White else addColor,
-                                                disabledContainerColor = if (isInvited) waitingColor else Color.Transparent,
-                                                disabledContentColor = Color.White
-                                            ),
-                                            border = androidx.compose.foundation.BorderStroke(
-                                                1.dp,
-                                                if (isInvited) waitingColor else addColor
-                                            )
+                                        Box(
+                                            modifier = Modifier
+                                                .fillMaxSize()
+                                                .clip(CircleShape)
+                                                .background(if (isDarkMode) Color(0xFF3A3A3C) else Color(0xFFE0E0E0)),
+                                            contentAlignment = Alignment.Center
                                         ) {
-                                            Text(
-                                                text = if (isInvited) "Invited" else "Invite",
-                                                fontSize = 12.sp,
-                                                color = if (isInvited) Color.White else addColor
+                                            Icon(
+                                                imageVector = Icons.Default.Person,
+                                                contentDescription = null,
+                                                modifier = Modifier.size(28.dp),
+                                                tint = if (isDarkMode) Color.Gray else Color.DarkGray
                                             )
                                         }
+                                    }
+                                }
+
+                                Spacer(modifier = Modifier.width(16.dp))
+
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = friend.displayName,
+                                        fontSize = 16.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = if (isDarkMode) Color.White else Color.Black,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                        modifier = Modifier.fillMaxWidth()
+                                    )
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Text(
+                                        text = "${friend.followers.size} followers",
+                                        fontSize = 14.sp,
+                                        color = if (isDarkMode) Color.Gray else Color.DarkGray,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                        modifier = Modifier.fillMaxWidth()
+                                    )
+                                }
+
+                                if (processingInviteUserId == friend.uid) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(24.dp),
+                                        strokeWidth = 2.dp
+                                    )
+                                } else {
+                                    OutlinedButton(
+                                        onClick = {
+                                            processingInviteUserId = friend.uid
+                                            if (isInvited) {
+                                                viewModel.cancelGroupInvite(
+                                                    inviterId = userProfile.uid,
+                                                    groupId = group.id,
+                                                    inviteeId = friend.uid
+                                                ) { success, message ->
+                                                    processingInviteUserId = null
+                                                    if (success) invitedUserIds = invitedUserIds - friend.uid
+                                                    Toast.makeText(
+                                                        context,
+                                                        if (success) "Invite canceled for ${friend.displayName}" else (message ?: "Failed to cancel invite"),
+                                                        Toast.LENGTH_SHORT
+                                                    ).show()
+                                                }
+                                            } else {
+                                                viewModel.inviteFriendToGroup(
+                                                    inviterId = userProfile.uid,
+                                                    inviterName = userProfile.displayName,
+                                                    groupId = group.id,
+                                                    inviteeId = friend.uid
+                                                ) { success, message ->
+                                                    processingInviteUserId = null
+                                                    if (success) invitedUserIds = invitedUserIds + friend.uid
+                                                    Toast.makeText(
+                                                        context,
+                                                        if (success) "Invite sent to ${friend.displayName}" else (message ?: "Failed to send invite"),
+                                                        Toast.LENGTH_SHORT
+                                                    ).show()
+                                                }
+                                            }
+                                        },
+                                        shape = RoundedCornerShape(20.dp),
+                                        modifier = Modifier.wrapContentWidth(),
+                                        colors = ButtonDefaults.outlinedButtonColors(
+                                            containerColor = if (isInvited) waitingColor else Color.Transparent,
+                                            contentColor = if (isInvited) Color.White else addColor,
+                                            disabledContainerColor = if (isInvited) waitingColor else Color.Transparent,
+                                            disabledContentColor = Color.White
+                                        ),
+                                        border = androidx.compose.foundation.BorderStroke(
+                                            1.dp,
+                                            if (isInvited) waitingColor else addColor
+                                        )
+                                    ) {
+                                        Text(
+                                            text = if (isInvited) "Invited" else "Invite",
+                                            fontSize = 12.sp,
+                                            color = if (isInvited) Color.White else addColor
+                                        )
                                     }
                                 }
                             }
                         }
                     }
-
                 }
             }
         }
