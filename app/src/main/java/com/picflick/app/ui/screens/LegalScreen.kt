@@ -1,7 +1,6 @@
 package com.picflick.app.ui.screens
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -344,39 +343,6 @@ fun LegalScreen(
                             fontSize = 14.sp,
                             color = textColor,
                             lineHeight = 22.sp
-                        )
-                    }
-                }
-            }
-
-            // Questions
-            item {
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { onBack() },
-                    colors = CardDefaults.cardColors(
-                        containerColor = accentColor.copy(alpha = 0.1f)
-                    ),
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "Questions about these terms?",
-                            color = textColor,
-                            fontWeight = FontWeight.Medium,
-                            fontSize = 16.sp,
-                            modifier = Modifier.weight(1f)
-                        )
-                        Text(
-                            text = "Go to Settings > Contact Us",
-                            color = accentColor,
-                            fontSize = 14.sp
                         )
                     }
                 }
