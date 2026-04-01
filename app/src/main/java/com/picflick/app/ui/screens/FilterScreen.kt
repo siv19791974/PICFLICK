@@ -472,6 +472,9 @@ fun FilterScreen(
                                 }
                             }
 
+                            val filterActionButtonBg = Color(0xFFB7D8F2)
+                            val filterActionButtonFg = Color.Black
+
                             Column(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -491,17 +494,17 @@ fun FilterScreen(
                                         .fillMaxWidth()
                                         .defaultMinSize(minHeight = 52.dp)
                                         .clip(RoundedCornerShape(12.dp))
-                                        .background(Color.White)
+                                        .background(filterActionButtonBg)
                                 ) {
                                     Icon(
                                         imageVector = Icons.Default.PersonAdd,
                                         contentDescription = null,
-                                        tint = Color.Black
+                                        tint = filterActionButtonFg
                                     )
                                     Spacer(modifier = Modifier.width(8.dp))
                                     Text(
                                         text = if (friends.isEmpty()) "Find Friends" else "Tag Friends (${taggedFriends.size})",
-                                        color = Color.Black,
+                                        color = filterActionButtonFg,
                                         fontWeight = FontWeight.SemiBold,
                                         maxLines = 1
                                     )
@@ -514,17 +517,17 @@ fun FilterScreen(
                                         .fillMaxWidth()
                                         .defaultMinSize(minHeight = 52.dp)
                                         .clip(RoundedCornerShape(12.dp))
-                                        .background(Color.White)
+                                        .background(filterActionButtonBg)
                                 ) {
                                     Icon(
                                         painter = painterResource(id = android.R.drawable.ic_menu_crop),
                                         contentDescription = null,
-                                        tint = Color.Black
+                                        tint = filterActionButtonFg
                                     )
                                     Spacer(modifier = Modifier.width(8.dp))
                                     Text(
                                         text = "Crop",
-                                        color = Color.Black,
+                                        color = filterActionButtonFg,
                                         fontWeight = FontWeight.SemiBold,
                                         maxLines = 1
                                     )
@@ -536,17 +539,17 @@ fun FilterScreen(
                                         .fillMaxWidth()
                                         .defaultMinSize(minHeight = 52.dp)
                                         .clip(RoundedCornerShape(12.dp))
-                                        .background(Color.White)
+                                        .background(filterActionButtonBg)
                                 ) {
                                     Icon(
                                         painter = painterResource(id = android.R.drawable.ic_menu_edit),
                                         contentDescription = null,
-                                        tint = Color.Black
+                                        tint = filterActionButtonFg
                                     )
                                     Spacer(modifier = Modifier.width(8.dp))
                                     Text(
                                         text = if (description.isBlank()) "Add Description" else "Edit Description",
-                                        color = Color.Black,
+                                        color = filterActionButtonFg,
                                         fontWeight = FontWeight.SemiBold,
                                         maxLines = 1
                                     )

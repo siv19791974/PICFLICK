@@ -15,6 +15,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
@@ -29,6 +30,7 @@ import androidx.compose.material.icons.filled.Smartphone
 import androidx.compose.material.icons.filled.WbSunny
 import androidx.compose.material.icons.filled.DeveloperMode
 import androidx.compose.material.icons.filled.Upgrade
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Menu
 import androidx.compose.material.icons.automirrored.filled.Send
@@ -371,88 +373,75 @@ fun SettingsScreen(
         }
     }
 
-    // Sign Out Confirmation Dialog
+    // Sign Out - dark sexy popup style
     if (showSignOutDialog) {
-        AlertDialog(
-            onDismissRequest = { showSignOutDialog = false },
-            title = { Text("Sign Out?") },
-            text = { Text("You'll need to sign in again to access your account.") },
-            confirmButton = {
-                TextButton(
+        AddPhotoStyleActionSheet(
+            title = "Sign Out",
+            options = listOf(
+                ActionSheetOption(
+                    icon = Icons.AutoMirrored.Filled.Logout,
+                    title = "Sign out now",
+                    subtitle = "You'll need to sign in again to access your account",
+                    accentColor = Color.Red,
                     onClick = {
                         showSignOutDialog = false
                         onSignOut()
                     }
-                ) {
-                    Text("Sign Out", color = Color.Red)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showSignOutDialog = false }) {
-                    Text("Cancel")
-                }
-            },
-            containerColor = if (isDarkMode) Color(0xFF1C1C1E) else Color.White,
-            titleContentColor = if (isDarkMode) Color.White else Color.Black,
-            textContentColor = if (isDarkMode) Color.White else Color.Black
+                )
+            ),
+            onDismiss = { showSignOutDialog = false },
+            cancelTitle = "Stay signed in",
+            cancelSubtitle = "Keep me logged in",
+            cancelIcon = Icons.Default.Close,
+            cancelAccentColor = Color(0xFF4B5563)
         )
     }
 
-                // Delete Account - Step 1 Confirmation Dialog
+    // Delete Account - Step 1 dark sexy popup style
     if (showDeleteAccountDialog) {
-        AlertDialog(
-            onDismissRequest = { showDeleteAccountDialog = false },
-            title = { Text("Delete Account?") },
-            text = {
-                Text("This action is permanent and cannot be undone.")
-            },
-            confirmButton = {
-                TextButton(
+        AddPhotoStyleActionSheet(
+            title = "Delete Account",
+            options = listOf(
+                ActionSheetOption(
+                    icon = Icons.Default.Warning,
+                    title = "Continue to delete",
+                    subtitle = "This action is permanent and cannot be undone",
+                    accentColor = Color.Red,
                     onClick = {
                         showDeleteAccountDialog = false
                         showDeleteAccountFinalDialog = true
                     }
-                ) {
-                    Text("Continue", color = Color.Red)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showDeleteAccountDialog = false }) {
-                    Text("Cancel")
-                }
-            },
-            containerColor = if (isDarkMode) Color(0xFF1C1C1E) else Color.White,
-            titleContentColor = if (isDarkMode) Color.White else Color.Black,
-            textContentColor = if (isDarkMode) Color.White else Color.Black
+                )
+            ),
+            onDismiss = { showDeleteAccountDialog = false },
+            cancelTitle = "Cancel",
+            cancelSubtitle = "Keep my account",
+            cancelIcon = Icons.Default.Close,
+            cancelAccentColor = Color(0xFF4B5563)
         )
     }
 
-    // Delete Account - Final Explicit Confirmation
+    // Delete Account - Final explicit confirmation in dark sexy popup style
     if (showDeleteAccountFinalDialog) {
-        AlertDialog(
-            onDismissRequest = { showDeleteAccountFinalDialog = false },
-            title = { Text("Final confirmation") },
-            text = {
-                Text("Delete account permanently? All photos, friends, chats, and app data will be removed.")
-            },
-            confirmButton = {
-                TextButton(
+        AddPhotoStyleActionSheet(
+            title = "Final confirmation",
+            options = listOf(
+                ActionSheetOption(
+                    icon = Icons.Default.Delete,
+                    title = "Delete permanently",
+                    subtitle = "All photos, friends, chats, and app data will be removed",
+                    accentColor = Color.Red,
                     onClick = {
                         showDeleteAccountFinalDialog = false
                         onDeleteAccount()
                     }
-                ) {
-                    Text("Delete permanently", color = Color.Red)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showDeleteAccountFinalDialog = false }) {
-                    Text("Go back")
-                }
-            },
-            containerColor = if (isDarkMode) Color(0xFF1C1C1E) else Color.White,
-            titleContentColor = if (isDarkMode) Color.White else Color.Black,
-            textContentColor = if (isDarkMode) Color.White else Color.Black
+                )
+            ),
+            onDismiss = { showDeleteAccountFinalDialog = false },
+            cancelTitle = "Go back",
+            cancelSubtitle = "Don't delete account",
+            cancelIcon = Icons.Default.Close,
+            cancelAccentColor = Color(0xFF4B5563)
         )
     }
 
