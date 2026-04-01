@@ -140,12 +140,25 @@ fun ChatsScreen(
     }
 
     val inboxChatSessions = remember(viewModel.chatSessions, friendGroups, userProfile.uid) {
-        val existingGroupSessionsByGroupId = viewModel.chatSessions
+        fun ChatSession.isGroupLike(): Boolean = isGroup || groupId.isNotBlank() || id.startsWith("group_")
+
+        val normalizedSessions = viewModel.chatSessions.map { session ->
+            if (session.isGroupLike()) {
+                session.copy(
+                    isGroup = true,
+                    groupId = session.groupId.ifBlank { session.id.removePrefix("group_") },
+                    groupName = session.groupName.ifBlank { "Group" },
+                    groupIcon = session.groupIcon.ifBlank { "👥" }
+                )
+            } else {
+                session
+            }
+        }
+
+        val existingGroupSessionsByGroupId = normalizedSessions
             .filter { it.isGroup }
             .associateBy { session ->
-                session.groupId.ifBlank {
-                    session.id.removePrefix("group_")
-                }
+                session.groupId.ifBlank { session.id.removePrefix("group_") }
             }
 
         val seededGroupSessions = friendGroups.map { group ->
@@ -164,7 +177,8 @@ fun ChatsScreen(
             )
         }
 
-        (viewModel.chatSessions.filter { !it.isGroup } + seededGroupSessions)
+        (normalizedSessions + seededGroupSessions)
+            .distinctBy { it.id }
             .sortedByDescending { it.lastTimestamp }
     }
 

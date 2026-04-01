@@ -85,7 +85,10 @@ class PicFlickMessagingService : FirebaseMessagingService() {
 
         // Create intent to open app
         val flickId = data.firstNonBlank("flickId", "flick_id", "postId", "post_id") ?: ""
-        val chatId = data.firstNonBlank("chatId", "chat_id", "conversationId") ?: ""
+        val groupId = data.firstNonBlank("groupId", "group_id", "groupChatId", "group_chat_id") ?: ""
+        val groupName = data.firstNonBlank("groupName", "group_name") ?: ""
+        val rawChatId = data.firstNonBlank("chatId", "chat_id", "conversationId", "groupChatId", "group_chat_id", "threadId", "thread_id", "roomId", "room_id") ?: ""
+        val chatId = rawChatId.ifBlank { if (groupId.isNotBlank()) "group_$groupId" else "" }
         val senderId = data.firstNonBlank("senderId", "sender_id", "fromUserId", "userId") ?: ""
         val senderName = data.firstNonBlank("senderName", "sender_name", "fromUserName", "userName") ?: ""
         val type = data.firstNonBlank("type", "notificationType") ?: ""
@@ -117,6 +120,8 @@ class PicFlickMessagingService : FirebaseMessagingService() {
             putExtra("senderId", senderId)
             putExtra("senderName", senderName)
             putExtra("chatId", chatId)
+            putExtra("groupId", groupId)
+            putExtra("groupName", groupName)
             // Add any other data payload fields
             data.forEach { (key, value) ->
                 if (!hasExtra(key)) { // Don't overwrite explicit fields
