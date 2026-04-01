@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -35,6 +36,7 @@ import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Badge
+import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -62,6 +64,9 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
@@ -86,6 +91,7 @@ import com.picflick.app.ui.screens.LoginScreen
 import com.picflick.app.ui.screens.SplashScreen
 import com.picflick.app.ui.theme.PicFlickTheme
 import com.picflick.app.ui.theme.ThemeManager
+import com.picflick.app.ui.theme.isDarkModeBackground
 import com.picflick.app.utils.Analytics
 import com.picflick.app.utils.LocaleHelper
 import com.picflick.app.viewmodel.AuthViewModel
@@ -1348,152 +1354,173 @@ private fun PrivateShareTargetDialog(
     onShareToFriend: (com.picflick.app.data.UserProfile) -> Unit,
     onShareToGroup: (FriendGroup) -> Unit
 ) {
-    val sheetBg = Color(0xFF0E1016)
-    val cardBg = Color(0xFF1A2030)
-    val borderColor = Color(0xFF4FC3F7)
+    val isDarkMode = ThemeManager.isDarkMode.value
+    val screenBg = isDarkModeBackground(isDarkMode)
+    val primaryText = if (isDarkMode) Color.White else Color.Black
+    val secondaryText = if (isDarkMode) Color.White.copy(alpha = 0.75f) else Color(0xFF5F6368)
 
-    AlertDialog(
+    Dialog(
         onDismissRequest = onDismiss,
-        containerColor = sheetBg,
-        title = {
-            Text(
-                text = "Share privately",
-                color = Color.White,
-                fontWeight = FontWeight.Bold
-            )
-        },
-        text = {
-            LazyColumn {
-                if (groups.isNotEmpty()) {
-                    item {
-                        Text(
-                            "Groups",
-                            color = Color.White.copy(alpha = 0.9f),
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier.padding(bottom = 8.dp)
-                        )
-                    }
-                    items(groups, key = { it.id }) { group ->
-                        ShareTargetRow(
-                            title = group.name.ifBlank { "Group" },
-                            subtitle = "Send to group",
-                            iconEmoji = if (group.icon.startsWith("http")) null else group.icon,
-                            iconImageUrl = if (group.icon.startsWith("http")) group.icon else null,
-                            fallbackIcon = Icons.Default.Groups,
-                            cardBg = cardBg,
-                            borderColor = borderColor,
-                            onClick = { onShareToGroup(group) }
-                        )
+        properties = DialogProperties(
+            usePlatformDefaultWidth = false,
+            dismissOnBackPress = true,
+            dismissOnClickOutside = true
+        )
+    ) {
+        Surface(
+            modifier = Modifier.fillMaxSize(),
+            shape = RoundedCornerShape(0.dp),
+            color = screenBg
+        ) {
+            Column(modifier = Modifier.padding(20.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = "Share privately",
+                        color = primaryText,
+                        fontSize = 22.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.weight(1f)
+                    )
+                    TextButton(onClick = onDismiss) {
+                        Text("Close", color = primaryText)
                     }
                 }
 
-                if (friends.isNotEmpty()) {
-                    item {
-                        Text(
-                            "Individuals",
-                            color = Color.White.copy(alpha = 0.9f),
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier.padding(top = if (groups.isNotEmpty()) 14.dp else 0.dp, bottom = 8.dp)
-                        )
+                Spacer(modifier = Modifier.height(12.dp))
+
+                if (groups.isNotEmpty()) {
+                    Text(
+                        text = "Groups",
+                        color = primaryText,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+
+                    LazyColumn(modifier = Modifier.height((groups.size.coerceAtMost(3) * 64).dp)) {
+                        items(groups, key = { it.id }) { group ->
+                            PrivateShareListRow(
+                                title = group.name.ifBlank { "Group" },
+                                avatarUrl = group.icon.takeIf { it.startsWith("http") },
+                                avatarEmoji = group.icon.takeIf { !it.startsWith("http") },
+                                fallbackLetter = group.name.firstOrNull()?.uppercase(),
+                                buttonLabel = "Share",
+                                onClick = { onShareToGroup(group) }
+                            )
+                        }
                     }
-                    items(friends, key = { it.uid }) { friend ->
-                        ShareTargetRow(
-                            title = friend.displayName.ifBlank { "Friend" },
-                            subtitle = "Send to friend",
-                            iconEmoji = null,
-                            iconImageUrl = friend.photoUrl.takeIf { it.isNotBlank() },
-                            fallbackIcon = Icons.Default.Groups,
-                            cardBg = cardBg,
-                            borderColor = borderColor,
-                            fallbackLetter = friend.displayName.firstOrNull()?.uppercase(),
-                            onClick = { onShareToFriend(friend) }
-                        )
+
+                    Spacer(modifier = Modifier.height(12.dp))
+                }
+
+                if (friends.isNotEmpty()) {
+                    Text(
+                        text = "Individuals",
+                        color = primaryText,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+
+                    LazyColumn(modifier = Modifier.weight(1f, fill = false).heightIn(max = 360.dp)) {
+                        items(friends, key = { it.uid }) { friend ->
+                            PrivateShareListRow(
+                                title = friend.displayName.ifBlank { "Friend" },
+                                avatarUrl = friend.photoUrl.takeIf { it.isNotBlank() },
+                                avatarEmoji = null,
+                                fallbackLetter = friend.displayName.firstOrNull()?.uppercase(),
+                                buttonLabel = "Share",
+                                onClick = { onShareToFriend(friend) }
+                            )
+                        }
                     }
                 }
 
                 if (groups.isEmpty() && friends.isEmpty()) {
-                    item {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 24.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
                         Text(
                             text = "No groups or friends available",
-                            color = Color.White.copy(alpha = 0.7f),
-                            modifier = Modifier.padding(vertical = 8.dp)
+                            color = secondaryText
                         )
                     }
                 }
             }
-        },
-        confirmButton = {
-            TextButton(onClick = onDismiss) { Text("Close", color = Color(0xFF9FD8FF)) }
         }
-    )
-}
-
-@Composable
-private fun ShareTargetRow(
-    title: String,
-    subtitle: String,
-    iconEmoji: String?,
-    iconImageUrl: String?,
-    fallbackIcon: androidx.compose.ui.graphics.vector.ImageVector,
-    cardBg: Color,
-    borderColor: Color,
-    fallbackLetter: String? = null,
-    onClick: () -> Unit
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp)
-            .clip(RoundedCornerShape(14.dp))
-            .background(cardBg)
-            .border(1.dp, borderColor.copy(alpha = 0.45f), RoundedCornerShape(14.dp))
-            .clickable(onClick = onClick)
-            .padding(horizontal = 12.dp, vertical = 10.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Box(
-            modifier = Modifier
-                .size(40.dp)
-                .clip(CircleShape)
-                .background(Color(0xFF0F172A))
-                .border(1.dp, Color.Black, CircleShape),
-            contentAlignment = Alignment.Center
-        ) {
-            when {
-                !iconImageUrl.isNullOrBlank() -> {
-                    AsyncImage(
-                        model = iconImageUrl,
-                        contentDescription = title,
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .clip(CircleShape),
-                        contentScale = ContentScale.Crop
-                    )
-                }
-                !iconEmoji.isNullOrBlank() && !iconEmoji.startsWith("http") -> {
-                    Text(text = iconEmoji)
-                }
-                !fallbackLetter.isNullOrBlank() -> {
-                    Text(text = fallbackLetter, color = Color.White, fontWeight = FontWeight.Bold)
-                }
-                else -> {
-                    Icon(fallbackIcon, contentDescription = null, tint = Color(0xFF9FD8FF))
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.width(10.dp))
-
-        Column(modifier = Modifier.weight(1f)) {
-            Text(title, color = Color.White, fontWeight = FontWeight.SemiBold)
-            Text(subtitle, color = Color.White.copy(alpha = 0.72f))
-        }
-
-        Icon(
-            imageVector = Icons.AutoMirrored.Filled.Send,
-            contentDescription = "Send",
-            tint = Color(0xFF9FD8FF)
-        )
     }
 }
 
+@Composable
+private fun PrivateShareListRow(
+    title: String,
+    avatarUrl: String?,
+    avatarEmoji: String?,
+    fallbackLetter: String?,
+    buttonLabel: String,
+    onClick: () -> Unit
+) {
+    val isDarkMode = ThemeManager.isDarkMode.value
+    val primaryText = if (isDarkMode) Color.White else Color.Black
+    val avatarRing = if (isDarkMode) Color.White.copy(alpha = 0.8f) else MaterialTheme.colorScheme.primary
+    val avatarBg = if (isDarkMode) Color.Gray.copy(alpha = 0.4f) else MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Row(
+            modifier = Modifier.weight(1f),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(44.dp)
+                    .clip(CircleShape)
+                    .background(avatarBg)
+                    .border(2.dp, avatarRing, CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                when {
+                    !avatarUrl.isNullOrBlank() -> {
+                        AsyncImage(
+                            model = avatarUrl,
+                            contentDescription = title,
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop
+                        )
+                    }
+                    !avatarEmoji.isNullOrBlank() -> Text(text = avatarEmoji)
+                    !fallbackLetter.isNullOrBlank() -> Text(text = fallbackLetter, color = primaryText, fontWeight = FontWeight.Bold)
+                    else -> Icon(imageVector = Icons.Default.Groups, contentDescription = null, tint = primaryText)
+                }
+            }
+
+            Spacer(modifier = Modifier.width(12.dp))
+
+            Text(
+                text = title,
+                color = primaryText,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Medium
+            )
+        }
+
+        Button(
+            onClick = onClick,
+            colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                containerColor = Color(0xFF87CEEB)
+            ),
+            modifier = Modifier.height(36.dp)
+        ) {
+            Text(
+                text = buttonLabel,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color.Black
+            )
+        }
+    }
+}

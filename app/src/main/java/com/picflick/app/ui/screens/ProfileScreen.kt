@@ -66,6 +66,8 @@ import com.picflick.app.data.toEmoji
 import com.picflick.app.data.getColor
 import com.picflick.app.data.getDarkColor
 import com.picflick.app.data.getLightColor
+import com.picflick.app.ui.components.ActionSheetOption
+import com.picflick.app.ui.components.AddPhotoStyleActionSheet
 import com.picflick.app.ui.components.AnimatedReactionPicker
 import com.picflick.app.ui.theme.ThemeManager
 import com.picflick.app.util.withCacheBust
@@ -595,21 +597,16 @@ fun ProfileScreen(
     }
 
     if (showBatchDeleteConfirm) {
-        AlertDialog(
-            onDismissRequest = {
-                if (!isDeletingSelection) showBatchDeleteConfirm = false
-            },
-            title = { Text("Delete selected photos?") },
-            text = {
-                Text(
-                    "You are about to permanently delete ${selectedPhotoIds.size} photos. " +
-                        "This action is irreversible and cannot be undone."
-                )
-            },
-            confirmButton = {
-                TextButton(
+        AddPhotoStyleActionSheet(
+            title = "Delete selected photos?",
+            options = listOf(
+                ActionSheetOption(
+                    icon = Icons.Default.Delete,
+                    title = if (isDeletingSelection) "Deleting..." else "Delete permanently",
+                    subtitle = "Delete ${selectedPhotoIds.size} photos. This action is irreversible.",
+                    accentColor = Color.Red,
                     onClick = {
-                        if (selectedPhotoIds.size < 2 || isDeletingSelection) return@TextButton
+                        if (selectedPhotoIds.size < 2 || isDeletingSelection) return@ActionSheetOption
                         val deletingIds = selectedPhotoIds.toSet()
                         isDeletingSelection = true
                         showBatchDeleteConfirm = false
@@ -617,21 +614,16 @@ fun ProfileScreen(
                         onDeletePhotos(deletingIds) {
                             isDeletingSelection = false
                         }
-                    },
-                    enabled = !isDeletingSelection,
-                    colors = ButtonDefaults.textButtonColors(contentColor = Color(0xFFD32F2F))
-                ) {
-                    Text(if (isDeletingSelection) "Deleting..." else "Delete")
-                }
+                    }
+                )
+            ),
+            onDismiss = {
+                if (!isDeletingSelection) showBatchDeleteConfirm = false
             },
-            dismissButton = {
-                TextButton(
-                    onClick = { showBatchDeleteConfirm = false },
-                    enabled = !isDeletingSelection
-                ) {
-                    Text("Cancel")
-                }
-            }
+            cancelTitle = "Cancel",
+            cancelSubtitle = "Keep selected photos",
+            cancelIcon = Icons.Default.Close,
+            cancelAccentColor = Color(0xFF4B5563)
         )
     }
 }
