@@ -1,5 +1,7 @@
 package com.picflick.app.ui.screens
 
+import android.content.Context
+import android.content.Intent
 import android.content.res.Configuration
 import android.graphics.Bitmap
 import android.net.Uri
@@ -48,6 +50,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalConfiguration
@@ -75,6 +79,8 @@ import com.picflick.app.data.ReactionType
 import com.picflick.app.data.UserProfile
 import com.picflick.app.data.toEmoji
 import com.picflick.app.repository.ChatRepository
+import com.picflick.app.ui.components.ActionSheetOption
+import com.picflick.app.ui.components.AddPhotoStyleActionSheet
 import com.picflick.app.ui.components.AnimatedReactionPicker
 import com.picflick.app.ui.components.ErrorMessage
 import com.picflick.app.ui.components.PhotoGridShimmer
@@ -116,13 +122,18 @@ fun HomeScreen(
     onOpenGroupsManagerConsumed: () -> Unit = {}
 ) {
     val context = LocalContext.current
+    val prefs = remember(context) {
+        context.getSharedPreferences("picflick_home_prefs", Context.MODE_PRIVATE)
+    }
+    val deletedExampleGroupsKey = remember(userProfile.uid) { "deleted_example_groups_${userProfile.uid}" }
+    val defaultExampleGroups = remember {
+        listOf("Uncle John's wedding", "Five a side footie talk")
+    }
     var showUploadDialog by remember { mutableStateOf(false) }
     var showGroupsManager by remember { mutableStateOf(false) }
-    val temporaryGroupExamples = remember {
-        mutableStateListOf(
-            "Uncle John's wedding",
-            "Five a side footie talk"
-        )
+    val temporaryGroupExamples = remember(userProfile.uid) {
+        val deleted = prefs.getStringSet(deletedExampleGroupsKey, emptySet()) ?: emptySet()
+        mutableStateListOf(*defaultExampleGroups.filterNot { it in deleted }.toTypedArray())
     }
     var showCreateGroupDialog by remember { mutableStateOf(false) }
     var editingGroup by remember { mutableStateOf<FriendGroup?>(null) }
@@ -540,7 +551,12 @@ fun HomeScreen(
             onInviteToGroup = { group -> inviteTargetGroup = group },
             onManageAdmins = { group -> adminTargetGroup = group },
             onDeleteGroup = { group -> viewModel.deleteFriendGroup(userProfile.uid, group.id) },
-            onDeleteTemporaryGroup = { title -> temporaryGroupExamples.remove(title) },
+            onDeleteTemporaryGroup = { title ->
+                temporaryGroupExamples.remove(title)
+                val currentDeleted = prefs.getStringSet(deletedExampleGroupsKey, emptySet())?.toMutableSet() ?: mutableSetOf()
+                currentDeleted.add(title)
+                prefs.edit().putStringSet(deletedExampleGroupsKey, currentDeleted).apply()
+            },
             onReorderGroups = { orderedGroupIds -> viewModel.reorderFriendGroups(userProfile.uid, orderedGroupIds) }
         )
     }
@@ -671,176 +687,386 @@ fun HomeScreen(
     }
 
     adminTargetGroup?.let { group ->
+        val isDarkMode = ThemeManager.isDarkMode.value
         val ownerId = group.effectiveOwnerId()
         val candidates = friends
             .filter { it.uid.isNotBlank() }
             .filter { group.effectiveMemberIds().contains(it.uid) }
             .filter { it.uid != ownerId }
             .sortedBy { it.displayName.lowercase(Locale.getDefault()) }
+        val addColor = Color(0xFF1E88E5)
+        val waitingColor = Color(0xFF2A4A73)
         var selectedAdmins by remember(group.id, candidates) {
             mutableStateOf(group.adminIds.filter { it.isNotBlank() && it != ownerId && group.isMember(it) }.toSet())
         }
+        var processingMemberId by remember(group.id) { mutableStateOf<String?>(null) }
 
-        AlertDialog(
+        Dialog(
             onDismissRequest = { adminTargetGroup = null },
-            title = { Text("Manage admins") },
-            text = {
-                if (candidates.isEmpty()) {
-                    Text("No eligible members to promote.")
-                } else {
-                    LazyColumn(modifier = Modifier.heightIn(max = 360.dp)) {
-                        items(candidates, key = { it.uid }) { member ->
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 8.dp)
-                                    .clickable {
-                                        selectedAdmins = if (selectedAdmins.contains(member.uid)) {
-                                            selectedAdmins - member.uid
-                                        } else {
-                                            selectedAdmins + member.uid
-                                        }
-                                    },
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Surface(
-                                    shape = CircleShape,
-                                    color = if (isDarkMode) Color(0xFF2A2A2A) else Color(0xFFF1F1F1),
-                                    modifier = Modifier.size(46.dp)
+            properties = DialogProperties(usePlatformDefaultWidth = false)
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 12.dp, vertical = 20.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .fillMaxHeight(0.88f),
+                    shape = RoundedCornerShape(24.dp),
+                    color = if (isDarkMode) Color(0xFF121212) else MaterialTheme.colorScheme.background,
+                    tonalElevation = 0.dp,
+                    shadowElevation = 10.dp
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(horizontal = 12.dp, vertical = 16.dp)
+                    ) {
+                    Text(
+                        text = "Manage admins",
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = if (isDarkMode) Color.White else Color.Black
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "Choose who can manage this album",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = if (isDarkMode) Color.Gray else Color.DarkGray
+                    )
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    if (candidates.isEmpty()) {
+                        Text(
+                            text = "No eligible members to promote.",
+                            color = if (isDarkMode) Color.Gray else Color.DarkGray
+                        )
+                    } else {
+                        LazyColumn(modifier = Modifier.weight(1f)) {
+                            items(candidates, key = { it.uid }) { member ->
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 12.dp, vertical = 8.dp),
+                                    verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     if (member.photoUrl.isNotBlank()) {
                                         AsyncImage(
                                             model = withCacheBust(member.photoUrl, System.currentTimeMillis()),
                                             contentDescription = member.displayName,
-                                            contentScale = ContentScale.Crop,
-                                            modifier = Modifier.fillMaxSize()
+                                            modifier = Modifier
+                                                .size(56.dp)
+                                                .clip(CircleShape),
+                                            contentScale = ContentScale.Crop
                                         )
                                     } else {
-                                        Box(contentAlignment = Alignment.Center) {
-                                            Icon(Icons.Default.Person, contentDescription = null, modifier = Modifier.size(22.dp))
+                                        Box(
+                                            modifier = Modifier
+                                                .size(56.dp)
+                                                .clip(CircleShape)
+                                                .background(if (isDarkMode) Color(0xFF3A3A3C) else Color(0xFFE0E0E0)),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.Person,
+                                                contentDescription = null,
+                                                modifier = Modifier.size(32.dp),
+                                                tint = if (isDarkMode) Color.Gray else Color.DarkGray
+                                            )
+                                        }
+                                    }
+
+                                    Spacer(modifier = Modifier.width(12.dp))
+
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            text = member.displayName,
+                                            style = MaterialTheme.typography.titleMedium,
+                                            fontWeight = FontWeight.SemiBold,
+                                            color = if (isDarkMode) Color.White else Color.Black,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                        Text(
+                                            text = if (selectedAdmins.contains(member.uid)) "Album admin" else "Album member",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = if (isDarkMode) Color.Gray else Color.DarkGray
+                                        )
+                                    }
+
+                                    val isAdminNow = selectedAdmins.contains(member.uid)
+                                    if (processingMemberId == member.uid) {
+                                        CircularProgressIndicator(
+                                            modifier = Modifier.size(24.dp),
+                                            strokeWidth = 2.dp
+                                        )
+                                    } else {
+                                        OutlinedButton(
+                                            onClick = {
+                                                val previous = selectedAdmins
+                                                val updated = if (isAdminNow) previous - member.uid else previous + member.uid
+                                                selectedAdmins = updated
+                                                processingMemberId = member.uid
+                                                viewModel.updateGroupAdmins(
+                                                    userId = userProfile.uid,
+                                                    groupId = group.id,
+                                                    adminIds = updated.toList()
+                                                ) { success, message ->
+                                                    processingMemberId = null
+                                                    if (!success) selectedAdmins = previous
+                                                    Toast.makeText(
+                                                        context,
+                                                        if (success) {
+                                                            if (isAdminNow) "Removed admin: ${member.displayName}" else "Made admin: ${member.displayName}"
+                                                        } else {
+                                                            message ?: "Failed to update admins"
+                                                        },
+                                                        Toast.LENGTH_SHORT
+                                                    ).show()
+                                                }
+                                            },
+                                            shape = RoundedCornerShape(20.dp),
+                                            modifier = Modifier.wrapContentWidth(),
+                                            colors = ButtonDefaults.outlinedButtonColors(
+                                                containerColor = if (isAdminNow) waitingColor else Color.Transparent,
+                                                contentColor = if (isAdminNow) Color.White else addColor,
+                                                disabledContainerColor = if (isAdminNow) waitingColor else Color.Transparent,
+                                                disabledContentColor = if (isAdminNow) Color.White else addColor
+                                            ),
+                                            border = androidx.compose.foundation.BorderStroke(
+                                                1.dp,
+                                                if (isAdminNow) waitingColor else addColor
+                                            )
+                                        ) {
+                                            Text(
+                                                text = if (isAdminNow) "Admin" else "Make Admin",
+                                                fontSize = 12.sp,
+                                                color = if (isAdminNow) Color.White else addColor
+                                            )
                                         }
                                     }
                                 }
-                                Spacer(modifier = Modifier.width(12.dp))
-                                Text(
-                                    text = member.displayName,
-                                    modifier = Modifier.weight(1f),
-                                    fontSize = 15.sp,
-                                    fontWeight = FontWeight.Medium,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
-                                )
-                                Checkbox(
-                                    checked = selectedAdmins.contains(member.uid),
-                                    onCheckedChange = {
-                                        selectedAdmins = if (it) selectedAdmins + member.uid else selectedAdmins - member.uid
-                                    }
-                                )
                             }
-                            HorizontalDivider(color = if (isDarkMode) Color(0xFF2C2C2C) else Color(0xFFE5E5E5))
                         }
                     }
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = {
-                    viewModel.updateGroupAdmins(
-                        userId = userProfile.uid,
-                        groupId = group.id,
-                        adminIds = selectedAdmins.toList()
-                    ) { success, message ->
-                        Toast.makeText(
-                            context,
-                            if (success) "Admins updated" else (message ?: "Failed to update admins"),
-                            Toast.LENGTH_SHORT
-                        ).show()
-                        if (success) adminTargetGroup = null
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    Button(
+                        onClick = { adminTargetGroup = null },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(44.dp),
+                        shape = RoundedCornerShape(20.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = waitingColor,
+                            contentColor = Color.White
+                        )
+                    ) {
+                        Text("Close")
                     }
-                }) { Text("Save") }
-            },
-            dismissButton = {
-                TextButton(onClick = { adminTargetGroup = null }) { Text("Cancel") }
+                    }
+                }
             }
-        )
+        }
     }
 
     inviteTargetGroup?.let { group ->
+        val isDarkMode = ThemeManager.isDarkMode.value
         val eligibleFriends = friends
             .filter { it.uid.isNotBlank() }
             .filter { !group.effectiveMemberIds().contains(it.uid) }
             .sortedBy { it.displayName.lowercase(Locale.getDefault()) }
+        val addColor = Color(0xFF1E88E5)
+        val waitingColor = Color(0xFF2A4A73)
+        var processingInviteUserId by remember(group.id) { mutableStateOf<String?>(null) }
+        var invitedUserIds by remember(group.id) { mutableStateOf(setOf<String>()) }
 
-        AlertDialog(
+        Dialog(
             onDismissRequest = { inviteTargetGroup = null },
-            title = { Text("Invite friends to ${group.name}") },
-            text = {
-                if (eligibleFriends.isEmpty()) {
-                    Text("All your friends are already in this group.")
-                } else {
-                    LazyColumn(modifier = Modifier.heightIn(max = 360.dp)) {
-                        items(eligibleFriends, key = { it.uid }) { friend ->
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 8.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Surface(
-                                    shape = CircleShape,
-                                    color = if (isDarkMode) Color(0xFF2A2A2A) else Color(0xFFF1F1F1),
-                                    modifier = Modifier.size(46.dp)
+            properties = DialogProperties(usePlatformDefaultWidth = false)
+        ) {
+            Surface(
+                modifier = Modifier.fillMaxSize(),
+                shape = RectangleShape,
+                color = if (isDarkMode) Color(0xFF121212) else MaterialTheme.colorScheme.background,
+                tonalElevation = 0.dp,
+                shadowElevation = 0.dp
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 12.dp, vertical = 16.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Invite friends to ${group.name}",
+                            style = MaterialTheme.typography.headlineSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = if (isDarkMode) Color.White else Color.Black,
+                            modifier = Modifier.weight(1f)
+                        )
+                        IconButton(onClick = { inviteTargetGroup = null }) {
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = "Close",
+                                tint = if (isDarkMode) Color.White else Color.Black
+                            )
+                        }
+                    }
+                    Text(
+                        text = "Send album invites to your friends",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = if (isDarkMode) Color.Gray else Color.DarkGray
+                    )
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    if (eligibleFriends.isEmpty()) {
+                        Text(
+                            text = "All your friends are already in this group.",
+                            color = if (isDarkMode) Color.Gray else Color.DarkGray
+                        )
+                    } else {
+                        LazyColumn(modifier = Modifier.weight(1f)) {
+                            items(eligibleFriends, key = { it.uid }) { friend ->
+                                val isInvited = invitedUserIds.contains(friend.uid)
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                                    verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    if (friend.photoUrl.isNotBlank()) {
-                                        AsyncImage(
-                                            model = withCacheBust(friend.photoUrl, System.currentTimeMillis()),
-                                            contentDescription = friend.displayName,
-                                            contentScale = ContentScale.Crop,
-                                            modifier = Modifier.fillMaxSize()
+                                    Box(
+                                        modifier = Modifier.size(56.dp)
+                                    ) {
+                                        if (friend.photoUrl.isNotBlank()) {
+                                            AsyncImage(
+                                                model = withCacheBust(friend.photoUrl, System.currentTimeMillis()),
+                                                contentDescription = friend.displayName,
+                                                modifier = Modifier
+                                                    .fillMaxSize()
+                                                    .clip(CircleShape),
+                                                contentScale = ContentScale.Crop
+                                            )
+                                        } else {
+                                            Box(
+                                                modifier = Modifier
+                                                    .fillMaxSize()
+                                                    .clip(CircleShape)
+                                                    .background(if (isDarkMode) Color(0xFF3A3A3C) else Color(0xFFE0E0E0)),
+                                                contentAlignment = Alignment.Center
+                                            ) {
+                                                Icon(
+                                                    imageVector = Icons.Default.Person,
+                                                    contentDescription = null,
+                                                    modifier = Modifier.size(28.dp),
+                                                    tint = if (isDarkMode) Color.Gray else Color.DarkGray
+                                                )
+                                            }
+                                        }
+                                    }
+
+                                    Spacer(modifier = Modifier.width(16.dp))
+
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            text = friend.displayName,
+                                            fontSize = 16.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = if (isDarkMode) Color.White else Color.Black,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis,
+                                            modifier = Modifier.fillMaxWidth()
+                                        )
+                                        Spacer(modifier = Modifier.height(4.dp))
+                                        Text(
+                                            text = "${friend.followers.size} followers",
+                                            fontSize = 14.sp,
+                                            color = if (isDarkMode) Color.Gray else Color.DarkGray,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis,
+                                            modifier = Modifier.fillMaxWidth()
+                                        )
+                                    }
+
+                                    if (processingInviteUserId == friend.uid) {
+                                        CircularProgressIndicator(
+                                            modifier = Modifier.size(24.dp),
+                                            strokeWidth = 2.dp
                                         )
                                     } else {
-                                        Box(contentAlignment = Alignment.Center) {
-                                            Icon(Icons.Default.Person, contentDescription = null, modifier = Modifier.size(22.dp))
+                                        OutlinedButton(
+                                            onClick = {
+                                                processingInviteUserId = friend.uid
+                                                if (isInvited) {
+                                                    viewModel.cancelGroupInvite(
+                                                        inviterId = userProfile.uid,
+                                                        groupId = group.id,
+                                                        inviteeId = friend.uid
+                                                    ) { success, message ->
+                                                        processingInviteUserId = null
+                                                        if (success) {
+                                                            invitedUserIds = invitedUserIds - friend.uid
+                                                        }
+                                                        Toast.makeText(
+                                                            context,
+                                                            if (success) "Invite canceled for ${friend.displayName}" else (message ?: "Failed to cancel invite"),
+                                                            Toast.LENGTH_SHORT
+                                                        ).show()
+                                                    }
+                                                } else {
+                                                    viewModel.inviteFriendToGroup(
+                                                        inviterId = userProfile.uid,
+                                                        inviterName = userProfile.displayName,
+                                                        groupId = group.id,
+                                                        inviteeId = friend.uid
+                                                    ) { success, message ->
+                                                        processingInviteUserId = null
+                                                        if (success) {
+                                                            invitedUserIds = invitedUserIds + friend.uid
+                                                        }
+                                                        Toast.makeText(
+                                                            context,
+                                                            if (success) "Invite sent to ${friend.displayName}" else (message ?: "Failed to send invite"),
+                                                            Toast.LENGTH_SHORT
+                                                        ).show()
+                                                    }
+                                                }
+                                            },
+                                            shape = RoundedCornerShape(20.dp),
+                                            modifier = Modifier.wrapContentWidth(),
+                                            colors = ButtonDefaults.outlinedButtonColors(
+                                                containerColor = if (isInvited) waitingColor else Color.Transparent,
+                                                contentColor = if (isInvited) Color.White else addColor,
+                                                disabledContainerColor = if (isInvited) waitingColor else Color.Transparent,
+                                                disabledContentColor = Color.White
+                                            ),
+                                            border = androidx.compose.foundation.BorderStroke(
+                                                1.dp,
+                                                if (isInvited) waitingColor else addColor
+                                            )
+                                        ) {
+                                            Text(
+                                                text = if (isInvited) "Invited" else "Invite",
+                                                fontSize = 12.sp,
+                                                color = if (isInvited) Color.White else addColor
+                                            )
                                         }
                                     }
                                 }
-                                Spacer(modifier = Modifier.width(12.dp))
-                                Text(
-                                    text = friend.displayName,
-                                    modifier = Modifier.weight(1f),
-                                    fontSize = 15.sp,
-                                    fontWeight = FontWeight.Medium,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
-                                )
-                                OutlinedButton(
-                                    onClick = {
-                                        viewModel.inviteFriendToGroup(
-                                            inviterId = userProfile.uid,
-                                            inviterName = userProfile.displayName,
-                                            groupId = group.id,
-                                            inviteeId = friend.uid
-                                        ) { success, message ->
-                                            Toast.makeText(
-                                                context,
-                                                if (success) "Invite sent to ${friend.displayName}" else (message ?: "Failed to send invite"),
-                                                Toast.LENGTH_SHORT
-                                            ).show()
-                                        }
-                                    },
-                                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)
-                                ) {
-                                    Text("Invite")
-                                }
                             }
-                            HorizontalDivider(color = if (isDarkMode) Color(0xFF2C2C2C) else Color(0xFFE5E5E5))
                         }
                     }
+
                 }
-            },
-            confirmButton = {
-                TextButton(onClick = { inviteTargetGroup = null }) { Text("Close") }
             }
-        )
+        }
     }
 
     // Animated Reaction Picker Dialog for long press
@@ -1144,36 +1370,48 @@ private fun GroupManagerSheet(
             .clickable { onDismiss() }
     ) {
         confirmDeleteGroup?.let { group ->
-            AlertDialog(
-                onDismissRequest = { confirmDeleteGroup = null },
-                title = { Text("Delete album?") },
-                text = { Text("Are you sure you want to delete '${group.name}'?") },
-                confirmButton = {
-                    TextButton(onClick = {
-                        onDeleteGroup(group)
-                        confirmDeleteGroup = null
-                    }) { Text("Delete", color = Color(0xFFD84343)) }
-                },
-                dismissButton = {
-                    TextButton(onClick = { confirmDeleteGroup = null }) { Text("Cancel") }
-                }
+            AddPhotoStyleActionSheet(
+                title = "Delete album?",
+                options = listOf(
+                    ActionSheetOption(
+                        icon = Icons.Default.Delete,
+                        title = "Delete \"${group.name}\"",
+                        subtitle = "This album will be removed from your list",
+                        accentColor = Color(0xFFD84343),
+                        onClick = {
+                            onDeleteGroup(group)
+                            confirmDeleteGroup = null
+                        }
+                    )
+                ),
+                onDismiss = { confirmDeleteGroup = null },
+                cancelTitle = "Cancel",
+                cancelSubtitle = "Keep this album",
+                cancelIcon = Icons.Default.Close,
+                cancelAccentColor = Color(0xFF4B5563)
             )
         }
 
         confirmDeleteTempTitle?.let { tempTitle ->
-            AlertDialog(
-                onDismissRequest = { confirmDeleteTempTitle = null },
-                title = { Text("Delete album?") },
-                text = { Text("Are you sure you want to delete '$tempTitle'?") },
-                confirmButton = {
-                    TextButton(onClick = {
-                        onDeleteTemporaryGroup(tempTitle)
-                        confirmDeleteTempTitle = null
-                    }) { Text("Delete", color = Color(0xFFD84343)) }
-                },
-                dismissButton = {
-                    TextButton(onClick = { confirmDeleteTempTitle = null }) { Text("Cancel") }
-                }
+            AddPhotoStyleActionSheet(
+                title = "Delete album?",
+                options = listOf(
+                    ActionSheetOption(
+                        icon = Icons.Default.Delete,
+                        title = "Delete \"$tempTitle\"",
+                        subtitle = "This example album will be removed",
+                        accentColor = Color(0xFFD84343),
+                        onClick = {
+                            onDeleteTemporaryGroup(tempTitle)
+                            confirmDeleteTempTitle = null
+                        }
+                    )
+                ),
+                onDismiss = { confirmDeleteTempTitle = null },
+                cancelTitle = "Cancel",
+                cancelSubtitle = "Keep this album",
+                cancelIcon = Icons.Default.Close,
+                cancelAccentColor = Color(0xFF4B5563)
             )
         }
 

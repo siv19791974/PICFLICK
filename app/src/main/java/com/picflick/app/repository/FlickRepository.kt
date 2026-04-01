@@ -3256,6 +3256,38 @@ android.util.Log.e("FlickRepository", "Failed to submit feedback", e)
     }
 
     /**
+     * Cancel a pending invite as group admin/owner.
+     */
+    suspend fun cancelGroupInvite(
+        inviterId: String,
+        groupId: String,
+        inviteeId: String
+    ): Result<Unit> {
+        return try {
+            val groupDoc = db.collection("groups").document(groupId).get().await()
+            val group = groupDoc.toNormalizedFriendGroup()
+                ?: return Result.Error(Exception("Group not found"), "Group not found")
+
+            if (!group.isAdmin(inviterId)) {
+                return Result.Error(Exception("Permission denied"), "Only admins can cancel invites")
+            }
+
+            val invitesCollection = db.collection("groups").document(groupId).collection("invites")
+            val pendingInvites = invitesCollection
+                .whereEqualTo("inviteeId", inviteeId)
+                .whereEqualTo("status", GroupInviteStatus.PENDING.name)
+                .get()
+                .await()
+                .documents
+
+            pendingInvites.forEach { it.reference.delete().await() }
+            Result.Success(Unit)
+        } catch (e: Exception) {
+            Result.Error(e, "Failed to cancel invite: ${e.message ?: "Unknown error"}")
+        }
+    }
+
+    /**
      * Accept or decline invite as invitee.
      */
     suspend fun respondToGroupInvite(

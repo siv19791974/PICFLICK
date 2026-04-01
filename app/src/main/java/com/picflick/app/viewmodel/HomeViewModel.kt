@@ -385,6 +385,21 @@ class HomeViewModel : ViewModel() {
         }
     }
 
+    fun cancelGroupInvite(
+        inviterId: String,
+        groupId: String,
+        inviteeId: String,
+        onComplete: (Boolean, String?) -> Unit = { _, _ -> }
+    ) {
+        viewModelScope.launch {
+            when (val result = repository.cancelGroupInvite(inviterId, groupId, inviteeId)) {
+                is Result.Success -> onComplete(true, null)
+                is Result.Error -> onComplete(false, result.message)
+                is Result.Loading -> Unit
+            }
+        }
+    }
+
     fun updateGroupAdmins(
         userId: String,
         groupId: String,
