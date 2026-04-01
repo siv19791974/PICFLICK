@@ -30,6 +30,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Groups
+import androidx.compose.material.icons.outlined.Menu
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.AlertDialog
@@ -83,7 +84,6 @@ import com.picflick.app.ui.components.LogoImage
 import com.picflick.app.ui.components.UploadSourceDialog
 import com.picflick.app.ui.screens.LoginScreen
 import com.picflick.app.ui.screens.SplashScreen
-import com.picflick.app.ui.theme.FeatureFlags
 import com.picflick.app.ui.theme.PicFlickTheme
 import com.picflick.app.ui.theme.ThemeManager
 import com.picflick.app.utils.Analytics
@@ -120,9 +120,8 @@ class MainActivity : ComponentActivity() {
         WindowCompat.setDecorFitsSystemWindows(window, true)
         WindowInsetsControllerCompat(window, window.decorView).show(WindowInsetsCompat.Type.statusBars())
 
-        // Initialize theme/flags managers before setting content
+        // Initialize theme manager before setting content
         ThemeManager.init(this)
-        FeatureFlags.init(this)
 
         setContent {
             PicFlickTheme {
@@ -269,12 +268,10 @@ class MainActivity : ComponentActivity() {
             else -> "notifications"
         }
 
-        if (FeatureFlags.verboseLogs.value) {
-            android.util.Log.d(
-                "MainActivity",
-                "Push notification clicked: type=$notificationType, screen=$targetScreen, flickId=$flickId, chatId=$chatId, sender=$senderId"
-            )
-        }
+        android.util.Log.d(
+            "MainActivity",
+            "Push notification clicked: type=$notificationType, screen=$targetScreen, flickId=$flickId, chatId=$chatId, sender=$senderId"
+        )
 
         val normalizedExtras = android.os.Bundle(extras).apply {
             putString("targetScreen", targetScreen)
@@ -358,29 +355,7 @@ fun MainScreen(
 
     fun navigateTo(screen: Screen) {
         if (screen == currentScreen) return
-
-        // Feature flag: force parent-level hops for flatter, deterministic navigation transitions.
-        val resolvedTarget = if (FeatureFlags.aggressiveReconcile.value) {
-            when (screen) {
-                is Screen.About,
-                is Screen.Contact,
-                is Screen.Privacy,
-                is Screen.NotificationSettings,
-                is Screen.ManageStorage,
-                is Screen.SubscriptionStatus,
-                is Screen.PlanOptions,
-                is Screen.StreakAchievements,
-                is Screen.PrivacyPolicy,
-                is Screen.Philosophy,
-                is Screen.Legal,
-                is Screen.Developer -> Screen.Settings
-                else -> screen
-            }
-        } else {
-            screen
-        }
-
-        currentScreen = resolvedTarget
+        currentScreen = screen
     }
 
     fun parentScreenFor(screen: Screen): Screen? = when (screen) {
@@ -856,8 +831,7 @@ fun MainScreen(
                 }
             },
             onBatchSuccess = {
-                val refreshDelay = if (FeatureFlags.fastRefreshMode.value) 0L else 1400L
-                homeViewModel.requestDebouncedFeedRefresh(profile.uid, delayMs = refreshDelay)
+                homeViewModel.requestDebouncedFeedRefresh(profile.uid, 0L)
             }
         )
 
@@ -973,9 +947,9 @@ fun MainScreen(
             title = "Import shared photos",
             options = listOf(
                 ActionSheetOption(
-                    icon = Icons.AutoMirrored.Filled.Send,
-                    title = "Post",
-                    subtitle = "Upload ${pendingSharedImportUris.size} photo(s) to feed",
+                    icon = Icons.Outlined.Menu,
+                    title = "Post to PicFlick",
+                    subtitle = "Add ${pendingSharedImportUris.size} photo(s) to your feed",
                     accentColor = Color(0xFF2E86DE),
                     onClick = {
                         val profile = userProfile
@@ -994,8 +968,7 @@ fun MainScreen(
                                     }
                                 },
                                 onBatchSuccess = {
-                                    // External share import should appear in feed ASAP.
-                                    homeViewModel.requestDebouncedFeedRefresh(profile.uid, delayMs = 0L)
+                                    homeViewModel.requestDebouncedFeedRefresh(profile.uid, 0L)
                                 }
                             )
                             navigateTo(Screen.Home)
@@ -1007,7 +980,7 @@ fun MainScreen(
                 ActionSheetOption(
                     icon = Icons.AutoMirrored.Filled.Send,
                     title = "Send privately",
-                    subtitle = "Choose friend or group",
+                    subtitle = "Share to individual or group chat",
                     accentColor = Color(0xFF2E86DE),
                     onClick = {
                         privateSharePhotoUris = pendingSharedImportUris

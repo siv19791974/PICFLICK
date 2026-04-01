@@ -188,7 +188,7 @@ fun AboutScreen(
                 }
             }
 
-            // Push bottom card lower
+            // Push bottom card lower (locked)
             item {
                 Spacer(modifier = Modifier.height(48.dp))
             }
