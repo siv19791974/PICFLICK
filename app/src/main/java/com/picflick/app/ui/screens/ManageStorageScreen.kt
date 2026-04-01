@@ -108,11 +108,19 @@ fun ManageStorageScreen(
         }
     }
 
-    // One-time backfill for legacy users who have photos but no storageUsedBytes tracked yet.
+    // Storage accuracy sync: recalculate from Storage and update profile if drifted.
     LaunchedEffect(userProfile.uid) {
-        if (storageUsed > 0L) return@LaunchedEffect
-        val recalculatedBytes = runCatching { calculateStorageUsedBytesFromFiles(userProfile.uid) }.getOrNull() ?: return@LaunchedEffect
-        if (recalculatedBytes > 0L) {
+        val recalculation = runCatching { calculateStorageUsedBytesFromFiles(userProfile.uid) }.getOrNull() ?: return@LaunchedEffect
+        if (recalculation.hadErrors) {
+            android.util.Log.w("ManageStorageScreen", "Skipping storageUsedBytes update due to partial Storage scan errors for user=${userProfile.uid}")
+            return@LaunchedEffect
+        }
+
+        val recalculatedBytes = recalculation.totalBytes
+
+        // Avoid noisy writes: only update when drift is meaningful (>= 1MB)
+        val drift = kotlin.math.abs(recalculatedBytes - storageUsed)
+        if (drift >= 1_048_576L) {
             storageUsed = recalculatedBytes
             runCatching {
                 FirebaseFirestore.getInstance()
@@ -674,24 +682,39 @@ private fun DocumentSnapshot.getNumericLong(field: String): Long? {
     }
 }
 
-private suspend fun calculateStorageUsedBytesFromFiles(userId: String): Long {
+private data class ManageStorageCalculationResult(
+    val totalBytes: Long,
+    val hadErrors: Boolean
+)
+
+private suspend fun calculateStorageUsedBytesFromFiles(userId: String): ManageStorageCalculationResult {
     val root = FirebaseStorage.getInstance().reference.child("photos").child(userId)
     return calculateFolderBytesRecursive(root)
 }
 
-private suspend fun calculateFolderBytesRecursive(folderRef: StorageReference): Long {
-    val listResult = folderRef.listAll().await()
+private suspend fun calculateFolderBytesRecursive(folderRef: StorageReference): ManageStorageCalculationResult {
+    val listResult = runCatching { folderRef.listAll().await() }.getOrElse {
+        return ManageStorageCalculationResult(totalBytes = 0L, hadErrors = true)
+    }
+
     var total = 0L
+    var hadErrors = false
 
     listResult.items.forEach { itemRef ->
-        total += itemRef.metadata.await().sizeBytes
+        val itemBytes = runCatching { itemRef.metadata.await().sizeBytes }.getOrElse {
+            hadErrors = true
+            0L
+        }
+        total += itemBytes
     }
 
     listResult.prefixes.forEach { childFolder ->
-        total += calculateFolderBytesRecursive(childFolder)
+        val childResult = calculateFolderBytesRecursive(childFolder)
+        total += childResult.totalBytes
+        hadErrors = hadErrors || childResult.hadErrors
     }
 
-    return total
+    return ManageStorageCalculationResult(totalBytes = total, hadErrors = hadErrors)
 }
 
 @Composable

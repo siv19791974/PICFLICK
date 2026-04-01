@@ -610,7 +610,17 @@ private fun ProfileScreenContent(
         },
         isLoading = profileViewModel.isLoading,
         onDeletePhotos = { photoIds, onComplete ->
-            profileViewModel.deletePhotos(photoIds, onComplete)
+            // Keep Home feed in sync when deleting from Profile grid.
+            photoIds.forEach { photoId ->
+                homeViewModel.removeFlickFromFeed(photoId)
+            }
+            profileViewModel.deletePhotos(photoIds) { success ->
+                if (!success) {
+                    // Recover any false optimistic removals if some deletes failed.
+                    homeViewModel.requestDebouncedFeedRefresh(userProfile.uid, delayMs = 300L)
+                }
+                onComplete(success)
+            }
         }
     )
 
@@ -653,8 +663,15 @@ private fun ProfileScreenContent(
                 context.startActivity(Intent.createChooser(shareIntent, "Share Photo"))
             },
             onDeleteClick = { flick ->
+                // Optimistically remove from Home feed too, so deleted photo doesn't linger there.
+                homeViewModel.removeFlickFromFeed(flick.id)
                 profileViewModel.deletePhoto(flick.id) { success ->
-                    if (success) selectedPhoto = null
+                    if (success) {
+                        selectedPhoto = null
+                    } else {
+                        // Restore via quick refresh if delete failed.
+                        homeViewModel.requestDebouncedFeedRefresh(userProfile.uid, delayMs = 300L)
+                    }
                 }
             },
             canDelete = true,
