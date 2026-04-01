@@ -810,7 +810,7 @@ fun HomeScreen(
                                 Box(modifier = Modifier.size(56.dp)) {
                                     if (member.photoUrl.isNotBlank()) {
                                         AsyncImage(
-                                            model = withCacheBust(member.photoUrl, System.currentTimeMillis()),
+                                            model = withCacheBust(member.photoUrl, member.uid),
                                             contentDescription = member.displayName,
                                             modifier = Modifier
                                                 .fillMaxSize()
@@ -993,7 +993,7 @@ fun HomeScreen(
                                 Box(modifier = Modifier.size(56.dp)) {
                                     if (friend.photoUrl.isNotBlank()) {
                                         AsyncImage(
-                                            model = withCacheBust(friend.photoUrl, System.currentTimeMillis()),
+                                            model = withCacheBust(friend.photoUrl, friend.uid),
                                             contentDescription = friend.displayName,
                                             modifier = Modifier
                                                 .fillMaxSize()
@@ -1492,28 +1492,11 @@ private fun GroupManagerSheet(
                         )
                     }
 
-                    Row(
-                        modifier = Modifier
-                            .align(Alignment.CenterEnd)
-                            .padding(end = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        OutlinedButton(
-                            onClick = onCreateGroup,
-                            shape = RoundedCornerShape(20.dp),
-                            colors = ButtonDefaults.outlinedButtonColors(
-                                containerColor = Color.Transparent,
-                                contentColor = addColor
-                            ),
-                            border = androidx.compose.foundation.BorderStroke(1.dp, addColor)
-                        ) {
-                            Text("New", fontSize = 12.sp, color = addColor)
-                        }
-                    }
+
                 }
             }
 
-            LazyColumn(modifier = Modifier.fillMaxSize()) {
+            LazyColumn(modifier = Modifier.weight(1f)) {
                 item {
                     val isSelected = selectedFilter is FeedFilter.AllFriends
                     GroupRowCard(
@@ -1543,19 +1526,20 @@ private fun GroupManagerSheet(
                         onClick = { onSelectGroup(FeedFilter.ByGroup(group)) },
                         onLongPress = { draggingGroupId = group.id },
                         onDrag = { deltaY ->
-                            if (draggingGroupId == group.id) {
-                                dragDeltaY += deltaY
-                                val moveThreshold = 28f
-                                val currentIndex = orderedGroupIdsState.indexOf(group.id)
-                                if (dragDeltaY <= -moveThreshold && currentIndex > 0) {
-                                    orderedGroupIdsState.removeAt(currentIndex)
-                                    orderedGroupIdsState.add(currentIndex - 1, group.id)
-                                    dragDeltaY = 0f
-                                } else if (dragDeltaY >= moveThreshold && currentIndex in 0 until orderedGroupIdsState.lastIndex) {
-                                    orderedGroupIdsState.removeAt(currentIndex)
-                                    orderedGroupIdsState.add(currentIndex + 1, group.id)
-                                    dragDeltaY = 0f
-                                }
+                            if (draggingGroupId != group.id) {
+                                draggingGroupId = group.id
+                            }
+                            dragDeltaY += deltaY
+                            val moveThreshold = 16f
+                            val currentIndex = orderedGroupIdsState.indexOf(group.id)
+                            if (dragDeltaY <= -moveThreshold && currentIndex > 0) {
+                                orderedGroupIdsState.removeAt(currentIndex)
+                                orderedGroupIdsState.add(currentIndex - 1, group.id)
+                                dragDeltaY = 0f
+                            } else if (dragDeltaY >= moveThreshold && currentIndex in 0 until orderedGroupIdsState.lastIndex) {
+                                orderedGroupIdsState.removeAt(currentIndex)
+                                orderedGroupIdsState.add(currentIndex + 1, group.id)
+                                dragDeltaY = 0f
                             }
                         },
                         onDragEnd = {
@@ -1669,6 +1653,36 @@ private fun GroupManagerSheet(
                         }
                     )
                 }
+
+            }
+
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                color = backgroundColor,
+                tonalElevation = 0.dp
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 12.dp)
+                ) {
+                    OutlinedButton(
+                        onClick = onCreateGroup,
+                        shape = RoundedCornerShape(20.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(48.dp),
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            containerColor = Color.Transparent,
+                            contentColor = addColor,
+                            disabledContainerColor = Color.Transparent,
+                            disabledContentColor = addColor
+                        ),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, addColor)
+                    ) {
+                        Text("Create new album", fontSize = 12.sp, color = addColor)
+                    }
+                }
             }
         }
     }
@@ -1698,9 +1712,10 @@ private fun GroupRowCard(
             modifier = Modifier
                 .fillMaxWidth()
                 .background(rowBackground)
-                .pointerInput(enabled, onDrag, onDragEnd) {
+                .pointerInput(enabled, onDrag, onDragEnd, onLongPress) {
                     if (enabled && onDrag != null) {
                         detectDragGesturesAfterLongPress(
+                            onDragStart = { onLongPress?.invoke() },
                             onDragEnd = { onDragEnd?.invoke() },
                             onDragCancel = { onDragEnd?.invoke() },
                             onDrag = { change, dragAmount ->
@@ -1710,11 +1725,7 @@ private fun GroupRowCard(
                         )
                     }
                 }
-                .combinedClickable(
-                    enabled = enabled,
-                    onClick = { onClick() },
-                    onLongClick = { onLongPress?.invoke() }
-                )
+                .clickable(enabled = enabled) { onClick() }
                 .padding(horizontal = 16.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -1744,7 +1755,7 @@ private fun GroupRowCard(
             }
             Row(content = trailingContent)
         }
-        HorizontalDivider(color = textColor.copy(alpha = 0.12f))
+
     }
 }
 
@@ -1923,7 +1934,7 @@ private fun CreateOrEditGroupDialog(
                     ) {
                         if (friend.photoUrl.isNotBlank()) {
                             AsyncImage(
-                                model = withCacheBust(friend.photoUrl, System.currentTimeMillis()),
+                                model = withCacheBust(friend.photoUrl, friend.uid),
                                 contentDescription = null,
                                 modifier = Modifier
                                     .size(56.dp)
