@@ -2026,8 +2026,11 @@ private fun FlickGrid(
                         val flick = flicks[i]
                         if (flick.id.isBlank() || flick.imageUrl.isBlank() || prefetchedFlickIds.contains(flick.id)) continue
                         prefetchedFlickIds.add(flick.id)
+                        val prefetchIdentity = flick.clientUploadId.takeIf { it.isNotBlank() }
+                            ?: flick.id.takeIf { it.isNotBlank() }
+                            ?: "flick_${flick.timestamp}"
                         val request = ImageRequest.Builder(context)
-                            .data(withCacheBust(flick.imageUrl, flick.timestamp))
+                            .data(withCacheBust(flick.imageUrl, prefetchIdentity))
                             .crossfade(false)
                             .memoryCachePolicy(CachePolicy.ENABLED)
                             .diskCachePolicy(CachePolicy.ENABLED)
@@ -2060,10 +2063,23 @@ private fun FlickGrid(
             horizontalArrangement = Arrangement.spacedBy(1.dp),
             verticalArrangement = Arrangement.spacedBy(1.dp)
         ) {
-            items(flicks, key = { flick -> if (flick.id.isNotBlank()) flick.id else "flick_${flick.timestamp}" }) { flick ->
-                // Robust image model to avoid loading-spinner stuck for fresh uploads
-                val cacheBusted = withCacheBust(flick.imageUrl, flick.timestamp)
-                val imageModel = remember(flick.id, cacheBusted) {
+            items(
+                flicks,
+                key = { flick ->
+                    when {
+                        flick.clientUploadId.isNotBlank() -> "cu_${flick.clientUploadId}"
+                        flick.id.isNotBlank() -> flick.id
+                        else -> "flick_${flick.timestamp}"
+                    }
+                }
+            ) { flick ->
+                // Stable identity to avoid tile teardown when optimistic item reconciles to server id/timestamp
+                val stableIdentity = flick.clientUploadId.takeIf { it.isNotBlank() }
+                    ?: flick.id.takeIf { it.isNotBlank() }
+                    ?: "flick_${flick.timestamp}"
+
+                val cacheBusted = withCacheBust(flick.imageUrl, stableIdentity)
+                val imageModel = remember(stableIdentity, cacheBusted) {
                     if (cacheBusted.isNotBlank()) {
                         ImageRequest.Builder(context)
                             .data(cacheBusted)
@@ -2076,16 +2092,21 @@ private fun FlickGrid(
                 }
 
                 // Optimistic bridge: if imageUrl temporarily blank while Firestore catches up, keep last known URL
+                val bridgeKey = flick.clientUploadId.takeIf { it.isNotBlank() }
+                    ?: flick.id.takeIf { it.isNotBlank() }
+                    ?: ""
                 val bridgedModel: Any? = when {
                     imageModel != null -> {
-                        optimisticImageBridge[flick.id] = cacheBusted
-                        optimisticBridgeLastSeenAt[flick.id] = System.currentTimeMillis()
+                        if (bridgeKey.isNotBlank()) {
+                            optimisticImageBridge[bridgeKey] = cacheBusted
+                            optimisticBridgeLastSeenAt[bridgeKey] = System.currentTimeMillis()
+                        }
                         imageModel
                     }
-                    flick.id.isNotBlank() && !optimisticImageBridge[flick.id].isNullOrBlank() -> {
-                        optimisticBridgeLastSeenAt[flick.id] = System.currentTimeMillis()
+                    bridgeKey.isNotBlank() && !optimisticImageBridge[bridgeKey].isNullOrBlank() -> {
+                        optimisticBridgeLastSeenAt[bridgeKey] = System.currentTimeMillis()
                         ImageRequest.Builder(context)
-                            .data(optimisticImageBridge[flick.id]!!)
+                            .data(optimisticImageBridge[bridgeKey]!!)
                             .crossfade(false)
                             .memoryCachePolicy(CachePolicy.ENABLED)
                             .diskCachePolicy(CachePolicy.ENABLED)

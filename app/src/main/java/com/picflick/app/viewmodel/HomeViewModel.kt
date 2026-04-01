@@ -699,44 +699,48 @@ class HomeViewModel : ViewModel() {
     private fun mergeWithOptimistic(serverFlicks: List<Flick>): List<Flick> {
         if (optimisticFlicks.isEmpty()) return serverFlicks
 
-        val serverIds = serverFlicks.map { it.id }.toSet()
-        val serverClientUploadIds = serverFlicks
-            .mapNotNull { it.clientUploadId.takeIf { id -> id.isNotBlank() } }
-            .toSet()
-
-        val stillPendingOptimistic = optimisticFlicks.filter { optimistic ->
-            !serverIds.contains(optimistic.id) &&
-                (optimistic.clientUploadId.isBlank() || !serverClientUploadIds.contains(optimistic.clientUploadId))
-        }
-
-        // Replace matching optimistic entries in-place before pruning to reduce visual jump.
+        // Keep optimistic rows as visual owner even after server row exists,
+        // and sync them in-place with server data to prevent tile handoff blink.
         val serverByClientUploadId = serverFlicks
             .filter { it.clientUploadId.isNotBlank() }
             .associateBy { it.clientUploadId }
 
-        optimisticFlicks.forEachIndexed { index, optimistic ->
-            val replacement = if (optimistic.clientUploadId.isNotBlank()) {
-                serverByClientUploadId[optimistic.clientUploadId]
-            } else null
-            if (replacement != null) {
-                optimisticFlicks[index] = replacement
-                val feedIndex = flicks.indexOfFirst { it.id == optimistic.id }
-                if (feedIndex >= 0) {
-                    flicks[feedIndex] = replacement
-                }
+        val syncedOptimistic = optimisticFlicks.map { optimistic ->
+            val clientId = optimistic.clientUploadId.takeIf { it.isNotBlank() }
+            val serverMatch = if (clientId != null) serverByClientUploadId[clientId] else null
+
+            if (serverMatch != null) {
+                val keepLocalDisplayUrl = optimistic.imageUrl.startsWith("content://") || optimistic.imageUrl.startsWith("file://")
+                optimistic.copy(
+                    id = if (serverMatch.id.isNotBlank()) serverMatch.id else optimistic.id,
+                    imageUrl = if (keepLocalDisplayUrl) optimistic.imageUrl else if (serverMatch.imageUrl.isNotBlank()) serverMatch.imageUrl else optimistic.imageUrl,
+                    description = serverMatch.description,
+                    reactions = serverMatch.reactions,
+                    commentCount = serverMatch.commentCount,
+                    timestamp = maxOf(optimistic.timestamp, serverMatch.timestamp),
+                    userPhotoUrl = serverMatch.userPhotoUrl,
+                    taggedFriends = serverMatch.taggedFriends,
+                    imageSizeBytes = serverMatch.imageSizeBytes,
+                    privacy = serverMatch.privacy
+                )
+            } else {
+                optimistic
             }
         }
 
-        // Drop optimistic entries once server has real data for that id or clientUploadId.
         optimisticFlicks.clear()
-        optimisticFlicks.addAll(stillPendingOptimistic)
+        optimisticFlicks.addAll(syncedOptimistic)
 
-        // Keep feed list aligned with pending optimistic state (prevents stale swaps).
-        flicks.removeAll { feedItem ->
-            feedItem.id.startsWith("optimistic_") && stillPendingOptimistic.none { it.id == feedItem.id }
+        val serverIdsCoveredByOptimistic = syncedOptimistic
+            .mapNotNull { it.clientUploadId.takeIf { id -> id.isNotBlank() } }
+            .toSet()
+
+        val serverRemainder = serverFlicks.filter { server ->
+            val clientId = server.clientUploadId.takeIf { it.isNotBlank() }
+            clientId == null || !serverIdsCoveredByOptimistic.contains(clientId)
         }
 
-        val merged = (stillPendingOptimistic + serverFlicks)
+        val merged = (syncedOptimistic + serverRemainder)
         val seenIds = HashSet<String>()
         val seenClientUploadIds = HashSet<String>()
 
