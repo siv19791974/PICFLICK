@@ -102,6 +102,7 @@ import com.picflick.app.viewmodel.HomeViewModel
 import com.picflick.app.viewmodel.NotificationViewModel
 import com.picflick.app.viewmodel.ProfileViewModel
 import com.picflick.app.viewmodel.UploadViewModel
+import kotlinx.coroutines.tasks.await
 
 /**
  * Main Activity - Entry point for the PicFlick app
@@ -213,13 +214,14 @@ class MainActivity : ComponentActivity() {
 
         val flickId = extras.getFirstString("flickId", "flick_id", "postId", "post_id")
             ?: if (deepLinkHost == "photo") deepLinkLastSegment else null
-        val chatId = extras.getFirstString("chatId", "chat_id", "conversationId")
+        val groupId = extras.getFirstString("groupId", "group_id", "groupChatId", "group_chat_id")
+        val groupName = extras.getFirstString("groupName", "group_name")
+        val chatId = extras.getFirstString("chatId", "chat_id", "conversationId", "groupChatId", "group_chat_id", "threadId", "thread_id", "roomId", "room_id")
+            ?: if (groupId.isNullOrBlank()) null else "group_$groupId"
             ?: if (deepLinkHost == "chat") deepLinkLastSegment else null
         val senderId = extras.getFirstString("senderId", "sender_id", "fromUserId", "userId")
             ?: if (deepLinkHost == "profile") deepLinkLastSegment else null
         val senderName = extras.getFirstString("senderName", "sender_name", "fromUserName", "userName")
-        val groupId = extras.getFirstString("groupId", "group_id")
-        val groupName = extras.getFirstString("groupName", "group_name")
         val notificationType = extras.getFirstString("type", "notificationType")
         val titleHint = extras.getFirstString("title", "notificationTitle", "gcm.notification.title")
         val bodyHint = extras.getFirstString("message", "body", "notificationBody", "gcm.notification.body")
@@ -510,17 +512,58 @@ fun MainScreen(
                     currentScreen = Screen.Notifications
                 }
                 "chat" -> {
-                    val currentUserId = activity?.getCurrentUserId()
-                    val pushedChatId = pushData.getString("chatId").orEmpty()
+                    val currentUserId = activity.getCurrentUserId()
                     val pushedGroupId = pushData.getString("groupId").orEmpty()
                     val pushedGroupName = pushData.getString("groupName").orEmpty()
+                    val rawPushedChatId = pushData.getString("chatId").orEmpty()
 
-                    if (currentUserId != null && pushedChatId.isNotBlank()) {
-                        val existingSession = chatViewModel.chatSessions.firstOrNull { it.id == pushedChatId }
-                        val isGroupPush = existingSession?.isGroup == true || pushedGroupId.isNotBlank() || pushedChatId.startsWith("group_")
+                    val isGroupHint = pushedGroupId.isNotBlank() || pushedGroupName.isNotBlank()
+                    val chatIdCandidates = listOf(
+                        rawPushedChatId,
+                        if (rawPushedChatId.isNotBlank()) "group_$rawPushedChatId" else "",
+                        if (pushedGroupId.isNotBlank()) "group_$pushedGroupId" else ""
+                    ).filter { it.isNotBlank() }.distinct()
 
-                        selectedChatSession = existingSession ?: ChatSession(
-                            id = pushedChatId,
+                    if (currentUserId != null && (chatIdCandidates.isNotEmpty() || isGroupHint)) {
+                        // Ensure latest chat sessions are requested, but do not block UI on network.
+                        chatViewModel.loadChatSessions(currentUserId)
+
+                        val sessionById = chatIdCandidates
+                            .asSequence()
+                            .mapNotNull { candidateId -> chatViewModel.chatSessions.firstOrNull { it.id == candidateId } }
+                            .firstOrNull()
+
+                        val sessionByGroup = if (pushedGroupId.isNotBlank()) {
+                            chatViewModel.chatSessions.firstOrNull { session ->
+                                val sessionGroupId = session.groupId.ifBlank { session.id.removePrefix("group_") }
+                                (session.isGroup || session.id.startsWith("group_") || session.groupId.isNotBlank()) &&
+                                    sessionGroupId == pushedGroupId
+                            }
+                        } else {
+                            null
+                        }
+
+                        val sessionFromVm = sessionById ?: sessionByGroup
+
+                        val finalChatId = sessionFromVm?.id
+                            ?: if (pushedGroupId.isNotBlank()) "group_$pushedGroupId" else chatIdCandidates.firstOrNull().orEmpty()
+
+                        if (finalChatId.isBlank()) {
+                            currentScreen = Screen.Chats
+                            return@LaunchedEffect
+                        }
+
+                        val isGroupPush =
+                            (sessionFromVm?.isGroup == true) ||
+                                isGroupHint ||
+                                finalChatId.startsWith("group_")
+
+                        val fallbackGroupId = pushedGroupId.ifBlank {
+                            if (finalChatId.startsWith("group_")) finalChatId.removePrefix("group_") else finalChatId
+                        }
+
+                        selectedChatSession = sessionFromVm ?: ChatSession(
+                            id = finalChatId,
                             participants = if (isGroupPush) listOf(currentUserId) else listOf(currentUserId, senderId.orEmpty()),
                             participantNames = if (isGroupPush) {
                                 mapOf(currentUserId to (authViewModel.userProfile?.displayName ?: "You"))
@@ -530,52 +573,25 @@ fun MainScreen(
                                     senderId.orEmpty() to (senderName?.ifBlank { null } ?: "Chat")
                                 )
                             },
-                            participantPhotos = if (isGroupPush) {
-                                mapOf(currentUserId to (authViewModel.userProfile?.photoUrl ?: ""))
-                            } else {
-                                mapOf(currentUserId to (authViewModel.userProfile?.photoUrl ?: ""))
-                            },
+                            participantPhotos = mapOf(currentUserId to (authViewModel.userProfile?.photoUrl ?: "")),
                             isGroup = isGroupPush,
-                            groupId = if (isGroupPush) pushedGroupId.ifBlank { pushedChatId.removePrefix("group_") } else "",
-                            groupName = if (isGroupPush) pushedGroupName.ifBlank { existingSession?.groupName ?: "Group" } else "",
-                            groupIcon = if (isGroupPush) existingSession?.groupIcon ?: "👥" else "👥",
-                            lastMessage = existingSession?.lastMessage ?: "",
-                            lastTimestamp = existingSession?.lastTimestamp ?: System.currentTimeMillis(),
+                            groupId = if (isGroupPush) fallbackGroupId else "",
+                            groupName = if (isGroupPush) pushedGroupName.ifBlank { "Group" } else "",
+                            groupIcon = if (isGroupPush) "👥" else "👥",
+                            lastMessage = "",
+                            lastTimestamp = System.currentTimeMillis(),
                             unreadCount = 0
                         )
+
                         selectedOtherUserId = if (isGroupPush) {
-                            "group:${pushedGroupId.ifBlank { pushedChatId }}"
+                            "group:$fallbackGroupId"
                         } else {
                             senderId.orEmpty()
                         }
                         currentScreen = Screen.ChatDetail
-                    } else if (currentUserId != null && !senderId.isNullOrBlank()) {
-                        val resolvedSenderName = senderName?.ifBlank { null } ?: "Chat"
-                        chatViewModel.startChat(
-                            userId = currentUserId,
-                            otherUserId = senderId,
-                            userName = authViewModel.userProfile?.displayName ?: "You",
-                            otherUserName = resolvedSenderName,
-                            userPhoto = authViewModel.userProfile?.photoUrl ?: "",
-                            otherUserPhoto = "",
-                            onChatReady = { readyChatId ->
-                                selectedOtherUserId = senderId
-                                selectedChatSession = ChatSession(
-                                    id = readyChatId,
-                                    participants = listOf(currentUserId, senderId),
-                                    participantNames = mapOf(
-                                        currentUserId to (authViewModel.userProfile?.displayName ?: "You"),
-                                        senderId to resolvedSenderName
-                                    ),
-                                    participantPhotos = mapOf(currentUserId to (authViewModel.userProfile?.photoUrl ?: "")),
-                                    lastMessage = "",
-                                    lastTimestamp = System.currentTimeMillis(),
-                                    unreadCount = 0
-                                )
-                                currentScreen = Screen.ChatDetail
-                            }
-                        )
                     } else {
+                        // Never auto-fallback to opening a direct user chat from push when chat/group id
+                        // is missing; that caused wrong-chat opens for group notifications.
                         currentScreen = Screen.Chats
                     }
                 }
