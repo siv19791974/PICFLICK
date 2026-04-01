@@ -222,6 +222,23 @@ fun ChatsScreen(
         }
     }
 
+    // One-level phone back behavior inside Messages stack:
+    // Create Group -> Compose -> Messages -> Home
+    BackHandler(enabled = showGroupIconCropDialog) {
+        showGroupIconCropDialog = false
+        groupIconCropSourceUri = null
+    }
+
+    BackHandler(enabled = showCreateGroupDialog && !showGroupIconCropDialog) {
+        showCreateGroupDialog = false
+        showNewChatDialog = true
+        createDialogIconOverride = null
+    }
+
+    BackHandler(enabled = showNewChatDialog && !showCreateGroupDialog && !showGroupIconCropDialog) {
+        showNewChatDialog = false
+    }
+
     LaunchedEffect(pendingGroupIconSourceUri) {
         val uri = pendingGroupIconSourceUri ?: return@LaunchedEffect
         try {
@@ -709,13 +726,18 @@ private fun NewGroupFromComposeDialog(
     onCreateSharedGroup: (String, String, List<String>, (Boolean, FriendGroup?) -> Unit) -> Unit,
     onUserProfileClick: (String) -> Unit
 ) {
+    BackHandler(onBack = onDismiss)
+
     var groupName by remember { mutableStateOf("") }
     val selectedIds = remember { mutableStateListOf<String>() }
     var selectedIcon by remember(initialIcon) { mutableStateOf(initialIcon) }
     var isSubmitting by remember { mutableStateOf(false) }
 
-    val pageBackground = if (isDarkMode) Color(0xFF121212) else PicFlickLightBackground
-    val textColor = if (isDarkMode) Color.White else Color(0xFF111111)
+    val pageBackground = if (isDarkMode) Color.Black else PicFlickLightBackground
+    val textColor = if (isDarkMode) Color.White else Color.Black
+    val addColor = Color(0xFF1E88E5)
+    val waitingColor = Color(0xFF2A4A73)
+
     val icons = listOf(
         "👥", "👨‍👩‍👧‍👦", "💼", "🎓", "⭐", "✈️", "⚽", "🎨", "🏠", "🎵", "📚", "🎮",
         "🍔", "🍷", "🛫", "🏋️", "🏖️", "🎬", "🐶", "🚗", "🛍️", "🧠", "🧑‍💻", "📷"
@@ -731,235 +753,251 @@ private fun NewGroupFromComposeDialog(
         )
     }
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color.Black.copy(alpha = 0.45f))
-            .clickable { onDismiss() }
+    Surface(
+        modifier = Modifier.fillMaxSize(),
+        color = pageBackground
     ) {
-        Surface(
-            modifier = Modifier
-                .fillMaxWidth()
-                .fillMaxHeight(0.92f)
-                .align(Alignment.BottomCenter)
-                .clickable(enabled = false) {},
-            shape = RoundedCornerShape(topStart = 22.dp, topEnd = 22.dp),
-            color = pageBackground,
-            tonalElevation = 4.dp
-        ) {
-            Column(modifier = Modifier.fillMaxSize()) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 14.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
+        Column(modifier = Modifier.fillMaxSize()) {
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(48.dp),
+                color = Color.Black
+            ) {
+                Box(modifier = Modifier.fillMaxSize()) {
                     Text(
                         text = "Create Chat Group",
-                        style = MaterialTheme.typography.titleLarge,
+                        style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
-                        color = textColor
+                        color = Color.White,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                        modifier = Modifier
+                            .align(Alignment.Center)
+                            .padding(horizontal = 56.dp)
                     )
-                    TextButton(onClick = onDismiss) {
-                        Text("Cancel")
+                    IconButton(
+                        onClick = onDismiss,
+                        modifier = Modifier
+                            .align(Alignment.CenterStart)
+                            .size(48.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Back",
+                            tint = Color.White
+                        )
+                    }
+                }
+            }
+
+            OutlinedTextField(
+                value = groupName,
+                onValueChange = { groupName = it },
+                singleLine = true,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp, vertical = 10.dp),
+                label = { Text("Group name") },
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedContainerColor = Color(0xFFB7D8F2),
+                    unfocusedContainerColor = Color(0xFFB7D8F2),
+                    focusedTextColor = Color.Black,
+                    unfocusedTextColor = Color.Black,
+                    focusedLabelColor = Color.Black,
+                    unfocusedLabelColor = Color.Black.copy(alpha = 0.8f),
+                    focusedBorderColor = Color.Black,
+                    unfocusedBorderColor = Color.Black.copy(alpha = 0.7f)
+                )
+            )
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp, vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Surface(
+                    modifier = Modifier
+                        .size(56.dp)
+                        .clickable { onAddPhoto() },
+                    shape = CircleShape,
+                    color = if (isDarkMode) Color(0xFF2A2A2A) else Color(0xFFF1F1F1),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, if (isDarkMode) Color(0xFF4A4A4A) else Color(0xFFB0BEC5))
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        if (selectedIcon.startsWith("http")) {
+                            AsyncImage(
+                                model = selectedIcon,
+                                contentDescription = "Group icon",
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        } else {
+                            Icon(
+                                imageVector = Icons.Default.AddAPhoto,
+                                contentDescription = "Add photo",
+                                tint = textColor,
+                                modifier = Modifier.size(22.dp)
+                            )
+                        }
                     }
                 }
 
-                HorizontalDivider()
-
-                OutlinedTextField(
-                    value = groupName,
-                    onValueChange = { groupName = it },
-                    singleLine = true,
+                LazyRow(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 12.dp),
-                    label = { Text("Group name") },
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedContainerColor = Color(0xFFB7D8F2),
-                        unfocusedContainerColor = Color(0xFFB7D8F2),
-                        focusedTextColor = Color(0xFF0D2A45),
-                        unfocusedTextColor = Color(0xFF0D2A45),
-                        focusedLabelColor = Color(0xFF1F4D74),
-                        unfocusedLabelColor = Color(0xFF3E6E96),
-                        focusedBorderColor = Color(0xFF1565C0),
-                        unfocusedBorderColor = Color(0xFF7FAFD6),
-                        cursorColor = Color(0xFF0D2A45)
-                    )
-                )
+                        .weight(1f)
+                        .height(56.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    items(icons, key = { it }) { icon ->
+                        Surface(
+                            modifier = Modifier
+                                .size(44.dp)
+                                .clickable { selectedIcon = icon },
+                            shape = CircleShape,
+                            color = if (selectedIcon == icon) waitingColor else if (isDarkMode) Color(0xFF2A2A2A) else Color(0xFFF1F1F1),
+                            border = if (selectedIcon == icon) null else androidx.compose.foundation.BorderStroke(1.dp, if (isDarkMode) Color(0xFF4A4A4A) else Color(0xFFB0BEC5))
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Text(text = icon, fontSize = 20.sp, color = if (selectedIcon == icon) Color.White else textColor)
+                            }
+                        }
+                    }
+                }
+            }
 
-                LazyColumn(modifier = Modifier.weight(1f)) {
+            HorizontalDivider(color = if (isDarkMode) Color(0xFF222222) else Color(0x22000000))
+
+            LazyColumn(modifier = Modifier.weight(1f)) {
+                if (isLoading) {
                     item {
-                        Text(
-                            text = "Icon",
-                            fontWeight = FontWeight.SemiBold,
-                            color = textColor,
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-                        )
-
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 24.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator()
+                        }
+                    }
+                } else {
+                    items(sortedFriends, key = { it.uid }) { friend ->
+                        val isSelected = selectedIds.contains(friend.uid)
+                        val livePhoto = rememberLiveUserPhotoUrl(friend.uid, friend.photoUrl)
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = 16.dp),
-                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                .padding(horizontal = 12.dp, vertical = 8.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Surface(
-                                modifier = Modifier
-                                    .size(44.dp)
-                                    .offset(y = (-4).dp)
-                                    .clickable { onAddPhoto() },
-                                shape = CircleShape,
-                                color = if (isDarkMode) Color(0xFF2A2A2A) else Color(0xFFF1F1F1),
-                                border = androidx.compose.foundation.BorderStroke(1.dp, if (isDarkMode) Color(0xFF4A4A4A) else Color(0xFFB0BEC5))
-                            ) {
-                                Box(contentAlignment = Alignment.Center) {
-                                    if (selectedIcon.startsWith("http")) {
-                                        AsyncImage(
-                                            model = selectedIcon,
-                                            contentDescription = "Group icon photo",
-                                            contentScale = ContentScale.Crop,
-                                            modifier = Modifier.fillMaxSize()
-                                        )
-                                    } else {
-                                        Icon(
-                                            imageVector = Icons.Default.AddAPhoto,
-                                            contentDescription = "Add photo",
-                                            tint = textColor,
-                                            modifier = Modifier.size(22.dp)
-                                        )
-                                    }
-                                }
-                            }
-
-                            LazyRow(
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .height(48.dp),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                items(icons, key = { it }) { icon ->
-                                    Surface(
-                                        modifier = Modifier
-                                            .size(40.dp)
-                                            .clickable { selectedIcon = icon },
-                                        shape = CircleShape,
-                                        color = if (selectedIcon == icon) MaterialTheme.colorScheme.primary.copy(alpha = 0.22f)
-                                        else if (isDarkMode) Color(0xFF2A2A2A) else Color(0xFFF1F1F1),
-                                        border = if (selectedIcon == icon) androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.primary) else null
-                                    ) {
-                                        Box(contentAlignment = Alignment.Center) { Text(icon, fontSize = 20.sp) }
-                                    }
-                                }
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.height(8.dp))
-                        HorizontalDivider()
-
-                        Text(
-                            text = "Members",
-                            fontWeight = FontWeight.SemiBold,
-                            color = textColor,
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp)
-                        )
-                    }
-
-                    if (isLoading) {
-                        item {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 24.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                CircularProgressIndicator()
-                            }
-                        }
-                    } else {
-                        items(sortedFriends, key = { it.uid }) { friend ->
-                            val isSelected = selectedIds.contains(friend.uid)
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .combinedClickable(
-                                        onClick = {
-                                            if (isSelected) selectedIds.remove(friend.uid) else selectedIds.add(friend.uid)
-                                        },
-                                        onLongClick = { onUserProfileClick(friend.uid) }
-                                    )
-                                    .padding(horizontal = 16.dp, vertical = 10.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                val livePhoto = rememberLiveUserPhotoUrl(friend.uid, friend.photoUrl)
+                            if (livePhoto.isNotEmpty()) {
                                 AsyncImage(
                                     model = livePhoto,
-                                    contentDescription = friend.displayName,
+                                    contentDescription = null,
                                     modifier = Modifier
-                                        .size(36.dp)
+                                        .size(56.dp)
                                         .clip(CircleShape)
-                                        .background(if (isDarkMode) Color(0xFF2A2A2A) else Color(0xFFF1F1F1)),
-                                    contentScale = ContentScale.Crop
+                                        .clickable { onUserProfileClick(friend.uid) },
+                                    contentScale = ContentScale.Crop,
+                                    error = painterResource(id = android.R.drawable.ic_menu_myplaces)
                                 )
+                            } else {
+                                Box(
+                                    modifier = Modifier
+                                        .size(56.dp)
+                                        .clip(CircleShape)
+                                        .background(if (isDarkMode) Color(0xFF3A3A3C) else Color(0xFFE0E0E0))
+                                        .clickable { onUserProfileClick(friend.uid) },
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Person,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(32.dp),
+                                        tint = if (isDarkMode) Color.Gray else Color.DarkGray
+                                    )
+                                }
+                            }
 
-                                Spacer(modifier = Modifier.width(12.dp))
+                            Spacer(modifier = Modifier.width(12.dp))
 
+                            Column(modifier = Modifier.weight(1f)) {
                                 Text(
                                     text = friend.displayName,
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.SemiBold,
                                     color = textColor,
-                                    fontWeight = FontWeight.Medium,
-                                    modifier = Modifier.weight(1f),
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis
                                 )
+                                Text(
+                                    text = "${friend.followers.size} followers",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = if (isDarkMode) Color.Gray else Color.DarkGray
+                                )
+                            }
 
-                                FilledIconButton(
-                                    onClick = {
-                                        if (isSelected) selectedIds.remove(friend.uid) else selectedIds.add(friend.uid)
-                                    },
-                                    colors = IconButtonDefaults.filledIconButtonColors(
-                                        containerColor = if (isSelected) Color(0xFF2E7D32) else if (isDarkMode) Color(0xFF2A2A2A) else Color(0xFFF1F1F1),
-                                        contentColor = if (isSelected) Color.White else textColor
+                            if (isSelected) {
+                                OutlinedButton(
+                                    onClick = { selectedIds.remove(friend.uid) },
+                                    shape = RoundedCornerShape(20.dp),
+                                    colors = ButtonDefaults.outlinedButtonColors(
+                                        containerColor = waitingColor,
+                                        contentColor = Color.White,
+                                        disabledContainerColor = waitingColor,
+                                        disabledContentColor = Color.White
                                     ),
-                                    modifier = Modifier.size(34.dp)
+                                    border = androidx.compose.foundation.BorderStroke(1.dp, waitingColor)
                                 ) {
-                                    Icon(
-                                        imageVector = if (isSelected) Icons.Default.Close else Icons.Default.Add,
-                                        contentDescription = if (isSelected) "Remove" else "Add"
-                                    )
+                                    Text("Added", fontSize = 12.sp, color = Color.White)
+                                }
+                            } else {
+                                OutlinedButton(
+                                    onClick = { selectedIds.add(friend.uid) },
+                                    shape = RoundedCornerShape(20.dp),
+                                    colors = ButtonDefaults.outlinedButtonColors(
+                                        containerColor = Color.Transparent,
+                                        contentColor = addColor,
+                                        disabledContainerColor = Color.Transparent,
+                                        disabledContentColor = addColor
+                                    ),
+                                    border = androidx.compose.foundation.BorderStroke(1.dp, addColor)
+                                ) {
+                                    Text("Add", fontSize = 12.sp, color = addColor)
                                 }
                             }
                         }
+                        HorizontalDivider(color = if (isDarkMode) Color(0xFF222222) else Color(0x22000000))
                     }
                 }
+            }
 
-                HorizontalDivider()
-
-                Button(
-                    onClick = {
-                        if (!canCreate) return@Button
-                        isSubmitting = true
-                        onCreateSharedGroup(groupName.trim(), selectedIcon, selectedIds.toList()) { success, _ ->
-                            isSubmitting = false
-                            if (success) onDismiss()
-                        }
-                    },
-                    enabled = canCreate,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFF2A4A73),
-                        contentColor = Color.White
-                    )
-                ) {
-                    if (isSubmitting) {
-                        CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp, color = Color.White)
-                        Spacer(modifier = Modifier.width(8.dp))
+            Button(
+                onClick = {
+                    if (!canCreate) return@Button
+                    isSubmitting = true
+                    onCreateSharedGroup(groupName.trim(), selectedIcon, selectedIds.toList()) { success, _ ->
+                        isSubmitting = false
+                        if (success) onDismiss()
                     }
-                    Text("Create shared")
+                },
+                enabled = canCreate,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp, vertical = 10.dp),
+                shape = RoundedCornerShape(20.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = waitingColor,
+                    contentColor = Color.White
+                )
+            ) {
+                if (isSubmitting) {
+                    CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp, color = Color.White)
+                    Spacer(modifier = Modifier.width(8.dp))
                 }
+                Text("Create shared")
             }
         }
     }
