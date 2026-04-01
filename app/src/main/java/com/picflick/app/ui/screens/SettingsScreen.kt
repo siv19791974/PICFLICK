@@ -310,7 +310,7 @@ fun SettingsScreen(
                 )
                 SettingsItem(
                     icon = Icons.Default.Lock,
-                    title = "Privacy Policy",
+                    title = "Privacy",
                     subtitle = "Your data, your control",
                     onClick = onPrivacySettings
                 )
@@ -1378,7 +1378,7 @@ private fun ManageStorageButton(
             Text(
                 text = "$percent%",
                 color = barColor,
-                fontSize = 14.sp,
+                fontSize = 18.sp,
                 fontWeight = FontWeight.Bold
             )
             
@@ -1387,8 +1387,9 @@ private fun ManageStorageButton(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 4.dp)
-                    .height(4.dp)
-                    .clip(RoundedCornerShape(2.dp))
+                    .height(8.dp)
+                    .border(1.dp, Color.Black, RoundedCornerShape(4.dp))
+                    .clip(RoundedCornerShape(4.dp))
                     .background(Color(0xFFE0E0E0))
             ) {
                 val progressFraction = (percent / 100f).coerceIn(0f, 1f)
@@ -1396,7 +1397,7 @@ private fun ManageStorageButton(
                     modifier = Modifier
                         .fillMaxHeight()
                         .fillMaxWidth(progressFraction)
-                        .clip(RoundedCornerShape(2.dp))
+                        .clip(RoundedCornerShape(3.dp))
                         .background(barColor)
                 )
             }

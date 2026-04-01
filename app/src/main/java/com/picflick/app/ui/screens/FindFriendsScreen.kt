@@ -747,10 +747,12 @@ My username: ${userProfile.displayName}"""
     val logoShareUri = remember {
         runCatching {
             val logoFile = File(context.cacheDir, "picflick_logo_512.png")
-            context.resources.openRawResource(com.picflick.app.R.drawable.ic_launcher_phone_box).use { input ->
-                FileOutputStream(logoFile).use { output ->
-                    input.copyTo(output)
-                }
+            val bitmap = android.graphics.BitmapFactory.decodeResource(
+                context.resources,
+                com.picflick.app.R.drawable.ic_launcher_phone_box
+            )
+            FileOutputStream(logoFile).use { output ->
+                bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, output)
             }
             androidx.core.content.FileProvider.getUriForFile(
                 context,
@@ -854,12 +856,16 @@ My username: ${userProfile.displayName}"""
         Spacer(modifier = Modifier.height(16.dp))
 
         // General Share Button
-        OutlinedButton(
+        Button(
             onClick = { shareGeneral() },
             modifier = Modifier
                 .fillMaxWidth()
                 .height(56.dp),
-            shape = RoundedCornerShape(28.dp)
+            shape = RoundedCornerShape(28.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = Color(0xFF2A4A73),
+                contentColor = Color.White
+            )
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
