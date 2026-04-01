@@ -157,6 +157,19 @@ If your account is over storage limit after a downgrade, a 7-day grace period ap
                 )
             }
 
+            // Muted Groups / Chats
+            item {
+                PolicySection(
+                    title = "Muted Groups & Chats",
+                    content = """When you mute a group or chat, PicFlick stores a mute-until timestamp for your account so we can suppress notifications for that conversation during the selected period.
+
+• Muting only affects notifications; it does not delete messages.
+• Muting is personal to your account and does not affect other members.
+• You can change or remove mute behavior by updating notification settings in-app.""",
+                    isDarkMode = isDarkMode
+                )
+            }
+
             // Your Rights
             item {
                 PolicySection(

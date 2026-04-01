@@ -30,6 +30,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.NotificationsOff
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -61,6 +62,8 @@ import com.picflick.app.data.FriendGroup
 import com.picflick.app.data.Result
 import com.picflick.app.data.UserProfile
 import com.picflick.app.repository.FlickRepository
+import com.picflick.app.ui.components.ActionSheetOption
+import com.picflick.app.ui.components.AddPhotoStyleActionSheet
 import com.picflick.app.ui.theme.PicFlickBannerBackground
 import com.picflick.app.ui.theme.ThemeManager
 import com.picflick.app.ui.theme.isDarkModeBackground
@@ -126,6 +129,7 @@ fun ChatDetailScreen(
     var showDeleteSelectedConfirm by remember { mutableStateOf(false) }
     var showClearChatConfirm by remember { mutableStateOf(false) }
     var showBlockUserConfirm by remember { mutableStateOf(false) }
+    var showMuteDurationDialog by remember { mutableStateOf(false) }
     var showMyFlickPicker by remember { mutableStateOf(false) }
     var isLoadingMyFlicks by remember { mutableStateOf(false) }
     var myFlicks by remember { mutableStateOf<List<Flick>>(emptyList()) }
@@ -501,17 +505,10 @@ fun ChatDetailScreen(
                                             text = { Text("Mute chat") },
                                             onClick = {
                                                 showHeaderMenu = false
-                                                val muteUntil = System.currentTimeMillis() + (7L * 24L * 60L * 60L * 1000L)
-                                                viewModel.muteChat(currentUser.uid, chatId, muteUntil)
+                                                showMuteDurationDialog = true
                                             }
                                         )
-                                        DropdownMenuItem(
-                                            text = { Text("View group information") },
-                                            onClick = {
-                                                showHeaderMenu = false
-                                                showGroupInfoDialog = true
-                                            }
-                                        )
+
                                     } else {
                                         DropdownMenuItem(
                                             text = { Text("View profile") },
@@ -1168,6 +1165,64 @@ AlertDialog(
             dismissButton = {
                 TextButton(onClick = { showBlockUserConfirm = false }) { Text("Cancel") }
             }
+        )
+    }
+
+    if (showMuteDurationDialog && isGroupChat) {
+        val now = System.currentTimeMillis()
+        AddPhotoStyleActionSheet(
+            title = "Mute Chat",
+            options = listOf(
+                ActionSheetOption(
+                    icon = Icons.Default.NotificationsOff,
+                    title = "Mute for 1 hour",
+                    subtitle = "Temporarily silence this group",
+                    accentColor = Color(0xFF4FC3F7),
+                    onClick = {
+                        showMuteDurationDialog = false
+                        viewModel.muteChat(currentUser.uid, chatId, now + (1L * 60L * 60L * 1000L))
+                        Toast.makeText(context, "Chat muted for 1 hour", Toast.LENGTH_SHORT).show()
+                    }
+                ),
+                ActionSheetOption(
+                    icon = Icons.Default.NotificationsOff,
+                    title = "Mute for 8 hours",
+                    subtitle = "Good for the rest of your day",
+                    accentColor = Color(0xFF4FC3F7),
+                    onClick = {
+                        showMuteDurationDialog = false
+                        viewModel.muteChat(currentUser.uid, chatId, now + (8L * 60L * 60L * 1000L))
+                        Toast.makeText(context, "Chat muted for 8 hours", Toast.LENGTH_SHORT).show()
+                    }
+                ),
+                ActionSheetOption(
+                    icon = Icons.Default.NotificationsOff,
+                    title = "Mute for 24 hours",
+                    subtitle = "Silence notifications until tomorrow",
+                    accentColor = Color(0xFF4FC3F7),
+                    onClick = {
+                        showMuteDurationDialog = false
+                        viewModel.muteChat(currentUser.uid, chatId, now + (24L * 60L * 60L * 1000L))
+                        Toast.makeText(context, "Chat muted for 24 hours", Toast.LENGTH_SHORT).show()
+                    }
+                ),
+                ActionSheetOption(
+                    icon = Icons.Default.NotificationsOff,
+                    title = "Mute for 7 days",
+                    subtitle = "Silence this group for a week",
+                    accentColor = Color(0xFF4FC3F7),
+                    onClick = {
+                        showMuteDurationDialog = false
+                        viewModel.muteChat(currentUser.uid, chatId, now + (7L * 24L * 60L * 60L * 1000L))
+                        Toast.makeText(context, "Chat muted for 7 days", Toast.LENGTH_SHORT).show()
+                    }
+                )
+            ),
+            onDismiss = { showMuteDurationDialog = false },
+            cancelTitle = "Cancel",
+            cancelSubtitle = "Keep notifications on",
+            cancelIcon = Icons.Default.Close,
+            cancelAccentColor = Color(0xFF4B5563)
         )
     }
 

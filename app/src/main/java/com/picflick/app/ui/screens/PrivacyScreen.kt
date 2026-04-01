@@ -23,6 +23,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
+import com.google.firebase.firestore.FieldValue
+import com.google.firebase.firestore.FirebaseFirestore
+import com.picflick.app.data.ChatSession
 import com.picflick.app.data.UserProfile
 import com.picflick.app.repository.FlickRepository
 import com.picflick.app.ui.theme.ThemeManager
@@ -48,7 +51,9 @@ fun PrivacyScreen(
     val repository = remember { FlickRepository.getInstance() }
     var blockedUsers by remember { mutableStateOf<List<UserProfile>>(emptyList()) }
     var mutedUsers by remember { mutableStateOf<List<UserProfile>>(emptyList()) }
+    var mutedChatSessions by remember { mutableStateOf<List<ChatSession>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
+    var isMutedChatsLoading by remember { mutableStateOf(true) }
     var defaultPrivacy by remember { mutableStateOf(userProfile.defaultPrivacy) } // Load from userProfile
     var showUnblockDialog by remember { mutableStateOf<UserProfile?>(null) }
     var showUnmuteDialog by remember { mutableStateOf<UserProfile?>(null) }
@@ -94,6 +99,84 @@ fun PrivacyScreen(
                 }
             }
         }
+    }
+
+    // Load muted chats/groups from users.mutedChats map
+    LaunchedEffect(userProfile.uid) {
+        isMutedChatsLoading = true
+        FirebaseFirestore.getInstance()
+            .collection("users")
+            .document(userProfile.uid)
+            .get()
+            .addOnSuccessListener { userDoc ->
+                val now = System.currentTimeMillis()
+                val mutedChatsMap = (userDoc.get("mutedChats") as? Map<*, *>)
+                    ?.mapNotNull { (key, value) ->
+                        val chatId = key as? String ?: return@mapNotNull null
+                        val until = when (value) {
+                            is Long -> value
+                            is Int -> value.toLong()
+                            is Double -> value.toLong()
+                            else -> null
+                        } ?: return@mapNotNull null
+                        if (until == Long.MAX_VALUE || until > now) chatId to until else null
+                    }
+                    ?.toMap()
+                    ?: emptyMap()
+
+                if (mutedChatsMap.isEmpty()) {
+                    mutedChatSessions = emptyList()
+                    isMutedChatsLoading = false
+                    return@addOnSuccessListener
+                }
+
+                FirebaseFirestore.getInstance()
+                    .collection("chatSessions")
+                    .whereArrayContains("participants", userProfile.uid)
+                    .get()
+                    .addOnSuccessListener { snap ->
+                        mutedChatSessions = snap.documents
+                            .mapNotNull { doc ->
+                                val id = doc.id
+                                if (!mutedChatsMap.containsKey(id)) return@mapNotNull null
+                                ChatSession(
+                                    id = id,
+                                    participants = (doc.get("participants") as? List<*>)?.filterIsInstance<String>() ?: emptyList(),
+                                    participantNames = (doc.get("participantNames") as? Map<*, *>)
+                                        ?.mapNotNull { (k, v) ->
+                                            val kk = k as? String ?: return@mapNotNull null
+                                            val vv = v as? String ?: return@mapNotNull null
+                                            kk to vv
+                                        }?.toMap() ?: emptyMap(),
+                                    participantPhotos = (doc.get("participantPhotos") as? Map<*, *>)
+                                        ?.mapNotNull { (k, v) ->
+                                            val kk = k as? String ?: return@mapNotNull null
+                                            val vv = v as? String ?: return@mapNotNull null
+                                            kk to vv
+                                        }?.toMap() ?: emptyMap(),
+                                    isGroup = doc.getBoolean("isGroup") ?: false,
+                                    groupId = doc.getString("groupId").orEmpty(),
+                                    groupName = doc.getString("groupName").orEmpty(),
+                                    groupIcon = doc.getString("groupIcon").orEmpty().ifBlank { "👥" },
+                                    lastMessage = doc.getString("lastMessage").orEmpty(),
+                                    lastTimestamp = doc.getLong("lastTimestamp") ?: 0L,
+                                    lastSenderId = doc.getString("lastSenderId").orEmpty(),
+                                    lastMessageRead = doc.getBoolean("lastMessageRead") ?: false,
+                                    unreadCount = 0
+                                )
+                            }
+                            .sortedByDescending { it.lastTimestamp }
+                        isMutedChatsLoading = false
+                    }
+                    .addOnFailureListener {
+                        mutedChatSessions = emptyList()
+                        isMutedChatsLoading = false
+                    }
+            }
+            .addOnFailureListener {
+                mutedChatSessions = emptyList()
+                isMutedChatsLoading = false
+            }
     }
 
     Scaffold(
@@ -173,6 +256,49 @@ fun PrivacyScreen(
                     isDarkMode = isDarkMode,
                     onClick = onPrivacyPolicy
                 )
+            }
+
+            // Muted Groups / Chats Section
+            item {
+                MutedChatsHeader(count = mutedChatSessions.size, isDarkMode = isDarkMode)
+            }
+
+            if (isMutedChatsLoading) {
+                item {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(100.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator(color = accentColor)
+                    }
+                }
+            } else if (mutedChatSessions.isEmpty()) {
+                item {
+                    EmptyMutedChats(isDarkMode = isDarkMode)
+                }
+            } else {
+                items(
+                    items = mutedChatSessions,
+                    key = { it.id },
+                    contentType = { "muted_chat" }
+                ) { mutedChat ->
+                    MutedChatItem(
+                        chatSession = mutedChat,
+                        currentUserId = userProfile.uid,
+                        onUnmute = {
+                            FirebaseFirestore.getInstance()
+                                .collection("users")
+                                .document(userProfile.uid)
+                                .update("mutedChats.${mutedChat.id}", FieldValue.delete())
+                                .addOnSuccessListener {
+                                    mutedChatSessions = mutedChatSessions.filterNot { it.id == mutedChat.id }
+                                }
+                        },
+                        isDarkMode = isDarkMode
+                    )
+                }
             }
 
             // Muted Users Section
@@ -539,6 +665,41 @@ private fun PrivacyPolicyLink(
 }
 
 @Composable
+private fun MutedChatsHeader(count: Int, isDarkMode: Boolean) {
+    val subtitleColor = if (isDarkMode) Color.Gray else Color.DarkGray
+
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = "MUTED GROUPS & CHATS",
+            color = subtitleColor,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Bold
+        )
+
+        if (count > 0) {
+            Spacer(modifier = Modifier.width(8.dp))
+            Badge(
+                containerColor = Color(0xFFFFB347),
+                contentColor = Color.Black
+            ) {
+                Text(text = count.toString())
+            }
+        }
+
+        Spacer(modifier = Modifier.weight(1f))
+
+        Text(
+            text = "$count muted",
+            color = subtitleColor,
+            fontSize = 13.sp
+        )
+    }
+}
+
+@Composable
 private fun MutedUsersHeader(count: Int, isDarkMode: Boolean) {
     val subtitleColor = if (isDarkMode) Color.Gray else Color.DarkGray
 
@@ -570,6 +731,128 @@ private fun MutedUsersHeader(count: Int, isDarkMode: Boolean) {
             color = subtitleColor,
             fontSize = 13.sp
         )
+    }
+}
+
+@Composable
+private fun EmptyMutedChats(isDarkMode: Boolean) {
+    val subtitleColor = if (isDarkMode) Color.Gray else Color.DarkGray
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 172.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = if (isDarkMode) Color(0xFF1C1C1E) else Color.White
+        ),
+        shape = RoundedCornerShape(12.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Icon(
+                imageVector = Icons.Default.NotificationsOff,
+                contentDescription = null,
+                tint = subtitleColor,
+                modifier = Modifier.size(40.dp)
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            Text(
+                text = "No muted groups or chats",
+                color = subtitleColor,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Medium
+            )
+        }
+    }
+}
+
+@Composable
+private fun MutedChatItem(
+    chatSession: ChatSession,
+    currentUserId: String,
+    onUnmute: () -> Unit,
+    isDarkMode: Boolean
+) {
+    val textColor = if (isDarkMode) Color.White else Color.Black
+    val subtitleColor = if (isDarkMode) Color.Gray else Color.DarkGray
+    val cardBackground = if (isDarkMode) Color(0xFF1C1C1E) else Color.White
+
+    val isGroup = chatSession.isGroup || chatSession.groupId.isNotBlank() || chatSession.id.startsWith("group_")
+    val title = if (isGroup) {
+        chatSession.groupName.ifBlank { "Group Chat" }
+    } else {
+        val otherUserId = chatSession.participants.firstOrNull { it != currentUserId }.orEmpty()
+        chatSession.participantNames[otherUserId].orEmpty().ifBlank { "Chat" }
+    }
+
+    val avatarText = if (isGroup) chatSession.groupIcon.ifBlank { "👥" } else title.firstOrNull()?.uppercase() ?: "?"
+    val isAvatarUrl = avatarText.startsWith("http", ignoreCase = true)
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = cardBackground),
+        shape = RoundedCornerShape(12.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            if (isAvatarUrl) {
+                AsyncImage(
+                    model = avatarText,
+                    contentDescription = null,
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clip(CircleShape),
+                    contentScale = androidx.compose.ui.layout.ContentScale.Crop
+                )
+            } else {
+                Box(
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clip(CircleShape)
+                        .background(if (isGroup) Color(0xFF1565C0) else subtitleColor),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = avatarText,
+                        color = Color.White,
+                        fontSize = if (isGroup) 20.sp else 18.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.width(12.dp))
+
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = title,
+                    color = textColor,
+                    fontWeight = FontWeight.Medium,
+                    fontSize = 16.sp
+                )
+                Text(
+                    text = if (isGroup) "Muted group chat" else "Muted chat",
+                    color = subtitleColor,
+                    fontSize = 13.sp
+                )
+            }
+
+            OutlinedButton(
+                onClick = onUnmute,
+                border = ButtonDefaults.outlinedButtonBorder,
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFFFB347))
+            ) {
+                Text("Unmute")
+            }
+        }
     }
 }
 
