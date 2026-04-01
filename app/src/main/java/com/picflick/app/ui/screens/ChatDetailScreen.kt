@@ -25,6 +25,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.AttachFile
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
@@ -32,6 +33,8 @@ import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -40,6 +43,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.input.pointer.pointerInput
+import android.content.res.Configuration
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
 import kotlin.math.roundToInt
@@ -52,7 +57,6 @@ import com.picflick.app.data.ChatSession
 import com.picflick.app.data.Flick
 import com.picflick.app.data.Result
 import com.picflick.app.data.UserProfile
-import com.picflick.app.data.FriendGroup
 import com.picflick.app.repository.FlickRepository
 import com.picflick.app.ui.theme.PicFlickBannerBackground
 import com.picflick.app.ui.theme.ThemeManager
@@ -77,7 +81,7 @@ data class QuickSwitchChatItem(
     val otherUserPhoto: String
 )
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class, androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 fun ChatDetailScreen(
     chatSession: ChatSession,
@@ -117,12 +121,13 @@ fun ChatDetailScreen(
     var showBlockUserConfirm by remember { mutableStateOf(false) }
     var showMyFlickPicker by remember { mutableStateOf(false) }
     var isLoadingMyFlicks by remember { mutableStateOf(false) }
-    var myFlickPickerError by remember { mutableStateOf<String?>(null) }
     var myFlicks by remember { mutableStateOf<List<Flick>>(emptyList()) }
+    val selectedMyFlickIds = remember { mutableStateListOf<String>() }
     val flickRepository = remember { FlickRepository.getInstance() }
 val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
     var composerHeightPx by remember { mutableStateOf(0) }
+    var hasInitialBottomSnap by remember(chatId) { mutableStateOf(false) }
 
     // Composer positioning: sit on nav bar when closed, move with keyboard when open
     val density = LocalDensity.current
@@ -166,8 +171,8 @@ val listState = rememberLazyListState()
 
     fun openMyFlickPicker() {
         showMyFlickPicker = true
+        selectedMyFlickIds.clear()
         isLoadingMyFlicks = true
-        myFlickPickerError = null
         scope.launch {
             when (val result = flickRepository.getFlicksForUserPaginated(
                 userId = currentUser.uid,
@@ -195,7 +200,6 @@ val listState = rememberLazyListState()
                 is Result.Error -> {
                     myFlicks = emptyList()
                     isLoadingMyFlicks = false
-                    myFlickPickerError = result.message
                 }
                 is Result.Loading -> Unit
             }
@@ -231,9 +235,17 @@ val listState = rememberLazyListState()
         }
     }
 
+    // Initial open: snap immediately to newest before any delayed scroll effects run
+    LaunchedEffect(chatId, viewModel.messages.size) {
+        if (!hasInitialBottomSnap && viewModel.messages.isNotEmpty()) {
+            scrollToBottom()
+            hasInitialBottomSnap = true
+        }
+    }
+
     // Auto-scroll only when message count changes (prevents jump on reaction/selection state changes)
-    LaunchedEffect(viewModel.messages.size) {
-        if (!isSelectionMode && viewModel.messages.isNotEmpty()) {
+    LaunchedEffect(viewModel.messages.size, hasInitialBottomSnap) {
+        if (hasInitialBottomSnap && !isSelectionMode && viewModel.messages.isNotEmpty()) {
             delay(120)
             scrollToBottom()
         }
@@ -241,8 +253,8 @@ val listState = rememberLazyListState()
 
     // Keep latest message visible when keyboard/composer changes (do not react to selection/reaction toggles)
     val imeBottom = WindowInsets.ime.getBottom(LocalDensity.current)
-    LaunchedEffect(imeBottom, composerHeightPx) {
-        if (!isSelectionMode && viewModel.messages.isNotEmpty()) {
+    LaunchedEffect(imeBottom, composerHeightPx, hasInitialBottomSnap) {
+        if (hasInitialBottomSnap && !isSelectionMode && viewModel.messages.isNotEmpty()) {
             delay(100)
             scrollToBottom()
         }
@@ -266,16 +278,16 @@ val listState = rememberLazyListState()
 
     // Keep last message + reaction choices visible when reaction picker is opened
     // (do not let selection-mode changes trigger scroll)
-    LaunchedEffect(activeReactionMessageId, viewModel.messages.size, composerHeightPx) {
-        if (!isSelectionMode && activeReactionMessageId != null && viewModel.messages.isNotEmpty()) {
+    LaunchedEffect(activeReactionMessageId, viewModel.messages.size, composerHeightPx, hasInitialBottomSnap) {
+        if (hasInitialBottomSnap && !isSelectionMode && activeReactionMessageId != null && viewModel.messages.isNotEmpty()) {
             delay(120)
             scrollToBottom()
         }
     }
 
     // Keep typing indicator bubble visible at bottom when other user starts typing
-    LaunchedEffect(viewModel.otherUserTyping, viewModel.messages.size) {
-        if (!isSelectionMode && viewModel.otherUserTyping && viewModel.messages.isNotEmpty()) {
+    LaunchedEffect(viewModel.otherUserTyping, viewModel.messages.size, hasInitialBottomSnap) {
+        if (hasInitialBottomSnap && !isSelectionMode && viewModel.otherUserTyping && viewModel.messages.isNotEmpty()) {
             delay(100)
             scrollToBottom()
         }
@@ -829,85 +841,210 @@ Column(modifier = Modifier.fillMaxSize()) {
     val deleteConfirmLabel = if (olderThanWindowCount > 0) "Delete only for you" else "Delete"
 
     if (showMyFlickPicker) {
-        AlertDialog(
+        Dialog(
             onDismissRequest = { showMyFlickPicker = false },
-            title = { Text("Share from PicFlick") },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    myFlickPickerError?.let {
-                        Text(
-                            text = it,
-                            color = MaterialTheme.colorScheme.error,
-                            style = MaterialTheme.typography.bodySmall
-                        )
+            properties = DialogProperties(
+                usePlatformDefaultWidth = false,
+                dismissOnBackPress = true,
+                dismissOnClickOutside = true
+            )
+        ) {
+            Surface(
+                modifier = Modifier.fillMaxSize(),
+                shape = RoundedCornerShape(0.dp),
+                color = Color(0xFF121212)
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(16.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "Share from PicFlick",
+                                color = Color.White,
+                                fontSize = 22.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                            if (selectedMyFlickIds.isNotEmpty()) {
+                                Text(
+                                    text = "${selectedMyFlickIds.size} selected",
+                                    color = Color(0xFF87CEEB),
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            }
+                        }
+                        TextButton(onClick = {
+                            showMyFlickPicker = false
+                            selectedMyFlickIds.clear()
+                        }) {
+                            Text("Close", color = Color.White)
+                        }
                     }
+
+                    Spacer(modifier = Modifier.height(10.dp))
 
                     when {
                         isLoadingMyFlicks -> {
                             Box(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(vertical = 16.dp),
+                                    .padding(vertical = 24.dp),
                                 contentAlignment = Alignment.Center
                             ) {
-                                CircularProgressIndicator()
+                                CircularProgressIndicator(color = Color(0xFF87CEEB))
                             }
                         }
 
                         myFlicks.isEmpty() -> {
-                            Text("No photos are available to share with this user right now. Tap Open Add Photo screen to upload your own photo first.")
+                            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                                Text(
+                                    text = "No photos available yet.",
+                                    color = Color.White,
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                                Text(
+                                    text = "Upload a photo first, then share it here.",
+                                    color = Color(0xFFB7BDC9)
+                                )
+
+                            }
                         }
 
                         else -> {
+                            val configuration = LocalConfiguration.current
+                            val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+
                             Text(
-                                text = "Choose an existing PicFlick photo shareable with this user",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                text = "Tap to share • Long press for multi-select",
+                                color = Color(0xFFB7BDC9),
+                                style = MaterialTheme.typography.bodySmall
                             )
-                            LazyVerticalGrid(
-                                columns = GridCells.Fixed(3),
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            if (selectedMyFlickIds.isNotEmpty()) {
+                                Button(
+                                    onClick = {
+                                        val selected = myFlicks.filter { it.id in selectedMyFlickIds }
+                                        selected.forEach { sendExistingFlickPhoto(it) }
+                                        showMyFlickPicker = false
+                                        selectedMyFlickIds.clear()
+                                    },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF87CEEB))
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.AutoMirrored.Filled.Send,
+                                        contentDescription = null,
+                                        tint = Color.Black
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text("Share Selected (${selectedMyFlickIds.size})", color = Color.Black)
+                                }
+                                Spacer(modifier = Modifier.height(8.dp))
+                            }
+
+                            BoxWithConstraints(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .heightIn(max = 320.dp),
-                                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                                verticalArrangement = Arrangement.spacedBy(6.dp)
+                                    .weight(1f)
                             ) {
-                                items(
-                                    items = myFlicks,
-                                    key = { it.id },
-                                    contentType = { "flick" }
-                                ) { flick ->
-                                    AsyncImage(
-                                        model = flick.imageUrl,
-                                        contentDescription = "My photo",
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .aspectRatio(1f)
-                                            .clip(RoundedCornerShape(8.dp))
-                                            .clickable {
-                                                showMyFlickPicker = false
-                                                sendExistingFlickPhoto(flick)
-                                            },
-                                        contentScale = ContentScale.Crop
+                                val availableGridHeight = this.maxHeight
+                                val homeLikeRowHeight = if (isLandscape) {
+                                    availableGridHeight / 1.09f
+                                } else {
+                                    availableGridHeight / 4.03f
+                                }
+
+                                LazyVerticalGrid(
+                                    columns = GridCells.Fixed(3),
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .heightIn(min = homeLikeRowHeight),
+                                    contentPadding = PaddingValues(
+                                        start = 1.dp,
+                                        end = 1.dp,
+                                        top = 4.dp,
+                                        bottom = 1.dp
                                     )
+                                ) {
+                                    items(
+                                        items = myFlicks,
+                                        key = { it.id },
+                                        contentType = { "myFlick" }
+                                    ) { flick ->
+                                        val isSelectionMode = selectedMyFlickIds.isNotEmpty()
+                                        val isSelected = selectedMyFlickIds.contains(flick.id)
+
+                                        Box(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .height(homeLikeRowHeight)
+                                                .combinedClickable(
+                                                    onClick = {
+                                                        if (isSelectionMode) {
+                                                            if (isSelected) selectedMyFlickIds.remove(flick.id) else selectedMyFlickIds.add(flick.id)
+                                                        } else {
+                                                            showMyFlickPicker = false
+                                                            sendExistingFlickPhoto(flick)
+                                                        }
+                                                    },
+                                                    onLongClick = {
+                                                        if (!isSelectionMode) {
+                                                            selectedMyFlickIds.add(flick.id)
+                                                        }
+                                                    }
+                                                )
+                                        ) {
+                                            AsyncImage(
+                                                model = flick.imageUrl,
+                                                contentDescription = "PicFlick photo",
+                                                modifier = Modifier.fillMaxSize(),
+                                                contentScale = ContentScale.Crop
+                                            )
+
+                                            if (isSelectionMode) {
+                                                Box(
+                                                    modifier = Modifier
+                                                        .align(Alignment.TopEnd)
+                                                        .padding(6.dp)
+                                                        .size(22.dp)
+                                                        .background(
+                                                            if (isSelected) Color(0xFF4CAF50) else Color.Black.copy(alpha = 0.45f),
+                                                            CircleShape
+                                                        )
+                                                        .border(1.dp, Color.White.copy(alpha = 0.9f), CircleShape),
+                                                    contentAlignment = Alignment.Center
+                                                ) {
+                                                    if (isSelected) {
+                                                        Icon(
+                                                            imageVector = Icons.Default.Check,
+                                                            contentDescription = "Selected",
+                                                            tint = Color.White,
+                                                            modifier = Modifier.size(14.dp)
+                                                        )
+                                                    }
+                                                }
+                                            }
+
+
+                                        }
+                                    }
                                 }
                             }
+
+
                         }
                     }
                 }
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        showMyFlickPicker = false
-                        onAddNewPhoto()
-                    }
-                ) { Text("Open Add Photo screen") }
-            },
-            dismissButton = {
-                TextButton(onClick = { showMyFlickPicker = false }) { Text("Close") }
             }
-        )
+        }
     }
 
     if (showDeleteSelectedConfirm) {
