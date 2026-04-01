@@ -525,8 +525,6 @@ fun MainScreen(
                     ).filter { it.isNotBlank() }.distinct()
 
                     if (currentUserId != null && (chatIdCandidates.isNotEmpty() || isGroupHint)) {
-                        // Ensure latest chat sessions are requested, but do not block UI on network.
-                        chatViewModel.loadChatSessions(currentUserId)
 
                         val sessionById = chatIdCandidates
                             .asSequence()

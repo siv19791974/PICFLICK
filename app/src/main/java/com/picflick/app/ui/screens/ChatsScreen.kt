@@ -179,7 +179,10 @@ fun ChatsScreen(
 
         (normalizedSessions + seededGroupSessions)
             .distinctBy { it.id }
-            .sortedByDescending { it.lastTimestamp }
+            .sortedWith(
+                compareByDescending<ChatSession> { it.lastTimestamp }
+                    .thenBy { it.id }
+            )
     }
 
     val filteredChatSessions = remember(inboxChatSessions, searchQuery, userProfile.uid) {

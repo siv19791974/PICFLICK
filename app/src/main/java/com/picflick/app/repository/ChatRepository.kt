@@ -95,8 +95,12 @@ class ChatRepository {
                         session.participants.contains(userId)
                     }
 
-                    // Sort client-side by lastTimestamp descending
-                    val sortedSessions = validSessions.sortedByDescending { it.lastTimestamp }
+                    // Sort client-side by lastTimestamp descending with deterministic tie-breaker
+                    // so read-only updates do not cause visual reshuffle.
+                    val sortedSessions = validSessions.sortedWith(
+                        compareByDescending<ChatSession> { it.lastTimestamp }
+                            .thenBy { it.id }
+                    )
                     trySend(sortedSessions)
                 }
 }
@@ -441,6 +445,7 @@ class ChatRepository {
             val groupDisplayName = sessionSnapshot.getString("groupName")
                 ?.takeIf { it.isNotBlank() }
                 ?: "Group"
+            val groupDisplayIcon = sessionSnapshot.getString("groupIcon").orEmpty()
 
             participants
                 .filter { it != message.senderId }
@@ -455,6 +460,7 @@ class ChatRepository {
                         "senderPhotoUrl" to message.senderPhotoUrl,
                         "chatId" to chatId,
                         "groupName" to groupDisplayName,
+                        "groupIcon" to groupDisplayIcon,
                         "timestamp" to System.currentTimeMillis(),
                         "isRead" to false
                     )

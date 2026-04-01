@@ -18,8 +18,9 @@ data class Notification(
     val commentPreview: String? = null,  // Optional comment text preview
     val reactionEmoji: String? = null,   // Related reaction emoji
     val chatId: String? = null,          // Related chat (for MESSAGE notifications)
-    val groupId: String? = null,         // Related group (for GROUP_INVITE)
+    val groupId: String? = null,         // Related group (for GROUP_INVITE / MESSAGE)
     val groupName: String? = null,       // Group display name
+    val groupIcon: String? = null,       // Group icon/image url/emoji
     val inviteId: String? = null,        // Group invite id (for accept/decline)
     val targetScreen: String? = null,    // Optional destination hint for onboarding/system notifications
     val isRead: Boolean = false,

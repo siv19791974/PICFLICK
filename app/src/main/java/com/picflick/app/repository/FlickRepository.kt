@@ -1644,6 +1644,9 @@ class FlickRepository private constructor() {
                                 commentPreview = data["commentPreview"] as? String,
                                 reactionEmoji = data["reactionEmoji"] as? String,
                                 chatId = data["chatId"] as? String,
+                                groupId = data["groupId"] as? String,
+                                groupName = data["groupName"] as? String,
+                                groupIcon = data["groupIcon"] as? String,
                                 isRead = data["isRead"] as? Boolean ?: false,
                                 timestamp = (data["timestamp"] as? Long) ?: System.currentTimeMillis()
                             )

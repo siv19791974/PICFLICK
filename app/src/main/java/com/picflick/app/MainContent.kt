@@ -216,6 +216,7 @@ fun AuthenticatedContent(
             userProfile = userProfile,
             chatViewModel = chatViewModel,
             friendsViewModel = friendsViewModel,
+            homeViewModel = homeViewModel,
             onScreenChange = onScreenChange,
             onSetSelectedChat = onSetSelectedChat,
             onOpenUploadSourceDialog = onOpenUploadSourceDialog
@@ -821,6 +822,7 @@ private fun ChatDetailScreenContent(
     userProfile: UserProfile,
     chatViewModel: ChatViewModel,
     friendsViewModel: FriendsViewModel,
+    homeViewModel: HomeViewModel,
     onScreenChange: (Screen) -> Unit,
     onSetSelectedChat: (ChatSession, String) -> Unit,
     onOpenUploadSourceDialog: () -> Unit
@@ -888,6 +890,8 @@ private fun ChatDetailScreenContent(
                 onSetSelectedChat(session, otherId)
                 onScreenChange(Screen.ChatDetail)
             },
+            friendsViewModel = friendsViewModel,
+            homeViewModel = homeViewModel,
             onPhotoClick = { message ->
                 if (message.imageUrl.isNotBlank()) {
                     val sharedFallbackId = "chat_photo_${message.imageUrl.substringBefore("?").hashCode()}"
