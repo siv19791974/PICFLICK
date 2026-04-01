@@ -990,15 +990,18 @@ Column(modifier = Modifier.fillMaxSize()) {
                                         selectedMyFlickIds.clear()
                                     },
                                     modifier = Modifier.fillMaxWidth(),
-                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF87CEEB))
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = Color(0xFF2A4A73),
+                                        contentColor = Color.White
+                                    )
                                 ) {
                                     Icon(
                                         imageVector = Icons.AutoMirrored.Filled.Send,
                                         contentDescription = null,
-                                        tint = Color.Black
+                                        tint = Color.White
                                     )
                                     Spacer(modifier = Modifier.width(8.dp))
-                                    Text("Share Selected (${selectedMyFlickIds.size})", color = Color.Black)
+                                    Text("Share Selected (${selectedMyFlickIds.size})", color = Color.White)
                                 }
                                 Spacer(modifier = Modifier.height(8.dp))
                             }
@@ -1366,8 +1369,8 @@ AlertDialog(
                             },
                             modifier = Modifier.fillMaxWidth(),
                             colors = ButtonDefaults.buttonColors(
-                                containerColor = Color(0xFF4FC3F7),
-                                contentColor = Color.Black
+                                containerColor = Color(0xFF2A4A73),
+                                contentColor = Color.White
                             )
                         ) {
                             Text("Save group details")
@@ -1434,8 +1437,8 @@ AlertDialog(
                             enabled = selectedInviteeIds.isNotEmpty(),
                             modifier = Modifier.fillMaxWidth(),
                             colors = ButtonDefaults.buttonColors(
-                                containerColor = Color(0xFF4FC3F7),
-                                contentColor = Color.Black
+                                containerColor = Color(0xFF2A4A73),
+                                contentColor = Color.White
                             )
                         ) {
                             Text("Invite selected")

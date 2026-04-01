@@ -567,7 +567,7 @@ private fun QuietPresetButton(label: String, isSelected: Boolean, isDarkMode: Bo
     Button(
         onClick = onClick,
         colors = ButtonDefaults.buttonColors(
-            containerColor = if (isSelected) Color(0xFF1565C0) else if (isDarkMode) Color(0xFF2C2C2E) else Color.LightGray
+            containerColor = if (isSelected) Color(0xFF2A4A73) else if (isDarkMode) Color(0xFF2C2C2E) else Color.LightGray
         ),
         shape = RoundedCornerShape(8.dp),
         modifier = Modifier.fillMaxWidth()

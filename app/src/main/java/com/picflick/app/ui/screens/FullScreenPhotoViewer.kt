@@ -2893,7 +2893,8 @@ private fun ShareFriendsDialog(
                                         onNavigateToFindFriends()
                                     },
                                     colors = ButtonDefaults.buttonColors(
-                                        containerColor = Color(0xFF87CEEB)
+                                        containerColor = Color(0xFF2A4A73),
+                                        contentColor = Color.White
                                     )
                                 ) {
                                     Icon(
@@ -2962,7 +2963,7 @@ private fun ShareFriendsDialog(
                                             onDismiss()
                                         },
                                         colors = ButtonDefaults.buttonColors(
-                                            containerColor = Color(0xFF87CEEB)
+                                            containerColor = Color(0xFF2A4A73)
                                         ),
                                         modifier = Modifier.height(36.dp)
                                     ) {
@@ -3242,12 +3243,12 @@ private fun TagFriendsDialog(
                                                 onTagFriendsChanged(selectedFriends.toList())
                                             },
                                             colors = ButtonDefaults.outlinedButtonColors(
-                                                contentColor = Color.White
+                                                contentColor = Color(0xFF2A4A73)
                                             ),
                                             modifier = Modifier.height(36.dp),
                                             border = ButtonDefaults.outlinedButtonBorder.copy(
                                                 width = 1.dp,
-                                                brush = androidx.compose.ui.graphics.SolidColor(Color.White.copy(alpha = 0.5f))
+                                                brush = androidx.compose.ui.graphics.SolidColor(Color(0xFF2A4A73))
                                             )
                                         ) {
                                             Text(

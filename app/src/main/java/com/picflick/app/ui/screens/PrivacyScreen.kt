@@ -848,7 +848,7 @@ private fun MutedChatItem(
             OutlinedButton(
                 onClick = onUnmute,
                 border = ButtonDefaults.outlinedButtonBorder,
-                colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFFFB347))
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFF2A4A73))
             ) {
                 Text("Unmute")
             }
@@ -963,7 +963,7 @@ private fun MutedUserItem(
             OutlinedButton(
                 onClick = onUnmute,
                 border = ButtonDefaults.outlinedButtonBorder.copy(
-                    brush = androidx.compose.ui.graphics.SolidColor(Color(0xFFFFB347))
+                    brush = androidx.compose.ui.graphics.SolidColor(Color(0xFF2A4A73))
                 ),
                 colors = ButtonDefaults.outlinedButtonColors(
                     contentColor = Color(0xFFFFB347)
@@ -1127,7 +1127,7 @@ private fun BlockedUserItem(
                     brush = androidx.compose.ui.graphics.SolidColor(Color(0xFF1565C0))
                 ),
                 colors = ButtonDefaults.outlinedButtonColors(
-                    contentColor = Color(0xFF1565C0)
+                    contentColor = Color(0xFF2A4A73)
                 )
             ) {
                 Text("Unblock")

@@ -735,7 +735,7 @@ private fun NewGroupFromComposeDialog(
 
     val pageBackground = if (isDarkMode) Color.Black else PicFlickLightBackground
     val textColor = if (isDarkMode) Color.White else Color.Black
-    val addColor = Color(0xFF1E88E5)
+    val addColor = Color(0xFF2A4A73)
     val waitingColor = Color(0xFF2A4A73)
 
     val icons = listOf(

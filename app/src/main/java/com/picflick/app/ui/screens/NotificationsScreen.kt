@@ -75,6 +75,7 @@ fun NotificationsScreen(
     onFindFriendsClick: (String?) -> Unit = {},
     onAddFirstPhotoClick: () -> Unit = {},
     onOpenGroupsScreen: () -> Unit = {},
+    onOpenAchievements: () -> Unit = {},
     onGroupInviteAccepted: (groupId: String, groupName: String) -> Unit = { _, _ -> },
     viewModel: NotificationViewModel = viewModel()
 ) {
@@ -322,6 +323,8 @@ fun NotificationsScreen(
                                                 }
                                                 NotificationType.FRIEND_REQUEST -> onFindFriendsClick(notification.senderId)
                                                 NotificationType.GROUP_INVITE -> onOpenGroupsScreen()
+                                                NotificationType.ACHIEVEMENT,
+                                                NotificationType.STREAK_REMINDER -> onOpenAchievements()
                                                 else -> Unit
                                             }
                                         }
@@ -402,6 +405,8 @@ fun NotificationsScreen(
                                                 }
                                                 NotificationType.FRIEND_REQUEST -> onFindFriendsClick(notification.senderId)
                                                 NotificationType.GROUP_INVITE -> onOpenGroupsScreen()
+                                                NotificationType.ACHIEVEMENT,
+                                                NotificationType.STREAK_REMINDER -> onOpenAchievements()
                                                 else -> Unit
                                             }
                                         }

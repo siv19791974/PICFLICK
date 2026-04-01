@@ -46,6 +46,7 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.PlatformTextStyle
@@ -1323,6 +1324,17 @@ private fun MyPhotoCard(
     onLongPress: () -> Unit = {},
     rowHeight: androidx.compose.ui.unit.Dp
 ) {
+    val context = LocalContext.current
+    val density = LocalDensity.current
+    val rowHeightPx = with(density) { rowHeight.roundToPx() }
+    val thumbRequest = remember(flick.imageUrl, flick.timestamp, rowHeightPx) {
+        ImageRequest.Builder(context)
+            .data(withCacheBust(flick.imageUrl, flick.timestamp))
+            .size(rowHeightPx)
+            .memoryCachePolicy(CachePolicy.ENABLED)
+            .diskCachePolicy(CachePolicy.ENABLED)
+            .build()
+    }
     val reactionCounts = flick.getReactionCounts()
     val orderedReactions = reactionCounts.entries
         .filter { it.value > 0 }
@@ -1344,7 +1356,7 @@ private fun MyPhotoCard(
         Box(modifier = Modifier.fillMaxSize()) {
             // Photo
             AsyncImage(
-                model = withCacheBust(flick.imageUrl, flick.timestamp),
+                model = thumbRequest,
                 contentDescription = null,
                 modifier = Modifier.fillMaxSize(),
                 contentScale = ContentScale.Crop

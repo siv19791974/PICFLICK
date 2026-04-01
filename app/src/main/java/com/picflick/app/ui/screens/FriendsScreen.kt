@@ -216,16 +216,22 @@ modifier = Modifier.weight(1f),
                 onClick = onFindFriendsClick,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                shape = RoundedCornerShape(12.dp)
+                    .padding(horizontal = 16.dp, vertical = 8.dp)
+                    .height(48.dp),
+                shape = RoundedCornerShape(20.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color(0xFF2A4A73),
+                    contentColor = Color.White
+                )
             ) {
                 Icon(
                     imageVector = Icons.Default.Search,
                     contentDescription = null,
-                    modifier = Modifier.size(20.dp)
+                    modifier = Modifier.size(20.dp),
+                    tint = Color.White
                 )
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Find Friends")
+                Text("Find Friends", fontSize = 12.sp, color = Color.White)
             }
         }
 
@@ -346,11 +352,7 @@ Row(
             }
         } else {
             val isWaiting = hasSentRequest
-            val buttonColor = when {
-                isAlreadyFriend -> Color(0xFF2E7D32)
-                isWaiting -> Color(0xFF2A4A73)
-                else -> Color(0xFF1E88E5)
-            }
+            val buttonColor = Color(0xFF2A4A73)
 
             OutlinedButton(
                 onClick = {

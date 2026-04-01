@@ -738,7 +738,7 @@ fun HomeScreen(
             .filter { group.effectiveMemberIds().contains(it.uid) }
             .filter { it.uid != ownerId }
             .sortedBy { it.displayName.lowercase(Locale.getDefault()) }
-        val addColor = Color(0xFF1E88E5)
+        val addColor = Color(0xFF2A4A73)
         val waitingColor = Color(0xFF2A4A73)
         var selectedAdmins by remember(group.id, candidates) {
             mutableStateOf(group.adminIds.filter { it.isNotBlank() && it != ownerId && group.isMember(it) }.toSet())
@@ -923,7 +923,7 @@ fun HomeScreen(
             .filter { it.uid.isNotBlank() }
             .filter { !group.effectiveMemberIds().contains(it.uid) }
             .sortedBy { it.displayName.lowercase(Locale.getDefault()) }
-        val addColor = Color(0xFF1E88E5)
+        val addColor = Color(0xFF2A4A73)
         val waitingColor = Color(0xFF2A4A73)
         var processingInviteUserId by remember(group.id) { mutableStateOf<String?>(null) }
         var invitedUserIds by remember(group.id) { mutableStateOf(setOf<String>()) }
@@ -1394,7 +1394,7 @@ private fun GroupManagerSheet(
 
     val backgroundColor = if (isDarkMode) Color.Black else PicFlickLightBackground
     val textColor = if (isDarkMode) Color.White else Color.Black
-    val addColor = Color(0xFF1E88E5)
+    val addColor = Color(0xFF2A4A73)
     val waitingColor = Color(0xFF2A4A73)
 
     val sortedGroups = remember(groups) {
@@ -1530,7 +1530,7 @@ private fun GroupManagerSheet(
                                 draggingGroupId = group.id
                             }
                             dragDeltaY += deltaY
-                            val moveThreshold = 16f
+                            val moveThreshold = 36f
                             val currentIndex = orderedGroupIdsState.indexOf(group.id)
                             if (dragDeltaY <= -moveThreshold && currentIndex > 0) {
                                 orderedGroupIdsState.removeAt(currentIndex)
@@ -1666,21 +1666,20 @@ private fun GroupManagerSheet(
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp, vertical = 12.dp)
                 ) {
-                    OutlinedButton(
+                    Button(
                         onClick = onCreateGroup,
                         shape = RoundedCornerShape(20.dp),
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(48.dp),
-                        colors = ButtonDefaults.outlinedButtonColors(
-                            containerColor = Color.Transparent,
-                            contentColor = addColor,
-                            disabledContainerColor = Color.Transparent,
-                            disabledContentColor = addColor
-                        ),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, addColor)
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = addColor,
+                            contentColor = Color.White,
+                            disabledContainerColor = addColor.copy(alpha = 0.6f),
+                            disabledContentColor = Color.White.copy(alpha = 0.9f)
+                        )
                     ) {
-                        Text("Create new album", fontSize = 12.sp, color = addColor)
+                        Text("Create new album", fontSize = 12.sp, color = Color.White)
                     }
                 }
             }
@@ -1782,7 +1781,7 @@ private fun CreateOrEditGroupDialog(
     var selectedColor by remember(initialColor) { mutableStateOf(initialColor) }
     var selectedFriends by remember(initialSelectedFriendIds) { mutableStateOf(initialSelectedFriendIds.toSet()) }
 
-    val addColor = Color(0xFF1E88E5)
+    val addColor = Color(0xFF2A4A73)
     val waitingColor = Color(0xFF2A4A73)
     val textColor = if (isDarkMode) Color.White else Color.Black
     val pageBackground = if (isDarkMode) Color.Black else PicFlickLightBackground
