@@ -2059,7 +2059,7 @@ private fun FlickGrid(
             columns = GridCells.Fixed(3),
             modifier = Modifier.fillMaxSize(),
             state = listState,
-            contentPadding = PaddingValues(top = 2.dp, bottom = 8.dp),
+            contentPadding = PaddingValues(top = 1.dp, bottom = 8.dp),
             horizontalArrangement = Arrangement.spacedBy(1.dp),
             verticalArrangement = Arrangement.spacedBy(1.dp)
         ) {
