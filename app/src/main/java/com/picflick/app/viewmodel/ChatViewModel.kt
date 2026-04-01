@@ -373,8 +373,13 @@ class ChatViewModel : ViewModel() {
             android.util.Log.d("ChatViewModel", "markAsRead starting for chat $chatId")
             when (val result = repository.markMessagesAsRead(chatId, userId)) {
                 is Result.Success -> {
-                    android.util.Log.d("ChatViewModel", "markAsRead success, reloading messages")
-                    // Reload messages to refresh UI with new read status
+                    android.util.Log.d("ChatViewModel", "markAsRead success, updating local session state")
+                    // Optimistically clear unread locally so badges/chats update instantly.
+                    chatSessions = chatSessions.map { session ->
+                        if (session.id == chatId) session.copy(unreadCount = 0, lastMessageRead = true) else session
+                    }
+                    unreadCount = chatSessions.sumOf { it.unreadCount }
+                    // Reload messages to refresh per-message read status.
                     loadMessages(chatId, userId)
                 }
                 is Result.Error -> {

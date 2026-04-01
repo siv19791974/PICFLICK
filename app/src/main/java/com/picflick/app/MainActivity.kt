@@ -218,6 +218,8 @@ class MainActivity : ComponentActivity() {
         val senderId = extras.getFirstString("senderId", "sender_id", "fromUserId", "userId")
             ?: if (deepLinkHost == "profile") deepLinkLastSegment else null
         val senderName = extras.getFirstString("senderName", "sender_name", "fromUserName", "userName")
+        val groupId = extras.getFirstString("groupId", "group_id")
+        val groupName = extras.getFirstString("groupName", "group_name")
         val notificationType = extras.getFirstString("type", "notificationType")
         val titleHint = extras.getFirstString("title", "notificationTitle", "gcm.notification.title")
         val bodyHint = extras.getFirstString("message", "body", "notificationBody", "gcm.notification.body")
@@ -276,7 +278,7 @@ class MainActivity : ComponentActivity() {
 
         android.util.Log.d(
             "MainActivity",
-            "Push notification clicked: type=$notificationType, screen=$targetScreen, flickId=$flickId, chatId=$chatId, sender=$senderId"
+            "Push notification clicked: type=$notificationType, screen=$targetScreen, flickId=$flickId, chatId=$chatId, sender=$senderId, groupId=$groupId"
         )
 
         val normalizedExtras = android.os.Bundle(extras).apply {
@@ -285,6 +287,8 @@ class MainActivity : ComponentActivity() {
             putString("chatId", chatId ?: "")
             putString("senderId", senderId ?: "")
             putString("senderName", senderName ?: "")
+            putString("groupId", groupId ?: "")
+            putString("groupName", groupName ?: "")
             putString("type", notificationType ?: "")
             putBoolean("openComments", isCommentNotification)
         }
@@ -507,22 +511,63 @@ fun MainScreen(
                 }
                 "chat" -> {
                     val currentUserId = activity?.getCurrentUserId()
-                    if (currentUserId != null && !senderId.isNullOrBlank()) {
+                    val pushedChatId = pushData.getString("chatId").orEmpty()
+                    val pushedGroupId = pushData.getString("groupId").orEmpty()
+                    val pushedGroupName = pushData.getString("groupName").orEmpty()
+
+                    if (currentUserId != null && pushedChatId.isNotBlank()) {
+                        val existingSession = chatViewModel.chatSessions.firstOrNull { it.id == pushedChatId }
+                        val isGroupPush = existingSession?.isGroup == true || pushedGroupId.isNotBlank() || pushedChatId.startsWith("group_")
+
+                        selectedChatSession = existingSession ?: ChatSession(
+                            id = pushedChatId,
+                            participants = if (isGroupPush) listOf(currentUserId) else listOf(currentUserId, senderId.orEmpty()),
+                            participantNames = if (isGroupPush) {
+                                mapOf(currentUserId to (authViewModel.userProfile?.displayName ?: "You"))
+                            } else {
+                                mapOf(
+                                    currentUserId to (authViewModel.userProfile?.displayName ?: "You"),
+                                    senderId.orEmpty() to (senderName?.ifBlank { null } ?: "Chat")
+                                )
+                            },
+                            participantPhotos = if (isGroupPush) {
+                                mapOf(currentUserId to (authViewModel.userProfile?.photoUrl ?: ""))
+                            } else {
+                                mapOf(currentUserId to (authViewModel.userProfile?.photoUrl ?: ""))
+                            },
+                            isGroup = isGroupPush,
+                            groupId = if (isGroupPush) pushedGroupId.ifBlank { pushedChatId.removePrefix("group_") } else "",
+                            groupName = if (isGroupPush) pushedGroupName.ifBlank { existingSession?.groupName ?: "Group" } else "",
+                            groupIcon = if (isGroupPush) existingSession?.groupIcon ?: "👥" else "👥",
+                            lastMessage = existingSession?.lastMessage ?: "",
+                            lastTimestamp = existingSession?.lastTimestamp ?: System.currentTimeMillis(),
+                            unreadCount = 0
+                        )
+                        selectedOtherUserId = if (isGroupPush) {
+                            "group:${pushedGroupId.ifBlank { pushedChatId }}"
+                        } else {
+                            senderId.orEmpty()
+                        }
+                        currentScreen = Screen.ChatDetail
+                    } else if (currentUserId != null && !senderId.isNullOrBlank()) {
                         val resolvedSenderName = senderName?.ifBlank { null } ?: "Chat"
                         chatViewModel.startChat(
                             userId = currentUserId,
                             otherUserId = senderId,
-                            userName = resolvedSenderName,
+                            userName = authViewModel.userProfile?.displayName ?: "You",
                             otherUserName = resolvedSenderName,
-                            onChatReady = { chatId ->
+                            userPhoto = authViewModel.userProfile?.photoUrl ?: "",
+                            otherUserPhoto = "",
+                            onChatReady = { readyChatId ->
                                 selectedOtherUserId = senderId
                                 selectedChatSession = ChatSession(
-                                    id = chatId,
+                                    id = readyChatId,
                                     participants = listOf(currentUserId, senderId),
                                     participantNames = mapOf(
                                         currentUserId to (authViewModel.userProfile?.displayName ?: "You"),
                                         senderId to resolvedSenderName
                                     ),
+                                    participantPhotos = mapOf(currentUserId to (authViewModel.userProfile?.photoUrl ?: "")),
                                     lastMessage = "",
                                     lastTimestamp = System.currentTimeMillis(),
                                     unreadCount = 0

@@ -848,17 +848,27 @@ private fun ChatDetailScreenContent(
                     session.participants.contains(userProfile.uid) && session.lastTimestamp >= tenDaysAgo
                 }
                 .mapNotNull { session ->
-                    val otherId = session.participants.firstOrNull { it != userProfile.uid } ?: return@mapNotNull null
-                    val otherName = session.participantNames[otherId]?.takeIf { it.isNotBlank() } ?: "Chat"
-                    val otherPhoto = session.participantPhotos[otherId] ?: ""
-                    com.picflick.app.ui.screens.QuickSwitchChatItem(
-                        chatSession = session,
-                        otherUserId = otherId,
-                        otherUserName = otherName,
-                        otherUserPhoto = otherPhoto
-                    )
+                    if (session.isGroup) {
+                        val groupKey = session.groupId.ifBlank { session.id }
+                        com.picflick.app.ui.screens.QuickSwitchChatItem(
+                            chatSession = session,
+                            otherUserId = "group:$groupKey",
+                            otherUserName = session.groupName.ifBlank { "Group" },
+                            otherUserPhoto = session.groupIcon.takeIf { it.startsWith("http", ignoreCase = true) } ?: ""
+                        )
+                    } else {
+                        val otherId = session.participants.firstOrNull { it != userProfile.uid } ?: return@mapNotNull null
+                        val otherName = session.participantNames[otherId]?.takeIf { it.isNotBlank() } ?: "Chat"
+                        val otherPhoto = session.participantPhotos[otherId] ?: ""
+                        com.picflick.app.ui.screens.QuickSwitchChatItem(
+                            chatSession = session,
+                            otherUserId = otherId,
+                            otherUserName = otherName,
+                            otherUserPhoto = otherPhoto
+                        )
+                    }
                 }
-                .distinctBy { it.otherUserId }
+                .distinctBy { it.chatSession.id }
                 .sortedByDescending { it.chatSession.lastTimestamp }
                 .toList()
         }
