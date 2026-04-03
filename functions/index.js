@@ -4,6 +4,18 @@ const admin = require('firebase-admin');
 // Initialize Firebase Admin
 admin.initializeApp();
 
+// Emergency runtime kill-switch (1st gen functions config).
+// Set with: firebase functions:config:set safety.disable_triggers="true"
+// Then deploy functions to apply.
+const runtimeConfig = functions.config() || {};
+const areSafetyTriggersDisabled = runtimeConfig?.safety?.disable_triggers === 'true';
+
+function shouldSkipTrigger(triggerName) {
+  if (!areSafetyTriggersDisabled) return false;
+  console.warn(`[SAFETY] Trigger disabled by runtime config: ${triggerName}`);
+  return true;
+}
+
 /**
  * Cloud Function: Send push notification when a new notification document is created
  * This function listens to the 'notifications' collection and sends FCM push
@@ -11,6 +23,8 @@ admin.initializeApp();
 exports.sendPushNotification = functions.firestore
   .document('notifications/{notificationId}')
   .onCreate(async (snap, context) => {
+    if (shouldSkipTrigger('sendPushNotification')) return null;
+
     const notification = snap.data();
     
     console.log('New notification created:', context.params.notificationId);
@@ -164,6 +178,8 @@ exports.cleanupOldNotifications = functions.pubsub
   .schedule('0 0 * * *') // Run at midnight every day
   .timeZone('UTC')
   .onRun(async (context) => {
+    if (shouldSkipTrigger('cleanupOldNotifications')) return null;
+
     const thirtyDaysAgo = admin.firestore.Timestamp.fromDate(
       new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
     );
@@ -193,6 +209,8 @@ exports.cleanupOldNotifications = functions.pubsub
 exports.sendWelcomeNotification = functions.firestore
   .document('users/{userId}')
   .onCreate(async (snap, context) => {
+    if (shouldSkipTrigger('sendWelcomeNotification')) return null;
+
     const user = snap.data();
     
     // Don't send if it's a new signup from existing user
@@ -253,6 +271,8 @@ exports.sendWelcomeNotification = functions.firestore
 exports.sendFeedbackPushToDeveloper = functions.firestore
   .document('feedback/{feedbackId}')
   .onCreate(async (snap, context) => {
+    if (shouldSkipTrigger('sendFeedbackPushToDeveloper')) return null;
+
     const feedback = snap.data() || {};
     const supportUid = feedback.assignedToUid || 'LpSqE40IZGeAGMknTAEzysqp5l33';
 
@@ -373,31 +393,58 @@ function isValidChatSessionSchema(session) {
 exports.validateCanonicalGroupWrite = functions.firestore
   .document('groups/{groupId}')
   .onWrite(async (change, context) => {
+    if (shouldSkipTrigger('validateCanonicalGroupWrite')) return null;
     if (!change.after.exists) return null;
 
+    const before = change.before.exists ? (change.before.data() || {}) : null;
     const data = change.after.data() || {};
-    if (isValidCanonicalGroup(data)) return null;
+
+    // Valid schema: clear stale invalid flags exactly once (idempotent), then stop.
+    if (isValidCanonicalGroup(data)) {
+      if (data.invalidSchema === true) {
+        await change.after.ref.set({
+          invalidSchema: admin.firestore.FieldValue.delete(),
+          invalidSchemaReason: admin.firestore.FieldValue.delete(),
+          invalidSchemaDetectedAt: admin.firestore.FieldValue.delete(),
+          validationVersion: admin.firestore.FieldValue.delete()
+        }, { merge: true });
+      }
+      return null;
+    }
+
+    // Guard against recursive self-triggering writes:
+    // if already flagged invalid, do not write back again.
+    if (data.invalidSchema === true) {
+      return null;
+    }
 
     const now = Date.now();
+    const reason = 'Missing/invalid canonical group fields';
+
     console.error('Invalid group schema detected', {
       groupId: context.params.groupId,
       ownerId: data.ownerId,
-      schemaVersion: data.schemaVersion
+      schemaVersion: data.schemaVersion,
+      hadInvalidFlagBefore: before?.invalidSchema === true
     });
 
+    // Single merge write to source doc; will retrigger once, then short-circuit via guard above.
     await change.after.ref.set({
       invalidSchema: true,
-      invalidSchemaReason: 'Missing/invalid canonical group fields',
+      invalidSchemaReason: reason,
       invalidSchemaDetectedAt: now,
       validationVersion: 1
     }, { merge: true });
 
-    await admin.firestore().collection('schemaValidationErrors').add({
+    // Deterministic error doc id to avoid unbounded add() growth.
+    await admin.firestore().collection('schemaValidationErrors').doc(`groups_${context.params.groupId}`).set({
       entity: 'groups',
       entityId: context.params.groupId,
       detectedAt: now,
-      reason: 'Missing/invalid canonical group fields'
-    });
+      reason,
+      occurrences: admin.firestore.FieldValue.increment(1),
+      lastSeenAt: now
+    }, { merge: true });
 
     return null;
   });
@@ -409,30 +456,57 @@ exports.validateCanonicalGroupWrite = functions.firestore
 exports.validateChatSessionSchema = functions.firestore
   .document('chatSessions/{chatId}')
   .onWrite(async (change, context) => {
+    if (shouldSkipTrigger('validateChatSessionSchema')) return null;
     if (!change.after.exists) return null;
 
+    const before = change.before.exists ? (change.before.data() || {}) : null;
     const data = change.after.data() || {};
-    if (isValidChatSessionSchema(data)) return null;
+
+    // Valid schema: clear stale invalid flags exactly once (idempotent), then stop.
+    if (isValidChatSessionSchema(data)) {
+      if (data.invalidSchema === true) {
+        await change.after.ref.set({
+          invalidSchema: admin.firestore.FieldValue.delete(),
+          invalidSchemaReason: admin.firestore.FieldValue.delete(),
+          invalidSchemaDetectedAt: admin.firestore.FieldValue.delete(),
+          validationVersion: admin.firestore.FieldValue.delete()
+        }, { merge: true });
+      }
+      return null;
+    }
+
+    // Guard against recursive self-triggering writes:
+    // if already flagged invalid, do not write back again.
+    if (data.invalidSchema === true) {
+      return null;
+    }
 
     const now = Date.now();
+    const reason = 'Invalid unreadCount map or legacy unreadCount_<uid> keys present';
+
     console.error('Invalid chat session schema detected', {
       chatId: context.params.chatId,
-      participantsCount: Array.isArray(data.participants) ? data.participants.length : 0
+      participantsCount: Array.isArray(data.participants) ? data.participants.length : 0,
+      hadInvalidFlagBefore: before?.invalidSchema === true
     });
 
+    // Single merge write to source doc; will retrigger once, then short-circuit via guard above.
     await change.after.ref.set({
       invalidSchema: true,
-      invalidSchemaReason: 'Invalid unreadCount map or legacy unreadCount_<uid> keys present',
+      invalidSchemaReason: reason,
       invalidSchemaDetectedAt: now,
       validationVersion: 1
     }, { merge: true });
 
-    await admin.firestore().collection('schemaValidationErrors').add({
+    // Deterministic error doc id to avoid unbounded add() growth.
+    await admin.firestore().collection('schemaValidationErrors').doc(`chatSessions_${context.params.chatId}`).set({
       entity: 'chatSessions',
       entityId: context.params.chatId,
       detectedAt: now,
-      reason: 'Invalid unreadCount map or legacy unreadCount_<uid> keys present'
-    });
+      reason,
+      occurrences: admin.firestore.FieldValue.increment(1),
+      lastSeenAt: now
+    }, { merge: true });
 
     return null;
   });
