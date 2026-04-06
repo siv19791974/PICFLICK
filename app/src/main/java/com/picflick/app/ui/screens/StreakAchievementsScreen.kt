@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
@@ -48,9 +49,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.google.firebase.firestore.FieldPath
+import com.picflick.app.ui.theme.isDarkModeBackground
 import com.google.firebase.firestore.FirebaseFirestore
 import com.picflick.app.data.Flick
 import com.picflick.app.ui.theme.ThemeManager
@@ -129,10 +132,12 @@ fun StreakAchievementsScreen(
     val taggedPostsCount = remember(photos) { photos.count { it.taggedFriends.isNotEmpty() } }
     val totalPosts = remember(photos) { photos.size }
 
-    val bgColor = if (isDarkMode) Color(0xFF0E1118) else Color(0xFFE9F4FF)
-    val cardColor = if (isDarkMode) Color(0xFF171B26) else Color.White
-    val textPrimary = if (isDarkMode) Color(0xFFF5F8FF) else Color(0xFF0F172A)
-    val textSecondary = if (isDarkMode) Color(0xFFB8C1D9) else Color(0xFF475569)
+    val bgColor = isDarkModeBackground(isDarkMode)
+    val cardColor = if (isDarkMode) Color(0xFF1A1A1A) else Color.White
+    val textPrimary = if (isDarkMode) Color.White else Color.Black
+    val textSecondary = if (isDarkMode) Color(0xFFB0B0B0) else Color(0xFF4B5563)
+    val accentBlue = Color(0xFF2A4A73)
+    val tabStripBlue = Color(0xFF3F6696)
 
     val categories = remember(
         currentStreak,
@@ -209,33 +214,45 @@ fun StreakAchievementsScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(bgColor)
-            .padding(horizontal = 14.dp, vertical = 12.dp)
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(48.dp)
+                .background(Color.Black),
+            contentAlignment = Alignment.CenterStart
         ) {
-            IconButton(onClick = onBack) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = "Back",
-                    tint = textPrimary
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                IconButton(onClick = onBack, modifier = Modifier.size(48.dp)) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = "Back",
+                        tint = Color.White
+                    )
+                }
+                Text(
+                    text = "Streak Achievements",
+                    modifier = Modifier.weight(1f),
+                    color = Color.White,
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.Bold,
+                    textAlign = TextAlign.Center
                 )
+                Spacer(modifier = Modifier.size(48.dp))
             }
-            Text(
-                text = "Streak Achievements",
-                color = textPrimary,
-                fontSize = 24.sp,
-                fontWeight = FontWeight.ExtraBold
-            )
         }
 
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(10.dp))
 
         Card(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp),
             colors = CardDefaults.cardColors(containerColor = cardColor),
-            shape = RoundedCornerShape(18.dp)
+            shape = RoundedCornerShape(16.dp)
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
                 Text(
@@ -271,8 +288,8 @@ fun StreakAchievementsScreen(
                         .fillMaxWidth()
                         .height(8.dp)
                         .clip(RoundedCornerShape(100)),
-                    color = if (isDarkMode) Color(0xFF67B6FF) else Color(0xFF3182F6),
-                    trackColor = if (isDarkMode) Color(0xFF243049) else Color(0xFFD9E6FF)
+                    color = accentBlue,
+                    trackColor = if (isDarkMode) Color(0xFF2A2A2A) else Color(0xFFDCE6F5)
                 )
             }
         }
@@ -282,8 +299,8 @@ fun StreakAchievementsScreen(
         Surface(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(48.dp),
-            color = Color.Black,
+                .height(52.dp),
+            color = tabStripBlue,
             shape = RectangleShape
         ) {
             Row(
@@ -300,15 +317,14 @@ fun StreakAchievementsScreen(
                         modifier = Modifier
                             .weight(1f)
                             .height(34.dp),
-                        shape = RoundedCornerShape(18.dp),
+                        shape = RoundedCornerShape(20.dp),
                         colors = ButtonDefaults.outlinedButtonColors(
-                            containerColor = if (selected) Color(0xFF2A4A73) else Color.Transparent,
+                            containerColor = if (selected) accentBlue else Color.Transparent,
                             contentColor = Color.White
                         ),
-                        border = ButtonDefaults.outlinedButtonBorder.copy(
-                            brush = androidx.compose.ui.graphics.SolidColor(
-                                if (selected) Color(0xFF2A4A73) else Color.White.copy(alpha = 0.35f)
-                            )
+                        border = androidx.compose.foundation.BorderStroke(
+                            1.dp,
+                            if (selected) accentBlue else Color.White.copy(alpha = 0.35f)
                         ),
                         contentPadding = PaddingValues(horizontal = 6.dp, vertical = 0.dp)
                     ) {
@@ -330,7 +346,9 @@ fun StreakAchievementsScreen(
 
         HorizontalPager(
             state = pagerState,
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 12.dp)
         ) { page ->
             Column(
                 modifier = Modifier
@@ -378,24 +396,25 @@ fun StreakAchievementsScreen(
                                 )
                             }
 
-                            Card(
-                                colors = CardDefaults.cardColors(
-                                    containerColor = if (item.unlocked) {
-                                        if (isDarkMode) Color(0xFF1E6F45) else Color(0xFFCBF6DC)
-                                    } else {
-                                        if (isDarkMode) Color(0xFF3A3F4C) else Color(0xFFE8ECF5)
-                                    }
+                            OutlinedButton(
+                                onClick = {},
+                                enabled = false,
+                                shape = RoundedCornerShape(20.dp),
+                                modifier = Modifier.wrapContentWidth(),
+                                colors = ButtonDefaults.outlinedButtonColors(
+                                    containerColor = if (item.unlocked) accentBlue else Color.Transparent,
+                                    contentColor = if (item.unlocked) Color.White else accentBlue,
+                                    disabledContainerColor = if (item.unlocked) accentBlue else Color.Transparent,
+                                    disabledContentColor = if (item.unlocked) Color.White else accentBlue
                                 ),
-                                shape = RoundedCornerShape(100)
+                                border = androidx.compose.foundation.BorderStroke(
+                                    1.dp,
+                                    if (item.unlocked) accentBlue else accentBlue
+                                )
                             ) {
                                 Text(
                                     text = if (item.unlocked) "Unlocked" else "${item.currentValue}/${item.requiredValue}",
-                                    color = if (item.unlocked) {
-                                        if (isDarkMode) Color(0xFFE4FFE6) else Color(0xFF0F5132)
-                                    } else {
-                                        if (isDarkMode) Color(0xFFF0F4FF) else Color(0xFF0A1020)
-                                    },
-                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                                    modifier = Modifier.padding(horizontal = 2.dp, vertical = 0.dp),
                                     fontSize = 12.sp,
                                     fontWeight = FontWeight.SemiBold
                                 )
@@ -442,5 +461,18 @@ private fun achievement(
         emoji = emoji,
         lightGradient = listOf(Color(0xFFE9F5FF), Color(0xFFB8DFFF)),
         darkGradient = listOf(Color(0xFF234063), Color(0xFF325C8D))
+    )
+}
+
+@Preview(showBackground = true, device = "id:pixel_5")
+@Composable
+fun StreakAchievementsScreenPreview() {
+    StreakAchievementsScreen(
+        currentStreak = 9,
+        currentUserId = "",
+        photos = emptyList(),
+        totalReactionsReceived = 47,
+        followingCount = 12,
+        onBack = {}
     )
 }
