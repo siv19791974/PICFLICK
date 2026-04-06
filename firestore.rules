@@ -96,6 +96,7 @@ service cloud.firestore {
         request.auth.uid in request.resource.data.memberIds;
 
       // Members can reorder only; owner/admin can edit canonical fields.
+      // Members can also self-exit a group (remove only themselves from membership/admin list).
       allow update: if isAuth() && (
         (
           isCanonicalGroupData(resource.data) &&
@@ -115,6 +116,19 @@ service cloud.firestore {
           request.resource.data.diff(resource.data).affectedKeys().hasOnly([
             'name', 'memberIds', 'icon', 'color', 'eventAt', 'orderIndex', 'updatedAt', 'schemaVersion'
           ])
+        ) ||
+        (
+          isCanonicalGroupData(resource.data) &&
+          isCanonicalGroupData(request.resource.data) &&
+          request.auth.uid in resource.data.memberIds &&
+          request.auth.uid != resource.data.ownerId &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['memberIds', 'adminIds', 'updatedAt']) &&
+          !(request.auth.uid in request.resource.data.memberIds) &&
+          request.resource.data.memberIds.size() == resource.data.memberIds.size() - 1 &&
+          resource.data.memberIds.hasAll(request.resource.data.memberIds) &&
+          request.resource.data.adminIds.size() <= resource.data.adminIds.size() &&
+          resource.data.adminIds.hasAll(request.resource.data.adminIds) &&
+          resource.data.ownerId in request.resource.data.memberIds
         )
       );
 

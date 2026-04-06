@@ -42,6 +42,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -594,6 +595,7 @@ fun HomeScreen(
             onInviteToGroup = { group -> inviteTargetGroup = group },
             onManageAdmins = { group -> adminTargetGroup = group },
             onDeleteGroup = { group -> viewModel.deleteFriendGroup(userProfile.uid, group.id) },
+            onExitGroup = { group -> viewModel.leaveFriendGroup(userProfile.uid, group.id) },
             onDeleteTemporaryGroup = { title ->
                 temporaryGroupExamples.remove(title)
                 val currentDeleted = prefs.getStringSet(deletedExampleGroupsKey, emptySet())?.toMutableSet() ?: mutableSetOf()
@@ -1387,6 +1389,7 @@ private fun GroupManagerSheet(
     onInviteToGroup: (FriendGroup) -> Unit,
     onManageAdmins: (FriendGroup) -> Unit,
     onDeleteGroup: (FriendGroup) -> Unit,
+    onExitGroup: (FriendGroup) -> Unit,
     onDeleteTemporaryGroup: (String) -> Unit,
     onReorderGroups: (List<String>) -> Unit
 ) {
@@ -1411,23 +1414,28 @@ private fun GroupManagerSheet(
     var confirmDeleteTempTitle by remember { mutableStateOf<String?>(null) }
 
     confirmDeleteGroup?.let { group ->
+        val isOwner = group.isOwner(currentUserId)
         AddPhotoStyleActionSheet(
-            title = "Delete album?",
+            title = if (isOwner) "Delete album?" else "Exit album?",
             options = listOf(
                 ActionSheetOption(
-                    icon = Icons.Default.Delete,
-                    title = "Delete \"${group.name}\"",
-                    subtitle = "This album will be removed from your list",
+                    icon = if (isOwner) Icons.Default.Delete else Icons.AutoMirrored.Filled.ExitToApp,
+                    title = if (isOwner) "Delete \"${group.name}\"" else "Exit \"${group.name}\"",
+                    subtitle = if (isOwner) {
+                        "This album will be permanently deleted for everyone"
+                    } else {
+                        "You will be removed from this shared album"
+                    },
                     accentColor = Color(0xFFD84343),
                     onClick = {
-                        onDeleteGroup(group)
+                        if (isOwner) onDeleteGroup(group) else onExitGroup(group)
                         confirmDeleteGroup = null
                     }
                 )
             ),
             onDismiss = { confirmDeleteGroup = null },
             cancelTitle = "Cancel",
-            cancelSubtitle = "Keep this album",
+            cancelSubtitle = if (isOwner) "Keep this album" else "Stay in this album",
             cancelIcon = Icons.Default.Close,
             cancelAccentColor = Color(0xFF4B5563)
         )
@@ -1597,7 +1605,7 @@ private fun GroupManagerSheet(
                                             )
                                         }
                                         DropdownMenuItem(
-                                            text = { Text("Edit") },
+                                            text = { Text("Album Members") },
                                             onClick = {
                                                 showGroupMenu = false
                                                 onEditGroup(group)
@@ -1605,12 +1613,18 @@ private fun GroupManagerSheet(
                                             leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null) }
                                         )
                                         DropdownMenuItem(
-                                            text = { Text("Delete") },
+                                            text = { Text(if (group.isOwner(currentUserId)) "Delete album" else "Exit album") },
                                             onClick = {
                                                 showGroupMenu = false
                                                 confirmDeleteGroup = group
                                             },
-                                            leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null, tint = Color(0xFFD84343)) }
+                                            leadingIcon = {
+                                                Icon(
+                                                    imageVector = if (group.isOwner(currentUserId)) Icons.Default.Delete else Icons.AutoMirrored.Filled.ExitToApp,
+                                                    contentDescription = null,
+                                                    tint = Color(0xFFD84343)
+                                                )
+                                            }
                                         )
                                     }
                                 }

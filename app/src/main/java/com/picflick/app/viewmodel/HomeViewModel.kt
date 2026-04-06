@@ -472,6 +472,25 @@ class HomeViewModel : ViewModel() {
         }
     }
 
+    fun leaveFriendGroup(userId: String, groupId: String) {
+        viewModelScope.launch {
+            when (val result = repository.leaveFriendGroup(userId, groupId)) {
+                is Result.Success -> {
+                    friendGroups.removeAll { it.id == groupId }
+                    if (selectedFilter is FeedFilter.ByGroup &&
+                        (selectedFilter as FeedFilter.ByGroup).group.id == groupId) {
+                        selectedFilter = FeedFilter.AllFriends
+                        loadFlicks()
+                    }
+                }
+                is Result.Error -> {
+                    errorMessage = result.message
+                }
+                is Result.Loading -> Unit
+            }
+        }
+    }
+
     /**
      * Load explore flicks (all public/friends photos for discovery)
      */

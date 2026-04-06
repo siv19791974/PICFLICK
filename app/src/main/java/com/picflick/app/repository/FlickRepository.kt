@@ -3215,6 +3215,44 @@ android.util.Log.e("FlickRepository", "Failed to submit feedback", e)
         }
     }
 
+    suspend fun leaveFriendGroup(userId: String, groupId: String): Result<Unit> {
+        return try {
+            val groupRef = db.collection("groups").document(groupId)
+            val sharedDoc = groupRef.get().await()
+
+            if (!sharedDoc.exists()) {
+                return Result.Error(Exception("Group not found"), "Group not found")
+            }
+
+            val group = sharedDoc.toNormalizedFriendGroup()
+                ?: return Result.Error(Exception("Group not found"), "Group not found")
+
+            if (!group.isMember(userId)) {
+                return Result.Error(Exception("Permission denied"), "You are not a member of this group")
+            }
+
+            if (group.isOwner(userId)) {
+                return Result.Error(Exception("Permission denied"), "Owner cannot exit this album. Delete it instead.")
+            }
+
+            groupRef.update(
+                mapOf(
+                    "memberIds" to FieldValue.arrayRemove(userId),
+                    "adminIds" to FieldValue.arrayRemove(userId),
+                    "updatedAt" to System.currentTimeMillis()
+                )
+            ).await()
+
+            runCatching {
+                groupRef.collection("members").document(userId).delete().await()
+            }
+
+            Result.Success(Unit)
+        } catch (e: Exception) {
+            Result.Error(e, "Failed to leave friend group")
+        }
+    }
+
     /**
      * Invite friend to group (admin only).
      */

@@ -545,11 +545,11 @@ class ChatViewModel : ViewModel() {
     }
 
     /**
-     * Delete one chat session.
+     * Delete one chat session for current user only (local hide).
      */
-    fun deleteChat(chatId: String) {
+    fun deleteChat(chatId: String, currentUserId: String) {
         viewModelScope.launch {
-            when (val result = repository.deleteChatSession(chatId)) {
+            when (val result = repository.deleteChatSession(chatId, currentUserId)) {
                 is Result.Success -> Unit
                 is Result.Error -> errorMessage = "Failed to delete chat: ${result.message}"
                 is Result.Loading -> Unit
@@ -565,7 +565,7 @@ class ChatViewModel : ViewModel() {
             when (val result = repository.blockAndReportUser(currentUserId, targetUserId)) {
                 is Result.Success -> {
                     if (!chatId.isNullOrBlank()) {
-                        repository.deleteChatSession(chatId)
+                        repository.deleteChatSession(chatId, currentUserId)
                     }
                 }
                 is Result.Error -> errorMessage = "Failed to block user: ${result.message}"
