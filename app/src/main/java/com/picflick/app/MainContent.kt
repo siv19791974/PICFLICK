@@ -1340,9 +1340,15 @@ private fun FilterScreenContent(
             photoUri = uri,
             currentUser = userProfile,
             friends = friendsViewModel.followingUsers,
+            albumGroups = homeViewModel.friendGroups,
+            initialSharedGroupId = if (homeViewModel.selectedFilter is com.picflick.app.data.FeedFilter.ByGroup) {
+                (homeViewModel.selectedFilter as com.picflick.app.data.FeedFilter.ByGroup).group.id
+            } else {
+                ""
+            },
             dailyUploadCount = uploadViewModel.dailyUploadCount,
             onBack = { onScreenChange(Screen.Home) },
-            onUpload = { filteredUri, filter, taggedFriends, description ->
+            onUpload = { filteredUri, filter, taggedFriends, description, sharedGroupId ->
                 uploadViewModel.uploadPhoto(
                     context = context,
                     photoUri = filteredUri,
@@ -1360,11 +1366,7 @@ private fun FilterScreenContent(
                             homeViewModel.removeOptimisticFlick(flickId)
                         }
                     },
-                    sharedGroupId = if (homeViewModel.selectedFilter is com.picflick.app.data.FeedFilter.ByGroup) {
-                        (homeViewModel.selectedFilter as com.picflick.app.data.FeedFilter.ByGroup).group.id
-                    } else {
-                        ""
-                    }
+                    sharedGroupId = sharedGroupId
                 )
             },
             onUploadQueued = { onScreenChange(Screen.Home) },

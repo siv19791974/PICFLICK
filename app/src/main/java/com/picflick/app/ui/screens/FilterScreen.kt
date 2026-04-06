@@ -21,6 +21,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material3.*
@@ -51,6 +52,7 @@ import com.canhub.cropper.CropImageContractOptions
 import com.canhub.cropper.CropImageOptions
 import com.canhub.cropper.CropImageView
 import com.picflick.app.R
+import com.picflick.app.data.FriendGroup
 import com.picflick.app.data.PhotoFilter
 import com.picflick.app.data.UserProfile
 import com.picflick.app.data.getDailyUploadLimit
@@ -72,9 +74,11 @@ fun FilterScreen(
     photoUri: Uri,
     currentUser: UserProfile,
     friends: List<UserProfile>,
+    albumGroups: List<FriendGroup> = emptyList(),
+    initialSharedGroupId: String = "",
     dailyUploadCount: Int,
     onBack: () -> Unit,
-    onUpload: (Uri, PhotoFilter, List<String>, String) -> Unit,
+    onUpload: (Uri, PhotoFilter, List<String>, String, String) -> Unit,
     onUploadQueued: () -> Unit = {},
     onNavigateToFindFriends: () -> Unit = {},
     onNavigateToCamera: () -> Unit = {}
@@ -97,6 +101,13 @@ fun FilterScreen(
     // Description/caption state
     var description by remember { mutableStateOf("") }
     var showDescriptionSheet by remember { mutableStateOf(false) }
+
+    // Optional target album sharing state
+    val selectableAlbumGroups = remember(albumGroups) { albumGroups.filter { it.id.isNotBlank() } }
+    var selectedSharedGroupId by remember(initialSharedGroupId, selectableAlbumGroups) {
+        mutableStateOf(initialSharedGroupId.takeIf { id -> id.isNotBlank() && selectableAlbumGroups.any { it.id == id } } ?: "")
+    }
+    var showAlbumPicker by remember { mutableStateOf(false) }
 
     // Upload/crop loading state
     var isUploading by remember { mutableStateOf(false) }
@@ -212,7 +223,7 @@ fun FilterScreen(
             scope.launch {
                 try {
                     val filteredUri = applyFilterAndSave(context, bitmap!!, selectedFilter, imageQuality)
-                    onUpload(filteredUri, selectedFilter, taggedFriends.map { it.uid }, description.trim())
+                    onUpload(filteredUri, selectedFilter, taggedFriends.map { it.uid }, description.trim(), selectedSharedGroupId)
                     withContext(Dispatchers.Main) {
                         // Small hold so user sees handoff before leaving screen.
                         delay(900)
@@ -554,6 +565,33 @@ fun FilterScreen(
                                         maxLines = 1
                                     )
                                 }
+
+                                TextButton(
+                                    onClick = { showAlbumPicker = true },
+                                    enabled = selectableAlbumGroups.isNotEmpty(),
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .defaultMinSize(minHeight = 52.dp)
+                                        .clip(RoundedCornerShape(12.dp))
+                                        .background(filterActionButtonBg)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Groups,
+                                        contentDescription = null,
+                                        tint = filterActionButtonFg
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        text = if (selectedSharedGroupId.isBlank()) {
+                                            if (selectableAlbumGroups.isEmpty()) "No albums available" else "Share to Album"
+                                        } else {
+                                            "Album: " + (selectableAlbumGroups.firstOrNull { it.id == selectedSharedGroupId }?.name ?: "Selected")
+                                        },
+                                        color = filterActionButtonFg,
+                                        fontWeight = FontWeight.SemiBold,
+                                        maxLines = 1
+                                    )
+                                }
                             }
                             
                             // Upload limit warning
@@ -625,6 +663,57 @@ fun FilterScreen(
             },
             onNavigateToFindFriends = onNavigateToFindFriends
         )
+    }
+
+    if (showAlbumPicker) {
+        ModalBottomSheet(
+            onDismissRequest = { showAlbumPicker = false },
+            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+            containerColor = if (isDarkMode) Color(0xFF1C1C1E) else PicFlickLightBackground,
+            contentColor = if (isDarkMode) Color.White else Color.Black
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 20.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Text(
+                    text = "Share to Album",
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold
+                )
+
+                OutlinedButton(
+                    onClick = {
+                        selectedSharedGroupId = ""
+                        showAlbumPicker = false
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text("No album target")
+                }
+
+                selectableAlbumGroups.forEach { group ->
+                    val isSelected = selectedSharedGroupId == group.id
+                    Button(
+                        onClick = {
+                            selectedSharedGroupId = group.id
+                            showAlbumPicker = false
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (isSelected) Color(0xFF1565C0) else Color(0xFFB7D8F2),
+                            contentColor = if (isSelected) Color.White else Color.Black
+                        )
+                    ) {
+                        Text(group.name.ifBlank { "Album" })
+                    }
+                }
+            }
+        }
     }
 }
 
