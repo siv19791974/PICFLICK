@@ -139,45 +139,22 @@ fun ChatsScreen(
         selectedSession?.participants?.firstOrNull { it != userProfile.uid }
     }
 
-    val inboxChatSessions = remember(viewModel.chatSessions, friendGroups, userProfile.uid) {
+    val inboxChatSessions = remember(viewModel.chatSessions, userProfile.uid) {
         fun ChatSession.isGroupLike(): Boolean = isGroup || groupId.isNotBlank() || id.startsWith("group_")
 
-        val normalizedSessions = viewModel.chatSessions.map { session ->
-            if (session.isGroupLike()) {
-                session.copy(
-                    isGroup = true,
-                    groupId = session.groupId.ifBlank { session.id.removePrefix("group_") },
-                    groupName = session.groupName.ifBlank { "Group" },
-                    groupIcon = session.groupIcon.ifBlank { "👥" }
-                )
-            } else {
-                session
+        viewModel.chatSessions
+            .map { session ->
+                if (session.isGroupLike()) {
+                    session.copy(
+                        isGroup = true,
+                        groupId = session.groupId.ifBlank { session.id.removePrefix("group_") },
+                        groupName = session.groupName.ifBlank { "Group" },
+                        groupIcon = session.groupIcon.ifBlank { "👥" }
+                    )
+                } else {
+                    session
+                }
             }
-        }
-
-        val existingGroupSessionsByGroupId = normalizedSessions
-            .filter { it.isGroup }
-            .associateBy { session ->
-                session.groupId.ifBlank { session.id.removePrefix("group_") }
-            }
-
-        val seededGroupSessions = friendGroups.map { group ->
-            existingGroupSessionsByGroupId[group.id] ?: ChatSession(
-                id = "group_${group.id}",
-                participants = group.effectiveMemberIds().ifEmpty { listOf(userProfile.uid) },
-                participantNames = mapOf(userProfile.uid to userProfile.displayName),
-                participantPhotos = mapOf(userProfile.uid to userProfile.photoUrl),
-                lastMessage = "",
-                lastTimestamp = 0L,
-                unreadCount = 0,
-                isGroup = true,
-                groupId = group.id,
-                groupName = group.name,
-                groupIcon = group.icon
-            )
-        }
-
-        (normalizedSessions + seededGroupSessions)
             .distinctBy { it.id }
             .sortedWith(
                 compareByDescending<ChatSession> { it.lastTimestamp }
@@ -588,29 +565,69 @@ fun ChatsScreen(
     }
 
     if (showDeleteConfirm) {
-        AlertDialog(
+        Dialog(
             onDismissRequest = { showDeleteConfirm = false },
-            title = { Text("Delete conversation(s)?") },
-            text = { Text("This action cannot be undone.") },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        selectedChatIds.toList().forEach { chatId ->
-                            viewModel.deleteChat(chatId)
-                        }
-                        selectedChatIds.clear()
-                        showDeleteConfirm = false
-                    }
+            properties = DialogProperties(usePlatformDefaultWidth = false)
+        ) {
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 22.dp),
+                shape = RoundedCornerShape(24.dp),
+                tonalElevation = 10.dp,
+                shadowElevation = 18.dp,
+                color = if (isDarkMode) Color(0xFF151922) else Color.White
+            ) {
+                Column(
+                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 18.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Text("Delete", color = Color.Red)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showDeleteConfirm = false }) {
-                    Text("Cancel")
+                    Text(
+                        text = if (selectedChatIds.size <= 1) "Delete conversation?" else "Delete conversations?",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = if (isDarkMode) Color.White else Color.Black
+                    )
+                    Text(
+                        text = if (selectedChatIds.size <= 1) {
+                            "This will remove this conversation from your inbox only. Other participants will still see it."
+                        } else {
+                            "This will remove the selected conversations from your inbox only. Other participants will still see them."
+                        },
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = if (isDarkMode) Color(0xFFBFC7D9) else Color(0xFF475569)
+                    )
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.End,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        TextButton(onClick = { showDeleteConfirm = false }) {
+                            Text("Cancel")
+                        }
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Button(
+                            onClick = {
+                                selectedChatIds.toList().forEach { chatId ->
+                                    viewModel.deleteChat(chatId, userProfile.uid)
+                                }
+                                selectedChatIds.clear()
+                                showDeleteConfirm = false
+                                Toast.makeText(context, "Conversation removed from your inbox", Toast.LENGTH_SHORT).show()
+                            },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color(0xFF2A4A73),
+                                contentColor = Color.White
+                            ),
+                            shape = RoundedCornerShape(14.dp)
+                        ) {
+                            Text("Delete")
+                        }
+                    }
                 }
             }
-        )
+        }
     }
 
     if (showBlockConfirm) {

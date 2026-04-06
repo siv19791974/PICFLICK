@@ -81,7 +81,7 @@ fun AboutScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding),
-            contentPadding = PaddingValues(start = 16.dp, top = 8.dp, end = 16.dp, bottom = 0.dp),
+            contentPadding = PaddingValues(start = 16.dp, top = 8.dp, end = 16.dp, bottom = 110.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             // Version Header
@@ -188,9 +188,9 @@ fun AboutScreen(
                 }
             }
 
-            // Push bottom card lower (locked)
+            // Keep a balanced gap before footer card across devices
             item {
-                Spacer(modifier = Modifier.height(48.dp))
+                Spacer(modifier = Modifier.height(20.dp))
             }
 
             // Made With Love
@@ -226,7 +226,7 @@ fun AboutScreen(
             }
 
             item {
-                Spacer(modifier = Modifier.height(18.dp))
+                Spacer(modifier = Modifier.height(8.dp))
             }
         }
     }

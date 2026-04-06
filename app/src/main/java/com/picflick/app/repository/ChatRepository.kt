@@ -87,6 +87,10 @@ class ChatRepository {
                 }
                 launch {
                     val rawSessions = snapshot?.documents?.mapNotNull { doc ->
+                        val deletedFor = (doc.get("deletedForUserIds") as? List<*>)
+                            ?.filterIsInstance<String>()
+                            ?: emptyList()
+                        if (deletedFor.contains(userId)) return@mapNotNull null
                         runCatching { doc.toChatSessionSafe(userId) }.getOrNull()
                     } ?: emptyList()
 
@@ -781,23 +785,15 @@ class ChatRepository {
     }
 
     /**
-     * Delete a chat session and all its messages.
+     * Delete chat for current user only (hide conversation locally).
+     * This is safe for both direct and group chats and avoids permission issues from hard delete.
      */
-    suspend fun deleteChatSession(chatId: String): Result<Unit> {
+    suspend fun deleteChatSession(chatId: String, userId: String): Result<Unit> {
         return try {
-            val messages = db.collection("chatSessions")
+            db.collection("chatSessions")
                 .document(chatId)
-                .collection("messages")
-                .get()
+                .update("deletedForUserIds", FieldValue.arrayUnion(userId))
                 .await()
-
-            if (!messages.isEmpty) {
-                val batch = db.batch()
-                messages.documents.forEach { batch.delete(it.reference) }
-                batch.commit().await()
-            }
-
-            db.collection("chatSessions").document(chatId).delete().await()
             Result.Success(Unit)
         } catch (e: Exception) {
             Result.Error(e, e.message ?: "Failed to delete chat")

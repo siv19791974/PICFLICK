@@ -530,7 +530,12 @@ fun ChatDetailScreen(
                                     HorizontalDivider()
 
                                     DropdownMenuItem(
-                                        text = { Text("Clear chat", color = Color.Red) },
+                                        text = {
+                                            Text(
+                                                if (isGroupChat) "Exit group conversation" else "Delete conversation",
+                                                color = Color.Red
+                                            )
+                                        },
                                         onClick = {
                                             showHeaderMenu = false
                                             showClearChatConfirm = true
@@ -1132,23 +1137,70 @@ AlertDialog(
     }
 
     if (showClearChatConfirm) {
-        AlertDialog(
+        Dialog(
             onDismissRequest = { showClearChatConfirm = false },
-            title = { Text("Clear chat?") },
-            text = { Text("This will delete the full conversation for you.") },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        showClearChatConfirm = false
-                        viewModel.deleteChat(chatId)
-                        onBack()
+            properties = DialogProperties(usePlatformDefaultWidth = false)
+        ) {
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 22.dp),
+                shape = RoundedCornerShape(24.dp),
+                tonalElevation = 10.dp,
+                shadowElevation = 18.dp,
+                color = if (isDarkMode) Color(0xFF151922) else Color.White
+            ) {
+                Column(
+                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 18.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Text(
+                        text = if (isGroupChat) "Exit group conversation?" else "Delete conversation?",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = if (isDarkMode) Color.White else Color.Black
+                    )
+                    Text(
+                        text = if (isGroupChat) {
+                            "This removes this group conversation from your inbox only. Other members will still see it."
+                        } else {
+                            "This removes this conversation from your inbox only. Other participants will still see it."
+                        },
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = if (isDarkMode) Color(0xFFBFC7D9) else Color(0xFF475569)
+                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.End,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        TextButton(onClick = { showClearChatConfirm = false }) {
+                            Text("Cancel")
+                        }
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Button(
+                            onClick = {
+                                showClearChatConfirm = false
+                                viewModel.deleteChat(chatId, currentUser.uid)
+                                Toast.makeText(
+                                    context,
+                                    if (isGroupChat) "Group conversation removed from your inbox" else "Conversation removed from your inbox",
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                                onBack()
+                            },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color(0xFF2A4A73),
+                                contentColor = Color.White
+                            ),
+                            shape = RoundedCornerShape(14.dp)
+                        ) {
+                            Text("Delete")
+                        }
                     }
-                ) { Text("Clear", color = Color.Red) }
-            },
-            dismissButton = {
-                TextButton(onClick = { showClearChatConfirm = false }) { Text("Cancel") }
+                }
             }
-        )
+        }
     }
 
     if (showBlockUserConfirm) {
