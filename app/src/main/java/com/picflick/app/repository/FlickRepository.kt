@@ -401,10 +401,23 @@ class FlickRepository private constructor() {
             val blockedUserIds = userProfile?.blockedUsers ?: emptyList()
 
             // Merge, remove duplicates, filter muted/blocked users, and sort by timestamp DESC (client-side sorting)
+            val visibleAlbumTargetGroupIds = runCatching {
+                val groupsSnapshot = db.collection("groups")
+                    .whereArrayContains("memberIds", userId)
+                    .get()
+                    .await()
+                groupsSnapshot.documents.map { it.id }.toSet()
+            }.getOrElse { emptySet() }
+
             var allFlicks = (ownFlicks + friendsFlicks)
                 .distinctBy { it.id }
                 .filterNot { flick ->
                     flick.userId != userId && (activeMutedUserIds.contains(flick.userId) || blockedUserIds.contains(flick.userId))
+                }
+                .filter { flick ->
+                    flick.sharedGroupId.isBlank() ||
+                        flick.userId == userId ||
+                        visibleAlbumTargetGroupIds.contains(flick.sharedGroupId)
                 }
                 .sortedByDescending { it.timestamp }
             
@@ -3691,7 +3704,10 @@ android.util.Log.e("FlickRepository", "Failed to submit feedback", e)
                 .get()
                 .addOnSuccessListener { snapshot ->
                     val flicks = snapshot.toObjects(Flick::class.java)
-                        .filter { it.privacy == "public" || it.privacy == "friends" }
+                        .filter {
+                            (it.privacy == "public" || it.privacy == "friends") &&
+                                (it.sharedGroupId.isBlank() || it.sharedGroupId == groupId)
+                        }
                         .sortedByDescending { it.timestamp }
                         .take(Constants.Pagination.FLICKS_PER_PAGE)
                     onResult(Result.Success(flicks))

@@ -180,6 +180,7 @@ class UploadViewModel : ViewModel() {
         @Suppress("UNUSED_PARAMETER") filter: PhotoFilter,
         taggedFriends: List<String> = emptyList(),
         description: String = "",
+        sharedGroupId: String = "",
         onOptimisticAdd: ((Flick) -> Unit)? = null,
         onOptimisticRemove: ((String, Boolean) -> Unit)? = null
     ) {
@@ -220,6 +221,7 @@ class UploadViewModel : ViewModel() {
                     reactions = emptyMap(),
                     commentCount = 0,
                     privacy = "friends",
+                    sharedGroupId = sharedGroupId,
                     taggedFriends = taggedFriends,
                     clientUploadId = clientUploadId
                 )
@@ -241,6 +243,7 @@ class UploadViewModel : ViewModel() {
                     reactions = emptyMap(),
                     commentCount = 0,
                     privacy = "friends",
+                    sharedGroupId = sharedGroupId,
                     taggedFriends = taggedFriends,
                     imageSizeBytes = uploadedBytes,
                     clientUploadId = clientUploadId
@@ -263,7 +266,7 @@ class UploadViewModel : ViewModel() {
 
                 onOptimisticRemove?.invoke(optimisticFlickId, true)
                 uploadSuccess = true
-                Analytics.trackPhotoUploaded(source = "single", privacy = "friends")
+                Analytics.trackPhotoUploaded(source = "single", privacy = if (sharedGroupId.isBlank()) "friends" else "album")
 
             } catch (e: Exception) {
                 optimisticFlickId?.let { onOptimisticRemove?.invoke(it, false) }
@@ -305,6 +308,7 @@ class UploadViewModel : ViewModel() {
         context: Context,
         photoUris: List<Uri>,
         userProfile: UserProfile,
+        sharedGroupId: String = "",
         onOptimisticAdd: ((Flick) -> Unit)? = null,
         onOptimisticRemove: ((String, Boolean) -> Unit)? = null,
         onBatchSuccess: (() -> Unit)? = null
@@ -356,6 +360,7 @@ class UploadViewModel : ViewModel() {
                         reactions = emptyMap(),
                         commentCount = 0,
                         privacy = "friends",
+                        sharedGroupId = sharedGroupId,
                         taggedFriends = emptyList(),
                         clientUploadId = clientUploadId
                     )
@@ -374,6 +379,7 @@ class UploadViewModel : ViewModel() {
                         reactions = emptyMap(),
                         commentCount = 0,
                         privacy = "friends",
+                        sharedGroupId = sharedGroupId,
                         taggedFriends = emptyList(),
                         imageSizeBytes = uploadedBytes,
                         clientUploadId = clientUploadId
@@ -402,7 +408,7 @@ class UploadViewModel : ViewModel() {
 
             if (successCount > 0) {
                 uploadSuccess = true
-                Analytics.trackPhotoUploaded(source = "batch", privacy = "friends")
+                Analytics.trackPhotoUploaded(source = "batch", privacy = if (sharedGroupId.isBlank()) "friends" else "album")
                 onBatchSuccess?.invoke()
             }
             if (failCount > 0) {

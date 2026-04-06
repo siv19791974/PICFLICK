@@ -1109,31 +1109,76 @@ Column(modifier = Modifier.fillMaxSize()) {
     }
 
     if (showDeleteSelectedConfirm) {
-AlertDialog(
+        Dialog(
             onDismissRequest = { showDeleteSelectedConfirm = false },
-            title = { Text("Delete selected messages?") },
-            text = { Text(deleteDialogText) },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        showDeleteSelectedConfirm = false
-                        viewModel.deleteSelectedMessages(
-                            chatId = chatId,
-                            messageIds = selectedMessageIds.toSet(),
-                            currentUserId = currentUser.uid
-                        ) { success ->
-                            if (success) {
-                                selectedMessageIds.clear()
-                                isSelectionMode = false
-                            }
+            properties = DialogProperties(usePlatformDefaultWidth = false)
+        ) {
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 22.dp),
+                shape = RoundedCornerShape(24.dp),
+                tonalElevation = 10.dp,
+                shadowElevation = 18.dp,
+                color = if (isDarkMode) Color(0xFF151922) else Color.White
+            ) {
+                Column(
+                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 18.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Text(
+                        text = "Delete selected messages?",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = if (isDarkMode) Color.White else Color(0xFF111827)
+                    )
+
+                    Text(
+                        text = deleteDialogText,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = if (isDarkMode) Color(0xFFBFC7D5) else Color(0xFF4B5563),
+                        lineHeight = 20.sp
+                    )
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.End,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        TextButton(onClick = { showDeleteSelectedConfirm = false }) {
+                            Text(
+                                "Cancel",
+                                color = if (isDarkMode) Color(0xFF9FB0C8) else Color(0xFF64748B),
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Button(
+                            onClick = {
+                                showDeleteSelectedConfirm = false
+                                viewModel.deleteSelectedMessages(
+                                    chatId = chatId,
+                                    messageIds = selectedMessageIds.toSet(),
+                                    currentUserId = currentUser.uid
+                                ) { success ->
+                                    if (success) {
+                                        selectedMessageIds.clear()
+                                        isSelectionMode = false
+                                    }
+                                }
+                            },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color(0xFFDC2626),
+                                contentColor = Color.White
+                            ),
+                            shape = RoundedCornerShape(14.dp)
+                        ) {
+                            Text(deleteConfirmLabel, fontWeight = FontWeight.SemiBold)
                         }
                     }
-                ) { Text(deleteConfirmLabel, color = Color.Red) }
-            },
-            dismissButton = {
-                TextButton(onClick = { showDeleteSelectedConfirm = false }) { Text("Cancel") }
+                }
             }
-        )
+        }
     }
 
     if (showClearChatConfirm) {

@@ -261,6 +261,35 @@ fun LegalScreen(
                 }
             }
 
+            // Mythic Monthly Draw Terms
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = cardBackground
+                    ),
+                    shape = RoundedCornerShape(16.dp)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(20.dp)
+                    ) {
+                        Text(
+                            text = "Mythic Monthly Draw Terms",
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = accentColor,
+                            modifier = Modifier.padding(bottom = 12.dp)
+                        )
+                        Text(
+                            text = "The Mythic Monthly Draw rewards one eligible user globally each month with a 3-month Pro upgrade. To be eligible, your active streak must be at least 100 days at the time of draw processing. No purchase is required to participate.\n\nA single winner is selected at random from eligible users each month. Eligibility, timing, and winner processing may vary by timezone, maintenance windows, or technical constraints. PicFlick may verify eligibility, prevent abuse, and disqualify users who violate platform rules.\n\nWhere required by law, local restrictions or exclusions may apply. Draw structure, rewards, and timing may be changed, paused, or discontinued at PicFlick's discretion.",
+                            fontSize = 14.sp,
+                            color = textColor,
+                            lineHeight = 22.sp
+                        )
+                    }
+                }
+            }
+
             // Account Termination
             item {
                 Card(

@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
@@ -203,12 +202,10 @@ fun StreakAchievementsScreen(
     }
 
     val pagerState = rememberPagerState(pageCount = { categories.size })
-    val allAchievements = categories.flatMap { it.achievements }
-    val unlockedCount = allAchievements.count { it.unlocked }
-    val nextLocked = allAchievements.firstOrNull { !it.unlocked }
-    val progressToNext = nextLocked?.let {
-        (it.currentValue.toFloat() / it.requiredValue.toFloat()).coerceIn(0f, 1f)
-    } ?: 1f
+    val mythicTarget = 100
+    val mythicEligible = currentStreak >= mythicTarget
+    val mythicDaysRemaining = (mythicTarget - currentStreak).coerceAtLeast(0)
+    val mythicProgress = (currentStreak.toFloat() / mythicTarget.toFloat()).coerceIn(0f, 1f)
 
     Column(
         modifier = Modifier
@@ -251,50 +248,62 @@ fun StreakAchievementsScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 12.dp),
-            colors = CardDefaults.cardColors(containerColor = cardColor),
+            colors = CardDefaults.cardColors(containerColor = if (isDarkMode) Color(0xFF1F3554) else Color(0xFFEAF2FF)),
             shape = RoundedCornerShape(16.dp)
         ) {
-            Column(modifier = Modifier.padding(16.dp)) {
+            Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp)) {
                 Text(
-                    text = "Current Streak",
-                    color = textSecondary,
-                    style = MaterialTheme.typography.bodyMedium
-                )
-                Spacer(modifier = Modifier.height(2.dp))
-                Text(
-                    text = "$currentStreak days",
-                    color = textPrimary,
-                    fontSize = 30.sp,
+                    text = "MYTHIC MONTHLY DRAW",
+                    color = if (isDarkMode) Color(0xFFFFE082) else Color(0xFF1F3E68),
+                    fontSize = 15.sp,
                     fontWeight = FontWeight.Black
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "👑 1 GLOBAL WINNER EACH MONTH · 3-MONTH PRO UPGRADE",
+                    color = if (isDarkMode) Color.White else Color(0xFF0F2744),
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    text = "$unlockedCount / ${allAchievements.size} unlocked",
-                    color = textSecondary,
-                    style = MaterialTheme.typography.labelLarge
+                    text = "QUALIFY: REACH A 100-DAY STREAK",
+                    color = textPrimary,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold
                 )
-                nextLocked?.let {
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = "Next: ${it.title} (${it.currentValue}/${it.requiredValue} ${it.unitLabel})",
-                        color = textSecondary,
-                        style = MaterialTheme.typography.bodySmall
-                    )
-                }
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = if (mythicEligible) {
+                        "STATUS: ELIGIBLE ✅ You are in this month’s draw."
+                    } else {
+                        "STATUS: $mythicDaysRemaining DAYS TO GO"
+                    },
+                    color = if (mythicEligible) Color(0xFF3CB371) else textPrimary,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Black
+                )
                 Spacer(modifier = Modifier.height(6.dp))
                 LinearProgressIndicator(
-                    progress = { progressToNext },
+                    progress = { mythicProgress },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(8.dp)
+                        .height(7.dp)
                         .clip(RoundedCornerShape(100)),
-                    color = accentBlue,
-                    trackColor = if (isDarkMode) Color(0xFF2A2A2A) else Color(0xFFDCE6F5)
+                    color = Color(0xFF4CAF50),
+                    trackColor = if (isDarkMode) Color.White.copy(alpha = 0.18f) else Color(0xFFBBD0E8)
+                )
+                Spacer(modifier = Modifier.height(3.dp))
+                Text(
+                    text = "$currentStreak / $mythicTarget days",
+                    color = textSecondary,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.SemiBold
                 )
             }
         }
 
-        Spacer(modifier = Modifier.height(10.dp))
+        Spacer(modifier = Modifier.height(8.dp))
 
         Surface(
             modifier = Modifier
@@ -387,7 +396,7 @@ fun StreakAchievementsScreen(
                                     text = item.title,
                                     color = textPrimary,
                                     fontWeight = FontWeight.Bold,
-                                    fontSize = 16.sp
+                                    fontSize = if (item.title == "3-Day Spark") 18.sp else 16.sp
                                 )
                                 Text(
                                     text = item.description,
@@ -396,27 +405,35 @@ fun StreakAchievementsScreen(
                                 )
                             }
 
-                            OutlinedButton(
-                                onClick = {},
-                                enabled = false,
-                                shape = RoundedCornerShape(20.dp),
-                                modifier = Modifier.wrapContentWidth(),
-                                colors = ButtonDefaults.outlinedButtonColors(
-                                    containerColor = if (item.unlocked) accentBlue else Color.Transparent,
-                                    contentColor = if (item.unlocked) Color.White else accentBlue,
-                                    disabledContainerColor = if (item.unlocked) accentBlue else Color.Transparent,
-                                    disabledContentColor = if (item.unlocked) Color.White else accentBlue
-                                ),
-                                border = androidx.compose.foundation.BorderStroke(
-                                    1.dp,
-                                    if (item.unlocked) accentBlue else accentBlue
-                                )
+                            val itemProgress = (item.currentValue.toFloat() / item.requiredValue.toFloat()).coerceIn(0f, 1f)
+                            Box(
+                                modifier = Modifier
+                                    .width(116.dp)
+                                    .height(42.dp)
+                                    .clip(RoundedCornerShape(21.dp))
+                                    .background(Color(0x334CAF50))
+                                    .padding(horizontal = 10.dp, vertical = 8.dp),
+                                contentAlignment = Alignment.Center
                             ) {
+                                LinearProgressIndicator(
+                                    progress = { itemProgress },
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(6.dp)
+                                        .clip(RoundedCornerShape(100)),
+                                    color = Color(0xFF4CAF50),
+                                    trackColor = Color(0x1A4CAF50)
+                                )
                                 Text(
-                                    text = if (item.unlocked) "Complete" else "${item.currentValue}/${item.requiredValue}",
-                                    modifier = Modifier.padding(horizontal = 2.dp, vertical = 0.dp),
+                                    text = when {
+                                        item.title == "100-Day Mythic" && item.unlocked -> "MYTHIC"
+                                        item.unlocked -> "Complete"
+                                        else -> "${item.currentValue}/${item.requiredValue}"
+                                    },
+                                    color = if (item.unlocked) Color(0xFF1B5E20) else Color(0xFF234A75),
                                     fontSize = 12.sp,
-                                    fontWeight = FontWeight.SemiBold
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.align(Alignment.Center)
                                 )
                             }
                         }
