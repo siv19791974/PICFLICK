@@ -169,7 +169,7 @@ fun StreakAchievementsScreen(
                     achievement("3-Day Spark", "Upload 3 days in a row", 3, currentStreak, "days", "✨"),
                     achievement("7-Day Flame", "Upload 7 days in a row", 7, currentStreak, "days", "🔥"),
                     achievement("30-Day Legend", "Upload 30 days in a row", 30, currentStreak, "days", "🏆"),
-                    achievement("100-Day Mythic", "Upload 100 days in a row", 100, currentStreak, "days", "👑")
+                    achievement("100-Day Mythic", "Upload 100 days in a row. Monthly global draw: 1 winner gets a 3-month Pro upgrade.", 100, currentStreak, "days", "👑")
                 )
             ),
             AchievementCategory(
@@ -413,7 +413,7 @@ fun StreakAchievementsScreen(
                                 )
                             ) {
                                 Text(
-                                    text = if (item.unlocked) "Unlocked" else "${item.currentValue}/${item.requiredValue}",
+                                    text = if (item.unlocked) "Complete" else "${item.currentValue}/${item.requiredValue}",
                                     modifier = Modifier.padding(horizontal = 2.dp, vertical = 0.dp),
                                     fontSize = 12.sp,
                                     fontWeight = FontWeight.SemiBold

@@ -251,6 +251,14 @@ service cloud.firestore {
       allow update, delete: if isAuth() && isMine(resource.data.userId);
     }
 
+    // SYSTEM docs (monthly mythic draw metadata)
+    // Readable by authenticated users; only create allowed for initial draw doc from client.
+    match /system/{docId} {
+      allow read: if isAuth();
+      allow create: if isAuth() && docId.matches('mythic_draw_[0-9]{4}-[0-9]{2}');
+      allow update, delete: if false;
+    }
+
     // FEEDBACK submissions from Contact Us
     match /feedback/{feedbackId} {
       function isDevInboxUser() {

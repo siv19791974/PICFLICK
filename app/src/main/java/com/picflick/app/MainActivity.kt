@@ -1232,7 +1232,7 @@ fun MainScreen(
                         .fillMaxWidth()
                         .background(Color.Black)
                         .statusBarsPadding()
-                        .padding(top = 8.dp, bottom = 8.dp)
+                        .padding(top = 0.dp, bottom = 8.dp)
                 ) {
                     // Settings wheel on LEFT
                     IconButton(
@@ -1287,6 +1287,7 @@ fun MainScreen(
                     LogoImage(
                         modifier = Modifier
                             .align(Alignment.Center)
+                            .offset(y = 4.dp)
                     )
                 }
             }
