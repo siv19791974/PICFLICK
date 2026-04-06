@@ -829,6 +829,7 @@ class HomeViewModel : ViewModel() {
         context: android.content.Context,
         caption: String = "",
         privacy: String = "friends",
+        sharedGroupId: String = "",
         taggedFriends: List<String> = emptyList(), // ADDED: Tagged friends
         onComplete: (Boolean) -> Unit = {}
     ) {
@@ -871,6 +872,7 @@ class HomeViewModel : ViewModel() {
                             reactions = emptyMap(),
                             commentCount = 0,
                             privacy = privacy,
+                            sharedGroupId = sharedGroupId,
                             taggedFriends = taggedFriends // ADDED: Include tagged friends
                         )
                         

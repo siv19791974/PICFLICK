@@ -151,7 +151,14 @@ fun HomeScreen(
     var selectedFlick by remember { mutableStateOf<Flick?>(null) }
     var selectedFlickIndex by remember { mutableIntStateOf(0) }
     var privacySetting by remember { mutableStateOf("friends") } // "friends" or "public"
+    var selectedUploadGroupId by remember { mutableStateOf("") }
     var taggedFriends by remember { mutableStateOf<List<String>>(emptyList()) } // ADDED: Tagged friends
+
+    LaunchedEffect(privacySetting) {
+        if (privacySetting != "friends" && selectedUploadGroupId.isNotBlank()) {
+            selectedUploadGroupId = ""
+        }
+    }
     var showShareToChatDialog by remember { mutableStateOf(false) }
     var flickToShare by remember { mutableStateOf<Flick?>(null) }
     var isSharingPhoto by remember { mutableStateOf(false) }
@@ -220,9 +227,11 @@ fun HomeScreen(
                 imageUri = tempCameraUri!!,
                 context = context,
                 privacy = privacySetting,
+                sharedGroupId = selectedUploadGroupId,
                 taggedFriends = taggedFriends, // ADDED: Tagged friends
                 onComplete = { success ->
                     if (success) {
+                        selectedUploadGroupId = ""
                         viewModel.checkDailyUploads(userProfile.uid)
                     }
                 }
@@ -243,8 +252,10 @@ fun HomeScreen(
                 imageUri = it,
                 context = context,
                 privacy = privacySetting,
+                sharedGroupId = selectedUploadGroupId,
                 onComplete = { success ->
                     if (success) {
+                        selectedUploadGroupId = ""
                         viewModel.checkDailyUploads(userProfile.uid)
                     }
                 }
@@ -1157,7 +1168,10 @@ private fun UploadOverlay(
     onCameraClick: () -> Unit,
     onGalleryClick: () -> Unit,
     privacySetting: String = "friends",
-    onPrivacyChange: (String) -> Unit = {}
+    onPrivacyChange: (String) -> Unit = {},
+    groups: List<FriendGroup> = emptyList(),
+    selectedGroupId: String = "",
+    onGroupSelected: (String) -> Unit = {}
 ) {
     Box(
         modifier = Modifier
@@ -1190,7 +1204,10 @@ private fun UploadOverlay(
                 onCameraClick = onCameraClick,
                 onGalleryClick = onGalleryClick,
                 privacySetting = privacySetting,
-                onPrivacyChange = onPrivacyChange
+                onPrivacyChange = onPrivacyChange,
+                groups = groups,
+                selectedGroupId = selectedGroupId,
+                onGroupSelected = onGroupSelected
             )
         }
     }
@@ -1202,7 +1219,10 @@ private fun UploadOptionsContent(
     onCameraClick: () -> Unit,
     onGalleryClick: () -> Unit,
     privacySetting: String,
-    onPrivacyChange: (String) -> Unit
+    onPrivacyChange: (String) -> Unit,
+    groups: List<FriendGroup>,
+    selectedGroupId: String,
+    onGroupSelected: (String) -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -1362,11 +1382,80 @@ private fun UploadOptionsContent(
 
         Spacer(modifier = Modifier.height(8.dp))
 
+        if (privacySetting == "friends") {
+            val sharedGroups = groups.filter { it.id.isNotBlank() }
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = "Share to album (optional)",
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp),
+                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(10.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(if (selectedGroupId.isBlank()) MaterialTheme.colorScheme.primary else Color.Transparent)
+                            .clickable { onGroupSelected("") }
+                            .padding(horizontal = 12.dp, vertical = 10.dp)
+                    ) {
+                        Text(
+                            text = "No album target",
+                            color = if (selectedGroupId.isBlank()) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+
+                    sharedGroups.forEach { group ->
+                        val isSelected = selectedGroupId == group.id
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent)
+                                .clickable { onGroupSelected(group.id) }
+                                .padding(horizontal = 12.dp, vertical = 10.dp)
+                        ) {
+                            Text(
+                                text = group.name.ifBlank { "Album" },
+                                color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+                    }
+
+                    if (sharedGroups.isEmpty()) {
+                        Text(
+                            text = "Create a shared album first to target one album only.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f)
+                        )
+                    }
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
         Text(
-            text = if (privacySetting == "friends")
-                "Only your friends will see this photo"
-            else
-                "Everyone can see this photo",
+            text = when {
+                privacySetting == "public" -> "Everyone can see this photo"
+                selectedGroupId.isNotBlank() -> "Only this selected album will see this photo"
+                else -> "Only your friends will see this photo"
+            },
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
         )

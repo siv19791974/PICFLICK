@@ -17,6 +17,7 @@ data class Flick(
     val reactions: Map<String, String> = emptyMap(), // userId -> reactionType
     val commentCount: Int = 0,
     val privacy: String = "friends", // "friends" = only friends can see, "public" = everyone
+    val sharedGroupId: String = "", // Optional: when set, this post is targeted to one shared album
     val taggedFriends: List<String> = emptyList(), // List of tagged friend userIds
     val reportCount: Int = 0, // Number of reports for moderation
     val imageSizeBytes: Long = 0, // Exact uploaded image size in bytes (for storage accounting)

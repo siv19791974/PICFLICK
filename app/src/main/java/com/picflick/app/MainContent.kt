@@ -1359,6 +1359,11 @@ private fun FilterScreenContent(
                         } else {
                             homeViewModel.removeOptimisticFlick(flickId)
                         }
+                    },
+                    sharedGroupId = if (homeViewModel.selectedFilter is com.picflick.app.data.FeedFilter.ByGroup) {
+                        (homeViewModel.selectedFilter as com.picflick.app.data.FeedFilter.ByGroup).group.id
+                    } else {
+                        ""
                     }
                 )
             },

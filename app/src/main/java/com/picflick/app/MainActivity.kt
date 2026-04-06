@@ -889,6 +889,7 @@ fun MainScreen(
             context = context,
             photoUris = uploadUris,
             userProfile = profile,
+            sharedGroupId = "",
             onOptimisticAdd = { optimisticFlick ->
                 homeViewModel.addOptimisticFlick(optimisticFlick)
             },
@@ -1026,6 +1027,7 @@ fun MainScreen(
                                 context = context,
                                 photoUris = uploadUris,
                                 userProfile = profile,
+                                sharedGroupId = "",
                                 onOptimisticAdd = { optimisticFlick ->
                                     homeViewModel.addOptimisticFlick(optimisticFlick)
                                 },
