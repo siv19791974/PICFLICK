@@ -21,8 +21,10 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -1229,15 +1231,16 @@ fun MainScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .background(Color.Black)
-                        .padding(top = 32.dp, bottom = 12.dp)
+                        .statusBarsPadding()
+                        .padding(top = 8.dp, bottom = 8.dp)
                 ) {
                     // Settings wheel on LEFT
                     IconButton(
                         onClick = { if (profileReady) navigateTo(Screen.Settings) },
                         enabled = profileReady,
                         modifier = Modifier
-                            .align(Alignment.CenterStart)
-                            .padding(top = 4.dp)
+                            .align(Alignment.BottomStart)
+                            .offset(y = 4.dp)
                     ) {
                         Icon(
                             imageVector = Icons.Outlined.Settings,
@@ -1251,8 +1254,8 @@ fun MainScreen(
                         onClick = { if (profileReady) navigateTo(Screen.Notifications) },
                         enabled = profileReady,
                         modifier = Modifier
-                            .align(Alignment.CenterEnd)
-                            .padding(top = 4.dp)
+                            .align(Alignment.BottomEnd)
+                            .offset(y = 4.dp)
                     ) {
                         Box {
                             Icon(
@@ -1284,7 +1287,6 @@ fun MainScreen(
                     LogoImage(
                         modifier = Modifier
                             .align(Alignment.Center)
-                            .padding(top = 4.dp)
                     )
                 }
             }
