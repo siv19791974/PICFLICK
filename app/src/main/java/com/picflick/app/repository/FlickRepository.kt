@@ -105,6 +105,156 @@ class FlickRepository private constructor() {
             "schemaVersion" to 2
         )
     }
+
+    private fun getCurrentYearMonthKey(): String {
+        val calendar = Calendar.getInstance()
+        val year = calendar.get(Calendar.YEAR)
+        val month = calendar.get(Calendar.MONTH) + 1
+        return String.format(Locale.US, "%04d-%02d", year, month)
+    }
+
+    private suspend fun maybeRunMonthlyMythicDraw(currentUserStreak: Int) {
+        if (currentUserStreak < 100) return
+
+        val monthKey = getCurrentYearMonthKey()
+        val drawRef = db.collection("system").document("mythic_draw_$monthKey")
+        val existingDraw = drawRef.get().await()
+        if (existingDraw.exists()) return
+
+        val eligibleUsers = db.collection("users").get().await().documents.mapNotNull { doc ->
+            val uid = doc.id
+            val streak = ((doc.get("streak") as? Map<*, *>)?.get("current") as? Long)?.toInt() ?: 0
+            if (uid.isNotBlank() && streak >= 100) uid else null
+        }
+
+        if (eligibleUsers.isEmpty()) return
+
+        val winnerId = eligibleUsers.random()
+        val now = System.currentTimeMillis()
+
+        val drawCreated = try {
+            db.runTransaction { tx ->
+                val fresh = tx.get(drawRef)
+                if (fresh.exists()) {
+                    false
+                } else {
+                    tx.set(
+                        drawRef,
+                        mapOf(
+                            "monthKey" to monthKey,
+                            "winnerUserId" to winnerId,
+                            "eligibleUserCount" to eligibleUsers.size,
+                            "createdAt" to now,
+                            "notificationSent" to false
+                        )
+                    )
+                    true
+                }
+            }.await()
+        } catch (_: Exception) {
+            false
+        }
+
+        if (!drawCreated) return
+
+        runCatching {
+            upgradeUserToProForThreeMonths(winnerId)
+            sendMonthlyMythicWinnerNotifications(
+                winnerId = winnerId,
+                monthKey = monthKey,
+                eligibleCount = eligibleUsers.size
+            )
+            drawRef.update("notificationSent", true).await()
+        }
+    }
+
+    private suspend fun upgradeUserToProForThreeMonths(userId: String) {
+        val now = System.currentTimeMillis()
+        val threeMonthsMillis = 90L * 24L * 60L * 60L * 1000L
+        val expiry = now + threeMonthsMillis
+
+        db.collection("users").document(userId)
+            .update(
+                mapOf(
+                    "subscriptionTier" to SubscriptionTier.PRO.name,
+                    "subscriptionActive" to true,
+                    "subscriptionExpiryDate" to expiry,
+                    "updatedAt" to now
+                )
+            ).await()
+    }
+
+    private suspend fun sendMonthlyMythicWinnerNotifications(
+        winnerId: String,
+        monthKey: String,
+        eligibleCount: Int
+    ) {
+        val winnerDoc = db.collection("users").document(winnerId).get().await()
+        val winnerName = winnerDoc.getString("displayName")?.takeIf { it.isNotBlank() } ?: "A PicFlick creator"
+        val now = System.currentTimeMillis()
+
+        val usersSnapshot = db.collection("users").get().await()
+        for (userDoc in usersSnapshot.documents) {
+            val userId = userDoc.id
+            if (userId.isBlank()) continue
+            if (!shouldCreateNotificationForUser(userId, NotificationType.SYSTEM)) continue
+
+            db.collection("notifications").add(
+                hashMapOf(
+                    "id" to UUID.randomUUID().toString(),
+                    "userId" to userId,
+                    "senderId" to "system",
+                    "senderName" to "PicFlick",
+                    "senderPhotoUrl" to "",
+                    "type" to "SYSTEM",
+                    "title" to "Mythic Monthly Winner Announced",
+                    "message" to "$winnerName won this month’s 100-Day Mythic draw and gets a 3-month Pro upgrade.",
+                    "targetScreen" to "achievements",
+                    "isRead" to false,
+                    "timestamp" to now,
+                    "monthKey" to monthKey,
+                    "winnerUserId" to winnerId,
+                    "eligibleUserCount" to eligibleCount
+                )
+            ).await()
+        }
+    }
+
+    private suspend fun maybeCreateEveryTenDayStreakReminder(userId: String, newStreak: Int) {
+        if (newStreak <= 0 || newStreak % 10 != 0) return
+        if (!shouldCreateNotificationForUser(userId, NotificationType.STREAK_REMINDER)) return
+
+        val now = System.currentTimeMillis()
+        val reminderKey = "10day_$newStreak"
+
+        val existing = db.collection("notifications")
+            .whereEqualTo("userId", userId)
+            .whereEqualTo("type", "STREAK_REMINDER")
+            .whereEqualTo("reminderKey", reminderKey)
+            .limit(1)
+            .get()
+            .await()
+
+        if (!existing.isEmpty) return
+
+        db.collection("notifications").add(
+            hashMapOf(
+                "id" to UUID.randomUUID().toString(),
+                "userId" to userId,
+                "senderId" to "system",
+                "senderName" to "PicFlick",
+                "senderPhotoUrl" to "",
+                "type" to "STREAK_REMINDER",
+                "title" to "${newStreak}-Day Streak! Keep Going",
+                "message" to "Amazing consistency — you reached $newStreak days. Stay active for your next streak milestone.",
+                "targetScreen" to "achievements",
+                "isRead" to false,
+                "timestamp" to now,
+                "streakCount" to newStreak,
+                "reminderKey" to reminderKey
+            )
+        ).await()
+    }
     
     // Coroutine scope for repository operations (replaces GlobalScope)
     private val repositoryScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -2666,6 +2816,8 @@ class FlickRepository private constructor() {
                 .await()
 
             runCatching { createStreakAchievementNotificationIfNeeded(userId, newStreak) }
+            runCatching { maybeCreateEveryTenDayStreakReminder(userId, newStreak) }
+            runCatching { maybeRunMonthlyMythicDraw(newStreak) }
 
             Result.Success(Unit)
         } catch (e: Exception) {
