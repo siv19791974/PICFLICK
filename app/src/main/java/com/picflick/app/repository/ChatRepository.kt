@@ -589,16 +589,18 @@ class ChatRepository {
                 android.util.Log.d("ChatRepository", "No messages to update")
             }
 
-            // Always clear unread counters for current user in session doc, even when
-            // messages were already read in docs (prevents sticky unread badges).
+            // Always clear unread counters for current user in session doc.
+            // Only set lastMessageRead=true when this call actually read at least one incoming message.
+            val sessionUpdates = mutableMapOf<String, Any>(
+                "unreadCount.$userId" to 0,
+                "unreadCount_$userId" to 0
+            )
+            if (messagesToUpdate.isNotEmpty()) {
+                sessionUpdates["lastMessageRead"] = true
+            }
+
             db.collection("chatSessions").document(chatId)
-                .update(
-                    mapOf(
-                        "lastMessageRead" to true,
-                        "unreadCount.$userId" to 0,
-                        "unreadCount_$userId" to 0
-                    )
-                )
+                .update(sessionUpdates)
                 .await()
 
             Result.Success(Unit)

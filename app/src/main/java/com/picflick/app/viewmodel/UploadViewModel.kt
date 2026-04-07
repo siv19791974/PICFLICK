@@ -12,6 +12,7 @@ import com.picflick.app.data.Flick
 import com.picflick.app.data.PhotoFilter
 import com.picflick.app.data.UserProfile
 import com.picflick.app.repository.FlickRepository
+import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.storage.FirebaseStorage
 import com.google.firebase.storage.StorageReference
@@ -34,6 +35,7 @@ class UploadViewModel : ViewModel() {
         private const val STORAGE_HARD_STOP_THRESHOLD = 1.10
         private const val MAX_UPLOAD_RETRIES = 3
         private const val RETRY_BASE_DELAY_MS = 500L
+        private val STORAGE_WARNING_MILESTONES = listOf(5, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100)
     }
 
     private val storage = FirebaseStorage.getInstance()
@@ -102,7 +104,7 @@ class UploadViewModel : ViewModel() {
             
             firestore.collection("users").document(userId)
                 .update(mapOf(
-                    "dailyUploadsToday" to com.google.firebase.firestore.FieldValue.increment(1),
+                    "dailyUploadsToday" to FieldValue.increment(1),
                     "lastUploadResetDate" to todayDate
                 ))
                 .await()
@@ -126,7 +128,7 @@ class UploadViewModel : ViewModel() {
     private suspend fun incrementTotalPhotos(userId: String) {
         try {
             firestore.collection("users").document(userId)
-                .update("totalPhotos", com.google.firebase.firestore.FieldValue.increment(1))
+                .update("totalPhotos", FieldValue.increment(1))
                 .await()
         } catch (e: Exception) {
             // Silently fail - the upload succeeded, just the counter update failed
@@ -141,11 +143,59 @@ class UploadViewModel : ViewModel() {
         try {
             val root = storage.reference.child("photos").child(userId)
             val totalBytes = calculateFolderBytesRecursive(root)
-            firestore.collection("users").document(userId)
-                .update("storageUsedBytes", totalBytes)
-                .await()
+            val userRef = firestore.collection("users").document(userId)
+            userRef.update("storageUsedBytes", totalBytes).await()
+            maybeCreateStorageMilestoneWarnings(userId, totalBytes)
         } catch (e: Exception) {
             android.util.Log.w("UploadViewModel", "Failed to recalculate storageUsedBytes", e)
+        }
+    }
+
+    private suspend fun maybeCreateStorageMilestoneWarnings(userId: String, storageUsedBytes: Long) {
+        try {
+            val userRef = firestore.collection("users").document(userId)
+            val userSnap = userRef.get().await()
+            val tierRaw = (userSnap.getString("subscriptionTier") ?: userSnap.getString("tier") ?: "FREE")
+            val tier = runCatching { com.picflick.app.data.SubscriptionTier.valueOf(tierRaw.uppercase(Locale.getDefault())) }
+                .getOrDefault(com.picflick.app.data.SubscriptionTier.FREE)
+            val storageLimit = tier.getStorageLimitBytes()
+            if (storageLimit <= 0L) return
+
+            val usagePercent = ((storageUsedBytes.toDouble() / storageLimit.toDouble()) * 100.0).toInt().coerceAtLeast(0)
+            val reached = STORAGE_WARNING_MILESTONES.filter { it <= usagePercent }
+            if (reached.isEmpty()) return
+
+            val reachedStrings = reached.map { it.toString() }
+            val alreadyWarned = (userSnap.get("storageWarningMilestones") as? List<*>)
+                ?.mapNotNull { it?.toString() }
+                ?.toSet()
+                ?: emptySet()
+
+            val newMilestones = reachedStrings.filter { it !in alreadyWarned }
+            if (newMilestones.isEmpty()) return
+
+            val notifications = firestore.collection("notifications")
+            val now = System.currentTimeMillis()
+            newMilestones.forEachIndexed { index, milestone ->
+                notifications.add(
+                    mapOf(
+                        "userId" to userId,
+                        "senderId" to "system",
+                        "senderName" to "PicFlick",
+                        "senderPhotoUrl" to "",
+                        "type" to "SYSTEM",
+                        "title" to "Storage usage warning",
+                        "message" to "You have reached $milestone% of your storage limit.",
+                        "targetScreen" to "manage_storage",
+                        "isRead" to false,
+                        "timestamp" to (now + index)
+                    )
+                ).await()
+            }
+
+            userRef.update("storageWarningMilestones", FieldValue.arrayUnion(*newMilestones.toTypedArray())).await()
+        } catch (e: Exception) {
+            android.util.Log.w("UploadViewModel", "Failed to create storage milestone warning", e)
         }
     }
 

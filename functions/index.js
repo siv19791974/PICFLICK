@@ -20,7 +20,9 @@ function shouldSkipTrigger(triggerName) {
  * Cloud Function: Send push notification when a new notification document is created
  * This function listens to the 'notifications' collection and sends FCM push
  */
-exports.sendPushNotification = functions.firestore
+exports.sendPushNotification = functions
+  .runWith({ serviceAccount: 'picflick-4793175b@appspot.gserviceaccount.com' })
+  .firestore
   .document('notifications/{notificationId}')
   .onCreate(async (snap, context) => {
     if (shouldSkipTrigger('sendPushNotification')) return null;
