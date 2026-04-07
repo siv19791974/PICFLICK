@@ -774,6 +774,13 @@ fun MainScreen(
         }
     }
 
+    // Ensure shared albums are available in Add -> Share privately target picker
+    LaunchedEffect(userProfile?.uid) {
+        userProfile?.uid?.let { uid ->
+            homeViewModel.loadFriendGroups(uid)
+        }
+    }
+
     // Observe unread chat count globally so bottom-nav badge updates on every screen.
     LaunchedEffect(userProfile?.uid) {
         userProfile?.uid?.let { uid ->
@@ -1049,7 +1056,7 @@ fun MainScreen(
                 ActionSheetOption(
                     icon = Icons.AutoMirrored.Filled.Send,
                     title = "Send privately",
-                    subtitle = "Share to individual or group chat",
+                    subtitle = "Share to individual, group chat, or shared album",
                     accentColor = Color(0xFF2E86DE),
                     onClick = {
                         privateSharePhotoUris = pendingSharedImportUris
@@ -1454,7 +1461,7 @@ private fun PrivateShareTargetDialog(
 
                 if (groups.isNotEmpty()) {
                     Text(
-                        text = "Groups",
+                        text = "Shared Albums",
                         color = primaryText,
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.padding(bottom = 8.dp)
