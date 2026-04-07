@@ -1333,6 +1333,10 @@ private fun FilterScreenContent(
 ) {
     val repository = remember { FlickRepository.getInstance() }
 
+    LaunchedEffect(userProfile.uid) {
+        homeViewModel.loadFriendGroups(userProfile.uid)
+    }
+
     selectedPhotoUri?.let { uri ->
         friendsViewModel.loadFollowingUsers(userProfile.following)
 

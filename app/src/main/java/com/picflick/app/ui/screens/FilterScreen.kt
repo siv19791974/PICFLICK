@@ -243,6 +243,7 @@ fun FilterScreen(
     Scaffold(
         modifier = Modifier
             .fillMaxSize(),
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
             // Custom compact 48dp title bar
             Box(
