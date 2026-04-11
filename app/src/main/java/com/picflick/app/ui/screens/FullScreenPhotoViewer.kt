@@ -758,8 +758,8 @@ val canDeleteCurrent = currentFlick.userId == currentUser.uid
                 
                 // SIMPLE 2D PAGER - Just direct positioning with Zoomable for pinch
                 // NO SPRING - direct snap only
-                val dragXAnim = remember { Animatable(0f) }
-                val dragYAnim = remember { Animatable(0f) }
+                var dragXOffset by remember { mutableFloatStateOf(0f) }
+                var dragYOffset by remember { mutableFloatStateOf(0f) }
                 var rawDragX by remember { mutableFloatStateOf(0f) }
                 var rawDragY by remember { mutableFloatStateOf(0f) }
                 var isDraggingVertically by remember { mutableStateOf(false) }
@@ -767,8 +767,8 @@ val canDeleteCurrent = currentFlick.userId == currentUser.uid
 
                 // Reset drag when photo or orientation changes
                 LaunchedEffect(currentPageIndex, configuration.screenWidthDp, configuration.screenHeightDp) {
-                    dragXAnim.snapTo(0f)
-                    dragYAnim.snapTo(0f)
+                    dragXOffset = 0f
+                    dragYOffset = 0f
                     rawDragX = 0f
                     rawDragY = 0f
                     isDraggingVertically = false
@@ -790,8 +790,8 @@ val canDeleteCurrent = currentFlick.userId == currentUser.uid
                                 },
                                 onDragEnd = {
                                     isDragging = false
-                                    val shouldNavigateVertical = isDraggingVertically && kotlin.math.abs(rawDragY) > 150f
-                                    val shouldNavigateHorizontal = !isDraggingVertically && kotlin.math.abs(rawDragX) > 150f
+                                    val shouldNavigateVertical = isDraggingVertically && kotlin.math.abs(rawDragY) > 95f
+                                    val shouldNavigateHorizontal = !isDraggingVertically && kotlin.math.abs(rawDragX) > 95f
 
                                     var didNavigate = false
                                     when {
@@ -818,19 +818,9 @@ val canDeleteCurrent = currentFlick.userId == currentUser.uid
                                     }
 
                                     if (!didNavigate) {
-                                        // Small spring-back when user drags against first/last item boundaries
-                                        coroutineScope.launch {
-                                            dragXAnim.animateTo(
-                                                targetValue = 0f,
-                                                animationSpec = spring(stiffness = Spring.StiffnessLow)
-                                            )
-                                        }
-                                        coroutineScope.launch {
-                                            dragYAnim.animateTo(
-                                                targetValue = 0f,
-                                                animationSpec = spring(stiffness = Spring.StiffnessLow)
-                                            )
-                                        }
+                                        // Reset drag offsets immediately for snappier feel
+                                        dragXOffset = 0f
+                                        dragYOffset = 0f
                                     }
 
                                     rawDragX = 0f
@@ -858,9 +848,7 @@ val canDeleteCurrent = currentFlick.userId == currentUser.uid
                                         val blockedAtEdge = (atTop && goingDown) || (atBottom && goingUp)
                                         val effectiveY = if (blockedAtEdge) amount.y * 0.22f else amount.y
                                         rawDragY += effectiveY
-                                        coroutineScope.launch {
-                                            dragYAnim.snapTo(rawDragY)
-                                        }
+                                        dragYOffset = rawDragY
                                     } else {
                                         val atLeft = currentPageIndex == 0
                                         val atRight = currentPageIndex == validPhotos.size - 1
@@ -872,9 +860,7 @@ val canDeleteCurrent = currentFlick.userId == currentUser.uid
                                         val blockedAtEdge = (atLeft && goingRight) || (atRight && goingLeft)
                                         val effectiveX = if (blockedAtEdge) amount.x * 0.22f else amount.x
                                         rawDragX += effectiveX
-                                        coroutineScope.launch {
-                                            dragXAnim.snapTo(rawDragX)
-                                        }
+                                        dragXOffset = rawDragX
                                     }
                                     change.consume()
                                 }
@@ -892,12 +878,12 @@ val canDeleteCurrent = currentFlick.userId == currentUser.uid
                         baseX: Float,
                         baseY: Float
                     ) {
-                        val finalX = baseX + dragXAnim.value
-                        val finalY = baseY + dragYAnim.value
+                        val finalX = baseX + dragXOffset
+                        val finalY = baseY + dragYOffset
                         
                         // Calculate scale and fade for swipe effect - only when dragging
-                        val dragProgress = kotlin.math.abs(dragXAnim.value) / screenWidthPx
-                        val verticalProgress = kotlin.math.abs(dragYAnim.value) / screenHeightPx
+                        val dragProgress = kotlin.math.abs(dragXOffset) / screenWidthPx
+                        val verticalProgress = kotlin.math.abs(dragYOffset) / screenHeightPx
                         val maxProgress = kotlin.math.max(dragProgress, verticalProgress)
                         val swipeScale = if (isDragging) 1f - (maxProgress * 0.15f).coerceIn(0f, 0.15f) else 1f
                         val swipeAlpha = if (isDragging) 1f - (maxProgress * 0.3f).coerceIn(0f, 0.3f) else 1f

@@ -20,6 +20,7 @@ sealed class Screen {
     data object Contact : Screen()
     data object Notifications : Screen()
     data object Filter : Screen()
+    data object MediaPicker : Screen()
     data object Settings : Screen()
     data object Explore : Screen()
     data object Privacy : Screen()

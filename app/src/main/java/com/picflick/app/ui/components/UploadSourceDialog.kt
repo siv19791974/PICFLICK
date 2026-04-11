@@ -6,7 +6,6 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.outlined.Menu
@@ -106,8 +105,7 @@ fun AddPhotoStyleActionSheet(
 fun UploadSourceDialog(
     onDismiss: () -> Unit,
     onCameraClick: () -> Unit,
-    onGalleryClick: () -> Unit,
-    onSharePrivatelyClick: () -> Unit
+    onGalleryClick: () -> Unit
 ) {
     AddPhotoStyleActionSheet(
         title = "Add Photo",
@@ -126,16 +124,10 @@ fun UploadSourceDialog(
                 accentColor = Color(0xFF2E86DE),
                 onClick = onGalleryClick
             ),
-            ActionSheetOption(
-                icon = Icons.AutoMirrored.Filled.Send,
-                title = "Share privately 🎭",
-                subtitle = "Send to individual or group only",
-                accentColor = Color(0xFF2E86DE),
-                onClick = onSharePrivatelyClick
-            )
+
         ),
         onDismiss = onDismiss,
-        cancelSubtitle = "Close add photo"
+        cancelSubtitle = "Cancel"
     )
 }
 

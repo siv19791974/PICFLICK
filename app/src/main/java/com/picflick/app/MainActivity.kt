@@ -1,14 +1,18 @@
 package com.picflick.app
 
+import android.content.ContentUris
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
+import android.provider.MediaStore
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
-import androidx.activity.result.PickVisualMediaRequest
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -29,8 +33,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -69,6 +73,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
@@ -81,6 +86,10 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Date
+import java.util.Locale
 import com.picflick.app.data.ChatSession
 import com.picflick.app.data.FriendGroup
 import com.picflick.app.data.SubscriptionTier
@@ -401,6 +410,7 @@ fun MainScreen(
         is Screen.Chats,
         is Screen.Notifications,
         is Screen.Filter,
+        is Screen.MediaPicker,
         is Screen.Explore,
         is Screen.Preview,
         is Screen.Settings -> Screen.Home
@@ -429,6 +439,7 @@ fun MainScreen(
 
     // Shared upload/dialog states (declared early because they're used by effects below)
     var selectedPhotoUri by remember { mutableStateOf<Uri?>(null) }
+    var selectedMediaUris by remember { mutableStateOf<List<Uri>>(emptyList()) }
     var privateSharePhotoUris by remember { mutableStateOf<List<Uri>>(emptyList()) }
     var showPrivateShareModeDialog by remember { mutableStateOf(false) }
     var showPrivateShareTargetDialog by remember { mutableStateOf(false) }
@@ -852,74 +863,6 @@ fun MainScreen(
 
     val unreadCount = notificationViewModel.unreadCount
 
-    // Image pickers for upload flow
-    val galleryLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.PickMultipleVisualMedia(100)
-    ) { uris: List<Uri> ->
-        val selectedUris = uris.distinct()
-        if (selectedUris.isEmpty()) return@rememberLauncherForActivityResult
-
-        pendingSharedImportUris = selectedUris
-
-        if (selectedUris.size == 1) {
-            selectedPhotoUri = selectedUris.first()
-            navigateTo(Screen.Filter)
-            return@rememberLauncherForActivityResult
-        }
-
-        val profile = userProfile ?: return@rememberLauncherForActivityResult
-
-        val tier = profile.getEffectiveTier()
-        val dailyLimit = tier.getDailyUploadLimit()
-        val remainingDaily = if (dailyLimit == Int.MAX_VALUE) {
-            Int.MAX_VALUE
-        } else {
-            (dailyLimit - uploadViewModel.dailyUploadCount).coerceAtLeast(0)
-        }
-        val batchCap = if (tier == SubscriptionTier.ULTRA) 100 else remainingDaily
-
-        if (batchCap <= 0) {
-            Toast.makeText(context, "Daily upload limit reached", Toast.LENGTH_LONG).show()
-            return@rememberLauncherForActivityResult
-        }
-
-        val uploadUris = selectedUris.take(batchCap)
-        if (selectedUris.size > batchCap) {
-            Toast.makeText(
-                context,
-                "Selected ${selectedUris.size}. Uploading first $batchCap for your current limit.",
-                Toast.LENGTH_LONG
-            ).show()
-        }
-
-        Toast.makeText(
-            context,
-            "Batch upload uses original photos. You can edit/tag later in your profile.",
-            Toast.LENGTH_LONG
-        ).show()
-
-        uploadViewModel.uploadPhotosBatch(
-            context = context,
-            photoUris = uploadUris,
-            userProfile = profile,
-            sharedGroupId = "",
-            onOptimisticAdd = { optimisticFlick ->
-                homeViewModel.addOptimisticFlick(optimisticFlick)
-            },
-            onOptimisticRemove = { flickId, uploadSucceeded ->
-                if (!uploadSucceeded) {
-                    homeViewModel.removeOptimisticFlick(flickId)
-                }
-            },
-            onBatchSuccess = {
-                homeViewModel.requestDebouncedFeedRefresh(profile.uid, 0L)
-            }
-        )
-
-        pendingSharedImportUris = emptyList()
-        currentScreen = Screen.Home
-    }
-
     val cameraLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.TakePicture()
     ) { success: Boolean ->
@@ -930,31 +873,6 @@ fun MainScreen(
         }
     }
 
-    val privateShareGalleryLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.PickMultipleVisualMedia(100)
-    ) { uris: List<Uri> ->
-        val selectedUris = uris.distinct()
-        if (selectedUris.isEmpty()) return@rememberLauncherForActivityResult
-
-        val profile = userProfile ?: return@rememberLauncherForActivityResult
-        val tier = profile.getEffectiveTier()
-        val dailyLimit = tier.getDailyUploadLimit()
-        val remainingDaily = if (dailyLimit == Int.MAX_VALUE) Int.MAX_VALUE else (dailyLimit - uploadViewModel.dailyUploadCount).coerceAtLeast(0)
-        val allowedCount = if (tier == SubscriptionTier.ULTRA) minOf(100, remainingDaily) else remainingDaily
-
-        if (allowedCount <= 0) {
-            Toast.makeText(context, "Daily upload limit reached", Toast.LENGTH_LONG).show()
-            return@rememberLauncherForActivityResult
-        }
-
-        val sendUris = selectedUris.take(allowedCount)
-        if (selectedUris.size > allowedCount) {
-            Toast.makeText(context, "Selected ${selectedUris.size}. Sending first $allowedCount due to daily limit.", Toast.LENGTH_LONG).show()
-        }
-
-        privateSharePhotoUris = sendUris
-        showPrivateShareModeDialog = true
-    }
 
     // Camera permission launcher
     val cameraPermissionLauncher = rememberLauncherForActivityResult(
@@ -1005,17 +923,8 @@ fun MainScreen(
             },
             onGalleryClick = {
                 showUploadSourceDialog = false
-                galleryLauncher.launch(
-                    PickVisualMediaRequest(
-                        ActivityResultContracts.PickVisualMedia.ImageOnly
-                    )
-                )
-            },
-            onSharePrivatelyClick = {
-                showUploadSourceDialog = false
-                privateShareGalleryLauncher.launch(
-                    PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
-                )
+                selectedMediaUris = emptyList()
+                navigateTo(Screen.MediaPicker)
             }
         )
     }
@@ -1294,6 +1203,7 @@ fun MainScreen(
     }
 
     val isChatDetailScreen = currentScreen is Screen.ChatDetail
+    val isMediaPickerScreen = currentScreen is Screen.MediaPicker
     val isSettingsStackScreen = when (currentScreen) {
         is Screen.Settings,
         is Screen.ManageStorage,
@@ -1316,7 +1226,7 @@ fun MainScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             // Keep header height stable even while userProfile is still loading
-            if (currentUser != null) {
+            if (currentUser != null && !isMediaPickerScreen) {
                 val profileReady = userProfile != null
                 Box(
                     modifier = Modifier
@@ -1385,7 +1295,7 @@ fun MainScreen(
         },
         bottomBar = {
             // Keep bottom bar stable while profile is loading (prevents layout jump)
-            if (currentUser != null && !isChatDetailScreen) {
+            if (currentUser != null && !isChatDetailScreen && !isMediaPickerScreen) {
                 val profileReady = userProfile != null
                 BottomNavBar(
                     currentRoute = when (currentScreen) {
@@ -1425,6 +1335,9 @@ fun MainScreen(
                 .fillMaxSize()
                 .then(
                     when {
+                        isMediaPickerScreen -> {
+                            Modifier.fillMaxSize()
+                        }
                         isChatDetailScreen -> {
                             Modifier.padding(top = padding.calculateTopPadding())
                         }
@@ -1493,6 +1406,85 @@ fun MainScreen(
                 }
             }
 
+            if (currentScreen is Screen.MediaPicker && userProfile != null) {
+                InAppMediaPickerScreen(
+                    isDarkMode = ThemeManager.isDarkMode.value,
+                    selectedUris = selectedMediaUris,
+                    onToggleSelection = { uri ->
+                        selectedMediaUris = if (selectedMediaUris.contains(uri)) {
+                            selectedMediaUris - uri
+                        } else {
+                            val maxSelectable = if (userProfile.getEffectiveTier() == SubscriptionTier.ULTRA) 100 else 30
+                            if (selectedMediaUris.size >= maxSelectable) selectedMediaUris else selectedMediaUris + uri
+                        }
+                    },
+                    onBack = {
+                        selectedMediaUris = emptyList()
+                        navigateTo(Screen.Home)
+                    },
+                    onDone = {
+                        val selectedUris = selectedMediaUris.distinct()
+                        if (selectedUris.isEmpty()) return@InAppMediaPickerScreen
+
+                        pendingSharedImportUris = selectedUris
+
+                        if (selectedUris.size == 1) {
+                            selectedPhotoUri = selectedUris.first()
+                            selectedMediaUris = emptyList()
+                            navigateTo(Screen.Filter)
+                        } else {
+                            val profile = userProfile
+                            val tier = profile.getEffectiveTier()
+                            val dailyLimit = tier.getDailyUploadLimit()
+                            val remainingDaily = if (dailyLimit == Int.MAX_VALUE) Int.MAX_VALUE else (dailyLimit - uploadViewModel.dailyUploadCount).coerceAtLeast(0)
+                            val batchCap = if (tier == SubscriptionTier.ULTRA) 100 else remainingDaily
+
+                            if (batchCap <= 0) {
+                                Toast.makeText(context, "Daily upload limit reached", Toast.LENGTH_LONG).show()
+                                return@InAppMediaPickerScreen
+                            }
+
+                            val uploadUris = selectedUris.take(batchCap)
+                            if (selectedUris.size > batchCap) {
+                                Toast.makeText(
+                                    context,
+                                    "Selected ${selectedUris.size}. Uploading first $batchCap for your current limit.",
+                                    Toast.LENGTH_LONG
+                                ).show()
+                            }
+
+                            Toast.makeText(
+                                context,
+                                "Batch upload uses original photos. You can edit/tag later in your profile.",
+                                Toast.LENGTH_LONG
+                            ).show()
+
+                            uploadViewModel.uploadPhotosBatch(
+                                context = context,
+                                photoUris = uploadUris,
+                                userProfile = profile,
+                                sharedGroupId = "",
+                                onOptimisticAdd = { optimisticFlick ->
+                                    homeViewModel.addOptimisticFlick(optimisticFlick)
+                                },
+                                onOptimisticRemove = { flickId, uploadSucceeded ->
+                                    if (!uploadSucceeded) {
+                                        homeViewModel.removeOptimisticFlick(flickId)
+                                    }
+                                },
+                                onBatchSuccess = {
+                                    homeViewModel.requestDebouncedFeedRefresh(profile.uid, 0L)
+                                }
+                            )
+
+                            pendingSharedImportUris = emptyList()
+                            selectedMediaUris = emptyList()
+                            navigateTo(Screen.Home)
+                        }
+                    }
+                )
+            }
+
             }
         }
 
@@ -1503,6 +1495,336 @@ private enum class PrivateShareMode {
     SHARED_ALBUM,
     GROUP_MESSAGE,
     INDIVIDUAL_MESSAGE
+}
+
+data class MediaPickerItem(
+    val uri: Uri,
+    val id: Long,
+    val dateAddedSeconds: Long
+)
+
+@Composable
+private fun InAppMediaPickerScreen(
+    isDarkMode: Boolean,
+    selectedUris: List<Uri>,
+    onToggleSelection: (Uri) -> Unit,
+    onBack: () -> Unit,
+    onDone: () -> Unit
+) {
+    val context = LocalContext.current
+    val mediaPermission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        android.Manifest.permission.READ_MEDIA_IMAGES
+    } else {
+        android.Manifest.permission.READ_EXTERNAL_STORAGE
+    }
+    val visualUserSelectedPermission =
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            android.Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED
+        } else null
+
+    fun hasAnyMediaPermission(): Boolean {
+        val hasBase = androidx.core.content.ContextCompat.checkSelfPermission(
+            context,
+            mediaPermission
+        ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+
+        val hasSelected = visualUserSelectedPermission != null &&
+            androidx.core.content.ContextCompat.checkSelfPermission(
+                context,
+                visualUserSelectedPermission
+            ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+
+        return hasBase || hasSelected
+    }
+
+    var hasMediaPermission by remember { mutableStateOf(hasAnyMediaPermission()) }
+
+    val mediaPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) {
+        hasMediaPermission = hasAnyMediaPermission()
+    }
+
+    var mediaItems by remember { mutableStateOf<List<MediaPickerItem>>(emptyList()) }
+    var isLoadingMedia by remember { mutableStateOf(true) }
+
+    LaunchedEffect(hasMediaPermission) {
+        if (!hasMediaPermission) {
+            isLoadingMedia = false
+            mediaItems = emptyList()
+            return@LaunchedEffect
+        }
+        isLoadingMedia = true
+        mediaItems = loadDeviceMedia(context)
+        isLoadingMedia = false
+    }
+
+    LaunchedEffect(Unit) {
+        hasMediaPermission = hasAnyMediaPermission()
+        if (!hasMediaPermission) {
+            mediaPermissionLauncher.launch(mediaPermission)
+        }
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(isDarkModeBackground(isDarkMode))
+            .systemBarsPadding()
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(Color.Black)
+                .padding(vertical = 8.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            LogoImage()
+        }
+
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(48.dp)
+                .background(Color.Black)
+        ) {
+            TextButton(
+                onClick = onBack,
+                modifier = Modifier.align(Alignment.CenterStart)
+            ) {
+                Text("Back", color = Color.White)
+            }
+
+            Text(
+                text = "Choose from Gallery",
+                color = Color.White,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.align(Alignment.Center)
+            )
+
+            if (selectedUris.isNotEmpty()) {
+                Text(
+                    text = "${selectedUris.size}",
+                    color = Color(0xFF87CEEB),
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier
+                        .align(Alignment.CenterEnd)
+                        .padding(end = 16.dp)
+                )
+            }
+        }
+
+        Box(modifier = Modifier.weight(1f)) {
+            when {
+                isLoadingMedia -> {
+                    CircularProgressIndicator(
+                        modifier = Modifier.align(Alignment.Center),
+                        color = if (isDarkMode) Color.White else Color(0xFF1565C0)
+                    )
+                }
+
+                !hasMediaPermission -> {
+                    Column(
+                        modifier = Modifier
+                            .align(Alignment.Center)
+                            .padding(horizontal = 20.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Text(
+                            text = "Allow photo permission to show your gallery",
+                            color = if (isDarkMode) Color.White.copy(alpha = 0.9f) else Color(0xFF374151),
+                            textAlign = TextAlign.Center
+                        )
+                        Button(
+                            onClick = {
+                                hasMediaPermission = hasAnyMediaPermission()
+                                if (!hasMediaPermission) {
+                                    mediaPermissionLauncher.launch(mediaPermission)
+                                }
+                            },
+                            colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                                containerColor = Color(0xFF2E86DE),
+                                contentColor = Color.White
+                            )
+                        ) {
+                            Text("Grant permission")
+                        }
+                    }
+                }
+
+                mediaItems.isEmpty() -> {
+                    Text(
+                        text = "No photos found on device",
+                        color = if (isDarkMode) Color.White.copy(alpha = 0.8f) else Color(0xFF374151),
+                        modifier = Modifier.align(Alignment.Center)
+                    )
+                }
+
+                else -> {
+                    val groupedMedia = remember(mediaItems) { groupMediaByDate(mediaItems) }
+
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        items(groupedMedia, key = { it.label }) { section ->
+                            Text(
+                                text = section.label,
+                                color = if (isDarkMode) Color.White else Color(0xFF1F2937),
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 13.sp,
+                                modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
+                            )
+
+                            val rows = section.items.chunked(3)
+                            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                rows.forEach { rowItems ->
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                    ) {
+                                        rowItems.forEach { item ->
+                                            val isSelected = selectedUris.contains(item.uri)
+                                            Box(
+                                                modifier = Modifier
+                                                    .weight(1f)
+                                                    .aspectRatio(1f)
+                                                    .clip(RoundedCornerShape(6.dp))
+                                                    .clickable { onToggleSelection(item.uri) }
+                                            ) {
+                                                AsyncImage(
+                                                    model = item.uri,
+                                                    contentDescription = "Media",
+                                                    modifier = Modifier.fillMaxSize(),
+                                                    contentScale = ContentScale.Crop
+                                                )
+
+                                                if (isSelected) {
+                                                    Box(
+                                                        modifier = Modifier
+                                                            .fillMaxSize()
+                                                            .background(Color(0x802E86DE))
+                                                    )
+                                                    Icon(
+                                                        imageVector = Icons.Default.CheckCircle,
+                                                        contentDescription = "Selected",
+                                                        tint = Color.White,
+                                                        modifier = Modifier
+                                                            .align(Alignment.TopEnd)
+                                                            .padding(6.dp)
+                                                    )
+                                                }
+                                            }
+                                        }
+                                        repeat(3 - rowItems.size) {
+                                            Spacer(modifier = Modifier.weight(1f))
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(Color.Black)
+                .padding(horizontal = 14.dp, vertical = 10.dp)
+        ) {
+            Button(
+                onClick = onDone,
+                enabled = selectedUris.isNotEmpty(),
+                modifier = Modifier.fillMaxWidth(),
+                colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                    containerColor = if (selectedUris.isNotEmpty()) Color(0xFF2E86DE) else Color(0xFF4B5563),
+                    contentColor = Color.White
+                )
+            ) {
+                Text(if (selectedUris.isEmpty()) "Select photos" else "Use ${selectedUris.size} photo(s)")
+            }
+        }
+    }
+}
+
+data class MediaPickerSection(
+    val label: String,
+    val items: List<MediaPickerItem>
+)
+
+private fun groupMediaByDate(items: List<MediaPickerItem>): List<MediaPickerSection> {
+    if (items.isEmpty()) return emptyList()
+
+    val todayCal = Calendar.getInstance().apply {
+        set(Calendar.HOUR_OF_DAY, 0)
+        set(Calendar.MINUTE, 0)
+        set(Calendar.SECOND, 0)
+        set(Calendar.MILLISECOND, 0)
+    }
+    val yesterdayCal = (todayCal.clone() as Calendar).apply { add(Calendar.DAY_OF_YEAR, -1) }
+
+    val dateFormat = SimpleDateFormat("EEE, MMM d", Locale.getDefault())
+
+    fun toDayStart(millis: Long): Long {
+        val cal = Calendar.getInstance().apply { timeInMillis = millis }
+        cal.set(Calendar.HOUR_OF_DAY, 0)
+        cal.set(Calendar.MINUTE, 0)
+        cal.set(Calendar.SECOND, 0)
+        cal.set(Calendar.MILLISECOND, 0)
+        return cal.timeInMillis
+    }
+
+    val grouped = items.groupBy { toDayStart(it.dateAddedSeconds * 1000L) }
+        .toSortedMap(compareByDescending { it })
+
+    return grouped.map { (dayStartMillis, dayItems) ->
+        val label = when (dayStartMillis) {
+            todayCal.timeInMillis -> "Today"
+            yesterdayCal.timeInMillis -> "Yesterday"
+            else -> dateFormat.format(Date(dayStartMillis))
+        }
+        MediaPickerSection(label = label, items = dayItems.sortedByDescending { it.dateAddedSeconds })
+    }
+}
+
+private fun loadDeviceMedia(context: android.content.Context): List<MediaPickerItem> {
+    val collection = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+        MediaStore.Images.Media.getContentUri(MediaStore.VOLUME_EXTERNAL)
+    } else {
+        MediaStore.Images.Media.EXTERNAL_CONTENT_URI
+    }
+
+    val projection = arrayOf(
+        MediaStore.Images.Media._ID,
+        MediaStore.Images.Media.DATE_ADDED
+    )
+    val sortOrder = "${MediaStore.Images.Media.DATE_ADDED} DESC"
+
+    val result = mutableListOf<MediaPickerItem>()
+    context.contentResolver.query(collection, projection, null, null, sortOrder)?.use { cursor ->
+        val idColumn = cursor.getColumnIndexOrThrow(MediaStore.Images.Media._ID)
+        val dateAddedColumn = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.DATE_ADDED)
+
+        while (cursor.moveToNext()) {
+            val id = cursor.getLong(idColumn)
+            val dateAdded = cursor.getLong(dateAddedColumn)
+            val contentUri = ContentUris.withAppendedId(collection, id)
+            result.add(
+                MediaPickerItem(
+                    uri = contentUri,
+                    id = id,
+                    dateAddedSeconds = dateAdded
+                )
+            )
+        }
+    }
+
+    return result
 }
 
 @Composable
@@ -1517,7 +1839,6 @@ private fun PrivateShareTargetDialog(
 ) {
     val isDarkMode = ThemeManager.isDarkMode.value
     val screenBg = isDarkModeBackground(isDarkMode)
-    val primaryText = if (isDarkMode) Color.White else Color.Black
     val secondaryText = if (isDarkMode) Color.White.copy(alpha = 0.75f) else Color(0xFF5F6368)
 
     Dialog(

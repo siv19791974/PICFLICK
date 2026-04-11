@@ -57,6 +57,8 @@ import com.picflick.app.data.PhotoFilter
 import com.picflick.app.data.UserProfile
 import com.picflick.app.data.getDailyUploadLimit
 import com.picflick.app.data.getImageQuality
+import com.picflick.app.ui.components.ActionSheetOption
+import com.picflick.app.ui.components.AddPhotoStyleActionSheet
 import com.picflick.app.ui.theme.ThemeManager
 import com.picflick.app.ui.theme.isDarkModeBackground
 import com.picflick.app.ui.theme.PicFlickLightBackground
@@ -79,6 +81,8 @@ fun FilterScreen(
     dailyUploadCount: Int,
     onBack: () -> Unit,
     onUpload: (Uri, PhotoFilter, List<String>, String, String) -> Unit,
+    onUploadToFriends: (Uri, PhotoFilter, List<String>, String, List<UserProfile>) -> Unit,
+    onUploadToGroup: (Uri, PhotoFilter, List<String>, String, FriendGroup) -> Unit,
     onUploadQueued: () -> Unit = {},
     onNavigateToFindFriends: () -> Unit = {},
     onNavigateToCamera: () -> Unit = {}
@@ -97,6 +101,9 @@ fun FilterScreen(
     // Friend tagging state
     var taggedFriends by remember { mutableStateOf<List<UserProfile>>(emptyList()) }
     var showFriendPicker by remember { mutableStateOf(false) }
+    var showDestinationFriendPicker by remember { mutableStateOf(false) }
+    var selectedDestinationFriends by remember { mutableStateOf<List<UserProfile>>(emptyList()) }
+    var showDestinationGroupPicker by remember { mutableStateOf(false) }
     
     // Description/caption state
     var description by remember { mutableStateOf("") }
@@ -213,7 +220,7 @@ fun FilterScreen(
     var showCountdownAnimation by remember { mutableStateOf(false) }
 
     // Upload function with loading state
-    fun triggerUpload() {
+    fun triggerUploadToAllFriends() {
         if (canUpload && !isUploading && bitmap != null) {
             // OPTIMISTIC UPDATE: Increment counter immediately on click
             optimisticDailyCount += 1
@@ -231,6 +238,53 @@ fun FilterScreen(
                     }
                 } catch (e: Exception) {
                     // On failure, revert the optimistic counter (silent fail UX)
+                    optimisticDailyCount -= 1
+                } finally {
+                    isUploading = false
+                    showCountdownAnimation = false
+                }
+            }
+        }
+    }
+
+    fun triggerUploadToFriends(targetFriends: List<UserProfile>) {
+        if (targetFriends.isEmpty()) return
+        if (canUpload && !isUploading && bitmap != null) {
+            optimisticDailyCount += 1
+            showCountdownAnimation = true
+            isUploading = true
+            scope.launch {
+                try {
+                    val filteredUri = applyFilterAndSave(context, bitmap!!, selectedFilter, imageQuality)
+                    onUploadToFriends(filteredUri, selectedFilter, taggedFriends.map { it.uid }, description.trim(), targetFriends)
+                    withContext(Dispatchers.Main) {
+                        delay(900)
+                        onUploadQueued()
+                    }
+                } catch (e: Exception) {
+                    optimisticDailyCount -= 1
+                } finally {
+                    isUploading = false
+                    showCountdownAnimation = false
+                }
+            }
+        }
+    }
+
+    fun triggerUploadToGroup(group: FriendGroup) {
+        if (canUpload && !isUploading && bitmap != null) {
+            optimisticDailyCount += 1
+            showCountdownAnimation = true
+            isUploading = true
+            scope.launch {
+                try {
+                    val filteredUri = applyFilterAndSave(context, bitmap!!, selectedFilter, imageQuality)
+                    onUploadToGroup(filteredUri, selectedFilter, taggedFriends.map { it.uid }, description.trim(), group)
+                    withContext(Dispatchers.Main) {
+                        delay(900)
+                        onUploadQueued()
+                    }
+                } catch (e: Exception) {
                     optimisticDailyCount -= 1
                 } finally {
                     isUploading = false
@@ -347,7 +401,7 @@ fun FilterScreen(
                     val canUpload = isUnlimitedUploads || (maxDailyUploads - dailyUploadCount) > 0
                     
                     IconButton(
-                        onClick = { triggerUpload() },
+                        onClick = { triggerUploadToAllFriends() },
                         enabled = !isLoading && bitmap != null && canUpload && !isUploading,
                         modifier = Modifier.size(48.dp)
                     ) {
@@ -494,6 +548,14 @@ fun FilterScreen(
                                     .padding(bottom = 10.dp),
                                 verticalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
+                                Text(
+                                    text = "Edit Tools",
+                                    color = if (isDarkMode) Color.White else Color.Black,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 13.sp,
+                                    modifier = Modifier.padding(bottom = 2.dp)
+                                )
+
                                 TextButton(
                                     onClick = {
                                         if (friends.isEmpty()) {
@@ -567,9 +629,95 @@ fun FilterScreen(
                                     )
                                 }
 
+                                Spacer(modifier = Modifier.height(6.dp))
+
+                                Text(
+                                    text = "Post / Send",
+                                    color = if (isDarkMode) Color.White else Color.Black,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 13.sp,
+                                    modifier = Modifier.padding(bottom = 2.dp)
+                                )
+
+                                TextButton(
+                                    onClick = { triggerUploadToAllFriends() },
+                                    enabled = bitmap != null && !isCropping && !isUploading && canUpload,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .defaultMinSize(minHeight = 52.dp)
+                                        .clip(RoundedCornerShape(12.dp))
+                                        .background(filterActionButtonBg)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Check,
+                                        contentDescription = null,
+                                        tint = filterActionButtonFg
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        text = "Post to All Friends",
+                                        color = filterActionButtonFg,
+                                        fontWeight = FontWeight.SemiBold,
+                                        maxLines = 1
+                                    )
+                                }
+
+                                TextButton(
+                                    onClick = { showDestinationGroupPicker = true },
+                                    enabled = selectableAlbumGroups.isNotEmpty() && bitmap != null && !isCropping && !isUploading && canUpload,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .defaultMinSize(minHeight = 52.dp)
+                                        .clip(RoundedCornerShape(12.dp))
+                                        .background(filterActionButtonBg)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Groups,
+                                        contentDescription = null,
+                                        tint = filterActionButtonFg
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        text = "Send to Group Chat",
+                                        color = filterActionButtonFg,
+                                        fontWeight = FontWeight.SemiBold,
+                                        maxLines = 1
+                                    )
+                                }
+
+                                TextButton(
+                                    onClick = {
+                                        if (friends.isEmpty()) {
+                                            onNavigateToFindFriends()
+                                        } else {
+                                            selectedDestinationFriends = emptyList()
+                                            showDestinationFriendPicker = true
+                                        }
+                                    },
+                                    enabled = bitmap != null && !isCropping && !isUploading && canUpload,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .defaultMinSize(minHeight = 52.dp)
+                                        .clip(RoundedCornerShape(12.dp))
+                                        .background(filterActionButtonBg)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Person,
+                                        contentDescription = null,
+                                        tint = filterActionButtonFg
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        text = "Send Privately to Friend(s)",
+                                        color = filterActionButtonFg,
+                                        fontWeight = FontWeight.SemiBold,
+                                        maxLines = 1
+                                    )
+                                }
+
                                 TextButton(
                                     onClick = { showAlbumPicker = true },
-                                    enabled = selectableAlbumGroups.isNotEmpty(),
+                                    enabled = selectableAlbumGroups.isNotEmpty() && bitmap != null && !isCropping && !isUploading && canUpload,
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .defaultMinSize(minHeight = 52.dp)
@@ -584,7 +732,7 @@ fun FilterScreen(
                                     Spacer(modifier = Modifier.width(8.dp))
                                     Text(
                                         text = if (selectedSharedGroupId.isBlank()) {
-                                            if (selectableAlbumGroups.isEmpty()) "No albums available" else "Share to Album"
+                                            if (selectableAlbumGroups.isEmpty()) "No albums available" else "Post to Specific Album"
                                         } else {
                                             "Album: " + (selectableAlbumGroups.firstOrNull { it.id == selectedSharedGroupId }?.name ?: "Selected")
                                         },
@@ -666,55 +814,161 @@ fun FilterScreen(
         )
     }
 
-    if (showAlbumPicker) {
+    if (showDestinationFriendPicker) {
         ModalBottomSheet(
-            onDismissRequest = { showAlbumPicker = false },
+            onDismissRequest = { showDestinationFriendPicker = false },
             sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-            containerColor = if (isDarkMode) Color(0xFF1C1C1E) else PicFlickLightBackground,
-            contentColor = if (isDarkMode) Color.White else Color.Black
+            containerColor = Color(0xFF1C1C1E),
+            contentColor = Color.White
         ) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 20.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
+                    .padding(horizontal = 16.dp, vertical = 20.dp)
             ) {
                 Text(
-                    text = "Share to Album",
+                    text = "Send Privately to Friend(s)",
+                    color = Color.White,
                     fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(bottom = 12.dp)
                 )
 
-                OutlinedButton(
-                    onClick = {
-                        selectedSharedGroupId = ""
-                        showAlbumPicker = false
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Text("No album target")
-                }
-
-                selectableAlbumGroups.forEach { group ->
-                    val isSelected = selectedSharedGroupId == group.id
+                if (friends.isEmpty()) {
                     Button(
                         onClick = {
-                            selectedSharedGroupId = group.id
-                            showAlbumPicker = false
+                            showDestinationFriendPicker = false
+                            onNavigateToFindFriends()
                         },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = if (isSelected) Color(0xFF1565C0) else Color(0xFFB7D8F2),
-                            contentColor = if (isSelected) Color.White else Color.Black
+                            containerColor = Color(0xFF2A4A73),
+                            contentColor = Color.White
                         )
                     ) {
-                        Text(group.name.ifBlank { "Album" })
+                        Text("Find Friends")
+                    }
+                } else {
+                    val selectedIds = selectedDestinationFriends.map { it.uid }.toSet()
+                    friends.forEach { friend ->
+                        val isSelected = selectedIds.contains(friend.uid)
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(if (isSelected) Color(0xFF2E86DE).copy(alpha = 0.18f) else Color(0xFF2A2A2A))
+                                .clickable {
+                                    selectedDestinationFriends = if (isSelected) {
+                                        selectedDestinationFriends.filterNot { it.uid == friend.uid }
+                                    } else {
+                                        selectedDestinationFriends + friend
+                                    }
+                                }
+                                .padding(horizontal = 14.dp, vertical = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = friend.displayName.ifBlank { "Friend" },
+                                color = Color.White,
+                                modifier = Modifier.weight(1f)
+                            )
+                            if (isSelected) {
+                                Icon(
+                                    imageVector = Icons.Default.Check,
+                                    contentDescription = null,
+                                    tint = Color(0xFF2E86DE)
+                                )
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(8.dp))
+                    }
+
+                    Button(
+                        onClick = {
+                            val targets = selectedDestinationFriends
+                            showDestinationFriendPicker = false
+                            triggerUploadToFriends(targets)
+                        },
+                        enabled = selectedDestinationFriends.isNotEmpty(),
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFF2E86DE),
+                            contentColor = Color.White
+                        )
+                    ) {
+                        Text("Send to ${selectedDestinationFriends.size} friend(s)")
                     }
                 }
             }
         }
+    }
+
+    if (showDestinationGroupPicker) {
+        AddPhotoStyleActionSheet(
+            title = "Send to Group Chat",
+            options = if (selectableAlbumGroups.isEmpty()) {
+                listOf(
+                    ActionSheetOption(
+                        icon = Icons.Default.Groups,
+                        title = "No groups available",
+                        subtitle = "Create a shared group first",
+                        accentColor = Color(0xFF4B5563),
+                        onClick = { showDestinationGroupPicker = false }
+                    )
+                )
+            } else {
+                selectableAlbumGroups.map { group ->
+                    ActionSheetOption(
+                        icon = Icons.Default.Groups,
+                        title = group.name.ifBlank { "Group" },
+                        subtitle = "Send this photo to group chat",
+                        accentColor = Color(0xFF2E86DE),
+                        onClick = {
+                            showDestinationGroupPicker = false
+                            triggerUploadToGroup(group)
+                        }
+                    )
+                }
+            },
+            onDismiss = { showDestinationGroupPicker = false },
+            cancelSubtitle = "Close group picker"
+        )
+    }
+
+    if (showAlbumPicker) {
+        AddPhotoStyleActionSheet(
+            title = "Post to Specific Album",
+            options = buildList {
+                add(
+                    ActionSheetOption(
+                        icon = Icons.Default.Groups,
+                        title = "Post to All Friends",
+                        subtitle = "Clear album target",
+                        accentColor = Color(0xFF4B5563),
+                        onClick = {
+                            selectedSharedGroupId = ""
+                            showAlbumPicker = false
+                        }
+                    )
+                )
+                addAll(
+                    selectableAlbumGroups.map { group ->
+                        val isSelected = selectedSharedGroupId == group.id
+                        ActionSheetOption(
+                            icon = Icons.Default.Groups,
+                            title = group.name.ifBlank { "Album" },
+                            subtitle = if (isSelected) "Selected album" else "Post to this album",
+                            accentColor = if (isSelected) Color(0xFF1565C0) else Color(0xFF2E86DE),
+                            onClick = {
+                                selectedSharedGroupId = group.id
+                                showAlbumPicker = false
+                            }
+                        )
+                    }
+                )
+            },
+            onDismiss = { showAlbumPicker = false },
+            cancelSubtitle = "Close album picker"
+        )
     }
 }
 
@@ -847,6 +1101,7 @@ private fun TaggedFriendChip(
 private fun FriendPickerDialog(
     friends: List<UserProfile>,
     alreadyTagged: List<String>,
+    title: String = "Tag Friends",
     onDismiss: () -> Unit,
     onFriendSelected: (UserProfile) -> Unit,
     onNavigateToFindFriends: () -> Unit
@@ -862,13 +1117,13 @@ private fun FriendPickerDialog(
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp, vertical = 20.dp)
         ) {
-            Text(
-                text = "Tag Friends",
-                color = Color.White,
-                fontSize = 20.sp,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(bottom = 16.dp)
-            )
+                            Text(
+                    text = title,
+                    color = Color.White,
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(bottom = 16.dp)
+                )
             
             if (friends.isEmpty()) {
                 Box(
