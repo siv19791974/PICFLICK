@@ -24,6 +24,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PersonAdd
+import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -57,8 +58,6 @@ import com.picflick.app.data.PhotoFilter
 import com.picflick.app.data.UserProfile
 import com.picflick.app.data.getDailyUploadLimit
 import com.picflick.app.data.getImageQuality
-import com.picflick.app.ui.components.ActionSheetOption
-import com.picflick.app.ui.components.AddPhotoStyleActionSheet
 import com.picflick.app.ui.theme.ThemeManager
 import com.picflick.app.ui.theme.isDarkModeBackground
 import com.picflick.app.ui.theme.PicFlickLightBackground
@@ -815,160 +814,261 @@ fun FilterScreen(
     }
 
     if (showDestinationFriendPicker) {
-        ModalBottomSheet(
-            onDismissRequest = { showDestinationFriendPicker = false },
-            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-            containerColor = Color(0xFF1C1C1E),
-            contentColor = Color.White
+        DestinationListScreen(
+            title = "Send Privately to Friend(s)",
+            isDarkMode = isDarkMode,
+            onBack = { showDestinationFriendPicker = false }
         ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 20.dp)
-            ) {
-                Text(
-                    text = "Send Privately to Friend(s)",
-                    color = Color.White,
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(bottom = 12.dp)
-                )
-
-                if (friends.isEmpty()) {
-                    Button(
-                        onClick = {
-                            showDestinationFriendPicker = false
-                            onNavigateToFindFriends()
-                        },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = Color(0xFF2A4A73),
-                            contentColor = Color.White
-                        )
-                    ) {
-                        Text("Find Friends")
-                    }
-                } else {
-                    val selectedIds = selectedDestinationFriends.map { it.uid }.toSet()
-                    friends.forEach { friend ->
-                        val isSelected = selectedIds.contains(friend.uid)
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(12.dp))
-                                .background(if (isSelected) Color(0xFF2E86DE).copy(alpha = 0.18f) else Color(0xFF2A2A2A))
-                                .clickable {
-                                    selectedDestinationFriends = if (isSelected) {
-                                        selectedDestinationFriends.filterNot { it.uid == friend.uid }
-                                    } else {
-                                        selectedDestinationFriends + friend
-                                    }
-                                }
-                                .padding(horizontal = 14.dp, vertical = 12.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = friend.displayName.ifBlank { "Friend" },
-                                color = Color.White,
-                                modifier = Modifier.weight(1f)
-                            )
-                            if (isSelected) {
-                                Icon(
-                                    imageVector = Icons.Default.Check,
-                                    contentDescription = null,
-                                    tint = Color(0xFF2E86DE)
-                                )
+            if (friends.isEmpty()) {
+                Button(
+                    onClick = {
+                        showDestinationFriendPicker = false
+                        onNavigateToFindFriends()
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFF2A4A73),
+                        contentColor = Color.White
+                    )
+                ) {
+                    Text("Find Friends")
+                }
+            } else {
+                val selectedIds = selectedDestinationFriends.map { it.uid }.toSet()
+                friends.forEach { friend ->
+                    val isSelected = selectedIds.contains(friend.uid)
+                    DestinationEntityRow(
+                        title = friend.displayName.ifBlank { "Friend" },
+                        subtitle = if (isSelected) "Selected" else "Tap Send",
+                        imageUrl = friend.photoUrl,
+                        fallbackText = friend.displayName.firstOrNull()?.uppercase() ?: "?",
+                        actionLabel = if (isSelected) "Selected" else "Send",
+                        actionIcon = if (isSelected) Icons.Default.Check else Icons.AutoMirrored.Filled.Send,
+                        actionEnabled = !isSelected,
+                        onActionClick = {
+                            selectedDestinationFriends = if (isSelected) {
+                                selectedDestinationFriends.filterNot { it.uid == friend.uid }
+                            } else {
+                                selectedDestinationFriends + friend
                             }
                         }
-                        Spacer(modifier = Modifier.height(8.dp))
-                    }
+                    )
+                }
 
-                    Button(
-                        onClick = {
-                            val targets = selectedDestinationFriends
-                            showDestinationFriendPicker = false
-                            triggerUploadToFriends(targets)
-                        },
-                        enabled = selectedDestinationFriends.isNotEmpty(),
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = Color(0xFF2E86DE),
-                            contentColor = Color.White
-                        )
-                    ) {
-                        Text("Send to ${selectedDestinationFriends.size} friend(s)")
-                    }
+                Spacer(modifier = Modifier.height(8.dp))
+                Button(
+                    onClick = {
+                        val targets = selectedDestinationFriends
+                        showDestinationFriendPicker = false
+                        triggerUploadToFriends(targets)
+                    },
+                    enabled = selectedDestinationFriends.isNotEmpty(),
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFF2E86DE),
+                        contentColor = Color.White
+                    )
+                ) {
+                    Text("Send to ${selectedDestinationFriends.size} friend(s)")
                 }
             }
         }
     }
 
     if (showDestinationGroupPicker) {
-        AddPhotoStyleActionSheet(
+        DestinationListScreen(
             title = "Send to Group Chat",
-            options = if (selectableAlbumGroups.isEmpty()) {
-                listOf(
-                    ActionSheetOption(
-                        icon = Icons.Default.Groups,
-                        title = "No groups available",
-                        subtitle = "Create a shared group first",
-                        accentColor = Color(0xFF4B5563),
-                        onClick = { showDestinationGroupPicker = false }
-                    )
+            isDarkMode = isDarkMode,
+            onBack = { showDestinationGroupPicker = false }
+        ) {
+            if (selectableAlbumGroups.isEmpty()) {
+                DestinationEntityRow(
+                    title = "No groups available",
+                    subtitle = "Create a shared group first",
+                    fallbackText = "G",
+                    actionLabel = "Close",
+                    actionIcon = Icons.Default.Close,
+                    onActionClick = { showDestinationGroupPicker = false }
                 )
             } else {
-                selectableAlbumGroups.map { group ->
-                    ActionSheetOption(
-                        icon = Icons.Default.Groups,
+                selectableAlbumGroups.forEach { group ->
+                    DestinationEntityRow(
                         title = group.name.ifBlank { "Group" },
                         subtitle = "Send this photo to group chat",
-                        accentColor = Color(0xFF2E86DE),
-                        onClick = {
+                        imageUrl = group.icon.takeIf { it.startsWith("http") },
+                        fallbackText = group.name.firstOrNull()?.uppercase() ?: "G",
+                        actionLabel = "Send",
+                        actionIcon = Icons.AutoMirrored.Filled.Send,
+                        onActionClick = {
                             showDestinationGroupPicker = false
                             triggerUploadToGroup(group)
                         }
                     )
                 }
-            },
-            onDismiss = { showDestinationGroupPicker = false },
-            cancelSubtitle = "Close group picker"
-        )
+            }
+        }
     }
 
     if (showAlbumPicker) {
-        AddPhotoStyleActionSheet(
+        DestinationListScreen(
             title = "Post to Specific Album",
-            options = buildList {
-                add(
-                    ActionSheetOption(
-                        icon = Icons.Default.Groups,
-                        title = "Post to All Friends",
-                        subtitle = "Clear album target",
-                        accentColor = Color(0xFF4B5563),
-                        onClick = {
-                            selectedSharedGroupId = ""
-                            showAlbumPicker = false
-                        }
-                    )
-                )
-                addAll(
-                    selectableAlbumGroups.map { group ->
-                        val isSelected = selectedSharedGroupId == group.id
-                        ActionSheetOption(
-                            icon = Icons.Default.Groups,
-                            title = group.name.ifBlank { "Album" },
-                            subtitle = if (isSelected) "Selected album" else "Post to this album",
-                            accentColor = if (isSelected) Color(0xFF1565C0) else Color(0xFF2E86DE),
-                            onClick = {
-                                selectedSharedGroupId = group.id
-                                showAlbumPicker = false
-                            }
-                        )
+            isDarkMode = isDarkMode,
+            onBack = { showAlbumPicker = false }
+        ) {
+            DestinationEntityRow(
+                title = "Post to All Friends",
+                subtitle = "Clear album target",
+                fallbackText = "ALL",
+                actionLabel = "Post",
+                actionIcon = Icons.AutoMirrored.Filled.Send,
+                onActionClick = {
+                    selectedSharedGroupId = ""
+                    showAlbumPicker = false
+                }
+            )
+
+            selectableAlbumGroups.forEach { group ->
+                val isSelected = selectedSharedGroupId == group.id
+                DestinationEntityRow(
+                    title = group.name.ifBlank { "Album" },
+                    subtitle = if (isSelected) "Selected album" else "Post to this album",
+                    imageUrl = group.icon.takeIf { it.startsWith("http") },
+                    fallbackText = group.name.firstOrNull()?.uppercase() ?: "A",
+                    actionLabel = if (isSelected) "Selected" else "Post",
+                    actionIcon = if (isSelected) Icons.Default.Check else Icons.AutoMirrored.Filled.Send,
+                    actionEnabled = !isSelected,
+                    onActionClick = {
+                        selectedSharedGroupId = group.id
+                        showAlbumPicker = false
                     }
                 )
-            },
-            onDismiss = { showAlbumPicker = false },
-            cancelSubtitle = "Close album picker"
-        )
+            }
+        }
+    }
+}
+
+@Composable
+private fun DestinationListScreen(
+    title: String,
+    isDarkMode: Boolean,
+    onBack: () -> Unit,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    Surface(
+        modifier = Modifier.fillMaxSize(),
+        color = isDarkModeBackground(isDarkMode)
+    ) {
+        Column(modifier = Modifier.fillMaxSize()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(48.dp)
+                    .background(Color.Black)
+            ) {
+                TextButton(onClick = onBack, modifier = Modifier.align(Alignment.CenterStart)) {
+                    Text("Back", color = Color.White)
+                }
+                Text(
+                    text = title,
+                    color = Color.White,
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.align(Alignment.Center)
+                )
+            }
+
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+                content = content
+            )
+        }
+    }
+}
+
+@Composable
+private fun DestinationEntityRow(
+    title: String,
+    subtitle: String,
+    imageUrl: String? = null,
+    fallbackText: String,
+    actionLabel: String,
+    actionIcon: androidx.compose.ui.graphics.vector.ImageVector,
+    actionEnabled: Boolean = true,
+    onActionClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(Color(0xFFB7D8F2))
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier
+                .size(40.dp)
+                .clip(CircleShape)
+                .background(Color(0xFF2A4A73)),
+            contentAlignment = Alignment.Center
+        ) {
+            if (!imageUrl.isNullOrBlank()) {
+                AsyncImage(
+                    model = imageUrl,
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
+                )
+            } else {
+                Text(
+                    text = fallbackText,
+                    color = Color.White,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 13.sp
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.width(10.dp))
+
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = title,
+                color = Color.Black,
+                fontWeight = FontWeight.SemiBold,
+                fontSize = 14.sp,
+                maxLines = 1
+            )
+            Text(
+                text = subtitle,
+                color = Color.Black.copy(alpha = 0.65f),
+                fontSize = 12.sp,
+                maxLines = 1
+            )
+        }
+
+        TextButton(
+            onClick = onActionClick,
+            enabled = actionEnabled,
+            colors = ButtonDefaults.textButtonColors(
+                contentColor = if (actionEnabled) Color(0xFF1565C0) else Color(0xFF6B7280)
+            )
+        ) {
+            Icon(
+                imageVector = actionIcon,
+                contentDescription = null,
+                modifier = Modifier.size(16.dp)
+            )
+            Spacer(modifier = Modifier.width(4.dp))
+            Text(
+                text = actionLabel,
+                fontWeight = FontWeight.Bold,
+                fontSize = 12.sp
+            )
+        }
     }
 }
 
