@@ -42,6 +42,8 @@ import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.outlined.Menu
+import androidx.compose.material.icons.outlined.PhotoCamera
+import androidx.compose.material.icons.outlined.PhotoLibrary
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.AlertDialog
@@ -98,10 +100,8 @@ import com.picflick.app.repository.FlickRepository
 import com.picflick.app.data.Flick
 import com.picflick.app.data.getDailyUploadLimit
 import com.picflick.app.ui.components.ActionSheetOption
-import com.picflick.app.ui.components.AddPhotoStyleActionSheet
 import com.picflick.app.ui.components.BottomNavBar
 import com.picflick.app.ui.components.LogoImage
-import com.picflick.app.ui.components.UploadSourceDialog
 import com.picflick.app.ui.screens.LoginScreen
 import com.picflick.app.ui.screens.SplashScreen
 import com.picflick.app.ui.theme.PicFlickTheme
@@ -430,6 +430,11 @@ fun MainScreen(
     var selectedChatSession by remember { mutableStateOf<ChatSession?>(null) }
     var selectedOtherUserId by remember { mutableStateOf<String>("") }
 
+    // Upload flow states
+    var showUploadSourceDialog by remember { mutableStateOf(false) }
+    var showImportChoiceList by remember { mutableStateOf(false) }
+    var showPrivateModeList by remember { mutableStateOf(false) }
+
     // Track login state for analytics
     val activity = appContext as? MainActivity
     val currentUser = authViewModel.currentUser
@@ -441,11 +446,9 @@ fun MainScreen(
     var selectedPhotoUri by remember { mutableStateOf<Uri?>(null) }
     var selectedMediaUris by remember { mutableStateOf<List<Uri>>(emptyList()) }
     var privateSharePhotoUris by remember { mutableStateOf<List<Uri>>(emptyList()) }
-    var showPrivateShareModeDialog by remember { mutableStateOf(false) }
     var showPrivateShareTargetDialog by remember { mutableStateOf(false) }
     var privateShareMode by remember { mutableStateOf(PrivateShareMode.GROUP_MESSAGE) }
     var pendingSharedImportUris by remember { mutableStateOf<List<Uri>>(emptyList()) }
-    var showSharedImportChoiceDialog by remember { mutableStateOf(false) }
 
     // On app foreground, default back to Home + reset feed top unless a push route is pending.
     DisposableEffect(lifecycleOwner, currentUser) {
@@ -510,7 +513,7 @@ fun MainScreen(
             selectedPhotoUri = cappedUris.first()
             navigateTo(Screen.Filter)
         } else {
-            showSharedImportChoiceDialog = true
+            showImportChoiceList = true
         }
     }
 
@@ -749,9 +752,6 @@ fun MainScreen(
         }
     }
 
-    // Upload flow states
-    var showUploadSourceDialog by remember { mutableStateOf(false) }
-
     // Android 13+ runtime permission for push notification display
     val notificationPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
@@ -913,229 +913,9 @@ fun MainScreen(
         }
     }
 
-    // Upload Source Dialog
-    if (showUploadSourceDialog && userProfile != null) {
-        UploadSourceDialog(
-            onDismiss = { showUploadSourceDialog = false },
-            onCameraClick = {
-                showUploadSourceDialog = false
-                cameraPermissionLauncher.launch(android.Manifest.permission.CAMERA)
-            },
-            onGalleryClick = {
-                showUploadSourceDialog = false
-                selectedMediaUris = emptyList()
-                navigateTo(Screen.MediaPicker)
-            }
-        )
-    }
-
     // Snackbar state for error feedback
     val snackbarHostState = remember { SnackbarHostState() }
 
-    if (showSharedImportChoiceDialog && pendingSharedImportUris.isNotEmpty() && userProfile != null) {
-        AddPhotoStyleActionSheet(
-            title = "Import shared photos",
-            options = listOf(
-                ActionSheetOption(
-                    icon = Icons.Outlined.Menu,
-                    title = "Post to PicFlick",
-                    subtitle = "Add ${pendingSharedImportUris.size} photo(s) to your feed",
-                    accentColor = Color(0xFF2E86DE),
-                    onClick = {
-                        val profile = userProfile
-                        if (profile != null) {
-                            val uploadUris = pendingSharedImportUris
-                            uploadViewModel.uploadPhotosBatch(
-                                context = context,
-                                photoUris = uploadUris,
-                                userProfile = profile,
-                                sharedGroupId = "",
-                                onOptimisticAdd = { optimisticFlick ->
-                                    homeViewModel.addOptimisticFlick(optimisticFlick)
-                                },
-                                onOptimisticRemove = { flickId, uploadSucceeded ->
-                                    if (!uploadSucceeded) {
-                                        homeViewModel.removeOptimisticFlick(flickId)
-                                    }
-                                },
-                                onBatchSuccess = {
-                                    homeViewModel.requestDebouncedFeedRefresh(profile.uid, 0L)
-                                }
-                            )
-                            navigateTo(Screen.Home)
-                        }
-                        showSharedImportChoiceDialog = false
-                        pendingSharedImportUris = emptyList()
-                    }
-                ),
-                ActionSheetOption(
-                    icon = Icons.AutoMirrored.Filled.Send,
-                    title = "Send privately",
-                    subtitle = "Share to individual, group chat, or shared album",
-                    accentColor = Color(0xFF2E86DE),
-                    onClick = {
-                        privateSharePhotoUris = pendingSharedImportUris
-                        showPrivateShareModeDialog = true
-                        showSharedImportChoiceDialog = false
-                    }
-                )
-            ),
-            onDismiss = {
-                showSharedImportChoiceDialog = false
-                pendingSharedImportUris = emptyList()
-            },
-            cancelSubtitle = "Close import"
-        )
-    }
-
-    if (showPrivateShareModeDialog && privateSharePhotoUris.isNotEmpty()) {
-        AddPhotoStyleActionSheet(
-            title = "Where to send",
-            options = listOf(
-                ActionSheetOption(
-                    icon = Icons.Default.Groups,
-                    title = "Post to Shared Album",
-                    subtitle = "Publish into one selected shared album",
-                    accentColor = Color(0xFF2E86DE),
-                    onClick = {
-                        privateShareMode = PrivateShareMode.SHARED_ALBUM
-                        showPrivateShareModeDialog = false
-                        showPrivateShareTargetDialog = true
-                    }
-                ),
-                ActionSheetOption(
-                    icon = Icons.AutoMirrored.Filled.Send,
-                    title = "Send as Group Message",
-                    subtitle = "Send privately to a group chat",
-                    accentColor = Color(0xFF2E86DE),
-                    onClick = {
-                        privateShareMode = PrivateShareMode.GROUP_MESSAGE
-                        showPrivateShareModeDialog = false
-                        showPrivateShareTargetDialog = true
-                    }
-                ),
-                ActionSheetOption(
-                    icon = Icons.Default.Person,
-                    title = "Send to Individual Friend",
-                    subtitle = "Send privately to one friend",
-                    accentColor = Color(0xFF2E86DE),
-                    onClick = {
-                        privateShareMode = PrivateShareMode.INDIVIDUAL_MESSAGE
-                        showPrivateShareModeDialog = false
-                        showPrivateShareTargetDialog = true
-                    }
-                )
-            ),
-            onDismiss = {
-                showPrivateShareModeDialog = false
-                privateSharePhotoUris = emptyList()
-                pendingSharedImportUris = emptyList()
-            },
-            cancelSubtitle = "Close private share"
-        )
-    }
-
-    if (showPrivateShareTargetDialog && privateSharePhotoUris.isNotEmpty() && userProfile != null) {
-        PrivateShareTargetDialog(
-            friends = friendsViewModel.followingUsers,
-            groups = homeViewModel.friendGroups,
-            mode = privateShareMode,
-            onDismiss = {
-                showPrivateShareTargetDialog = false
-                privateSharePhotoUris = emptyList()
-                pendingSharedImportUris = emptyList()
-            },
-            onShareToAlbum = { group ->
-                val imageUris = privateSharePhotoUris
-                val profile = userProfile
-                if (profile != null) {
-                    uploadViewModel.uploadPhotosBatch(
-                        context = context,
-                        photoUris = imageUris,
-                        userProfile = profile,
-                        sharedGroupId = group.id,
-                        onOptimisticAdd = { optimisticFlick ->
-                            homeViewModel.addOptimisticFlick(optimisticFlick)
-                        },
-                        onOptimisticRemove = { flickId, uploadSucceeded ->
-                            if (!uploadSucceeded) {
-                                homeViewModel.removeOptimisticFlick(flickId)
-                            }
-                        },
-                        onBatchSuccess = {
-                            homeViewModel.requestDebouncedFeedRefresh(profile.uid, 0L)
-                        }
-                    )
-                    Toast.makeText(context, "Posted to ${group.name} (${imageUris.size})", Toast.LENGTH_SHORT).show()
-                }
-                showPrivateShareTargetDialog = false
-                privateSharePhotoUris = emptyList()
-                pendingSharedImportUris = emptyList()
-            },
-            onShareToFriend = { friend ->
-                val imageUris = privateSharePhotoUris
-                chatViewModel.startChat(
-                    userId = userProfile.uid,
-                    otherUserId = friend.uid,
-                    userName = userProfile.displayName,
-                    otherUserName = friend.displayName,
-                    userPhoto = userProfile.photoUrl,
-                    otherUserPhoto = friend.photoUrl
-                ) { chatId ->
-                    imageUris.forEach { imageUri ->
-                        chatViewModel.sendPhotoMessage(
-                            chatId = chatId,
-                            imageUri = imageUri,
-                            senderId = userProfile.uid,
-                            recipientId = friend.uid,
-                            senderName = userProfile.displayName,
-                            senderPhotoUrl = userProfile.photoUrl,
-                            context = context,
-                            onComplete = {
-                                uploadViewModel.consumeDailyUploadSlot(userProfile.uid)
-                            }
-                        )
-                    }
-                    Toast.makeText(context, "Shared privately (${imageUris.size})", Toast.LENGTH_SHORT).show()
-                }
-                showPrivateShareTargetDialog = false
-                privateSharePhotoUris = emptyList()
-                pendingSharedImportUris = emptyList()
-            },
-            onShareToGroup = { group ->
-                val imageUris = privateSharePhotoUris
-                chatViewModel.startGroupChat(
-                    ownerUserId = userProfile.uid,
-                    ownerName = userProfile.displayName,
-                    ownerPhoto = userProfile.photoUrl,
-                    groupId = group.id,
-                    groupName = group.name,
-                    groupIcon = group.icon,
-                    memberIds = group.friendIds
-                ) { chatId ->
-                    imageUris.forEach { imageUri ->
-                        chatViewModel.sendPhotoMessage(
-                            chatId = chatId,
-                            imageUri = imageUri,
-                            senderId = userProfile.uid,
-                            recipientId = "group:$chatId",
-                            senderName = userProfile.displayName,
-                            senderPhotoUrl = userProfile.photoUrl,
-                            context = context,
-                            onComplete = {
-                                uploadViewModel.consumeDailyUploadSlot(userProfile.uid)
-                            }
-                        )
-                    }
-                    Toast.makeText(context, "Shared privately (${imageUris.size})", Toast.LENGTH_SHORT).show()
-                }
-                showPrivateShareTargetDialog = false
-                privateSharePhotoUris = emptyList()
-                pendingSharedImportUris = emptyList()
-            }
-        )
-    }
-    
     // Track screen views for analytics
     LaunchedEffect(currentScreen) {
         val screenName = when (currentScreen) {
@@ -1481,6 +1261,208 @@ fun MainScreen(
                             selectedMediaUris = emptyList()
                             navigateTo(Screen.Home)
                         }
+                    }
+                )
+            }
+
+            if (showUploadSourceDialog && userProfile != null) {
+                UploadSourceListScreen(
+                    onBack = { showUploadSourceDialog = false },
+                    onTakePhoto = {
+                        showUploadSourceDialog = false
+                        cameraPermissionLauncher.launch(android.Manifest.permission.CAMERA)
+                    },
+                    onChooseFromGallery = {
+                        showUploadSourceDialog = false
+                        selectedMediaUris = emptyList()
+                        navigateTo(Screen.MediaPicker)
+                    }
+                )
+            }
+
+            if (showImportChoiceList && pendingSharedImportUris.isNotEmpty() && userProfile != null) {
+                SelectionListScreen(
+                    title = "Import shared photos",
+                    onBack = {
+                        showImportChoiceList = false
+                        pendingSharedImportUris = emptyList()
+                    },
+                    entries = listOf(
+                        SelectionListEntry(
+                            icon = Icons.Outlined.Menu,
+                            title = "Post to PicFlick",
+                            subtitle = "Add ${pendingSharedImportUris.size} photo(s) to your feed",
+                            onClick = {
+                                val profile = userProfile
+                                val uploadUris = pendingSharedImportUris
+                                uploadViewModel.uploadPhotosBatch(
+                                    context = context,
+                                    photoUris = uploadUris,
+                                    userProfile = profile,
+                                    sharedGroupId = "",
+                                    onOptimisticAdd = { optimisticFlick -> homeViewModel.addOptimisticFlick(optimisticFlick) },
+                                    onOptimisticRemove = { flickId, uploadSucceeded -> if (!uploadSucceeded) homeViewModel.removeOptimisticFlick(flickId) },
+                                    onBatchSuccess = { homeViewModel.requestDebouncedFeedRefresh(profile.uid, 0L) }
+                                )
+                                navigateTo(Screen.Home)
+                                showImportChoiceList = false
+                                pendingSharedImportUris = emptyList()
+                            }
+                        ),
+                        SelectionListEntry(
+                            icon = Icons.AutoMirrored.Filled.Send,
+                            title = "Send privately",
+                            subtitle = "Share to friend, group chat, or shared album",
+                            onClick = {
+                                privateSharePhotoUris = pendingSharedImportUris
+                                showImportChoiceList = false
+                                showPrivateModeList = true
+                            }
+                        )
+                    )
+                )
+            }
+
+            if (showPrivateModeList && privateSharePhotoUris.isNotEmpty()) {
+                SelectionListScreen(
+                    title = "Where to send",
+                    onBack = {
+                        showPrivateModeList = false
+                        privateSharePhotoUris = emptyList()
+                        pendingSharedImportUris = emptyList()
+                    },
+                    entries = listOf(
+                        SelectionListEntry(
+                            icon = Icons.Default.Groups,
+                            title = "Post to Shared Album",
+                            subtitle = "Publish into one selected shared album",
+                            onClick = {
+                                privateShareMode = PrivateShareMode.SHARED_ALBUM
+                                showPrivateModeList = false
+                                showPrivateShareTargetDialog = true
+                            }
+                        ),
+                        SelectionListEntry(
+                            icon = Icons.AutoMirrored.Filled.Send,
+                            title = "Send as Group Message",
+                            subtitle = "Send privately to a group chat",
+                            onClick = {
+                                privateShareMode = PrivateShareMode.GROUP_MESSAGE
+                                showPrivateModeList = false
+                                showPrivateShareTargetDialog = true
+                            }
+                        ),
+                        SelectionListEntry(
+                            icon = Icons.Default.Person,
+                            title = "Send to Individual Friend",
+                            subtitle = "Send privately to one friend",
+                            onClick = {
+                                privateShareMode = PrivateShareMode.INDIVIDUAL_MESSAGE
+                                showPrivateModeList = false
+                                showPrivateShareTargetDialog = true
+                            }
+                        )
+                    )
+                )
+            }
+
+            if (showPrivateShareTargetDialog && privateSharePhotoUris.isNotEmpty() && userProfile != null) {
+                PrivateShareTargetDialog(
+                    friends = friendsViewModel.followingUsers,
+                    groups = homeViewModel.friendGroups,
+                    mode = privateShareMode,
+                    onDismiss = {
+                        showPrivateShareTargetDialog = false
+                        privateSharePhotoUris = emptyList()
+                        pendingSharedImportUris = emptyList()
+                    },
+                    onShareToAlbum = { group ->
+                        val imageUris = privateSharePhotoUris
+                        val profile = userProfile
+                        if (profile != null) {
+                            uploadViewModel.uploadPhotosBatch(
+                                context = context,
+                                photoUris = imageUris,
+                                userProfile = profile,
+                                sharedGroupId = group.id,
+                                onOptimisticAdd = { optimisticFlick ->
+                                    homeViewModel.addOptimisticFlick(optimisticFlick)
+                                },
+                                onOptimisticRemove = { flickId, uploadSucceeded ->
+                                    if (!uploadSucceeded) {
+                                        homeViewModel.removeOptimisticFlick(flickId)
+                                    }
+                                },
+                                onBatchSuccess = {
+                                    homeViewModel.requestDebouncedFeedRefresh(profile.uid, 0L)
+                                }
+                            )
+                            Toast.makeText(context, "Posted to ${group.name} (${imageUris.size})", Toast.LENGTH_SHORT).show()
+                        }
+                        showPrivateShareTargetDialog = false
+                        privateSharePhotoUris = emptyList()
+                        pendingSharedImportUris = emptyList()
+                    },
+                    onShareToFriend = { friend ->
+                        val imageUris = privateSharePhotoUris
+                        chatViewModel.startChat(
+                            userId = userProfile.uid,
+                            otherUserId = friend.uid,
+                            userName = userProfile.displayName,
+                            otherUserName = friend.displayName,
+                            userPhoto = userProfile.photoUrl,
+                            otherUserPhoto = friend.photoUrl
+                        ) { chatId ->
+                            imageUris.forEach { imageUri ->
+                                chatViewModel.sendPhotoMessage(
+                                    chatId = chatId,
+                                    imageUri = imageUri,
+                                    senderId = userProfile.uid,
+                                    recipientId = friend.uid,
+                                    senderName = userProfile.displayName,
+                                    senderPhotoUrl = userProfile.photoUrl,
+                                    context = context,
+                                    onComplete = {
+                                        uploadViewModel.consumeDailyUploadSlot(userProfile.uid)
+                                    }
+                                )
+                            }
+                            Toast.makeText(context, "Shared privately (${imageUris.size})", Toast.LENGTH_SHORT).show()
+                        }
+                        showPrivateShareTargetDialog = false
+                        privateSharePhotoUris = emptyList()
+                        pendingSharedImportUris = emptyList()
+                    },
+                    onShareToGroup = { group ->
+                        val imageUris = privateSharePhotoUris
+                        chatViewModel.startGroupChat(
+                            ownerUserId = userProfile.uid,
+                            ownerName = userProfile.displayName,
+                            ownerPhoto = userProfile.photoUrl,
+                            groupId = group.id,
+                            groupName = group.name,
+                            groupIcon = group.icon,
+                            memberIds = group.friendIds
+                        ) { chatId ->
+                            imageUris.forEach { imageUri ->
+                                chatViewModel.sendPhotoMessage(
+                                    chatId = chatId,
+                                    imageUri = imageUri,
+                                    senderId = userProfile.uid,
+                                    recipientId = "group:$chatId",
+                                    senderName = userProfile.displayName,
+                                    senderPhotoUrl = userProfile.photoUrl,
+                                    context = context,
+                                    onComplete = {
+                                        uploadViewModel.consumeDailyUploadSlot(userProfile.uid)
+                                    }
+                                )
+                            }
+                            Toast.makeText(context, "Shared privately (${imageUris.size})", Toast.LENGTH_SHORT).show()
+                        }
+                        showPrivateShareTargetDialog = false
+                        privateSharePhotoUris = emptyList()
+                        pendingSharedImportUris = emptyList()
                     }
                 )
             }
@@ -1837,245 +1819,173 @@ private fun PrivateShareTargetDialog(
     onShareToFriend: (com.picflick.app.data.UserProfile) -> Unit,
     onShareToGroup: (FriendGroup) -> Unit
 ) {
+    val entries = when (mode) {
+        PrivateShareMode.SHARED_ALBUM -> groups.map { group ->
+            SelectionListEntry(
+                icon = Icons.Default.Groups,
+                title = group.name.ifBlank { "Shared Album" },
+                subtitle = "Post to album",
+                onClick = { onShareToAlbum(group) }
+            )
+        }
+        PrivateShareMode.GROUP_MESSAGE -> groups.map { group ->
+            SelectionListEntry(
+                icon = Icons.Default.Groups,
+                title = group.name.ifBlank { "Group Chat" },
+                subtitle = "Send as group message",
+                onClick = { onShareToGroup(group) }
+            )
+        }
+        PrivateShareMode.INDIVIDUAL_MESSAGE -> friends.map { friend ->
+            SelectionListEntry(
+                icon = Icons.Default.Person,
+                title = friend.displayName.ifBlank { "Friend" },
+                subtitle = "Send privately",
+                onClick = { onShareToFriend(friend) }
+            )
+        }
+    }
+
+    SelectionListScreen(
+        title = when (mode) {
+            PrivateShareMode.SHARED_ALBUM -> "Post to Shared Album"
+            PrivateShareMode.GROUP_MESSAGE -> "Send as Group Message"
+            PrivateShareMode.INDIVIDUAL_MESSAGE -> "Send to Individual Friend"
+        },
+        onBack = onDismiss,
+        entries = entries.ifEmpty {
+            listOf(
+                SelectionListEntry(
+                    icon = Icons.Outlined.Menu,
+                    title = when (mode) {
+                        PrivateShareMode.SHARED_ALBUM -> "No shared albums available"
+                        PrivateShareMode.GROUP_MESSAGE -> "No group chats available"
+                        PrivateShareMode.INDIVIDUAL_MESSAGE -> "No friends available"
+                    },
+                    subtitle = "",
+                    onClick = {}
+                )
+            )
+        }
+    )
+}
+
+data class SelectionListEntry(
+    val icon: androidx.compose.ui.graphics.vector.ImageVector,
+    val title: String,
+    val subtitle: String,
+    val onClick: () -> Unit
+)
+
+@Composable
+private fun SelectionListScreen(
+    title: String,
+    onBack: () -> Unit,
+    entries: List<SelectionListEntry>
+) {
     val isDarkMode = ThemeManager.isDarkMode.value
-    val screenBg = isDarkModeBackground(isDarkMode)
+    val primaryText = if (isDarkMode) Color.White else Color.Black
     val secondaryText = if (isDarkMode) Color.White.copy(alpha = 0.75f) else Color(0xFF5F6368)
 
-    Dialog(
-        onDismissRequest = onDismiss,
-        properties = DialogProperties(
-            usePlatformDefaultWidth = false,
-            dismissOnBackPress = true,
-            dismissOnClickOutside = true
-        )
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(isDarkModeBackground(isDarkMode))
+            .systemBarsPadding()
     ) {
-        Surface(
-            modifier = Modifier.fillMaxSize(),
-            shape = RoundedCornerShape(0.dp),
-            color = screenBg
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(Color.Black)
+                .padding(vertical = 8.dp),
+            contentAlignment = Alignment.Center
+        ) { LogoImage() }
+
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(48.dp)
+                .background(Color.Black)
         ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .systemBarsPadding()
-                    .background(isDarkModeBackground(isDarkMode))
-            ) {
-                // Standard black logo header
-                Box(
+            TextButton(onClick = onBack, modifier = Modifier.align(Alignment.CenterStart)) {
+                Text("Back", color = Color.White)
+            }
+            Text(
+                text = title,
+                color = Color.White,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.align(Alignment.Center)
+            )
+        }
+
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f)
+                .padding(horizontal = 20.dp, vertical = 12.dp),
+            contentPadding = PaddingValues(bottom = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            items(entries) { entry ->
+                Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(Color.Black)
-                        .padding(vertical = 8.dp),
-                    contentAlignment = Alignment.Center
+                        .clip(RoundedCornerShape(12.dp))
+                        .clickable { entry.onClick() }
+                        .background(if (isDarkMode) Color(0xFF161A22) else Color.White)
+                        .padding(horizontal = 14.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    LogoImage()
-                }
-
-                // Standard centered title bar style
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(48.dp)
-                        .background(Color.Black)
-                ) {
-                    TextButton(
-                        onClick = onDismiss,
-                        modifier = Modifier.align(Alignment.CenterStart)
-                    ) {
-                        Text("Close", color = Color.White)
-                    }
-
-                    Text(
-                        text = when (mode) {
-                            PrivateShareMode.SHARED_ALBUM -> "Post to Shared Album"
-                            PrivateShareMode.GROUP_MESSAGE -> "Send as Group Message"
-                            PrivateShareMode.INDIVIDUAL_MESSAGE -> "Send to Individual Friend"
-                        },
-                        color = Color.White,
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.align(Alignment.Center)
+                    Icon(
+                        imageVector = entry.icon,
+                        contentDescription = null,
+                        tint = Color(0xFF2E86DE)
                     )
-                }
-
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f)
-                        .padding(horizontal = 20.dp, vertical = 12.dp),
-                    contentPadding = PaddingValues(bottom = 16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    when (mode) {
-                        PrivateShareMode.SHARED_ALBUM -> {
-                            if (groups.isNotEmpty()) {
-                                items(groups, key = { "album_${it.id}" }) { group ->
-                                    PrivateShareListRow(
-                                        title = group.name.ifBlank { "Shared Album" },
-                                        avatarUrl = group.icon.takeIf { it.startsWith("http") },
-                                        avatarEmoji = group.icon.takeIf { !it.startsWith("http") },
-                                        fallbackLetter = group.name.firstOrNull()?.uppercase(),
-                                        buttonLabel = "Post",
-                                        onClick = { onShareToAlbum(group) }
-                                    )
-                                }
-                            } else {
-                                item {
-                                    Box(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(vertical = 24.dp),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Text(
-                                            text = "No shared albums available",
-                                            color = secondaryText
-                                        )
-                                    }
-                                }
-                            }
-                        }
-
-                        PrivateShareMode.GROUP_MESSAGE -> {
-                            if (groups.isNotEmpty()) {
-                                items(groups, key = { "groupmsg_${it.id}" }) { group ->
-                                    PrivateShareListRow(
-                                        title = group.name.ifBlank { "Group Chat" },
-                                        avatarUrl = group.icon.takeIf { it.startsWith("http") },
-                                        avatarEmoji = group.icon.takeIf { !it.startsWith("http") },
-                                        fallbackLetter = group.name.firstOrNull()?.uppercase(),
-                                        buttonLabel = "Send",
-                                        onClick = { onShareToGroup(group) }
-                                    )
-                                }
-                            } else {
-                                item {
-                                    Box(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(vertical = 24.dp),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Text(
-                                            text = "No group chats available",
-                                            color = secondaryText
-                                        )
-                                    }
-                                }
-                            }
-                        }
-
-                        PrivateShareMode.INDIVIDUAL_MESSAGE -> {
-                            if (friends.isNotEmpty()) {
-                                items(friends, key = { "friend_${it.uid}" }) { friend ->
-                                    PrivateShareListRow(
-                                        title = friend.displayName.ifBlank { "Friend" },
-                                        avatarUrl = friend.photoUrl.takeIf { it.isNotBlank() },
-                                        avatarEmoji = null,
-                                        fallbackLetter = friend.displayName.firstOrNull()?.uppercase(),
-                                        buttonLabel = "Send",
-                                        onClick = { onShareToFriend(friend) }
-                                    )
-                                }
-                            } else {
-                                item {
-                                    Box(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(vertical = 24.dp),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Text(
-                                            text = "No friends available",
-                                            color = secondaryText
-                                        )
-                                    }
-                                }
-                            }
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = entry.title,
+                            color = primaryText,
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 16.sp
+                        )
+                        if (entry.subtitle.isNotBlank()) {
+                            Text(
+                                text = entry.subtitle,
+                                color = secondaryText,
+                                fontSize = 13.sp
+                            )
                         }
                     }
                 }
-
-                // Visual consistency with standard 5-icon bottom bar
-                BottomNavBar(
-                    currentRoute = "chats",
-                    onNavigate = { onDismiss() },
-                    unreadMessages = 0
-                )
             }
         }
     }
 }
 
 @Composable
-private fun PrivateShareListRow(
-    title: String,
-    avatarUrl: String?,
-    avatarEmoji: String?,
-    fallbackLetter: String?,
-    buttonLabel: String,
-    onClick: () -> Unit
+private fun UploadSourceListScreen(
+    onBack: () -> Unit,
+    onTakePhoto: () -> Unit,
+    onChooseFromGallery: () -> Unit
 ) {
-    val isDarkMode = ThemeManager.isDarkMode.value
-    val primaryText = if (isDarkMode) Color.White else Color.Black
-    val avatarRing = if (isDarkMode) Color.White.copy(alpha = 0.8f) else MaterialTheme.colorScheme.primary
-    val avatarBg = if (isDarkMode) Color.Gray.copy(alpha = 0.4f) else MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 6.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Row(
-            modifier = Modifier.weight(1f),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(44.dp)
-                    .clip(CircleShape)
-                    .background(avatarBg)
-                    .border(2.dp, avatarRing, CircleShape),
-                contentAlignment = Alignment.Center
-            ) {
-                when {
-                    !avatarUrl.isNullOrBlank() -> {
-                        AsyncImage(
-                            model = avatarUrl,
-                            contentDescription = title,
-                            modifier = Modifier.fillMaxSize(),
-                            contentScale = ContentScale.Crop
-                        )
-                    }
-                    !avatarEmoji.isNullOrBlank() -> Text(text = avatarEmoji)
-                    !fallbackLetter.isNullOrBlank() -> Text(text = fallbackLetter, color = primaryText, fontWeight = FontWeight.Bold)
-                    else -> Icon(imageVector = Icons.Default.Groups, contentDescription = null, tint = primaryText)
-                }
-            }
-
-            Spacer(modifier = Modifier.width(12.dp))
-
-            Text(
-                text = title,
-                color = primaryText,
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Medium
-            )
-        }
-
-        Button(
-            onClick = onClick,
-            colors = androidx.compose.material3.ButtonDefaults.buttonColors(
-                containerColor = Color(0xFF87CEEB)
+    SelectionListScreen(
+        title = "Add Photo",
+        onBack = onBack,
+        entries = listOf(
+            SelectionListEntry(
+                icon = Icons.Outlined.PhotoCamera,
+                title = "Take Photo",
+                subtitle = "Capture with camera",
+                onClick = onTakePhoto
             ),
-            modifier = Modifier.height(36.dp)
-        ) {
-            Text(
-                text = buttonLabel,
-                fontSize = 13.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color.Black
+            SelectionListEntry(
+                icon = Icons.Outlined.PhotoLibrary,
+                title = "Choose from Gallery",
+                subtitle = "Pick one or multiple photos",
+                onClick = onChooseFromGallery
             )
-        }
-    }
+        )
+    )
 }
