@@ -297,6 +297,7 @@ fun AuthenticatedContent(
             selectedPhotoUri = selectedPhotoUri,
             userProfile = userProfile,
             friendsViewModel = friendsViewModel,
+            chatViewModel = chatViewModel,
             uploadViewModel = uploadViewModel,
             homeViewModel = homeViewModel,
             context = context,
@@ -390,6 +391,10 @@ fun AuthenticatedContent(
             // Preview screen - for now navigate to Home
             // TODO: Implement proper preview screen
             onScreenChange(Screen.Home)
+        }
+
+        is Screen.MediaPicker -> {
+            // Media picker UI is hosted in MainActivity overlay for shared shell consistency
         }
 
         is Screen.EditPhoto -> {
@@ -1326,6 +1331,7 @@ private fun FilterScreenContent(
     selectedPhotoUri: Uri?,
     userProfile: UserProfile,
     friendsViewModel: FriendsViewModel,
+    chatViewModel: ChatViewModel,
     uploadViewModel: UploadViewModel,
     homeViewModel: HomeViewModel,
     context: android.content.Context,
@@ -1372,6 +1378,57 @@ private fun FilterScreenContent(
                     },
                     sharedGroupId = sharedGroupId
                 )
+            },
+            onUploadToFriends = { filteredUri, _, _, _, friends ->
+                friends.forEachIndexed { index, friend ->
+                    chatViewModel.startChat(
+                        userId = userProfile.uid,
+                        otherUserId = friend.uid,
+                        userName = userProfile.displayName,
+                        otherUserName = friend.displayName,
+                        userPhoto = userProfile.photoUrl,
+                        otherUserPhoto = friend.photoUrl
+                    ) { chatId ->
+                        chatViewModel.sendPhotoMessage(
+                            chatId = chatId,
+                            imageUri = filteredUri,
+                            senderId = userProfile.uid,
+                            recipientId = friend.uid,
+                            senderName = userProfile.displayName,
+                            senderPhotoUrl = userProfile.photoUrl,
+                            context = context,
+                            onComplete = {
+                                if (index == 0) {
+                                    uploadViewModel.consumeDailyUploadSlot(userProfile.uid)
+                                }
+                            }
+                        )
+                    }
+                }
+            },
+            onUploadToGroup = { filteredUri, _, _, _, group ->
+                chatViewModel.startGroupChat(
+                    ownerUserId = userProfile.uid,
+                    ownerName = userProfile.displayName,
+                    ownerPhoto = userProfile.photoUrl,
+                    groupId = group.id,
+                    groupName = group.name,
+                    groupIcon = group.icon,
+                    memberIds = group.friendIds
+                ) { chatId ->
+                    chatViewModel.sendPhotoMessage(
+                        chatId = chatId,
+                        imageUri = filteredUri,
+                        senderId = userProfile.uid,
+                        recipientId = "group:$chatId",
+                        senderName = userProfile.displayName,
+                        senderPhotoUrl = userProfile.photoUrl,
+                        context = context,
+                        onComplete = {
+                            uploadViewModel.consumeDailyUploadSlot(userProfile.uid)
+                        }
+                    )
+                }
             },
             onUploadQueued = { onScreenChange(Screen.Home) },
             onNavigateToFindFriends = { onScreenChange(Screen.FindFriends()) },
