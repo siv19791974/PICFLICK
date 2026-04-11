@@ -100,6 +100,7 @@ import com.picflick.app.repository.FlickRepository
 import com.picflick.app.data.Flick
 import com.picflick.app.data.getDailyUploadLimit
 import com.picflick.app.ui.components.ActionSheetOption
+import com.picflick.app.ui.components.AddPhotoStyleActionSheet
 import com.picflick.app.ui.components.BottomNavBar
 import com.picflick.app.ui.components.LogoImage
 import com.picflick.app.ui.screens.LoginScreen
@@ -1266,17 +1267,33 @@ fun MainScreen(
             }
 
             if (showUploadSourceDialog && userProfile != null) {
-                UploadSourceListScreen(
-                    onBack = { showUploadSourceDialog = false },
-                    onTakePhoto = {
-                        showUploadSourceDialog = false
-                        cameraPermissionLauncher.launch(android.Manifest.permission.CAMERA)
-                    },
-                    onChooseFromGallery = {
-                        showUploadSourceDialog = false
-                        selectedMediaUris = emptyList()
-                        navigateTo(Screen.MediaPicker)
-                    }
+                AddPhotoStyleActionSheet(
+                    title = "Add Photo",
+                    options = listOf(
+                        ActionSheetOption(
+                            icon = Icons.Outlined.PhotoCamera,
+                            title = "Take Photo",
+                            subtitle = "Capture with camera",
+                            accentColor = Color(0xFF2E86DE),
+                            onClick = {
+                                showUploadSourceDialog = false
+                                cameraPermissionLauncher.launch(android.Manifest.permission.CAMERA)
+                            }
+                        ),
+                        ActionSheetOption(
+                            icon = Icons.Outlined.PhotoLibrary,
+                            title = "Choose from Gallery",
+                            subtitle = "Select from your photos",
+                            accentColor = Color(0xFF2E86DE),
+                            onClick = {
+                                showUploadSourceDialog = false
+                                selectedMediaUris = emptyList()
+                                navigateTo(Screen.MediaPicker)
+                            }
+                        )
+                    ),
+                    onDismiss = { showUploadSourceDialog = false },
+                    cancelSubtitle = "Cancel"
                 )
             }
 
