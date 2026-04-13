@@ -47,6 +47,7 @@ import com.picflick.app.ui.screens.FilterScreen
 import com.picflick.app.ui.screens.FindFriendsScreen
 import com.picflick.app.ui.screens.FriendsScreen
 import com.picflick.app.ui.screens.FullScreenPhotoViewer
+import com.picflick.app.ui.screens.GroupAlbumInfoScreen
 import com.picflick.app.ui.screens.HomeScreen
 import com.picflick.app.ui.screens.LegalScreen
 import com.picflick.app.ui.screens.ManageStorageScreen
@@ -395,6 +396,14 @@ fun AuthenticatedContent(
 
         is Screen.MediaPicker -> {
             // Media picker UI is hosted in MainActivity overlay for shared shell consistency
+        }
+
+        is Screen.GroupAlbumInfo -> {
+            val group = homeViewModel.friendGroups.find { it.id == currentScreen.groupId }
+            GroupAlbumInfoScreen(
+                group = group,
+                onBack = { onScreenChange(Screen.Filter) }
+            )
         }
 
         is Screen.EditPhoto -> {
@@ -1432,7 +1441,19 @@ private fun FilterScreenContent(
             },
             onUploadQueued = { onScreenChange(Screen.Home) },
             onNavigateToFindFriends = { onScreenChange(Screen.FindFriends()) },
-            onNavigateToCamera = { onScreenChange(Screen.Home) }
+            onNavigateToCamera = { onScreenChange(Screen.Home) },
+            onOpenGroupOrAlbumInfo = { group ->
+                onScreenChange(
+                    Screen.GroupAlbumInfo(
+                        groupId = group.id,
+                        groupName = group.name,
+                        groupIcon = group.icon
+                    )
+                )
+            },
+            onOpenUserProfile = { userId ->
+                if (userId.isNotBlank()) onScreenChange(Screen.UserProfile(userId))
+            }
         )
     } ?: run {
         onScreenChange(Screen.Home)

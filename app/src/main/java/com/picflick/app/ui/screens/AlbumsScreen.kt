@@ -3,16 +3,14 @@ package com.picflick.app.ui.screens
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.pullrefresh.PullRefreshIndicator
 import androidx.compose.material.pullrefresh.pullRefresh
 import androidx.compose.material.pullrefresh.rememberPullRefreshState
@@ -24,7 +22,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
@@ -48,7 +46,6 @@ fun AlbumsScreen(
 ) {
     val isDarkMode = ThemeManager.isDarkMode.value
     val backgroundColor = if (isDarkMode) Color.Black else Color.White
-    val textColor = if (isDarkMode) Color.White else Color.Black
     val subtitleColor = if (isDarkMode) Color.Gray else Color.DarkGray
 
     var albums by remember { mutableStateOf<List<Album>>(emptyList()) }
@@ -56,6 +53,7 @@ fun AlbumsScreen(
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var showCreateDialog by remember { mutableStateOf(false) }
     var isRefreshing by remember { mutableStateOf(false) }
+    var searchQuery by remember { mutableStateOf("") }
 
     fun loadAlbums(isManualRefresh: Boolean = false) {
         isLoading = true
@@ -86,6 +84,17 @@ fun AlbumsScreen(
         onRefresh = { loadAlbums(isManualRefresh = true) }
     )
 
+    val filteredAlbums = remember(albums, searchQuery) {
+        if (searchQuery.isBlank()) {
+            albums
+        } else {
+            val query = searchQuery.trim().lowercase()
+            albums.filter { album ->
+                album.name.lowercase().contains(query) || album.description.lowercase().contains(query)
+            }
+        }
+    }
+
     // Load albums
     LaunchedEffect(userProfile.uid) {
         loadAlbums()
@@ -93,121 +102,149 @@ fun AlbumsScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("Albums", color = textColor) },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(48.dp)
+                    .background(Color.Black),
+                contentAlignment = Alignment.CenterStart
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    IconButton(onClick = onBack, modifier = Modifier.size(48.dp)) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Back",
-                            tint = textColor
+                            tint = Color.White
                         )
                     }
-                },
-                actions = {
-                    IconButton(onClick = { showCreateDialog = true }) {
+                    Text(
+                        text = "Albums (${filteredAlbums.size})",
+                        modifier = Modifier.weight(1f),
+                        color = Color.White,
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    IconButton(onClick = { showCreateDialog = true }, modifier = Modifier.size(48.dp)) {
                         Icon(
                             imageVector = Icons.Default.Add,
                             contentDescription = "Create Album",
-                            tint = textColor
+                            tint = Color.White
                         )
                     }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = backgroundColor
-                )
-            )
+                }
+            }
         }
     ) { padding ->
-        Box(
+        Column(
             modifier = Modifier
                 .fillMaxSize()
                 .background(backgroundColor)
                 .padding(padding)
-                .pullRefresh(pullRefreshState)
         ) {
-            when {
-                isLoading -> {
-                    LazyVerticalGrid(
-                        columns = GridCells.Fixed(2),
-                        modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(16.dp),
-                        horizontalArrangement = Arrangement.spacedBy(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
-                        items(6) {
-                            AlbumCardShimmer()
-                        }
-                    }
-                }
-                errorMessage != null -> {
-                    Column(
-                        modifier = Modifier.align(Alignment.Center),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Text(
-                            text = errorMessage ?: "Failed to load albums",
-                            color = MaterialTheme.colorScheme.error
-                        )
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Button(onClick = { loadAlbums() }) {
-                            Text("Retry")
-                        }
-                    }
-                }
-                albums.isEmpty() -> {
-                    Column(
-                        modifier = Modifier.align(Alignment.Center),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Add,
-                            contentDescription = null,
-                            modifier = Modifier.size(64.dp),
-                            tint = subtitleColor.copy(alpha = 0.5f)
-                        )
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Text(
-                            text = "No albums yet",
-                            color = subtitleColor,
-                            fontSize = 16.sp
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Button(onClick = { showCreateDialog = true }) {
-                            Text("Create Album")
-                        }
-                    }
-                }
-                else -> {
-                    LazyVerticalGrid(
-                        columns = GridCells.Fixed(2),
-                        modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(16.dp),
-                        horizontalArrangement = Arrangement.spacedBy(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
-                        items(
-                            items = albums,
-                            key = { it.id },
-                            contentType = { "album" }
-                        ) { album ->
-                            AlbumItem(
-                                album = album,
-                                isDarkMode = isDarkMode,
-                                onClick = { onAlbumClick(album) }
-                            )
-                        }
-                    }
-                }
-            }
-
-            PullRefreshIndicator(
-                refreshing = isRefreshing,
-                state = pullRefreshState,
-                modifier = Modifier.align(Alignment.TopCenter),
-                contentColor = MaterialTheme.colorScheme.primary,
-                backgroundColor = backgroundColor
+            OutlinedTextField(
+                value = searchQuery,
+                onValueChange = { searchQuery = it },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                singleLine = true,
+                placeholder = { Text("Search albums") },
+                leadingIcon = {
+                    Icon(
+                        imageVector = Icons.Default.Search,
+                        contentDescription = "Search"
+                    )
+                },
+                shape = RoundedCornerShape(12.dp)
             )
+
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
+                    .pullRefresh(pullRefreshState)
+            ) {
+                when {
+                    isLoading -> {
+                        LazyColumn(
+                            modifier = Modifier.fillMaxSize(),
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)
+                        ) {
+                            items(6) {
+                                AlbumCardShimmer()
+                            }
+                        }
+                    }
+                    errorMessage != null -> {
+                        Column(
+                            modifier = Modifier.align(Alignment.Center),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text(
+                                text = errorMessage ?: "Failed to load albums",
+                                color = MaterialTheme.colorScheme.error
+                            )
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Button(onClick = { loadAlbums() }) {
+                                Text("Retry")
+                            }
+                        }
+                    }
+                    filteredAlbums.isEmpty() -> {
+                        Column(
+                            modifier = Modifier.align(Alignment.Center),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Add,
+                                contentDescription = null,
+                                modifier = Modifier.size(64.dp),
+                                tint = subtitleColor.copy(alpha = 0.5f)
+                            )
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Text(
+                                text = if (albums.isEmpty()) "No albums yet" else "No albums match your search",
+                                color = subtitleColor,
+                                fontSize = 16.sp
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            if (albums.isEmpty()) {
+                                Button(onClick = { showCreateDialog = true }) {
+                                    Text("Create Album")
+                                }
+                            }
+                        }
+                    }
+                    else -> {
+                        LazyColumn(modifier = Modifier.fillMaxSize()) {
+                            items(
+                                items = filteredAlbums,
+                                key = { it.id },
+                                contentType = { "album_row" }
+                            ) { album ->
+                                AlbumRowItem(
+                                    album = album,
+                                    isDarkMode = isDarkMode,
+                                    onClick = { onAlbumClick(album) }
+                                )
+                            }
+                        }
+                    }
+                }
+
+                PullRefreshIndicator(
+                    refreshing = isRefreshing,
+                    state = pullRefreshState,
+                    modifier = Modifier.align(Alignment.TopCenter),
+                    contentColor = MaterialTheme.colorScheme.primary,
+                    backgroundColor = backgroundColor
+                )
+            }
         }
     }
 
@@ -236,95 +273,76 @@ fun AlbumsScreen(
 }
 
 /**
- * Album grid item
+ * Album row item (messages-style sizing)
  */
 @Composable
-private fun AlbumItem(
+private fun AlbumRowItem(
     album: Album,
     isDarkMode: Boolean,
     onClick: () -> Unit
 ) {
-    val cardBackground = if (isDarkMode) Color(0xFF1C1C1E) else Color.White
-    val textColor = if (isDarkMode) Color.White else Color.Black
-    val subtitleColor = if (isDarkMode) Color.Gray else Color.DarkGray
+    val rowBackground = if (isDarkMode) Color(0xFF111319) else Color(0xFFD7E6F5)
+    val titleColor = if (isDarkMode) Color.White else Color(0xFF0F172A)
+    val subtitleColor = if (isDarkMode) Color.LightGray else Color(0xFF4B5563)
 
-    Card(
+    Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onClick() },
-        colors = CardDefaults.cardColors(containerColor = cardBackground),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+            .clickable { onClick() }
+            .background(rowBackground)
+            .padding(horizontal = 12.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Column {
-            // Album cover
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(120.dp)
-                    .background(
-                        if (album.coverPhotoUrl.isEmpty())
-                            MaterialTheme.colorScheme.surfaceVariant
-                        else
-                            Color.Transparent
-                    )
-            ) {
-                if (album.coverPhotoUrl.isNotEmpty()) {
-                    AsyncImage(
-                        model = album.coverPhotoUrl,
-                        contentDescription = null,
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop
-                    )
-                } else {
-                    Icon(
-                        imageVector = Icons.Default.Add,
-                        contentDescription = null,
-                        modifier = Modifier.align(Alignment.Center),
-                        tint = subtitleColor.copy(alpha = 0.5f)
-                    )
-                }
-
-                // Photo count badge
-                Surface(
-                    modifier = Modifier
-                        .align(Alignment.BottomEnd)
-                        .padding(8.dp),
-                    shape = RoundedCornerShape(12.dp),
-                    color = Color.Black.copy(alpha = 0.6f)
-                ) {
-                    Text(
-                        text = "${album.photoCount}",
-                        color = Color.White,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Medium,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                    )
-                }
-            }
-
-            // Album info
-            Column(
-                modifier = Modifier.padding(12.dp)
-            ) {
-                Text(
-                    text = album.name,
-                    fontWeight = FontWeight.Medium,
-                    fontSize = 14.sp,
-                    color = textColor,
-                    maxLines = 1
+        Box(
+            modifier = Modifier
+                .size(68.dp)
+                .clip(CircleShape)
+                .background(if (isDarkMode) Color(0xFF1F2937) else Color.White),
+            contentAlignment = Alignment.Center
+        ) {
+            if (album.coverPhotoUrl.isNotEmpty()) {
+                AsyncImage(
+                    model = album.coverPhotoUrl,
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
                 )
-                if (album.description.isNotEmpty()) {
-                    Spacer(modifier = Modifier.height(2.dp))
-                    Text(
-                        text = album.description,
-                        fontSize = 12.sp,
-                        color = subtitleColor,
-                        maxLines = 2
-                    )
-                }
+            } else {
+                Text(
+                    text = album.name.firstOrNull()?.uppercase() ?: "A",
+                    color = if (isDarkMode) Color.White else Color(0xFF1F2937),
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 20.sp
+                )
             }
         }
+
+        Spacer(modifier = Modifier.width(14.dp))
+
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = album.name,
+                color = titleColor,
+                fontWeight = FontWeight.Bold,
+                fontSize = 16.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Spacer(modifier = Modifier.height(2.dp))
+            Text(
+                text = if (album.photoCount == 1) "1 photo" else "${album.photoCount} photos",
+                color = subtitleColor,
+                fontSize = 12.sp,
+                maxLines = 1
+            )
+        }
     }
+
+    HorizontalDivider(
+        color = if (isDarkMode) Color.White.copy(alpha = 0.08f) else Color(0xFFB7CAE0),
+        thickness = 1.dp,
+        modifier = Modifier.padding(start = 94.dp, end = 12.dp)
+    )
 }
 
 /**

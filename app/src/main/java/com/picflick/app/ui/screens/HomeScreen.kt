@@ -1501,6 +1501,22 @@ private fun GroupManagerSheet(
     var draggingGroupId by remember { mutableStateOf<String?>(null) }
     var confirmDeleteGroup by remember { mutableStateOf<FriendGroup?>(null) }
     var confirmDeleteTempTitle by remember { mutableStateOf<String?>(null) }
+    var searchQuery by remember { mutableStateOf("") }
+
+    val filteredOrderedGroupIds = remember(orderedGroupIdsState, sortedGroups, searchQuery) {
+        if (searchQuery.isBlank()) {
+            orderedGroupIdsState.toList()
+        } else {
+            val query = searchQuery.trim().lowercase(Locale.getDefault())
+            orderedGroupIdsState.filter { groupId ->
+                val group = sortedGroups.firstOrNull { it.id == groupId }
+                group != null && (
+                    group.name.lowercase(Locale.getDefault()).contains(query) ||
+                        group.membersExcludingOwner().size.toString().contains(query)
+                    )
+            }
+        }
+    }
 
     confirmDeleteGroup?.let { group ->
         val isOwner = group.isOwner(currentUserId)
@@ -1593,22 +1609,42 @@ private fun GroupManagerSheet(
                 }
             }
 
-            LazyColumn(modifier = Modifier.weight(1f)) {
-                item {
-                    val isSelected = selectedFilter is FeedFilter.AllFriends
-                    GroupRowCard(
-                        title = "All friends",
-                        subtitle = "$allFriendsCount friends",
-                        icon = "🏠",
-                        colour = "#4FC3F7",
-                        selected = isSelected,
-                        onClick = { onSelectGroup(FeedFilter.AllFriends) },
-                        textColor = textColor,
-                        trailingContent = {}
+            OutlinedTextField(
+                value = searchQuery,
+                onValueChange = { searchQuery = it },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                singleLine = true,
+                placeholder = { Text("Search albums") },
+                leadingIcon = {
+                    Icon(
+                        imageVector = Icons.Default.Search,
+                        contentDescription = "Search"
                     )
+                },
+                textStyle = MaterialTheme.typography.bodyLarge,
+                shape = RoundedCornerShape(12.dp)
+            )
+
+            LazyColumn(modifier = Modifier.weight(1f)) {
+                if (searchQuery.isBlank() || "all friends".contains(searchQuery.trim().lowercase(Locale.getDefault()))) {
+                    item {
+                        val isSelected = selectedFilter is FeedFilter.AllFriends
+                        GroupRowCard(
+                            title = "All friends",
+                            subtitle = "$allFriendsCount friends",
+                            icon = "🏠",
+                            colour = "#4FC3F7",
+                            selected = isSelected,
+                            onClick = { onSelectGroup(FeedFilter.AllFriends) },
+                            textColor = textColor,
+                            trailingContent = {}
+                        )
+                    }
                 }
 
-                items(orderedGroupIdsState, key = { it }) { groupId ->
+                items(filteredOrderedGroupIds, key = { it }) { groupId ->
                     val group = sortedGroups.firstOrNull { it.id == groupId } ?: return@items
                     val isSelected = selectedFilter is FeedFilter.ByGroup && selectedFilter.group.id == group.id
                     var showGroupMenu by remember(group.id) { mutableStateOf(false) }
@@ -1722,7 +1758,7 @@ private fun GroupManagerSheet(
                     )
                 }
 
-                items(temporaryExampleGroups, key = { "temp_$it" }) { tempTitle ->
+                items(temporaryExampleGroups.filter { searchQuery.isBlank() || it.lowercase(Locale.getDefault()).contains(searchQuery.trim().lowercase(Locale.getDefault())) }, key = { "temp_$it" }) { tempTitle ->
                     val tempIcon = if (tempTitle == "Uncle John's wedding") "👰" else "⚽"
                     var showTempMenu by remember(tempTitle) { mutableStateOf(false) }
                     GroupRowCard(
@@ -1767,14 +1803,14 @@ private fun GroupManagerSheet(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 12.dp)
+                        .padding(horizontal = 16.dp, vertical = 10.dp)
                 ) {
                     Button(
                         onClick = onCreateGroup,
                         shape = RoundedCornerShape(20.dp),
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(48.dp),
+                            .height(46.dp),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = addColor,
                             contentColor = Color.White,
@@ -1782,7 +1818,7 @@ private fun GroupManagerSheet(
                             disabledContentColor = Color.White.copy(alpha = 0.9f)
                         )
                     ) {
-                        Text("Create new album", fontSize = 12.sp, color = Color.White)
+                        Text("Create new album", fontSize = 13.sp, color = Color.White)
                     }
                 }
             }
@@ -1806,8 +1842,7 @@ private fun GroupRowCard(
     enabled: Boolean = true,
     trailingContent: @Composable RowScope.() -> Unit
 ) {
-    val rowBackground = if (selected) MaterialTheme.colorScheme.primary.copy(alpha = 0.12f) else Color.Transparent
-    val accentColour = try { Color(android.graphics.Color.parseColor(colour)) } catch (_: Exception) { Color(0xFF4FC3F7) }
+    val rowBackground = if (selected) Color(0x221565C0) else Color.Transparent
 
     Column(modifier = Modifier.fillMaxWidth()) {
         Row(
@@ -1833,7 +1868,7 @@ private fun GroupRowCard(
         ) {
             Box(
                 modifier = Modifier
-                    .size(40.dp)
+                    .size(56.dp)
                     .border(2.dp, Color.Black, CircleShape)
                     .clip(CircleShape)
                     .background(Color.Transparent),
@@ -1847,17 +1882,31 @@ private fun GroupRowCard(
                         modifier = Modifier.fillMaxSize()
                     )
                 } else {
-                    Text(text = icon, fontSize = 20.sp)
+                    Text(text = icon, fontSize = 22.sp)
                 }
             }
-            Spacer(modifier = Modifier.width(12.dp))
+            Spacer(modifier = Modifier.width(16.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Text(text = title, color = textColor, fontWeight = FontWeight.SemiBold)
-                Text(text = subtitle, color = textColor.copy(alpha = 0.7f), fontSize = 12.sp)
+                Text(
+                    text = title,
+                    color = textColor,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 16.sp
+                )
+                Text(
+                    text = subtitle,
+                    color = textColor.copy(alpha = 0.7f),
+                    fontSize = 13.sp
+                )
             }
             Row(content = trailingContent)
         }
 
+        HorizontalDivider(
+            modifier = Modifier.padding(start = 80.dp),
+            thickness = 0.5.dp,
+            color = textColor.copy(alpha = 0.15f)
+        )
     }
 }
 
@@ -1889,11 +1938,6 @@ private fun CreateOrEditGroupDialog(
     val textColor = if (isDarkMode) Color.White else Color.Black
     val pageBackground = if (isDarkMode) Color.Black else PicFlickLightBackground
     val isCreateMode = onCreateLocal != null && onCreateShared != null
-
-    val icons = listOf(
-        "👥", "👨‍👩‍👧‍👦", "💼", "🎓", "⭐", "✈️", "⚽", "🎨", "🏠", "🎵", "📚", "🎮",
-        "🍔", "🍷", "🛫", "🏋️", "🏖️", "🎬", "🐶", "🚗", "🛍️", "🧠", "🧑‍💻", "📷"
-    )
 
     val sortedFriends = remember(friends) {
         friends.sortedWith(
@@ -1967,13 +2011,13 @@ private fun CreateOrEditGroupDialog(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 12.dp, vertical = 4.dp),
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                horizontalArrangement = Arrangement.Center
             ) {
                 Box(
                     modifier = Modifier
-                        .size(56.dp)
+                        .size(64.dp)
                         .clip(CircleShape)
                         .border(2.dp, if (isDarkMode) Color(0xFF4A4A4A) else Color(0xFFB0BEC5), CircleShape)
                         .background(if (isDarkMode) Color(0xFF2A2A2A) else Color(0xFFF1F1F1))
@@ -1992,31 +2036,8 @@ private fun CreateOrEditGroupDialog(
                             imageVector = Icons.Default.AddAPhoto,
                             contentDescription = "Add photo",
                             tint = textColor,
-                            modifier = Modifier.size(22.dp)
+                            modifier = Modifier.size(24.dp)
                         )
-                    }
-                }
-
-                LazyRow(
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(56.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    items(icons, key = { it }) { icon ->
-                        Surface(
-                            modifier = Modifier
-                                .size(44.dp)
-                                .clickable { selectedIcon = icon },
-                            shape = CircleShape,
-                            color = if (selectedIcon == icon) waitingColor else if (isDarkMode) Color(0xFF2A2A2A) else Color(0xFFF1F1F1),
-                            border = if (selectedIcon == icon) null else androidx.compose.foundation.BorderStroke(1.dp, if (isDarkMode) Color(0xFF4A4A4A) else Color(0xFFB0BEC5))
-                        ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Text(text = icon, fontSize = 20.sp, color = if (selectedIcon == icon) Color.White else textColor)
-                            }
-                        }
                     }
                 }
             }

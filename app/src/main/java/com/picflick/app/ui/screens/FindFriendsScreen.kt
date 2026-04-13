@@ -35,6 +35,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
@@ -921,12 +922,14 @@ private fun UserResultItem(
     val isDarkMode = ThemeManager.isDarkMode.value
     val liveUserPhoto = rememberLiveUserPhotoUrl(user.uid, user.photoUrl)
     val tierRingColor = rememberLiveUserTierColor(user.uid)
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 12.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
+
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
             // Profile photo - clickable
             if (liveUserPhoto.isNotEmpty()) {
                 AsyncImage(
@@ -953,48 +956,56 @@ private fun UserResultItem(
                     Icon(
                         imageVector = Icons.Default.Person,
                         contentDescription = null,
-                        modifier = Modifier.size(32.dp),
+                        modifier = Modifier.size(28.dp),
                         tint = if (isDarkMode) Color.Gray else Color.DarkGray
                     )
                 }
             }
 
-            Spacer(modifier = Modifier.width(12.dp))
+            Spacer(modifier = Modifier.width(16.dp))
 
             // User info - takes available space
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = user.displayName,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color = if (isDarkMode) Color.White else Color.Black
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = if (isDarkMode) Color.White else Color.Black,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
 
                 if (showMutualFriends && mutualCount > 0) {
                     Text(
                         text = "$mutualCount mutual followers",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = if (isDarkMode) Color.Gray else Color.DarkGray
+                        fontSize = 14.sp,
+                        color = if (isDarkMode) Color.Gray else Color.DarkGray,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                 } else if (subtitle != null) {
                     Text(
                         text = subtitle,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = if (isDarkMode) Color.Gray else Color.DarkGray
+                        fontSize = 14.sp,
+                        color = if (isDarkMode) Color.Gray else Color.DarkGray,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                 } else {
                     Text(
                         text = "${user.followers.size} followers",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = if (isDarkMode) Color.Gray else Color.DarkGray
+                        fontSize = 14.sp,
+                        color = if (isDarkMode) Color.Gray else Color.DarkGray,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
             }
-            
-            // Action button - aligned with User B friends list styles
-            val addColor = Color(0xFF2A4A73)      // Light blue outline/text for ADD
-            val waitingColor = Color(0xFF2A4A73)  // Standard mid-blue for WAITING
-            val friendsColor = Color(0xFF2A4A73)  // Standard mid-blue for FRIENDS
+
+            // Action button - unchanged behavior
+            val addColor = Color(0xFF2A4A73)
+            val waitingColor = Color(0xFF2A4A73)
+            val friendsColor = Color(0xFF2A4A73)
 
             when {
                 isProcessing -> {
@@ -1078,6 +1089,13 @@ private fun UserResultItem(
                     }
                 }
             }
+        }
+
+        HorizontalDivider(
+            modifier = Modifier.padding(start = 80.dp),
+            color = if (isDarkMode) Color(0xFF222222) else Color(0x22000000),
+            thickness = 0.5.dp
+        )
     }
 }
 

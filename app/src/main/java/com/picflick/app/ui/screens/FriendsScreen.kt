@@ -87,6 +87,19 @@ fun FriendsScreen(
                 .distinctBy { it.uid }
         }
     }
+    var searchQuery by remember { mutableStateOf("") }
+    val filteredFollowingUsers by remember(visibleFollowingUsers, searchQuery) {
+        derivedStateOf {
+            if (searchQuery.isBlank()) {
+                visibleFollowingUsers
+            } else {
+                val query = searchQuery.trim().lowercase()
+                visibleFollowingUsers.filter { friend ->
+                    friend.displayName.lowercase().contains(query)
+                }
+            }
+        }
+    }
 
     Column(
 modifier = Modifier
@@ -119,8 +132,8 @@ modifier = Modifier
                     )
                 }
                 Text(
-                    text = titleOverride ?: "My Friends (${visibleFollowingUsers.size})",
-modifier = Modifier.weight(1f),
+                    text = titleOverride ?: "My Friends (${filteredFollowingUsers.size})",
+                    modifier = Modifier.weight(1f),
                     color = Color.White,
                     fontSize = 15.sp,
                     fontWeight = FontWeight.Bold,
@@ -129,6 +142,23 @@ modifier = Modifier.weight(1f),
                 Spacer(modifier = Modifier.size(48.dp))
             }
         }
+
+        OutlinedTextField(
+            value = searchQuery,
+            onValueChange = { searchQuery = it },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 8.dp),
+            singleLine = true,
+            placeholder = { Text("Search friends") },
+            leadingIcon = {
+                Icon(
+                    imageVector = Icons.Default.Search,
+                    contentDescription = "Search"
+                )
+            },
+            shape = RoundedCornerShape(12.dp)
+        )
 
         // Modern PullRefresh content - takes all available space
         Box(
@@ -146,13 +176,13 @@ modifier = Modifier.weight(1f),
                         }
                     }
                 }
-                visibleFollowingUsers.isEmpty() -> EmptyFriendsState()
+                filteredFollowingUsers.isEmpty() -> EmptyFriendsState(isSearchResult = searchQuery.isNotBlank())
                 else -> {
                     LazyColumn(
                         contentPadding = PaddingValues(vertical = 8.dp)
                     ) {
                         items(
-                            items = visibleFollowingUsers,
+                            items = filteredFollowingUsers,
                             key = { it.uid },
                             contentType = { "friend" }
                         ) { friend ->
@@ -255,135 +285,143 @@ private fun FriendListItem(
     val liveFriendPhoto = rememberLiveUserPhotoUrl(friend.uid, friend.photoUrl)
     val tierRingColor = rememberLiveUserTierColor(friend.uid)
 
-    // Use Row like ChatListItem - no card
-Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        // Profile photo - 56dp like ChatListItem
-        Box(
+    Column(modifier = Modifier.fillMaxWidth()) {
+        // Use Row like ChatListItem - no card
+        Row(
             modifier = Modifier
-                .size(56.dp)
-                .clickable { onProfilePhotoClick() }
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            if (liveFriendPhoto.isNotEmpty()) {
-                AsyncImage(
-                    model = liveFriendPhoto,
-                    contentDescription = friend.displayName,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .clip(CircleShape)
-                        .border(2.dp, tierRingColor, CircleShape),
-                    contentScale = ContentScale.Crop,
-                    error = painterResource(id = android.R.drawable.ic_menu_myplaces)
-                )
-            } else {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .clip(CircleShape)
-                        .border(2.dp, tierRingColor, CircleShape)
-                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Person,
-                        contentDescription = null,
-                        modifier = Modifier.size(28.dp),
-                        tint = MaterialTheme.colorScheme.primary
+            // Profile photo - 56dp like ChatListItem
+            Box(
+                modifier = Modifier
+                    .size(56.dp)
+                    .clickable { onProfilePhotoClick() }
+            ) {
+                if (liveFriendPhoto.isNotEmpty()) {
+                    AsyncImage(
+                        model = liveFriendPhoto,
+                        contentDescription = friend.displayName,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .clip(CircleShape)
+                            .border(2.dp, tierRingColor, CircleShape),
+                        contentScale = ContentScale.Crop,
+                        error = painterResource(id = android.R.drawable.ic_menu_myplaces)
                     )
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.width(16.dp))
-
-        // User info - same structure as ChatListItem
-        Column(
-            modifier = Modifier.weight(1f)
-        ) {
-            // Name - 16sp Bold, maxLines=1
-            Text(
-                text = friend.displayName,
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.fillMaxWidth()
-            )
-            
-            Spacer(modifier = Modifier.height(4.dp))
-            
-            // Followers count - 14sp like message preview
-            Text(
-                text = "${friend.followers.size} followers",
-                fontSize = 14.sp,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.fillMaxWidth()
-            )
-        }
-        
-        if (isOwnFriendsList) {
-            // Delete friend flow: normal -> solid red "CONFIRM DELETE" -> delete
-            val deleteRed = Color(0xFFD32F2F)
-            OutlinedButton(
-                onClick = onDeleteFriend,
-                enabled = !isRemoving,
-                shape = RoundedCornerShape(20.dp),
-                modifier = Modifier.wrapContentWidth(),
-                colors = ButtonDefaults.outlinedButtonColors(
-                    containerColor = if (isPendingDelete) deleteRed else Color.Transparent,
-                    contentColor = if (isPendingDelete) Color.White else deleteRed,
-                    disabledContainerColor = if (isPendingDelete) deleteRed else Color.Transparent,
-                    disabledContentColor = Color.White
-                ),
-                border = androidx.compose.foundation.BorderStroke(1.dp, deleteRed)
-            ) {
-                when {
-                    isRemoving -> Text("Removing...", fontSize = 12.sp, color = Color.White)
-                    isPendingDelete -> Text("Confirm delete", fontSize = 12.sp, color = Color.White)
-                    else -> Text("Delete friend", fontSize = 12.sp, color = deleteRed)
-                }
-            }
-        } else {
-            val isWaiting = hasSentRequest
-            val buttonColor = Color(0xFF2A4A73)
-
-            OutlinedButton(
-                onClick = {
-                    when {
-                        isWaiting -> onCancelRequest()
-                        else -> onAddFriend()
+                } else {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .clip(CircleShape)
+                            .border(2.dp, tierRingColor, CircleShape)
+                            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Person,
+                            contentDescription = null,
+                            modifier = Modifier.size(28.dp),
+                            tint = MaterialTheme.colorScheme.primary
+                        )
                     }
-                },
-                enabled = !isAlreadyFriend && !isRemoving,
-                shape = RoundedCornerShape(20.dp),
-                modifier = Modifier.wrapContentWidth(),
-                colors = ButtonDefaults.outlinedButtonColors(
-                    containerColor = if (isAlreadyFriend || isWaiting) buttonColor else Color.Transparent,
-                    contentColor = buttonColor,
-                    disabledContainerColor = if (isAlreadyFriend || isWaiting) buttonColor else Color.Transparent,
-                    disabledContentColor = Color.White
-                ),
-                border = androidx.compose.foundation.BorderStroke(1.dp, buttonColor)
+                }
+            }
+
+            Spacer(modifier = Modifier.width(16.dp))
+
+            // User info - same structure as ChatListItem
+            Column(
+                modifier = Modifier.weight(1f)
             ) {
-                when {
-                    isAlreadyFriend -> Text("Friends", fontSize = 12.sp, color = Color.White)
-                    isWaiting -> Text("Waiting", fontSize = 12.sp, color = Color.White)
-                    else -> Text("Add", fontSize = 12.sp)
+                // Name - 16sp Bold, maxLines=1
+                Text(
+                    text = friend.displayName,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Spacer(modifier = Modifier.height(4.dp))
+
+                // Followers count - 14sp like message preview
+                Text(
+                    text = "${friend.followers.size} followers",
+                    fontSize = 14.sp,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+
+            if (isOwnFriendsList) {
+                // Delete friend flow: normal -> solid red "CONFIRM DELETE" -> delete
+                val deleteRed = Color(0xFFD32F2F)
+                OutlinedButton(
+                    onClick = onDeleteFriend,
+                    enabled = !isRemoving,
+                    shape = RoundedCornerShape(20.dp),
+                    modifier = Modifier.wrapContentWidth(),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        containerColor = if (isPendingDelete) deleteRed else Color.Transparent,
+                        contentColor = if (isPendingDelete) Color.White else deleteRed,
+                        disabledContainerColor = if (isPendingDelete) deleteRed else Color.Transparent,
+                        disabledContentColor = Color.White
+                    ),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, deleteRed)
+                ) {
+                    when {
+                        isRemoving -> Text("Removing...", fontSize = 12.sp, color = Color.White)
+                        isPendingDelete -> Text("Confirm delete", fontSize = 12.sp, color = Color.White)
+                        else -> Text("Delete friend", fontSize = 12.sp, color = deleteRed)
+                    }
+                }
+            } else {
+                val isWaiting = hasSentRequest
+                val buttonColor = Color(0xFF2A4A73)
+
+                OutlinedButton(
+                    onClick = {
+                        when {
+                            isWaiting -> onCancelRequest()
+                            else -> onAddFriend()
+                        }
+                    },
+                    enabled = !isAlreadyFriend && !isRemoving,
+                    shape = RoundedCornerShape(20.dp),
+                    modifier = Modifier.wrapContentWidth(),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        containerColor = if (isAlreadyFriend || isWaiting) buttonColor else Color.Transparent,
+                        contentColor = buttonColor,
+                        disabledContainerColor = if (isAlreadyFriend || isWaiting) buttonColor else Color.Transparent,
+                        disabledContentColor = Color.White
+                    ),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, buttonColor)
+                ) {
+                    when {
+                        isAlreadyFriend -> Text("Friends", fontSize = 12.sp, color = Color.White)
+                        isWaiting -> Text("Waiting", fontSize = 12.sp, color = Color.White)
+                        else -> Text("Add", fontSize = 12.sp)
+                    }
                 }
             }
         }
-}
+
+        HorizontalDivider(
+            modifier = Modifier.padding(start = 80.dp),
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f),
+            thickness = 0.5.dp
+        )
+    }
 }
 
 @Composable
-private fun EmptyFriendsState() {
+private fun EmptyFriendsState(isSearchResult: Boolean = false) {
     Box(
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
@@ -397,13 +435,13 @@ private fun EmptyFriendsState() {
             )
             Spacer(modifier = Modifier.height(16.dp))
             Text(
-                text = "No friends yet",
+                text = if (isSearchResult) "No friends found" else "No friends yet",
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
             )
             Spacer(modifier = Modifier.height(6.dp))
             Text(
-                text = "Tap Find Friends to connect with people.",
+                text = if (isSearchResult) "Try a different search." else "Tap Find Friends to connect with people.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
             )
