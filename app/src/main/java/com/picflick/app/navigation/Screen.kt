@@ -34,6 +34,11 @@ sealed class Screen {
     data object Legal : Screen()                    // Legal/Terms screen
     data object Developer : Screen()                // Developer diagnostics and tools
     data object Preview : Screen()                    // Photo preview screen
+    data class GroupAlbumInfo(
+        val groupId: String,
+        val groupName: String,
+        val groupIcon: String = ""
+    ) : Screen()
     data class EditPhoto(
         val flick: Flick,
         val returnTo: Screen = Home

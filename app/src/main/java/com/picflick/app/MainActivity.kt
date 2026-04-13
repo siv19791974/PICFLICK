@@ -414,6 +414,7 @@ fun MainScreen(
         is Screen.MediaPicker,
         is Screen.Explore,
         is Screen.Preview,
+        is Screen.GroupAlbumInfo,
         is Screen.Settings -> Screen.Home
     }
 

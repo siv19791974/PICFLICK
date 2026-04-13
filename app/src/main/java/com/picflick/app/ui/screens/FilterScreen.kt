@@ -24,6 +24,8 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PersonAdd
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -38,6 +40,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.graphics.createBitmap
@@ -84,7 +88,9 @@ fun FilterScreen(
     onUploadToGroup: (Uri, PhotoFilter, List<String>, String, FriendGroup) -> Unit,
     onUploadQueued: () -> Unit = {},
     onNavigateToFindFriends: () -> Unit = {},
-    onNavigateToCamera: () -> Unit = {}
+    onNavigateToCamera: () -> Unit = {},
+    onOpenGroupOrAlbumInfo: (FriendGroup) -> Unit = {},
+    onOpenUserProfile: (String) -> Unit = {}
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -102,7 +108,9 @@ fun FilterScreen(
     var showFriendPicker by remember { mutableStateOf(false) }
     var showDestinationFriendPicker by remember { mutableStateOf(false) }
     var selectedDestinationFriends by remember { mutableStateOf<List<UserProfile>>(emptyList()) }
+    var destinationFriendSearchQuery by remember { mutableStateOf("") }
     var showDestinationGroupPicker by remember { mutableStateOf(false) }
+    var destinationGroupSearchQuery by remember { mutableStateOf("") }
     
     // Description/caption state
     var description by remember { mutableStateOf("") }
@@ -114,6 +122,7 @@ fun FilterScreen(
         mutableStateOf(initialSharedGroupId.takeIf { id -> id.isNotBlank() && selectableAlbumGroups.any { it.id == id } } ?: "")
     }
     var showAlbumPicker by remember { mutableStateOf(false) }
+    var albumSearchQuery by remember { mutableStateOf("") }
 
     // Upload/crop loading state
     var isUploading by remember { mutableStateOf(false) }
@@ -814,12 +823,23 @@ fun FilterScreen(
     }
 
     if (showDestinationFriendPicker) {
+        val filteredFriends = remember(friends, destinationFriendSearchQuery) {
+            if (destinationFriendSearchQuery.isBlank()) {
+                friends
+            } else {
+                val query = destinationFriendSearchQuery.trim().lowercase()
+                friends.filter { it.displayName.lowercase().contains(query) }
+            }
+        }
+
         DestinationListScreen(
             title = "Send Privately to Friend(s)",
             isDarkMode = isDarkMode,
-            onBack = { showDestinationFriendPicker = false }
+            onBack = { showDestinationFriendPicker = false },
+            searchQuery = destinationFriendSearchQuery,
+            onSearchQueryChange = { destinationFriendSearchQuery = it }
         ) {
-            if (friends.isEmpty()) {
+            if (filteredFriends.isEmpty()) {
                 Button(
                     onClick = {
                         showDestinationFriendPicker = false
@@ -835,7 +855,7 @@ fun FilterScreen(
                 }
             } else {
                 val selectedIds = selectedDestinationFriends.map { it.uid }.toSet()
-                friends.forEach { friend ->
+                filteredFriends.forEach { friend ->
                     val isSelected = selectedIds.contains(friend.uid)
                     DestinationEntityRow(
                         title = friend.displayName.ifBlank { "Friend" },
@@ -845,6 +865,7 @@ fun FilterScreen(
                         actionLabel = if (isSelected) "Selected" else "Send",
                         actionIcon = if (isSelected) Icons.Default.Check else Icons.AutoMirrored.Filled.Send,
                         actionEnabled = !isSelected,
+                        onAvatarClick = { onOpenUserProfile(friend.uid) },
                         onActionClick = {
                             selectedDestinationFriends = if (isSelected) {
                                 selectedDestinationFriends.filterNot { it.uid == friend.uid }
@@ -876,12 +897,23 @@ fun FilterScreen(
     }
 
     if (showDestinationGroupPicker) {
+        val filteredGroups = remember(selectableAlbumGroups, destinationGroupSearchQuery) {
+            if (destinationGroupSearchQuery.isBlank()) {
+                selectableAlbumGroups
+            } else {
+                val query = destinationGroupSearchQuery.trim().lowercase()
+                selectableAlbumGroups.filter { it.name.lowercase().contains(query) }
+            }
+        }
+
         DestinationListScreen(
             title = "Send to Group Chat",
             isDarkMode = isDarkMode,
-            onBack = { showDestinationGroupPicker = false }
+            onBack = { showDestinationGroupPicker = false },
+            searchQuery = destinationGroupSearchQuery,
+            onSearchQueryChange = { destinationGroupSearchQuery = it }
         ) {
-            if (selectableAlbumGroups.isEmpty()) {
+            if (filteredGroups.isEmpty()) {
                 DestinationEntityRow(
                     title = "No groups available",
                     subtitle = "Create a shared group first",
@@ -891,7 +923,7 @@ fun FilterScreen(
                     onActionClick = { showDestinationGroupPicker = false }
                 )
             } else {
-                selectableAlbumGroups.forEach { group ->
+                filteredGroups.forEach { group ->
                     DestinationEntityRow(
                         title = group.name.ifBlank { "Group" },
                         subtitle = "Send this photo to group chat",
@@ -899,6 +931,7 @@ fun FilterScreen(
                         fallbackText = group.name.firstOrNull()?.uppercase() ?: "G",
                         actionLabel = "Send",
                         actionIcon = Icons.AutoMirrored.Filled.Send,
+                        onAvatarClick = { onOpenGroupOrAlbumInfo(group) },
                         onActionClick = {
                             showDestinationGroupPicker = false
                             triggerUploadToGroup(group)
@@ -910,10 +943,21 @@ fun FilterScreen(
     }
 
     if (showAlbumPicker) {
+        val filteredAlbums = remember(selectableAlbumGroups, albumSearchQuery) {
+            if (albumSearchQuery.isBlank()) {
+                selectableAlbumGroups
+            } else {
+                val query = albumSearchQuery.trim().lowercase()
+                selectableAlbumGroups.filter { it.name.lowercase().contains(query) }
+            }
+        }
+
         DestinationListScreen(
             title = "Post to Specific Album",
             isDarkMode = isDarkMode,
-            onBack = { showAlbumPicker = false }
+            onBack = { showAlbumPicker = false },
+            searchQuery = albumSearchQuery,
+            onSearchQueryChange = { albumSearchQuery = it }
         ) {
             DestinationEntityRow(
                 title = "Post to All Friends",
@@ -927,7 +971,7 @@ fun FilterScreen(
                 }
             )
 
-            selectableAlbumGroups.forEach { group ->
+            filteredAlbums.forEach { group ->
                 val isSelected = selectedSharedGroupId == group.id
                 DestinationEntityRow(
                     title = group.name.ifBlank { "Album" },
@@ -937,6 +981,7 @@ fun FilterScreen(
                     actionLabel = if (isSelected) "Selected" else "Post",
                     actionIcon = if (isSelected) Icons.Default.Check else Icons.AutoMirrored.Filled.Send,
                     actionEnabled = !isSelected,
+                    onAvatarClick = { onOpenGroupOrAlbumInfo(group) },
                     onActionClick = {
                         selectedSharedGroupId = group.id
                         showAlbumPicker = false
@@ -952,6 +997,8 @@ private fun DestinationListScreen(
     title: String,
     isDarkMode: Boolean,
     onBack: () -> Unit,
+    searchQuery: String,
+    onSearchQueryChange: (String) -> Unit,
     content: @Composable ColumnScope.() -> Unit
 ) {
     Surface(
@@ -963,26 +1010,57 @@ private fun DestinationListScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(48.dp)
-                    .background(Color.Black)
+                    .background(Color.Black),
+                contentAlignment = Alignment.CenterStart
             ) {
-                TextButton(onClick = onBack, modifier = Modifier.align(Alignment.CenterStart)) {
-                    Text("Back", color = Color.White)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    IconButton(onClick = onBack, modifier = Modifier.size(48.dp)) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Back",
+                            tint = Color.White
+                        )
+                    }
+                    Text(
+                        text = title,
+                        modifier = Modifier.weight(1f),
+                        color = Color.White,
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Bold,
+                        textAlign = TextAlign.Center,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Box(modifier = Modifier.size(48.dp))
                 }
-                Text(
-                    text = title,
-                    color = Color.White,
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.align(Alignment.Center)
-                )
             }
+
+            OutlinedTextField(
+                value = searchQuery,
+                onValueChange = onSearchQueryChange,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                singleLine = true,
+                placeholder = { Text("Search") },
+                leadingIcon = {
+                    Icon(
+                        imageVector = Icons.Default.Search,
+                        contentDescription = "Search"
+                    )
+                },
+                shape = RoundedCornerShape(12.dp)
+            )
 
             Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .verticalScroll(rememberScrollState())
-                    .padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
+                    .padding(horizontal = 0.dp, vertical = 4.dp),
+                verticalArrangement = Arrangement.spacedBy(0.dp),
                 content = content
             )
         }
@@ -998,77 +1076,100 @@ private fun DestinationEntityRow(
     actionLabel: String,
     actionIcon: androidx.compose.ui.graphics.vector.ImageVector,
     actionEnabled: Boolean = true,
+    onAvatarClick: (() -> Unit)? = null,
     onActionClick: () -> Unit
 ) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
-            .background(Color(0xFFB7D8F2))
-            .padding(horizontal = 12.dp, vertical = 10.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Box(
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Row(
             modifier = Modifier
-                .size(40.dp)
-                .clip(CircleShape)
-                .background(Color(0xFF2A4A73)),
-            contentAlignment = Alignment.Center
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            if (!imageUrl.isNullOrBlank()) {
-                AsyncImage(
-                    model = imageUrl,
-                    contentDescription = null,
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop
-                )
-            } else {
+            Box(
+                modifier = Modifier
+                    .size(56.dp)
+                    .then(if (onAvatarClick != null) Modifier.clickable { onAvatarClick() } else Modifier)
+            ) {
+                if (!imageUrl.isNullOrBlank()) {
+                    AsyncImage(
+                        model = imageUrl,
+                        contentDescription = null,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .clip(CircleShape)
+                            .border(2.dp, Color.Black, CircleShape),
+                        contentScale = ContentScale.Crop
+                    )
+                } else {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .clip(CircleShape)
+                            .border(2.dp, Color.Black, CircleShape)
+                            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (fallbackText.isNotBlank() && fallbackText.length <= 2) {
+                            Text(text = fallbackText, fontSize = 22.sp)
+                        } else {
+                            Icon(
+                                imageVector = Icons.Default.Person,
+                                contentDescription = null,
+                                modifier = Modifier.size(28.dp),
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.width(16.dp))
+
+            Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = fallbackText,
-                    color = Color.White,
+                    text = title,
+                    fontSize = 16.sp,
                     fontWeight = FontWeight.Bold,
-                    fontSize = 13.sp
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    text = subtitle,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                    fontSize = 14.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+
+            TextButton(
+                onClick = onActionClick,
+                enabled = actionEnabled,
+                colors = ButtonDefaults.textButtonColors(
+                    contentColor = if (actionEnabled) Color(0xFF1565C0) else Color(0xFF6B7280)
+                )
+            ) {
+                Icon(
+                    imageVector = actionIcon,
+                    contentDescription = null,
+                    modifier = Modifier.size(16.dp)
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(
+                    text = actionLabel,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 12.sp
                 )
             }
         }
 
-        Spacer(modifier = Modifier.width(10.dp))
-
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = title,
-                color = Color.Black,
-                fontWeight = FontWeight.SemiBold,
-                fontSize = 14.sp,
-                maxLines = 1
-            )
-            Text(
-                text = subtitle,
-                color = Color.Black.copy(alpha = 0.65f),
-                fontSize = 12.sp,
-                maxLines = 1
-            )
-        }
-
-        TextButton(
-            onClick = onActionClick,
-            enabled = actionEnabled,
-            colors = ButtonDefaults.textButtonColors(
-                contentColor = if (actionEnabled) Color(0xFF1565C0) else Color(0xFF6B7280)
-            )
-        ) {
-            Icon(
-                imageVector = actionIcon,
-                contentDescription = null,
-                modifier = Modifier.size(16.dp)
-            )
-            Spacer(modifier = Modifier.width(4.dp))
-            Text(
-                text = actionLabel,
-                fontWeight = FontWeight.Bold,
-                fontSize = 12.sp
-            )
-        }
+        HorizontalDivider(
+            modifier = Modifier.padding(start = 80.dp),
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f),
+            thickness = 0.5.dp
+        )
     }
 }
 
