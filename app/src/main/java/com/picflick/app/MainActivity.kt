@@ -1077,7 +1077,7 @@ fun MainScreen(
         },
         bottomBar = {
             // Keep bottom bar stable while profile is loading (prevents layout jump)
-            if (currentUser != null && !isChatDetailScreen && !isMediaPickerScreen) {
+            if (currentUser != null && !isChatDetailScreen) {
                 val profileReady = userProfile != null
                 BottomNavBar(
                     currentRoute = when (currentScreen) {
@@ -1118,7 +1118,7 @@ fun MainScreen(
                 .then(
                     when {
                         isMediaPickerScreen -> {
-                            Modifier.fillMaxSize()
+                            Modifier.padding(padding)
                         }
                         isChatDetailScreen -> {
                             Modifier.padding(top = padding.calculateTopPadding())
@@ -1539,10 +1539,21 @@ private fun InAppMediaPickerScreen(
 
     var hasMediaPermission by remember { mutableStateOf(hasAnyMediaPermission()) }
 
+    val mediaPermissionsToRequest = remember(mediaPermission, visualUserSelectedPermission) {
+        buildList {
+            add(mediaPermission)
+            if (visualUserSelectedPermission != null) add(visualUserSelectedPermission)
+        }
+    }
+
     val mediaPermissionLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestPermission()
-    ) {
-        hasMediaPermission = hasAnyMediaPermission()
+        contract = ActivityResultContracts.RequestMultiplePermissions()
+    ) { grantedMap ->
+        hasMediaPermission = hasAnyMediaPermission() || grantedMap.values.any { it }
+    }
+
+    fun requestMediaPermissions() {
+        mediaPermissionLauncher.launch(mediaPermissionsToRequest.toTypedArray())
     }
 
     var mediaItems by remember { mutableStateOf<List<MediaPickerItem>>(emptyList()) }
@@ -1562,7 +1573,7 @@ private fun InAppMediaPickerScreen(
     LaunchedEffect(Unit) {
         hasMediaPermission = hasAnyMediaPermission()
         if (!hasMediaPermission) {
-            mediaPermissionLauncher.launch(mediaPermission)
+            requestMediaPermissions()
         }
     }
 
@@ -1570,7 +1581,7 @@ private fun InAppMediaPickerScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(isDarkModeBackground(isDarkMode))
-            .systemBarsPadding()
+            .statusBarsPadding()
     ) {
         Box(
             modifier = Modifier
@@ -1641,7 +1652,7 @@ private fun InAppMediaPickerScreen(
                             onClick = {
                                 hasMediaPermission = hasAnyMediaPermission()
                                 if (!hasMediaPermission) {
-                                    mediaPermissionLauncher.launch(mediaPermission)
+                                    requestMediaPermissions()
                                 }
                             },
                             colors = androidx.compose.material3.ButtonDefaults.buttonColors(
