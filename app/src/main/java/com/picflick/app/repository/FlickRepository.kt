@@ -354,7 +354,7 @@ class FlickRepository private constructor() {
             
             android.util.Log.d("FlickRepository", "User has ${friends.size} friends: $friends")
 
-            val fetchPoolSize = maxOf(pageSize * 10, 300).toLong()
+            val fetchPoolSize = maxOf(pageSize * 20, 800).toLong()
 
             // Query user's own photos (NO orderBy to avoid composite index requirement)
             val ownFlicksSnapshot = db.collection("flicks")
@@ -419,7 +419,10 @@ class FlickRepository private constructor() {
                         flick.userId == userId ||
                         visibleAlbumTargetGroupIds.contains(flick.sharedGroupId)
                 }
-                .sortedByDescending { it.timestamp }
+                .sortedWith(
+                    compareByDescending<Flick> { it.timestamp }
+                        .thenByDescending { it.id }
+                )
             
             android.util.Log.d("FlickRepository", "After deduplication: ${allFlicks.size} photos")
             

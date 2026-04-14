@@ -54,8 +54,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import kotlin.math.roundToInt
+import coil3.ImageLoader
 import coil3.compose.AsyncImage
+import coil3.request.CachePolicy
 import coil3.request.ImageRequest
+import coil3.request.crossfade
 import net.engawapg.lib.zoomable.rememberZoomState
 import net.engawapg.lib.zoomable.zoomable
 import com.picflick.app.data.Comment
@@ -128,6 +132,8 @@ fun FullScreenPhotoViewer(
     val configuration = LocalConfiguration.current
     val screenHeightPx = with(LocalDensity.current) { configuration.screenHeightDp.dp.toPx() }
     val screenWidthPx = with(LocalDensity.current) { configuration.screenWidthDp.dp.toPx() }
+    val requestWidthPx = with(LocalDensity.current) { configuration.screenWidthDp.dp.roundToPx() }
+    val requestHeightPx = with(LocalDensity.current) { configuration.screenHeightDp.dp.roundToPx() }
     val isLandscape = configuration.screenWidthDp > configuration.screenHeightDp
 
     // Orientation is controlled below, based on current displayed photo orientation.
@@ -150,6 +156,7 @@ fun FullScreenPhotoViewer(
     
     val repository = remember { FlickRepository.getInstance() }
     val coroutineScope = rememberCoroutineScope()
+    val prefetchImageLoader = remember(context) { ImageLoader.Builder(context).build() }
 
     DisposableEffect(Unit) {
         val activity = context.findActivity()
@@ -201,6 +208,12 @@ fun FullScreenPhotoViewer(
     var currentPageIndex by remember { mutableIntStateOf(currentIndex) }
     
     val deletedFlickIds = remember { mutableStateListOf<String>() }
+    var currentSwipeTraceStartedAt by remember { mutableLongStateOf(System.currentTimeMillis()) }
+    var currentSwipeTracePhotoKey by remember { mutableStateOf("") }
+    var lastLoggedSuccessPhotoKey by remember { mutableStateOf<String?>(null) }
+    var lastPageIndexForPrefetch by remember { mutableIntStateOf(currentIndex) }
+    val prefetchLastEnqueuedAt = remember { mutableStateMapOf<String, Long>() }
+    val prefetchInFlightKeys = remember { mutableStateMapOf<String, Boolean>() }
 
     // Filter out photos with empty image URLs and locally deleted items.
     val validPhotos = allPhotos.filter { it.imageUrl.isNotBlank() && !deletedFlickIds.contains(it.id) }
@@ -415,6 +428,105 @@ val canDeleteCurrent = currentFlick.userId == currentUser.uid
     LaunchedEffect(currentPageIndex) {
         if (validPhotos.isNotEmpty()) {
             onNavigateToPhoto(currentPageIndex)
+
+            val activeFlick = validPhotos[currentPageIndex]
+            currentSwipeTraceStartedAt = System.currentTimeMillis()
+            currentSwipeTracePhotoKey = activeFlick.id.ifBlank { activeFlick.imageUrl }
+            lastLoggedSuccessPhotoKey = null
+            android.util.Log.d(
+                "PhotoViewerPerf",
+                "SWIPE_START index=$currentPageIndex flickId=${activeFlick.id} key=$currentSwipeTracePhotoKey"
+            )
+        }
+    }
+
+    // Preload nearby photos to reduce swipe latency on slower devices.
+    // Direction-aware + de-duped to avoid flooding the request queue.
+    LaunchedEffect(currentPageIndex, validPhotos) {
+        if (validPhotos.isEmpty()) return@LaunchedEffect
+
+        val direction = (currentPageIndex - lastPageIndexForPrefetch).coerceIn(-1, 1)
+        lastPageIndexForPrefetch = currentPageIndex
+
+        val neighborIndices = when {
+            direction > 0 -> listOf(
+                currentPageIndex + 1,
+                currentPageIndex + 2,
+                currentPageIndex + 3
+            )
+            direction < 0 -> listOf(
+                currentPageIndex - 1,
+                currentPageIndex - 2,
+                currentPageIndex - 3
+            )
+            else -> listOf(
+                currentPageIndex + 1,
+                currentPageIndex + 2
+            )
+        }
+            .filter { it in validPhotos.indices }
+            .distinct()
+
+        val now = System.currentTimeMillis()
+
+        neighborIndices.forEach { index ->
+            val neighbor = validPhotos[index]
+            if (neighbor.imageUrl.isBlank()) return@forEach
+
+            val distance = kotlin.math.abs(index - currentPageIndex)
+            val enqueueTtlMs = when (distance) {
+                1 -> 120L
+                2 -> 350L
+                else -> 700L
+            }
+
+            val prefetchKey = neighbor.id.ifBlank { neighbor.imageUrl }
+            val lastEnqueuedAt = prefetchLastEnqueuedAt[prefetchKey] ?: 0L
+            val isInFlight = prefetchInFlightKeys[prefetchKey] == true
+            val inFlightStaleMs = 1_000L
+            val isStaleInFlight = isInFlight && (now - lastEnqueuedAt > inFlightStaleMs)
+            if (isStaleInFlight) {
+                prefetchInFlightKeys[prefetchKey] = false
+            }
+
+            if ((prefetchInFlightKeys[prefetchKey] == true) || now - lastEnqueuedAt < enqueueTtlMs) return@forEach
+
+            prefetchInFlightKeys[prefetchKey] = true
+            prefetchLastEnqueuedAt[prefetchKey] = now
+
+            val request = ImageRequest.Builder(context)
+                .data(withCacheBust(neighbor.imageUrl, neighbor.timestamp))
+                .size(requestWidthPx, requestHeightPx)
+                .crossfade(false)
+                .memoryCachePolicy(CachePolicy.ENABLED)
+                .diskCachePolicy(CachePolicy.ENABLED)
+                .networkCachePolicy(CachePolicy.ENABLED)
+                .listener(
+                    onSuccess = { _, _ ->
+                        prefetchInFlightKeys[prefetchKey] = false
+                    },
+                    onError = { _, _ ->
+                        prefetchInFlightKeys[prefetchKey] = false
+                    },
+                    onCancel = { _ ->
+                        prefetchInFlightKeys[prefetchKey] = false
+                    }
+                )
+                .build()
+
+            prefetchImageLoader.enqueue(request)
+            android.util.Log.d(
+                "PhotoViewerPerf",
+                "PREFETCH_ENQUEUE from=$currentPageIndex to=$index flickId=${neighbor.id} dir=$direction dist=$distance"
+            )
+        }
+
+        if (prefetchLastEnqueuedAt.size > 300) {
+            val staleCutoff = now - 700L
+            prefetchLastEnqueuedAt.entries.removeAll { it.value < staleCutoff }
+            prefetchInFlightKeys.entries.removeAll { (key, inFlight) ->
+                !inFlight && (prefetchLastEnqueuedAt[key] ?: 0L) < staleCutoff
+            }
         }
     }
     
@@ -790,8 +902,11 @@ val canDeleteCurrent = currentFlick.userId == currentUser.uid
                                 },
                                 onDragEnd = {
                                     isDragging = false
-                                    val shouldNavigateVertical = isDraggingVertically && kotlin.math.abs(rawDragY) > 95f
-                                    val shouldNavigateHorizontal = !isDraggingVertically && kotlin.math.abs(rawDragX) > 95f
+                                    val shouldNavigateVertical = isDraggingVertically && kotlin.math.abs(rawDragY) > 80f
+                                    val shouldNavigateHorizontal = !isDraggingVertically && kotlin.math.abs(rawDragX) > 80f
+                                    val attemptedNext =
+                                        (shouldNavigateVertical && rawDragY < 0) ||
+                                            (shouldNavigateHorizontal && rawDragX < 0)
 
                                     var didNavigate = false
                                     when {
@@ -818,6 +933,14 @@ val canDeleteCurrent = currentFlick.userId == currentUser.uid
                                     }
 
                                     if (!didNavigate) {
+                                        if (attemptedNext && currentPageIndex >= validPhotos.size - 1) {
+                                            android.util.Log.d(
+                                                "PhotoViewerPerf",
+                                                "EDGE_NEXT_REQUEST index=$currentPageIndex size=${validPhotos.size}"
+                                            )
+                                            onNavigateToPhoto(currentPageIndex)
+                                        }
+
                                         // Reset drag offsets immediately for snappier feel
                                         dragXOffset = 0f
                                         dragYOffset = 0f
@@ -938,15 +1061,46 @@ val canDeleteCurrent = currentFlick.userId == currentUser.uid
                                 ),
                             contentAlignment = Alignment.Center
                         ) {
-                            AsyncImage(
-                                model = ImageRequest.Builder(LocalContext.current)
+                            val photoModel = remember(photo.imageUrl, photo.timestamp, requestWidthPx, requestHeightPx) {
+                                ImageRequest.Builder(context)
                                     .data(withCacheBust(photo.imageUrl, photo.timestamp))
-                                    .memoryCachePolicy(coil3.request.CachePolicy.ENABLED)
-                                    .diskCachePolicy(coil3.request.CachePolicy.ENABLED)
-                                    .build(),
+                                    .size(requestWidthPx, requestHeightPx)
+                                    .crossfade(false)
+                                    .memoryCachePolicy(CachePolicy.ENABLED)
+                                    .diskCachePolicy(CachePolicy.ENABLED)
+                                    .networkCachePolicy(CachePolicy.ENABLED)
+                                    .build()
+                            }
+
+                            AsyncImage(
+                                model = photoModel,
+                                imageLoader = prefetchImageLoader,
                                 contentDescription = null,
                                 modifier = Modifier.fillMaxSize(),
-                                contentScale = ContentScale.Fit
+                                contentScale = ContentScale.Fit,
+                                onSuccess = { success ->
+                                    if (isCurrent) {
+                                        val key = photo.id.ifBlank { photo.imageUrl }
+                                        if (lastLoggedSuccessPhotoKey != key) {
+                                            val elapsedMs = System.currentTimeMillis() - currentSwipeTraceStartedAt
+                                            lastLoggedSuccessPhotoKey = key
+                                            android.util.Log.d(
+                                                "PhotoViewerPerf",
+                                                "SWIPE_RENDER_OK index=$currentPageIndex flickId=${photo.id} key=$key elapsedMs=$elapsedMs source=${success.result.dataSource}"
+                                            )
+                                        }
+                                    }
+                                },
+                                onError = { error ->
+                                    if (isCurrent) {
+                                        val key = photo.id.ifBlank { photo.imageUrl }
+                                        val elapsedMs = System.currentTimeMillis() - currentSwipeTraceStartedAt
+                                        android.util.Log.w(
+                                            "PhotoViewerPerf",
+                                            "SWIPE_RENDER_ERR index=$currentPageIndex flickId=${photo.id} key=$key elapsedMs=$elapsedMs throwable=${error.result.throwable.message}"
+                                        )
+                                    }
+                                }
                             )
 
                             // Like animation overlay for current photo
