@@ -150,6 +150,7 @@ fun HomeScreen(
     var editDialogIconOverride by remember { mutableStateOf<String?>(null) }
     var selectedFlick by remember { mutableStateOf<Flick?>(null) }
     var selectedFlickIndex by remember { mutableIntStateOf(0) }
+    var lastEdgeLoadMoreAt by remember { mutableLongStateOf(0L) }
     var privacySetting by remember { mutableStateOf("friends") } // "friends" or "public"
     var selectedUploadGroupId by remember { mutableStateOf("") }
     var taggedFriends by remember { mutableStateOf<List<String>>(emptyList()) } // ADDED: Tagged friends
@@ -371,13 +372,9 @@ fun HomeScreen(
 
     // Full-screen photo viewer with comments
     selectedFlick?.let { flick ->
-        val viewerPhotos = remember(viewModel.flicks) {
-            viewModel.flicks.filter { it.imageUrl.isNotBlank() }
-        }
-        val safeSelectedIndex = remember(selectedFlick?.id, viewerPhotos.size) {
-            val idx = viewerPhotos.indexOfFirst { it.id == selectedFlick?.id }
-            if (idx >= 0) idx else 0
-        }
+        val viewerPhotos = viewModel.flicks.filter { it.imageUrl.isNotBlank() }
+        val safeSelectedIndex = viewerPhotos.indexOfFirst { it.id == selectedFlick?.id }
+            .takeIf { it >= 0 } ?: 0
 
         FullScreenPhotoViewer(
             flick = flick,
@@ -402,10 +399,21 @@ fun HomeScreen(
             onNavigateToPhoto = { index ->
                 val remaining = viewerPhotos.size - 1 - index
                 val preloadThreshold = 8
-                if (remaining <= preloadThreshold && !viewModel.isLoadingMore && viewModel.canLoadMore) {
+                val now = System.currentTimeMillis()
+                val atViewerTail = index >= viewerPhotos.size - 1
+                val edgeRetryCooldownMs = 1200L
+                val shouldEdgeRetry =
+                    atViewerTail &&
+                        !viewModel.isLoadingMore &&
+                        (now - lastEdgeLoadMoreAt) >= edgeRetryCooldownMs
+
+                if (remaining <= preloadThreshold && !viewModel.isLoadingMore && (viewModel.canLoadMore || shouldEdgeRetry)) {
+                    if (shouldEdgeRetry) {
+                        lastEdgeLoadMoreAt = now
+                    }
                     android.util.Log.d(
                         "PhotoViewerPerf",
-                        "LOAD_MORE_REQUEST index=$index remaining=$remaining size=${viewerPhotos.size} threshold=$preloadThreshold"
+                        "LOAD_MORE_REQUEST index=$index remaining=$remaining size=${viewerPhotos.size} threshold=$preloadThreshold canLoadMore=${viewModel.canLoadMore} edgeRetry=$shouldEdgeRetry"
                     )
                     viewModel.loadMoreFlicks()
                 }

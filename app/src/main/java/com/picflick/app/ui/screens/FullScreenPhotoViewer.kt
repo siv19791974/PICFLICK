@@ -215,8 +215,31 @@ fun FullScreenPhotoViewer(
     val prefetchLastEnqueuedAt = remember { mutableStateMapOf<String, Long>() }
     val prefetchInFlightKeys = remember { mutableStateMapOf<String, Boolean>() }
 
+    // Keep a stable viewer session list so background feed refreshes don't shrink pager while open.
+    val sessionPhotos = remember { mutableStateListOf<Flick>() }
+    LaunchedEffect(allPhotos) {
+        if (allPhotos.isEmpty()) return@LaunchedEffect
+
+        if (sessionPhotos.isEmpty()) {
+            sessionPhotos.addAll(allPhotos)
+        } else {
+            val existingIds = sessionPhotos.map { it.id }.toHashSet()
+            allPhotos.forEach { flickFromFeed ->
+                if (!existingIds.contains(flickFromFeed.id)) {
+                    sessionPhotos.add(flickFromFeed)
+                    existingIds.add(flickFromFeed.id)
+                }
+            }
+        }
+
+        sessionPhotos.sortWith(
+            compareByDescending<Flick> { it.timestamp }
+                .thenByDescending { it.id }
+        )
+    }
+
     // Filter out photos with empty image URLs and locally deleted items.
-    val validPhotos = allPhotos.filter { it.imageUrl.isNotBlank() && !deletedFlickIds.contains(it.id) }
+    val validPhotos = sessionPhotos.filter { it.imageUrl.isNotBlank() && !deletedFlickIds.contains(it.id) }
     
     // Current flick based on page index
     val currentFlick = if (validPhotos.isNotEmpty() && currentPageIndex in validPhotos.indices) {
@@ -891,7 +914,7 @@ val canDeleteCurrent = currentFlick.userId == currentUser.uid
                     modifier = Modifier
                         .fillMaxSize()
                         .clipToBounds()
-                        .pointerInput(Unit) {
+                        .pointerInput(validPhotos.size) {
 // SWIPE detection only - pinch handled by Zoomable library
                             detectDragGestures(
                                 onDragStart = {
