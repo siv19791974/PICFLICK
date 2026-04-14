@@ -371,6 +371,14 @@ fun HomeScreen(
 
     // Full-screen photo viewer with comments
     selectedFlick?.let { flick ->
+        val viewerPhotos = remember(viewModel.flicks) {
+            viewModel.flicks.filter { it.imageUrl.isNotBlank() }
+        }
+        val safeSelectedIndex = remember(selectedFlick?.id, viewerPhotos.size) {
+            val idx = viewerPhotos.indexOfFirst { it.id == selectedFlick?.id }
+            if (idx >= 0) idx else 0
+        }
+
         FullScreenPhotoViewer(
             flick = flick,
             currentUser = currentUserWithLivePhoto,
@@ -389,19 +397,24 @@ fun HomeScreen(
             onDeleteClick = {
                 viewModel.removeFlickFromFeed(flick.id)
             },
-            allPhotos = viewModel.flicks,
-            currentIndex = selectedFlickIndex,
+            allPhotos = viewerPhotos,
+            currentIndex = safeSelectedIndex,
             onNavigateToPhoto = { index ->
-                val remaining = viewModel.flicks.size - 1 - index
-                if (remaining <= 2 && !viewModel.isLoadingMore) {
+                val remaining = viewerPhotos.size - 1 - index
+                val preloadThreshold = 8
+                if (remaining <= preloadThreshold && !viewModel.isLoadingMore && viewModel.canLoadMore) {
+                    android.util.Log.d(
+                        "PhotoViewerPerf",
+                        "LOAD_MORE_REQUEST index=$index remaining=$remaining size=${viewerPhotos.size} threshold=$preloadThreshold"
+                    )
                     viewModel.loadMoreFlicks()
                 }
 
-                if (index in viewModel.flicks.indices) {
+                if (index in viewerPhotos.indices) {
                     selectedFlickIndex = index
-                    selectedFlick = viewModel.flicks[index]
+                    selectedFlick = viewerPhotos[index]
                 } else {
-                    selectedFlickIndex = index.coerceAtMost((viewModel.flicks.size - 1).coerceAtLeast(0))
+                    selectedFlickIndex = index.coerceAtMost((viewerPhotos.size - 1).coerceAtLeast(0))
                 }
             },
             onUserProfileClick = { userId -> onUserProfileClick(userId) },
