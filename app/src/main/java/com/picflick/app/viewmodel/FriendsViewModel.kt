@@ -1,7 +1,5 @@
 package com.picflick.app.viewmodel
 
-import android.content.Context
-import android.provider.ContactsContract
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -314,11 +312,35 @@ class FriendsViewModel : ViewModel() {
     }
 
     /**
-     * Sync contacts - wrapper function for compatibility
+     * Match selected phone numbers to users on PicFlick.
      */
-    fun syncContacts(context: Context, currentUserId: String? = null) {
+    fun syncSelectedPhoneNumbers(phoneNumbers: List<String>, currentUserId: String? = null) {
         val userId = currentUserId ?: return
-        loadContacts(context, userId)
+        val normalized = phoneNumbers
+            .map { it.replace("[^0-9]".toRegex(), "") }
+            .filter { it.length >= 10 }
+            .flatMap { listOf(it, it.takeLast(10)) }
+            .distinct()
+
+        if (normalized.isEmpty()) {
+            contactUsers.clear()
+            return
+        }
+
+        isLoading = true
+        flickRepository.findUsersByPhoneNumbers(normalized) { result ->
+            when (result) {
+                is Result.Success -> {
+                    contactUsers.clear()
+                    contactUsers.addAll(result.data.filter { it.uid != userId })
+                }
+                is Result.Error -> {
+                    errorMessage = result.message
+                }
+                is Result.Loading -> { }
+            }
+            isLoading = false
+        }
     }
 
     /**
@@ -337,61 +359,4 @@ class FriendsViewModel : ViewModel() {
         processingUserIds.remove(userId)
     }
 
-    /**
-     * Load contacts from phone and find matching PicFlick users
-     */
-    private fun loadContacts(context: Context, currentUserId: String) {
-        isLoading = true
-        contactUsers.clear()
-
-        viewModelScope.launch {
-            try {
-                // Get phone numbers from contacts
-                val phoneNumbers = mutableListOf<String>()
-                val cursor = context.contentResolver.query(
-                    ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
-                    arrayOf(ContactsContract.CommonDataKinds.Phone.NUMBER),
-                    null, null, null
-                )
-
-                cursor?.use {
-                    val numberIndex = it.getColumnIndex(ContactsContract.CommonDataKinds.Phone.NUMBER)
-                    while (it.moveToNext()) {
-                        val number = it.getString(numberIndex)
-                        // Normalize phone number - remove all non-digits
-                        val normalized = number.replace("[^0-9]".toRegex(), "")
-                        // Add both full number and last 10 digits for matching
-                        if (normalized.length >= 10) {
-                            phoneNumbers.add(normalized)
-                            // Also add last 10 digits (without country code) for better matching
-                            val last10 = normalized.takeLast(10)
-                            if (last10.length == 10 && !phoneNumbers.contains(last10)) {
-                                phoneNumbers.add(last10)
-                            }
-                        }
-                    }
-                }
-
-                // Find matching PicFlick users
-                if (phoneNumbers.isNotEmpty()) {
-                    flickRepository.findUsersByPhoneNumbers(phoneNumbers.toList()) { result ->
-                        when (result) {
-                            is Result.Success -> {
-                                contactUsers.clear()
-                                contactUsers.addAll(result.data)
-                            }
-                            is Result.Error -> {
-                    errorMessage = result.message
-                }
-                            is Result.Loading -> { }
-                        }
-                    }
-                }
-            } catch (e: Exception) {
-                // Handle permission denied or other errors
-                errorMessage = "Failed to load contacts: ${e.message}"
-            }
-            isLoading = false
-        }
-    }
 }

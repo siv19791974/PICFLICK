@@ -1,11 +1,12 @@
 package com.picflick.app.ui.screens
 
 import android.content.Intent
-import android.content.pm.PackageManager
+import android.database.Cursor
 import android.net.Uri
 import java.io.File
 import java.io.FileOutputStream
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.ActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.pullrefresh.PullRefreshIndicator
@@ -38,7 +39,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.core.content.ContextCompat
 import coil3.compose.AsyncImage
 import com.picflick.app.data.UserProfile
 import com.picflick.app.ui.components.FullScreenLoading
@@ -65,30 +65,62 @@ fun FindFriendsScreen(
     val context = LocalContext.current
     val isDarkMode = ThemeManager.isDarkMode.value
     var selectedTab by remember { mutableIntStateOf(0) }
-    var hasContactPermission by remember {
-        mutableStateOf(
-            ContextCompat.checkSelfPermission(
+
+    fun extractPhoneNumbersFromResult(result: ActivityResult): List<String> {
+        if (result.resultCode != android.app.Activity.RESULT_OK) return emptyList()
+
+        val numbers = mutableListOf<String>()
+        val intent = result.data ?: return emptyList()
+
+        fun extractFromUri(uri: Uri?) {
+            if (uri == null) return
+            val cursor: Cursor? = context.contentResolver.query(
+                uri,
+                arrayOf(android.provider.ContactsContract.CommonDataKinds.Phone.NUMBER),
+                null,
+                null,
+                null
+            )
+            cursor?.use {
+                val numberIndex = it.getColumnIndex(android.provider.ContactsContract.CommonDataKinds.Phone.NUMBER)
+                while (it.moveToNext()) {
+                    numbers.add(it.getString(numberIndex) ?: "")
+                }
+            }
+        }
+
+        // Single contact/phone URI
+        extractFromUri(intent.data)
+
+        // Multi-select clip data (if available)
+        val clipData = intent.clipData
+        if (clipData != null) {
+            for (i in 0 until clipData.itemCount) {
+                extractFromUri(clipData.getItemAt(i).uri)
+            }
+        }
+
+        return numbers
+    }
+
+    val contactPickerLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        val numbers = extractPhoneNumbersFromResult(result)
+        if (numbers.isNotEmpty()) {
+            viewModel.syncSelectedPhoneNumbers(numbers, userProfile.uid)
+        } else {
+            android.widget.Toast.makeText(
                 context,
-                android.Manifest.permission.READ_CONTACTS
-            ) == PackageManager.PERMISSION_GRANTED
-        )
-    }
-
-    // Permission launcher
-    val permissionLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) { isGranted ->
-        hasContactPermission = isGranted
-        if (isGranted) {
-            viewModel.syncContacts(context, userProfile.uid)
+                "No phone number selected",
+                android.widget.Toast.LENGTH_SHORT
+            ).show()
         }
     }
 
-    // Load contacts on first permission grant
-    LaunchedEffect(hasContactPermission) {
-        if (hasContactPermission) {
-            viewModel.syncContacts(context, userProfile.uid)
-        }
+    val openContactPicker: () -> Unit = {
+        val intent = Intent(Intent.ACTION_PICK, android.provider.ContactsContract.CommonDataKinds.Phone.CONTENT_URI)
+        contactPickerLauncher.launch(intent)
     }
 
     Column(
@@ -153,10 +185,7 @@ fun FindFriendsScreen(
                 viewModel = viewModel,
                 userProfile = userProfile,
                 priorityRequesterId = priorityRequesterId,
-                hasPermission = hasContactPermission,
-                onRequestPermission = {
-                    permissionLauncher.launch(android.Manifest.permission.READ_CONTACTS)
-                },
+                onPickContacts = openContactPicker,
                 onFollowClick = { user, action ->
                     when (action) {
                         "unfollow" -> {
@@ -180,14 +209,10 @@ fun FindFriendsScreen(
                     }
                 },
                 onUserClick = onNavigateToProfile,
-                onRefresh = { viewModel.syncContacts(context, userProfile.uid) }
+                onRefresh = openContactPicker
             )
             2 -> InviteTab(
-                userProfile = userProfile,
-                hasContactPermission = hasContactPermission,
-                onRequestPermission = {
-                    permissionLauncher.launch(android.Manifest.permission.READ_CONTACTS)
-                }
+                userProfile = userProfile
             )
         }
     }
@@ -469,8 +494,7 @@ private fun ContactsTab(
     viewModel: FriendsViewModel,
     userProfile: UserProfile,
     priorityRequesterId: String? = null,
-    hasPermission: Boolean,
-    onRequestPermission: () -> Unit,
+    onPickContacts: () -> Unit,
     onFollowClick: (UserProfile, String) -> Unit,
     onUserClick: (String) -> Unit,
     onRefresh: () -> Unit = {}
@@ -505,52 +529,13 @@ private fun ContactsTab(
         }
     }
     
-    if (!hasPermission) {
-        // Permission request UI
-        Box(
-            modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center
-        ) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier.padding(32.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Person,
-                    contentDescription = null,
-                    modifier = Modifier.size(64.dp),
-                    tint = MaterialTheme.colorScheme.primary
-                )
-                Spacer(modifier = Modifier.height(16.dp))
-                Text(
-                    text = "See who's on PicFlick",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = "Allow access to your contacts to find friends already using the app",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
-                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
-                )
-                Spacer(modifier = Modifier.height(24.dp))
-                Button(
-                    onClick = onRequestPermission,
-                    shape = RoundedCornerShape(24.dp)
-                ) {
-                    Text("Allow Access")
-                }
-            }
-        }
-    } else {
-        // Show contacts with pull-to-refresh
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .pullRefresh(pullRefreshState)
-        ) {
-            if (viewModel.isLoading && viewModel.contactsOnApp.isEmpty()) {
+    // Show selected contacts matches with pull-to-refresh
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .pullRefresh(pullRefreshState)
+    ) {
+        if (viewModel.isLoading && viewModel.contactsOnApp.isEmpty()) {
                 FullScreenLoading()
             } else {
                 // Show contacts on the app - filter out already followed
@@ -582,7 +567,7 @@ private fun ContactsTab(
                         )
                         Button(
                             onClick = {
-                                onRefresh()
+                                onPickContacts()
                                 isContactsSynced = true
                             },
                             shape = RoundedCornerShape(20.dp),
@@ -604,7 +589,7 @@ private fun ContactsTab(
                             contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp)
                         ) {
                             Text(
-                                if (isContactsSynced) "Contacts synced" else "Sync contacts",
+                                if (isContactsSynced) "Contacts selected" else "Pick contacts",
                                 fontSize = 12.sp
                             )
                         }
@@ -702,12 +687,12 @@ private fun ContactsTab(
                                 )
                                 Spacer(modifier = Modifier.height(16.dp))
                                 Text(
-                                    text = "No contacts on PicFlick yet",
+                                    text = "No selected contacts on PicFlick yet",
                                     style = MaterialTheme.typography.bodyLarge
                                 )
                                 Spacer(modifier = Modifier.height(8.dp))
                                 Text(
-                                    text = "Invite them to join!",
+                                    text = "Tap Pick contacts to select different numbers",
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = MaterialTheme.colorScheme.primary
                                 )
@@ -715,24 +700,21 @@ private fun ContactsTab(
                         }
                     }
                 }
-            }
-            
-            PullRefreshIndicator(
-                refreshing = viewModel.isLoading,
-                state = pullRefreshState,
-                modifier = Modifier.align(Alignment.TopCenter),
-                backgroundColor = Color(0xFF2A2A2A), // Dark gray background
-                contentColor = Color.White // White spinner
-            )
         }
+
+        PullRefreshIndicator(
+            refreshing = viewModel.isLoading,
+            state = pullRefreshState,
+            modifier = Modifier.align(Alignment.TopCenter),
+            backgroundColor = Color(0xFF2A2A2A), // Dark gray background
+            contentColor = Color.White // White spinner
+        )
     }
 }
 
 @Composable
 private fun InviteTab(
-    userProfile: UserProfile,
-    hasContactPermission: Boolean,
-    onRequestPermission: () -> Unit
+    userProfile: UserProfile
 ) {
     val context = LocalContext.current
 
