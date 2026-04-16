@@ -74,25 +74,68 @@ fun FindFriendsScreen(
 
         fun extractFromUri(uri: Uri?) {
             if (uri == null) return
-            val cursor: Cursor? = context.contentResolver.query(
+
+            // Try direct phone-row URI first.
+            val directCursor: Cursor? = context.contentResolver.query(
                 uri,
                 arrayOf(android.provider.ContactsContract.CommonDataKinds.Phone.NUMBER),
                 null,
                 null,
                 null
             )
-            cursor?.use {
+            var foundDirectNumber = false
+            directCursor?.use {
                 val numberIndex = it.getColumnIndex(android.provider.ContactsContract.CommonDataKinds.Phone.NUMBER)
                 while (it.moveToNext()) {
-                    numbers.add(it.getString(numberIndex) ?: "")
+                    val number = it.getString(numberIndex)
+                    if (!number.isNullOrBlank()) {
+                        numbers.add(number)
+                        foundDirectNumber = true
+                    }
+                }
+            }
+            if (foundDirectNumber) return
+
+            // Fallback: full contact URI -> resolve contactId then fetch all phone numbers.
+            val contactCursor = context.contentResolver.query(
+                uri,
+                arrayOf(android.provider.ContactsContract.Contacts._ID),
+                null,
+                null,
+                null
+            )
+            var contactId: String? = null
+            contactCursor?.use {
+                val idIndex = it.getColumnIndex(android.provider.ContactsContract.Contacts._ID)
+                if (it.moveToFirst() && idIndex >= 0) {
+                    contactId = it.getString(idIndex)
+                }
+            }
+
+            if (!contactId.isNullOrBlank()) {
+                val phonesCursor = context.contentResolver.query(
+                    android.provider.ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
+                    arrayOf(android.provider.ContactsContract.CommonDataKinds.Phone.NUMBER),
+                    "${android.provider.ContactsContract.CommonDataKinds.Phone.CONTACT_ID} = ?",
+                    arrayOf(contactId),
+                    null
+                )
+                phonesCursor?.use {
+                    val numberIndex = it.getColumnIndex(android.provider.ContactsContract.CommonDataKinds.Phone.NUMBER)
+                    while (it.moveToNext()) {
+                        val number = it.getString(numberIndex)
+                        if (!number.isNullOrBlank()) {
+                            numbers.add(number)
+                        }
+                    }
                 }
             }
         }
 
-        // Single contact/phone URI
+        // Single selected contact URI
         extractFromUri(intent.data)
 
-        // Multi-select clip data (if available)
+        // Multi-select clip data (if available on some pickers)
         val clipData = intent.clipData
         if (clipData != null) {
             for (i in 0 until clipData.itemCount) {
@@ -100,7 +143,7 @@ fun FindFriendsScreen(
             }
         }
 
-        return numbers
+        return numbers.distinct()
     }
 
     val contactPickerLauncher = rememberLauncherForActivityResult(
@@ -119,7 +162,8 @@ fun FindFriendsScreen(
     }
 
     val openContactPicker: () -> Unit = {
-        val intent = Intent(Intent.ACTION_PICK, android.provider.ContactsContract.CommonDataKinds.Phone.CONTENT_URI)
+        // Use full contacts picker (not phone table) so users can see their full address book.
+        val intent = Intent(Intent.ACTION_PICK, android.provider.ContactsContract.Contacts.CONTENT_URI)
         contactPickerLauncher.launch(intent)
     }
 
