@@ -181,7 +181,7 @@ fun FindFriendsScreen(
             Tab(
                 selected = selectedTab == 0,
                 onClick = { selectedTab = 0 },
-                text = { Text("Discover") }
+                text = { Text("PicFlick Users") }
             )
             Tab(
                 selected = selectedTab == 1,
@@ -357,13 +357,6 @@ private fun DiscoverTab(
             }
             
             if (viewModel.searchQuery.isBlank() && orderedSuggestedUsers.isNotEmpty()) {
-                Text(
-                    text = "People on PicFlick",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = if (isDarkMode) Color.White else Color.Black,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-                )
-
                 LazyColumn(
                     state = listState
                 ) {

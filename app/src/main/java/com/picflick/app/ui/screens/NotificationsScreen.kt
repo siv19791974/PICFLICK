@@ -33,8 +33,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -59,6 +61,8 @@ import com.picflick.app.viewmodel.NotificationViewModel
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 
 /**
@@ -86,11 +90,14 @@ fun NotificationsScreen(
     var showHeaderMenu by remember { mutableStateOf(false) }
     val selectedNotificationIds = remember { mutableStateListOf<String>() }
     var isSelectionMode by remember { mutableStateOf(false) }
+    val acceptedInviteIds = remember { mutableStateMapOf<String, Boolean>() }
+    val declinedInviteIds = remember { mutableStateMapOf<String, Boolean>() }
 
     val now = System.currentTimeMillis()
     val oneDayMs = 24L * 60L * 60L * 1000L
     val newNotifications = notifications.filter { now - it.timestamp < oneDayMs }
     val yesterdayNotifications = notifications.filter { now - it.timestamp >= oneDayMs }
+    val scope = rememberCoroutineScope()
 
     // Load notifications
     LaunchedEffect(userProfile.uid) {
@@ -348,8 +355,24 @@ fun NotificationsScreen(
                                     onDeclineFriendRequest = { senderId ->
                                         viewModel.declineFollowRequest(userProfile.uid, senderId, notification.id)
                                     },
-                                    onAcceptGroupInvite = { viewModel.acceptGroupInvite(notification) },
-                                    onDeclineGroupInvite = { viewModel.declineGroupInvite(notification) }
+                                    onAcceptGroupInvite = {
+                                        if (acceptedInviteIds[notification.id] == true || declinedInviteIds[notification.id] == true) return@SwipeableNotificationItem
+                                        acceptedInviteIds[notification.id] = true
+                                        scope.launch {
+                                            delay(220)
+                                            viewModel.acceptGroupInvite(notification)
+                                        }
+                                    },
+                                    onDeclineGroupInvite = {
+                                        if (acceptedInviteIds[notification.id] == true || declinedInviteIds[notification.id] == true) return@SwipeableNotificationItem
+                                        declinedInviteIds[notification.id] = true
+                                        scope.launch {
+                                            delay(220)
+                                            viewModel.declineGroupInvite(notification)
+                                        }
+                                    },
+                                    isGroupInviteAccepted = acceptedInviteIds[notification.id] == true,
+                                    isGroupInviteDeclined = declinedInviteIds[notification.id] == true
                                 )
                             }
                         }
@@ -430,8 +453,24 @@ fun NotificationsScreen(
                                     onDeclineFriendRequest = { senderId ->
                                         viewModel.declineFollowRequest(userProfile.uid, senderId, notification.id)
                                     },
-                                    onAcceptGroupInvite = { viewModel.acceptGroupInvite(notification) },
-                                    onDeclineGroupInvite = { viewModel.declineGroupInvite(notification) }
+                                    onAcceptGroupInvite = {
+                                        if (acceptedInviteIds[notification.id] == true || declinedInviteIds[notification.id] == true) return@SwipeableNotificationItem
+                                        acceptedInviteIds[notification.id] = true
+                                        scope.launch {
+                                            delay(220)
+                                            viewModel.acceptGroupInvite(notification)
+                                        }
+                                    },
+                                    onDeclineGroupInvite = {
+                                        if (acceptedInviteIds[notification.id] == true || declinedInviteIds[notification.id] == true) return@SwipeableNotificationItem
+                                        declinedInviteIds[notification.id] = true
+                                        scope.launch {
+                                            delay(220)
+                                            viewModel.declineGroupInvite(notification)
+                                        }
+                                    },
+                                    isGroupInviteAccepted = acceptedInviteIds[notification.id] == true,
+                                    isGroupInviteDeclined = declinedInviteIds[notification.id] == true
                                 )
                             }
                         }
@@ -465,7 +504,9 @@ private fun NotificationItem(
     onAcceptFriendRequest: (String) -> Unit = {},
     onDeclineFriendRequest: (String) -> Unit = {},
     onAcceptGroupInvite: () -> Unit = {},
-    onDeclineGroupInvite: () -> Unit = {}
+    onDeclineGroupInvite: () -> Unit = {},
+    isGroupInviteAccepted: Boolean = false,
+    isGroupInviteDeclined: Boolean = false
 ) {
     val hasGroupMetadata = notification.type == NotificationType.MESSAGE &&
         (!notification.groupName.isNullOrBlank() || !notification.groupIcon.isNullOrBlank())
@@ -718,17 +759,31 @@ private fun NotificationItem(
                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         Button(
                             onClick = onAcceptGroupInvite,
+                            enabled = !isGroupInviteAccepted && !isGroupInviteDeclined,
                             shape = RoundedCornerShape(20.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = if (isGroupInviteAccepted) Color(0xFF2E7D32) else MaterialTheme.colorScheme.primary,
+                                contentColor = Color.White,
+                                disabledContainerColor = if (isGroupInviteAccepted) Color(0xFF2E7D32) else MaterialTheme.colorScheme.surfaceVariant,
+                                disabledContentColor = if (isGroupInviteAccepted) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
+                            ),
                             contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
                         ) {
-                            Text("Join", fontSize = 12.sp)
+                            Text(if (isGroupInviteAccepted) "Joined" else "Join", fontSize = 12.sp)
                         }
-                        OutlinedButton(
+                        Button(
                             onClick = onDeclineGroupInvite,
+                            enabled = !isGroupInviteAccepted && !isGroupInviteDeclined,
                             shape = RoundedCornerShape(20.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = if (isGroupInviteDeclined) Color(0xFFC62828) else MaterialTheme.colorScheme.surfaceVariant,
+                                contentColor = if (isGroupInviteDeclined) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
+                                disabledContainerColor = if (isGroupInviteDeclined) Color(0xFFC62828) else MaterialTheme.colorScheme.surfaceVariant,
+                                disabledContentColor = if (isGroupInviteDeclined) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
+                            ),
                             contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
                         ) {
-                            Text("Refuse", fontSize = 12.sp)
+                            Text(if (isGroupInviteDeclined) "Refused" else "Refuse", fontSize = 12.sp)
                         }
                     }
                 }
@@ -772,7 +827,9 @@ private fun SwipeableNotificationItem(
     onAcceptFriendRequest: (String) -> Unit = {},
     onDeclineFriendRequest: (String) -> Unit = {},
     onAcceptGroupInvite: () -> Unit = {},
-    onDeclineGroupInvite: () -> Unit = {}
+    onDeclineGroupInvite: () -> Unit = {},
+    isGroupInviteAccepted: Boolean = false,
+    isGroupInviteDeclined: Boolean = false
 ) {
     val dismissState = rememberSwipeToDismissBoxState(
         confirmValueChange = { value ->
@@ -824,7 +881,9 @@ private fun SwipeableNotificationItem(
                 onAcceptFriendRequest = onAcceptFriendRequest,
                 onDeclineFriendRequest = onDeclineFriendRequest,
                 onAcceptGroupInvite = onAcceptGroupInvite,
-                onDeclineGroupInvite = onDeclineGroupInvite
+                onDeclineGroupInvite = onDeclineGroupInvite,
+                isGroupInviteAccepted = isGroupInviteAccepted,
+                isGroupInviteDeclined = isGroupInviteDeclined
             )
         }
     )
