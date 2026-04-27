@@ -107,8 +107,8 @@ fun MyPhotosScreen(
             onNavigateToPhoto = { index: Int -> 
                 selectedPhoto = viewModel.photos.getOrNull(index)
             },
-            onReaction = { reactionType ->
-                // Handle reaction in viewModel if needed
+            onReaction = { _, _ ->
+                // Reactions disabled on own photos in this screen flow
             },
             onShareClick = {
                 val shareIntent = android.content.Intent().apply {
