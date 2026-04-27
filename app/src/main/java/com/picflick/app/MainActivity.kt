@@ -34,6 +34,7 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -1092,7 +1093,7 @@ fun MainScreen(
                 .then(
                     when {
                         isMediaPickerScreen -> {
-                            Modifier.padding(padding)
+                            Modifier.padding(bottom = padding.calculateBottomPadding())
                         }
                         isChatDetailScreen -> {
                             Modifier.padding(top = padding.calculateTopPadding())
@@ -1555,16 +1556,34 @@ private fun InAppMediaPickerScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(isDarkModeBackground(isDarkMode))
-            .statusBarsPadding()
     ) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .background(Color.Black)
-                .padding(vertical = 8.dp),
-            contentAlignment = Alignment.Center
+                .statusBarsPadding()
+                .padding(top = 0.dp, bottom = 8.dp)
         ) {
-            LogoImage()
+            // Invisible side slots so logo row matches Home header sizing exactly.
+            Spacer(
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .offset(y = 4.dp)
+                    .size(48.dp)
+            )
+
+            Spacer(
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .offset(y = 4.dp)
+                    .size(48.dp)
+            )
+
+            LogoImage(
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .offset(y = 4.dp)
+            )
         }
 
         Box(
@@ -1589,14 +1608,30 @@ private fun InAppMediaPickerScreen(
             )
 
             if (selectedUris.isNotEmpty()) {
-                Text(
-                    text = "${selectedUris.size}",
-                    color = Color(0xFF87CEEB),
-                    fontWeight = FontWeight.Bold,
+                Button(
+                    onClick = onDone,
                     modifier = Modifier
                         .align(Alignment.CenterEnd)
-                        .padding(end = 16.dp)
-                )
+                        .padding(end = 12.dp),
+                    colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFF2E86DE),
+                        contentColor = Color.White
+                    ),
+                    shape = RoundedCornerShape(18.dp),
+                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Add,
+                        contentDescription = "Add",
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = "Add ${selectedUris.size}",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 13.sp
+                    )
+                }
             }
         }
 
@@ -1716,24 +1751,6 @@ private fun InAppMediaPickerScreen(
             }
         }
 
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(Color.Black)
-                .padding(horizontal = 14.dp, vertical = 10.dp)
-        ) {
-            Button(
-                onClick = onDone,
-                enabled = selectedUris.isNotEmpty(),
-                modifier = Modifier.fillMaxWidth(),
-                colors = androidx.compose.material3.ButtonDefaults.buttonColors(
-                    containerColor = if (selectedUris.isNotEmpty()) Color(0xFF2E86DE) else Color(0xFF4B5563),
-                    contentColor = Color.White
-                )
-            ) {
-                Text(if (selectedUris.isEmpty()) "Select photos" else "Use ${selectedUris.size} photo(s)")
-            }
-        }
     }
 }
 
