@@ -380,11 +380,11 @@ fun HomeScreen(
             flick = flick,
             currentUser = currentUserWithLivePhoto,
             onDismiss = { selectedFlick = null },
-            onReaction = { reactionType ->
-                val currentFlick = viewModel.flicks.getOrNull(selectedFlickIndex) ?: flick
-                viewModel.toggleReaction(currentFlick, userProfile.uid, userProfile.displayName, currentUserWithLivePhoto.photoUrl, reactionType)
-                val updatedFlick = viewModel.flicks.getOrNull(selectedFlickIndex)
-                if (updatedFlick != null) selectedFlick = updatedFlick
+            onReaction = { activeFlick, reactionType ->
+                viewModel.toggleReaction(activeFlick, userProfile.uid, userProfile.displayName, currentUserWithLivePhoto.photoUrl, reactionType)
+                selectedFlick = viewModel.flicks.firstOrNull { it.id == activeFlick.id } ?: activeFlick
+                selectedFlickIndex = viewModel.flicks.indexOfFirst { it.id == selectedFlick?.id }
+                    .takeIf { it >= 0 } ?: selectedFlickIndex
             },
             onShareClick = {
                 flickToShare = flick

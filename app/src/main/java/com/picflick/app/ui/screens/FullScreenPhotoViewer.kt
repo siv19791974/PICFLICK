@@ -113,7 +113,7 @@ fun FullScreenPhotoViewer(
     flick: Flick,
     currentUser: UserProfile,
     onDismiss: () -> Unit,
-    onReaction: (ReactionType?) -> Unit = {},
+    onReaction: (Flick, ReactionType?) -> Unit = { _, _ -> },
     onShareClick: () -> Unit = {},
     onDeleteClick: () -> Unit = {},
     canDelete: Boolean = false,
@@ -223,11 +223,17 @@ fun FullScreenPhotoViewer(
         if (sessionPhotos.isEmpty()) {
             sessionPhotos.addAll(allPhotos)
         } else {
-            val existingIds = sessionPhotos.map { it.id }.toHashSet()
+            val existingIndexById = sessionPhotos
+                .mapIndexed { index, existing -> existing.id to index }
+                .toMap()
+
             allPhotos.forEach { flickFromFeed ->
-                if (!existingIds.contains(flickFromFeed.id)) {
+                val existingIndex = existingIndexById[flickFromFeed.id]
+                if (existingIndex != null) {
+                    // Keep session list in sync with live feed updates (reactions/comments/caption)
+                    sessionPhotos[existingIndex] = flickFromFeed
+                } else {
                     sessionPhotos.add(flickFromFeed)
-                    existingIds.add(flickFromFeed.id)
                 }
             }
         }
@@ -1327,8 +1333,8 @@ if (canDeleteCurrent) {
                                                 if (!canDeleteCurrent) {
                                                     // Toggle reaction: if already reacted, remove it; else show picker
                                                     if (userReaction != null) {
-                                                        // Remove reaction by passing null
-                                                        onReaction(null)
+                                                        // Remove reaction from currently visible photo
+                                                        onReaction(currentFlick, null)
                                                     } else {
                                                         showReactionPicker = !showReactionPicker // TOGGLE: click to open, click again to close
                                                     }
@@ -2193,7 +2199,7 @@ if (canDeleteCurrent) {
                     AnimatedReactionPicker(
                         onDismiss = { showReactionPicker = false },
                         onReactionSelected = { reaction ->
-                            onReaction(reaction)
+                            onReaction(currentFlick, reaction)
                             showReactionPicker = false
                         },
                         currentReaction = userReaction

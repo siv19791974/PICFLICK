@@ -1869,8 +1869,8 @@ val isProfilePhoto = flick.id.startsWith("profile_")
             flick = flick,
             currentUser = currentUser,
             onDismiss = dismissAndLockPortrait,
-onReaction = { reactionType ->
-                if (!isProfilePhoto) onReaction(flick, reactionType)
+            onReaction = { activeFlick, reactionType ->
+                if (!isProfilePhoto) onReaction(activeFlick, reactionType)
             },
             onShareClick = { onShareClick(flick) },
             onDeleteClick = {
@@ -1973,9 +1973,8 @@ private fun UserProfilePhotoViewer(
             flick = flick,
             currentUser = currentUser,
             onDismiss = onDismiss,
-            onReaction = { reactionType ->
+            onReaction = { activeFlick, reactionType ->
                 if (!isUserProfilePhoto) {
-                    val activeFlick = targetUserPhotos.getOrNull(selectedIndex) ?: flick
                     onReaction(activeFlick, reactionType)
                 }
             },
