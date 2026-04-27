@@ -1813,6 +1813,8 @@ class FlickRepository private constructor() {
                                 groupId = data["groupId"] as? String,
                                 groupName = data["groupName"] as? String,
                                 groupIcon = data["groupIcon"] as? String,
+                                inviteId = data["inviteId"] as? String,
+                                targetScreen = data["targetScreen"] as? String,
                                 isRead = data["isRead"] as? Boolean ?: false,
                                 timestamp = (data["timestamp"] as? Long) ?: System.currentTimeMillis()
                             )
