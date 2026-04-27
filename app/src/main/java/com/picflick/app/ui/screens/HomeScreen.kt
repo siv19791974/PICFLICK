@@ -141,6 +141,7 @@ fun HomeScreen(
     }
     var showCreateGroupDialog by remember { mutableStateOf(false) }
     var editingGroup by remember { mutableStateOf<FriendGroup?>(null) }
+    var viewingGroup by remember { mutableStateOf<FriendGroup?>(null) }
     var inviteTargetGroup by remember { mutableStateOf<FriendGroup?>(null) }
     var adminTargetGroup by remember { mutableStateOf<FriendGroup?>(null) }
     var tempCameraUri by remember { mutableStateOf<Uri?>(null) }
@@ -490,15 +491,19 @@ fun HomeScreen(
         editDialogIconOverride = null
     }
 
-    BackHandler(enabled = inviteTargetGroup != null && !showGroupIconCropDialog && !showCreateGroupDialog && editingGroup == null) {
+    BackHandler(enabled = viewingGroup != null && !showGroupIconCropDialog && !showCreateGroupDialog && editingGroup == null) {
+        viewingGroup = null
+    }
+
+    BackHandler(enabled = inviteTargetGroup != null && !showGroupIconCropDialog && !showCreateGroupDialog && editingGroup == null && viewingGroup == null) {
         inviteTargetGroup = null
     }
 
-    BackHandler(enabled = adminTargetGroup != null && !showGroupIconCropDialog && !showCreateGroupDialog && editingGroup == null && inviteTargetGroup == null) {
+    BackHandler(enabled = adminTargetGroup != null && !showGroupIconCropDialog && !showCreateGroupDialog && editingGroup == null && viewingGroup == null && inviteTargetGroup == null) {
         adminTargetGroup = null
     }
 
-    BackHandler(enabled = showGroupsManager && !showGroupIconCropDialog && !showCreateGroupDialog && editingGroup == null && inviteTargetGroup == null && adminTargetGroup == null) {
+    BackHandler(enabled = showGroupsManager && !showGroupIconCropDialog && !showCreateGroupDialog && editingGroup == null && viewingGroup == null && inviteTargetGroup == null && adminTargetGroup == null) {
         showGroupsManager = false
     }
 
@@ -625,6 +630,7 @@ fun HomeScreen(
             },
             onCreateGroup = { showCreateGroupDialog = true },
             onEditGroup = { group -> editingGroup = group },
+            onViewGroup = { group -> viewingGroup = group },
             onInviteToGroup = { group -> inviteTargetGroup = group },
             onManageAdmins = { group -> adminTargetGroup = group },
             onDeleteGroup = { group -> viewModel.deleteFriendGroup(userProfile.uid, group.id) },
@@ -706,7 +712,9 @@ fun HomeScreen(
                         ).show()
                     }
                 }
-            }
+            },
+            readOnly = false,
+            onUserProfileClick = onUserProfileClick
         )
     }
 
@@ -745,7 +753,29 @@ fun HomeScreen(
                 }
             },
             onCreateLocal = null,
-            onCreateShared = null
+            onCreateShared = null,
+            readOnly = false,
+            onUserProfileClick = onUserProfileClick
+        )
+    }
+
+    viewingGroup?.let { group ->
+        CreateOrEditGroupDialog(
+            title = "View album",
+            submitLabel = "Save",
+            friends = friends,
+            isDarkMode = isDarkMode,
+            initialName = group.name,
+            initialIcon = group.icon,
+            initialColor = group.color,
+            initialSelectedFriendIds = group.membersExcludingOwner(),
+            onDismiss = { viewingGroup = null },
+            onAddPhoto = {},
+            onSubmit = { _, _, _, _ -> },
+            onCreateLocal = null,
+            onCreateShared = null,
+            readOnly = true,
+            onUserProfileClick = onUserProfileClick
         )
     }
 
@@ -1527,6 +1557,7 @@ private fun GroupManagerSheet(
     onSelectGroup: (FeedFilter) -> Unit,
     onCreateGroup: () -> Unit,
     onEditGroup: (FriendGroup) -> Unit,
+    onViewGroup: (FriendGroup) -> Unit,
     onInviteToGroup: (FriendGroup) -> Unit,
     onManageAdmins: (FriendGroup) -> Unit,
     onDeleteGroup: (FriendGroup) -> Unit,
@@ -1782,10 +1813,14 @@ private fun GroupManagerSheet(
                                             )
                                         }
                                         DropdownMenuItem(
-                                            text = { Text("Album Members") },
+                                            text = { Text(if (group.isAdmin(currentUserId)) "Edit album" else "View album") },
                                             onClick = {
                                                 showGroupMenu = false
-                                                onEditGroup(group)
+                                                if (group.isAdmin(currentUserId)) {
+                                                    onEditGroup(group)
+                                                } else {
+                                                    onViewGroup(group)
+                                                }
                                             },
                                             leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null) }
                                         )
@@ -1976,7 +2011,9 @@ private fun CreateOrEditGroupDialog(
     onAddPhoto: () -> Unit,
     onSubmit: (name: String, icon: String, selectedFriendIds: List<String>, color: String) -> Unit,
     onCreateLocal: ((name: String, icon: String, selectedFriendIds: List<String>, color: String) -> Unit)? = null,
-    onCreateShared: ((name: String, icon: String, selectedFriendIds: List<String>, color: String) -> Unit)? = null
+    onCreateShared: ((name: String, icon: String, selectedFriendIds: List<String>, color: String) -> Unit)? = null,
+    readOnly: Boolean = false,
+    onUserProfileClick: (String) -> Unit = {}
 ) {
     BackHandler(onBack = onDismiss)
 
@@ -2037,7 +2074,7 @@ private fun CreateOrEditGroupDialog(
                             tint = Color.White
                         )
                     }
-                    if (!isCreateMode) {
+                    if (!isCreateMode && !readOnly) {
                         Button(
                             onClick = {
                                 onSubmit(groupName.trim(), selectedIcon, selectedFriends.toList(), selectedColor)
@@ -2065,8 +2102,9 @@ private fun CreateOrEditGroupDialog(
 
             OutlinedTextField(
                 value = groupName,
-                onValueChange = { groupName = it },
+                onValueChange = { if (!readOnly) groupName = it },
                 singleLine = true,
+                readOnly = readOnly,
                 textStyle = LocalTextStyle.current.copy(fontWeight = FontWeight.Bold),
                 modifier = Modifier
                     .fillMaxWidth()
@@ -2094,7 +2132,7 @@ private fun CreateOrEditGroupDialog(
                         .clip(CircleShape)
                         .border(2.dp, Color.Black, CircleShape)
                         .background(if (isDarkMode) Color(0xFF2A2A2A) else Color(0xFFF1F1F1))
-                        .clickable { onAddPhoto() },
+                        .clickable(enabled = !readOnly) { onAddPhoto() },
                     contentAlignment = Alignment.Center
                 ) {
                     if (selectedIcon.startsWith("http")) {
@@ -2112,7 +2150,7 @@ private fun CreateOrEditGroupDialog(
                                 .size(28.5.dp)
                                 .background(waitingColor, CircleShape)
                                 .border(3.dp, Color.Black, CircleShape)
-                                .clickable { onAddPhoto() },
+                                .clickable(enabled = !readOnly) { onAddPhoto() },
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
@@ -2154,7 +2192,8 @@ private fun CreateOrEditGroupDialog(
                                 modifier = Modifier
                                     .size(56.dp)
                                     .clip(CircleShape)
-                                    .border(2.dp, tierRingColor, CircleShape),
+                                    .border(2.dp, tierRingColor, CircleShape)
+                                    .clickable { onUserProfileClick(friend.uid) },
                                 contentScale = ContentScale.Crop
                             )
                         } else {
@@ -2163,7 +2202,8 @@ private fun CreateOrEditGroupDialog(
                                     .size(56.dp)
                                     .clip(CircleShape)
                                     .border(2.dp, tierRingColor, CircleShape)
-                                    .background(if (isDarkMode) Color(0xFF3A3A3C) else Color(0xFFE0E0E0)),
+                                    .background(if (isDarkMode) Color(0xFF3A3A3C) else Color(0xFFE0E0E0))
+                                    .clickable { onUserProfileClick(friend.uid) },
                                 contentAlignment = Alignment.Center
                             ) {
                                 Icon(
@@ -2194,8 +2234,11 @@ private fun CreateOrEditGroupDialog(
                         if (isSelected) {
                             OutlinedButton(
                                 onClick = {
-                                    selectedFriends = selectedFriends - friend.uid
+                                    if (!readOnly) {
+                                        selectedFriends = selectedFriends - friend.uid
+                                    }
                                 },
+                                enabled = !readOnly,
                                 shape = RoundedCornerShape(20.dp),
                                 colors = ButtonDefaults.outlinedButtonColors(
                                     containerColor = waitingColor,
@@ -2210,8 +2253,11 @@ private fun CreateOrEditGroupDialog(
                         } else {
                             OutlinedButton(
                                 onClick = {
-                                    selectedFriends = selectedFriends + friend.uid
+                                    if (!readOnly) {
+                                        selectedFriends = selectedFriends + friend.uid
+                                    }
                                 },
+                                enabled = !readOnly,
                                 shape = RoundedCornerShape(20.dp),
                                 colors = ButtonDefaults.outlinedButtonColors(
                                     containerColor = Color.Transparent,
