@@ -1144,30 +1144,13 @@ private fun NotificationsScreenContent(
         },
         onGroupInviteAccepted = { groupId, groupName ->
             val group = homeViewModel.friendGroups.firstOrNull { it.id == groupId }
-            val memberIds = group?.effectiveMemberIds() ?: listOf(userProfile.uid)
-
-            chatViewModel.startGroupChat(
-                ownerUserId = userProfile.uid,
-                ownerName = userProfile.displayName,
-                ownerPhoto = userProfile.photoUrl,
-                groupId = groupId,
-                groupName = groupName.ifBlank { "Group" },
-                groupIcon = group?.icon ?: "👥",
-                memberIds = memberIds
-            ) { chatId ->
-                val session = chatViewModel.chatSessions.firstOrNull { it.id == chatId } ?: ChatSession(
-                    id = chatId,
-                    participants = listOf(userProfile.uid),
-                    participantNames = mapOf(userProfile.uid to userProfile.displayName),
-                    participantPhotos = mapOf(userProfile.uid to userProfile.photoUrl),
-                    isGroup = true,
+            onScreenChange(
+                Screen.GroupAlbumInfo(
                     groupId = groupId,
-                    groupName = groupName,
-                    groupIcon = "👥"
+                    groupName = groupName.ifBlank { group?.name ?: "Group" },
+                    groupIcon = group?.icon ?: "👥"
                 )
-                onSetSelectedChat(session, "group:$groupId")
-                onScreenChange(Screen.ChatDetail)
-            }
+            )
         }
     )
 
@@ -1194,11 +1177,21 @@ private fun NotificationsScreenContent(
             )
         },
         onReaction = { flick, reactionType ->
-            reactionType?.let {
-                homeViewModel.toggleReaction(
-                    flick, userProfile.uid, userProfile.displayName, userProfile.photoUrl, it
-                )
+            val updatedReactions = flick.reactions.toMutableMap().apply {
+                if (reactionType == null) {
+                    remove(userProfile.uid)
+                } else {
+                    put(userProfile.uid, reactionType.name)
+                }
             }
+            selectedNotificationPhoto = flick.copy(reactions = updatedReactions.toMap())
+            homeViewModel.toggleReaction(
+                flick,
+                userProfile.uid,
+                userProfile.displayName,
+                userProfile.photoUrl,
+                reactionType
+            )
         },
         onShareClick = { },
         onDeleteClick = { selectedNotificationPhoto = null },
