@@ -1,11 +1,11 @@
 package com.picflick.app.ui.components
 
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AddCircle
 import androidx.compose.material.icons.filled.ChatBubble
-import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.outlined.ChatBubbleOutline
@@ -20,9 +20,19 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.text.font.Font
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.Modifier
+import com.picflick.app.R
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+
+private val PoppinsFontFamily = FontFamily(
+    Font(R.font.poppins_bold, FontWeight.Bold),
+    Font(R.font.poppins_extrabold, FontWeight.ExtraBold)
+)
 
 /**
  * Bottom navigation bar for main app navigation - BLACK with clean 5-icon layout.
@@ -41,17 +51,35 @@ fun BottomNavBar(
     ) {
         NavigationBarItem(
             icon = {
-                Icon(
-                    imageVector = if (currentRoute == "home") Icons.Filled.Groups else Icons.Outlined.Home,
-                    contentDescription = if (currentRoute == "home") "Groups" else "Home",
-                    tint = if (currentRoute == "home") Color.White else Color.LightGray
-                )
+                if (currentRoute == "home") {
+                    androidx.compose.material3.Surface(
+                        shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
+                        color = Color(0xFF1565C0),
+                        modifier = Modifier.padding(horizontal = 2.dp, vertical = 2.dp)
+                    ) {
+                        Text(
+                            text = "Albums",
+                            color = Color.White,
+                            fontWeight = FontWeight.ExtraBold,
+                            fontSize = 12.sp,
+                            letterSpacing = 0.1.sp,
+                            fontFamily = PoppinsFontFamily,
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                        )
+                    }
+                } else {
+                    Icon(
+                        imageVector = Icons.Outlined.Home,
+                        contentDescription = "Home",
+                        tint = Color.LightGray
+                    )
+                }
             },
             label = null,
             alwaysShowLabel = false,
             selected = currentRoute == "home",
             onClick = { onNavigate("home") },
-            colors = NavigationBarItemDefaults.colors(indicatorColor = Color(0xFF1565C0))
+            colors = NavigationBarItemDefaults.colors(indicatorColor = Color.Transparent)
         )
 
         NavigationBarItem(
