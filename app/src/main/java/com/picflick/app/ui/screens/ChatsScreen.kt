@@ -758,7 +758,7 @@ fun ChatsScreen(
 
     editingChatGroup?.let { group ->
         CreateOrEditGroupDialog(
-            title = "Edit album",
+            title = "Edit group members",
             submitLabel = "Save",
             friends = friendsViewModel.followingUsers,
             isDarkMode = isDarkMode,
@@ -798,7 +798,7 @@ fun ChatsScreen(
 
     viewingChatGroup?.let { group ->
         CreateOrEditGroupDialog(
-            title = "View album",
+            title = "View group members",
             submitLabel = "Save",
             friends = friendsViewModel.followingUsers,
             isDarkMode = isDarkMode,
