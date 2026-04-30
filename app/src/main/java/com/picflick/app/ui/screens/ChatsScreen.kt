@@ -691,7 +691,7 @@ fun ChatsScreen(
             friends = friendsViewModel.followingUsers,
             isLoading = friendsViewModel.isLoading,
             isDarkMode = isDarkMode,
-            initialIcon = createDialogIconOverride ?: "👥",
+            initialIcon = createDialogIconOverride ?: "",
             onDismiss = {
                 showCreateGroupDialog = false
                 createDialogIconOverride = null
@@ -755,10 +755,6 @@ private fun NewGroupFromComposeDialog(
     val addColor = Color(0xFF2A4A73)
     val waitingColor = Color(0xFF2A4A73)
 
-    val icons = listOf(
-        "👥", "👨‍👩‍👧‍👦", "💼", "🎓", "⭐", "✈️", "⚽", "🎨", "🏠", "🎵", "📚", "🎮",
-        "🍔", "🍷", "🛫", "🏋️", "🏖️", "🎬", "🐶", "🚗", "🛍️", "🧠", "🧑‍💻", "📷"
-    )
     val canCreate = groupName.trim().isNotEmpty() && selectedIds.isNotEmpty() && !isSubmitting
     val sortedFriends = remember(friends) {
         friends.sortedWith(
@@ -811,17 +807,15 @@ private fun NewGroupFromComposeDialog(
                 value = groupName,
                 onValueChange = { groupName = it },
                 singleLine = true,
+                textStyle = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 12.dp, vertical = 10.dp),
-                label = { Text("Group name") },
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedContainerColor = Color(0xFFB7D8F2),
                     unfocusedContainerColor = Color(0xFFB7D8F2),
                     focusedTextColor = Color.Black,
                     unfocusedTextColor = Color.Black,
-                    focusedLabelColor = Color.Black,
-                    unfocusedLabelColor = Color.Black.copy(alpha = 0.8f),
                     focusedBorderColor = Color.Black,
                     unfocusedBorderColor = Color.Black.copy(alpha = 0.7f)
                 )
@@ -830,13 +824,13 @@ private fun NewGroupFromComposeDialog(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 12.dp, vertical = 4.dp),
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                horizontalArrangement = Arrangement.Center
             ) {
                 Surface(
                     modifier = Modifier
-                        .size(56.dp)
+                        .size(96.dp)
                         .clickable { onAddPhoto() },
                     shape = CircleShape,
                     color = if (isDarkMode) Color(0xFF2A2A2A) else Color(0xFFF1F1F1),
@@ -855,31 +849,8 @@ private fun NewGroupFromComposeDialog(
                                 imageVector = Icons.Default.AddAPhoto,
                                 contentDescription = "Add photo",
                                 tint = textColor,
-                                modifier = Modifier.size(22.dp)
+                                modifier = Modifier.size(36.dp)
                             )
-                        }
-                    }
-                }
-
-                LazyRow(
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(56.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    items(icons, key = { it }) { icon ->
-                        Surface(
-                            modifier = Modifier
-                                .size(44.dp)
-                                .clickable { selectedIcon = icon },
-                            shape = CircleShape,
-                            color = if (selectedIcon == icon) waitingColor else if (isDarkMode) Color(0xFF2A2A2A) else Color(0xFFF1F1F1),
-                            border = if (selectedIcon == icon) null else androidx.compose.foundation.BorderStroke(1.dp, if (isDarkMode) Color(0xFF4A4A4A) else Color(0xFFB0BEC5))
-                        ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Text(text = icon, fontSize = 20.sp, color = if (selectedIcon == icon) Color.White else textColor)
-                            }
                         }
                     }
                 }
@@ -1014,7 +985,7 @@ private fun NewGroupFromComposeDialog(
                     CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp, color = Color.White)
                     Spacer(modifier = Modifier.width(8.dp))
                 }
-                Text("Create shared")
+                Text("Create Group")
             }
         }
     }
