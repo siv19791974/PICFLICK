@@ -81,6 +81,7 @@ import kotlin.math.roundToInt
 import com.picflick.app.ui.theme.isDarkModeBackground
 import com.picflick.app.viewmodel.ChatViewModel
 import com.picflick.app.viewmodel.FriendsViewModel
+import com.picflick.app.viewmodel.HomeViewModel
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -93,6 +94,7 @@ fun ChatsScreen(
     userProfile: UserProfile,
     viewModel: ChatViewModel,
     friendsViewModel: FriendsViewModel,
+    homeViewModel: HomeViewModel? = null,
     friendGroups: List<FriendGroup> = emptyList(),
     onBack: () -> Unit,
     onNavigateHome: () -> Unit = onBack,
@@ -116,6 +118,10 @@ fun ChatsScreen(
     var showGroupIconCropDialog by remember { mutableStateOf(false) }
     var groupIconCropSourceUri by remember { mutableStateOf<Uri?>(null) }
     var createDialogIconOverride by remember { mutableStateOf<String?>(null) }
+    var editingChatGroup by remember { mutableStateOf<FriendGroup?>(null) }
+    var viewingChatGroup by remember { mutableStateOf<FriendGroup?>(null) }
+    var chatEditDialogIconOverride by remember { mutableStateOf<String?>(null) }
+    var pendingChatGroupIconTarget by remember { mutableStateOf<String?>(null) }
     val selectedChatIds = remember { mutableStateListOf<String>() }
     var showHeaderMenu by remember { mutableStateOf(false) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
@@ -212,8 +218,17 @@ fun ChatsScreen(
         createDialogIconOverride = null
     }
 
-    BackHandler(enabled = showNewChatDialog && !showCreateGroupDialog && !showGroupIconCropDialog) {
+    BackHandler(enabled = showNewChatDialog && !showCreateGroupDialog && !showGroupIconCropDialog && editingChatGroup == null && viewingChatGroup == null) {
         showNewChatDialog = false
+    }
+
+    BackHandler(enabled = editingChatGroup != null && !showGroupIconCropDialog) {
+        editingChatGroup = null
+        chatEditDialogIconOverride = null
+    }
+
+    BackHandler(enabled = viewingChatGroup != null && !showGroupIconCropDialog) {
+        viewingChatGroup = null
     }
 
     LaunchedEffect(pendingGroupIconSourceUri) {
@@ -225,7 +240,10 @@ fun ChatsScreen(
             if (imageBytes != null) {
                 when (val uploadResult = FlickRepository.getInstance().uploadFlickImage(userProfile.uid, imageBytes)) {
                     is Result.Success -> {
-                        createDialogIconOverride = uploadResult.data
+                        when (pendingChatGroupIconTarget) {
+                            "edit_chat" -> chatEditDialogIconOverride = uploadResult.data
+                            else -> createDialogIconOverride = uploadResult.data
+                        }
                         Toast.makeText(context, "Group photo added", Toast.LENGTH_SHORT).show()
                     }
                     is Result.Error -> {
@@ -238,6 +256,7 @@ fun ChatsScreen(
             Toast.makeText(context, "Failed to process group photo", Toast.LENGTH_SHORT).show()
         } finally {
             pendingGroupIconSourceUri = null
+            pendingChatGroupIconTarget = null
         }
     }
 
@@ -483,6 +502,9 @@ fun ChatsScreen(
                                 }
 
 
+                                val targetGroupId = if (isGroupSession) session.groupId.ifBlank { session.id.removePrefix("group_") } else ""
+                                val targetGroup = if (isGroupSession) friendGroups.firstOrNull { it.id == targetGroupId } else null
+
                                 ChatListItem(
                                     session = session,
                                     otherUserId = otherUserId,
@@ -499,8 +521,6 @@ fun ChatsScreen(
                                             }
                                         } else {
                                             if (isGroupSession) {
-                                                val targetGroupId = session.groupId.ifBlank { session.id.removePrefix("group_") }
-                                                val targetGroup = friendGroups.firstOrNull { it.id == targetGroupId }
                                                 if (targetGroup != null && onOpenGroupChat != null) {
                                                     onOpenGroupChat(targetGroup)
                                                 } else {
@@ -519,7 +539,13 @@ fun ChatsScreen(
                                         }
                                     },
                                     onProfilePhotoClick = {
-                                        if (!isGroupSession && otherUserId.isNotBlank()) {
+                                        if (isGroupSession && targetGroup != null) {
+                                            if (targetGroup.isAdmin(userProfile.uid)) {
+                                                editingChatGroup = targetGroup
+                                            } else {
+                                                viewingChatGroup = targetGroup
+                                            }
+                                        } else if (!isGroupSession && otherUserId.isNotBlank()) {
                                             onUserProfileClick(otherUserId)
                                         }
                                     }
@@ -727,6 +753,66 @@ fun ChatsScreen(
                     pendingGroupIconSourceUri = croppedUri
                 }
             }
+        )
+    }
+
+    editingChatGroup?.let { group ->
+        CreateOrEditGroupDialog(
+            title = "Edit album",
+            submitLabel = "Save",
+            friends = friendsViewModel.followingUsers,
+            isDarkMode = isDarkMode,
+            initialName = group.name,
+            initialIcon = chatEditDialogIconOverride ?: group.icon,
+            initialColor = group.color,
+            initialSelectedFriendIds = group.membersExcludingOwner(),
+            onDismiss = {
+                editingChatGroup = null
+                chatEditDialogIconOverride = null
+            },
+            onAddPhoto = {
+                pendingChatGroupIconTarget = "edit_chat"
+                groupIconPickerLauncher.launch("image/*")
+            },
+            onSubmit = { name, icon, selectedFriendIds, color ->
+                homeViewModel?.updateFriendGroup(
+                    userId = userProfile.uid,
+                    groupId = group.id,
+                    name = name,
+                    icon = icon,
+                    friendIds = selectedFriendIds,
+                    color = color
+                ) { success ->
+                    if (success) {
+                        editingChatGroup = null
+                        chatEditDialogIconOverride = null
+                    }
+                }
+            },
+            onCreateLocal = null,
+            onCreateShared = null,
+            readOnly = false,
+            onUserProfileClick = onUserProfileClick
+        )
+    }
+
+    viewingChatGroup?.let { group ->
+        CreateOrEditGroupDialog(
+            title = "View album",
+            submitLabel = "Save",
+            friends = friendsViewModel.followingUsers,
+            isDarkMode = isDarkMode,
+            initialName = group.name,
+            initialIcon = group.icon,
+            initialColor = group.color,
+            initialSelectedFriendIds = group.membersExcludingOwner(),
+            onDismiss = { viewingChatGroup = null },
+            onAddPhoto = {},
+            onSubmit = { _, _, _, _ -> },
+            onCreateLocal = null,
+            onCreateShared = null,
+            readOnly = true,
+            onUserProfileClick = onUserProfileClick
         )
     }
 }

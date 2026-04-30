@@ -586,6 +586,22 @@ private fun HomeScreenContent(
                 onSetSelectedChat(session, "group:${group.id}")
                 onScreenChange(Screen.ChatDetail)
             }
+        },
+        chatViewModel = chatViewModel,
+        onOpenGroupChatFromChatGroup = { chatId ->
+            val session = chatViewModel.chatSessions.firstOrNull { it.id == chatId }
+                ?: ChatSession(
+                    id = chatId,
+                    participants = listOf(userProfile.uid),
+                    participantNames = mapOf(userProfile.uid to userProfile.displayName),
+                    participantPhotos = mapOf(userProfile.uid to userProfile.photoUrl),
+                    isGroup = true,
+                    groupId = chatId.removePrefix("group_"),
+                    groupName = "Group",
+                    groupIcon = "👥"
+                )
+            onSetSelectedChat(session, "group:${chatId.removePrefix("group_")}")
+            onScreenChange(Screen.ChatDetail)
         }
     )
 }
@@ -782,6 +798,7 @@ private fun ChatsScreenContent(
         userProfile = userProfile,
         viewModel = chatViewModel,
         friendsViewModel = friendsViewModel,
+        homeViewModel = homeViewModel,
         friendGroups = homeViewModel.friendGroups,
         onBack = { onScreenChange(Screen.Home) },
         onChatClick = { session, otherUserId ->
