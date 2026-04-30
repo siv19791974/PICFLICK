@@ -2182,6 +2182,7 @@ internal fun CreateOrEditGroupDialog(
                 singleLine = true,
                 readOnly = readOnly,
                 textStyle = LocalTextStyle.current.copy(fontWeight = FontWeight.Bold),
+                placeholder = { Text("Album Name", fontWeight = FontWeight.Bold) },
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 12.dp, vertical = 10.dp),
