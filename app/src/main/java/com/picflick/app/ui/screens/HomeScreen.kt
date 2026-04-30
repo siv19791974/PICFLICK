@@ -96,6 +96,7 @@ import com.picflick.app.util.rememberLiveUserTierColor
 import com.picflick.app.util.withCacheBust
 import java.util.Locale
 import com.picflick.app.utils.Analytics
+import com.picflick.app.viewmodel.ChatViewModel
 import com.picflick.app.viewmodel.HomeViewModel
 import java.io.File
 import java.io.FileOutputStream
@@ -116,6 +117,7 @@ import kotlinx.coroutines.withContext
 fun HomeScreen(
     userProfile: UserProfile,
     viewModel: HomeViewModel,
+    chatViewModel: ChatViewModel? = null,
     resetToTopVersion: Int = 0,
     onNavigate: (String) -> Unit,
     onSignOut: () -> Unit,
@@ -124,7 +126,8 @@ fun HomeScreen(
     onEditPhotoClick: (Flick) -> Unit = {}, // Navigate to edit photo screen
     openGroupsManager: Boolean = false,
     onOpenGroupsManagerConsumed: () -> Unit = {},
-    onOpenGroupChat: (FriendGroup) -> Unit = {}
+    onOpenGroupChat: (FriendGroup) -> Unit = {},
+    onOpenGroupChatFromChatGroup: ((String) -> Unit)? = null
 ) {
     val context = LocalContext.current
     val prefs = remember(context) {
@@ -141,6 +144,7 @@ fun HomeScreen(
         mutableStateListOf(*defaultExampleGroups.filterNot { it in deleted }.toTypedArray())
     }
     var showCreateGroupDialog by remember { mutableStateOf(false) }
+    var showCreateChatGroupDialog by remember { mutableStateOf(false) }
     var editingGroup by remember { mutableStateOf<FriendGroup?>(null) }
     var viewingGroup by remember { mutableStateOf<FriendGroup?>(null) }
     var inviteTargetGroup by remember { mutableStateOf<FriendGroup?>(null) }
@@ -482,9 +486,13 @@ fun HomeScreen(
         groupIconCropSourceUri = null
     }
 
-    BackHandler(enabled = showCreateGroupDialog && !showGroupIconCropDialog) {
+    BackHandler(enabled = showCreateGroupDialog && !showGroupIconCropDialog && !showCreateChatGroupDialog) {
         showCreateGroupDialog = false
         createDialogIconOverride = null
+    }
+
+    BackHandler(enabled = showCreateChatGroupDialog && !showGroupIconCropDialog) {
+        showCreateChatGroupDialog = false
     }
 
     BackHandler(enabled = editingGroup != null && !showGroupIconCropDialog && !showCreateGroupDialog) {
@@ -716,6 +724,35 @@ fun HomeScreen(
                 }
             },
             readOnly = false,
+            onUserProfileClick = onUserProfileClick
+        )
+    }
+
+    if (showCreateChatGroupDialog) {
+        CreateChatGroupDialog(
+            friends = friends,
+            isDarkMode = isDarkMode,
+            onDismiss = { showCreateChatGroupDialog = false },
+            onAddPhoto = {
+                pendingGroupIconTarget = "chat_group"
+                selectedGroupIconMediaUris = emptyList()
+                showGroupIconMediaPicker = true
+            },
+            onCreateGroup = { name, icon, selectedFriendIds ->
+                chatViewModel?.startGroupChat(
+                    ownerUserId = userProfile.uid,
+                    ownerName = userProfile.displayName,
+                    ownerPhoto = userProfile.photoUrl,
+                    groupId = "",
+                    groupName = name,
+                    groupIcon = icon,
+                    memberIds = selectedFriendIds + userProfile.uid
+                ) { chatId: String ->
+                    showCreateChatGroupDialog = false
+                    onOpenGroupChatFromChatGroup?.invoke(chatId)
+                }
+            },
+            selectedIcon = createDialogIconOverride ?: "👥",
             onUserProfileClick = onUserProfileClick
         )
     }
@@ -2037,7 +2074,7 @@ private fun GroupRowCard(
 }
 
 @Composable
-private fun CreateOrEditGroupDialog(
+internal fun CreateOrEditGroupDialog(
     title: String,
     submitLabel: String,
     friends: List<UserProfile>,
@@ -2349,6 +2386,263 @@ private fun CreateOrEditGroupDialog(
                     ) {
                         Text("Create Shared")
                     }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun CreateChatGroupDialog(
+    friends: List<UserProfile>,
+    isDarkMode: Boolean,
+    onDismiss: () -> Unit,
+    onAddPhoto: () -> Unit,
+    onCreateGroup: (name: String, icon: String, selectedFriendIds: List<String>) -> Unit,
+    selectedIcon: String,
+    onUserProfileClick: (String) -> Unit = {}
+) {
+    BackHandler(onBack = onDismiss)
+
+    var groupName by remember { mutableStateOf("") }
+    var groupIcon by remember { mutableStateOf(selectedIcon) }
+    LaunchedEffect(selectedIcon) {
+        if (selectedIcon.isNotBlank()) groupIcon = selectedIcon
+    }
+    var selectedFriends by remember { mutableStateOf<Set<String>>(emptySet()) }
+
+    val addColor = Color(0xFF2A4A73)
+    val waitingColor = Color(0xFF2A4A73)
+    val textColor = if (isDarkMode) Color.White else Color.Black
+    val pageBackground = if (isDarkMode) Color.Black else PicFlickLightBackground
+
+    val sortedFriends = remember(friends) {
+        friends.sortedWith(
+            compareBy<UserProfile>(
+                { it.displayName.trim().substringAfterLast(" ").lowercase(Locale.getDefault()) },
+                { it.displayName.trim().substringBeforeLast(" ").lowercase(Locale.getDefault()) },
+                { it.displayName.lowercase(Locale.getDefault()) }
+            )
+        )
+    }
+
+    Surface(
+        modifier = Modifier.fillMaxSize(),
+        color = pageBackground
+    ) {
+        Column(modifier = Modifier.fillMaxSize()) {
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(48.dp),
+                color = Color.Black
+            ) {
+                Box(modifier = Modifier.fillMaxSize()) {
+                    Text(
+                        text = "Create chat group",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                        modifier = Modifier
+                            .align(Alignment.Center)
+                            .padding(horizontal = 56.dp)
+                    )
+                    IconButton(
+                        onClick = onDismiss,
+                        modifier = Modifier
+                            .align(Alignment.CenterStart)
+                            .size(48.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Back",
+                            tint = Color.White
+                        )
+                    }
+                    Button(
+                        onClick = {
+                            onCreateGroup(groupName.trim(), groupIcon, selectedFriends.toList())
+                        },
+                        enabled = groupName.isNotBlank(),
+                        modifier = Modifier
+                            .align(Alignment.CenterEnd)
+                            .padding(end = 12.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = waitingColor,
+                            contentColor = Color.White
+                        ),
+                        shape = RoundedCornerShape(18.dp),
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)
+                    ) {
+                        Text(
+                            text = "Create Group",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 13.sp
+                        )
+                    }
+                }
+            }
+
+            OutlinedTextField(
+                value = groupName,
+                onValueChange = { groupName = it },
+                singleLine = true,
+                textStyle = LocalTextStyle.current.copy(fontWeight = FontWeight.Bold),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp, vertical = 10.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedContainerColor = Color(0xFFB7D8F2),
+                    unfocusedContainerColor = Color(0xFFB7D8F2),
+                    focusedTextColor = Color.Black,
+                    unfocusedTextColor = Color.Black,
+                    focusedBorderColor = Color.Black,
+                    unfocusedBorderColor = Color.Black.copy(alpha = 0.7f)
+                )
+            )
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(96.dp)
+                        .clip(CircleShape)
+                        .border(2.dp, Color.Black, CircleShape)
+                        .background(if (isDarkMode) Color(0xFF2A2A2A) else Color(0xFFF1F1F1))
+                        .clickable { onAddPhoto() },
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (groupIcon.startsWith("http")) {
+                        AsyncImage(
+                            model = groupIcon,
+                            contentDescription = "Group icon",
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize()
+                        )
+
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.BottomEnd)
+                                .offset((-8).dp, (-8).dp)
+                                .size(28.5.dp)
+                                .background(waitingColor, CircleShape)
+                                .border(3.dp, Color.Black, CircleShape)
+                                .clickable { onAddPhoto() },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Edit,
+                                contentDescription = "Edit group photo",
+                                tint = Color.White,
+                                modifier = Modifier.size(13.5.dp)
+                            )
+                        }
+                    } else {
+                        Icon(
+                            imageVector = Icons.Default.AddAPhoto,
+                            contentDescription = "Add photo",
+                            tint = textColor,
+                            modifier = Modifier.size(30.dp)
+                        )
+                    }
+                }
+            }
+
+            HorizontalDivider(color = if (isDarkMode) Color(0xFF222222) else Color(0x22000000))
+
+            LazyColumn(
+                modifier = Modifier.weight(1f)
+            ) {
+                items(sortedFriends, key = { it.uid }) { friend ->
+                    val isSelected = selectedFriends.contains(friend.uid)
+                    val tierRingColor = rememberLiveUserTierColor(friend.uid)
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 12.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        if (friend.photoUrl.isNotBlank()) {
+                            AsyncImage(
+                                model = withCacheBust(friend.photoUrl, friend.uid),
+                                contentDescription = null,
+                                modifier = Modifier
+                                    .size(56.dp)
+                                    .clip(CircleShape)
+                                    .border(2.dp, tierRingColor, CircleShape)
+                                    .clickable { onUserProfileClick(friend.uid) },
+                                contentScale = ContentScale.Crop
+                            )
+                        } else {
+                            Box(
+                                modifier = Modifier
+                                    .size(56.dp)
+                                    .clip(CircleShape)
+                                    .border(2.dp, tierRingColor, CircleShape)
+                                    .background(if (isDarkMode) Color(0xFF3A3A3C) else Color(0xFFE0E0E0))
+                                    .clickable { onUserProfileClick(friend.uid) },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Person,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(32.dp),
+                                    tint = if (isDarkMode) Color.Gray else Color.DarkGray
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.width(12.dp))
+
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = friend.displayName,
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.SemiBold,
+                                color = textColor
+                            )
+                            Text(
+                                text = "${friend.followers.size} followers",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = if (isDarkMode) Color.Gray else Color.DarkGray
+                            )
+                        }
+
+                        if (isSelected) {
+                            OutlinedButton(
+                                onClick = { selectedFriends = selectedFriends - friend.uid },
+                                shape = RoundedCornerShape(20.dp),
+                                colors = ButtonDefaults.outlinedButtonColors(
+                                    containerColor = waitingColor,
+                                    contentColor = Color.White
+                                ),
+                                border = androidx.compose.foundation.BorderStroke(1.dp, waitingColor)
+                            ) {
+                                Text("Added", fontSize = 12.sp, color = Color.White)
+                            }
+                        } else {
+                            OutlinedButton(
+                                onClick = { selectedFriends = selectedFriends + friend.uid },
+                                shape = RoundedCornerShape(20.dp),
+                                colors = ButtonDefaults.outlinedButtonColors(
+                                    containerColor = Color.Transparent,
+                                    contentColor = addColor
+                                ),
+                                border = androidx.compose.foundation.BorderStroke(1.dp, addColor)
+                            ) {
+                                Text("Add", fontSize = 12.sp, color = addColor)
+                            }
+                        }
+                    }
+                    HorizontalDivider(color = if (isDarkMode) Color(0xFF222222) else Color(0x22000000))
                 }
             }
         }
