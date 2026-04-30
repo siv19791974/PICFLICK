@@ -83,8 +83,8 @@ fun UserProfileScreen(
     onUnfriend: () -> Unit = {}, // NEW: Delete friend/unfriend
     onRefresh: () -> Unit = {},
     onFriendsClick: () -> Unit = {},
-    onAchievementsClick: () -> Unit = {},
-    onPlanClick: () -> Unit = {},
+    onAchievementsClick: (() -> Unit)? = null,
+    onPlanClick: (() -> Unit)? = null,
     achievementsValue: Int = 0,
     onReaction: (Flick, ReactionType?) -> Unit = { _, _ -> } // NEW: Reaction callback
 ) {
@@ -489,7 +489,7 @@ private fun UserProfileStatItem(
     value: String,
     label: String,
     isDarkMode: Boolean,
-    onClick: () -> Unit = {}
+    onClick: (() -> Unit)? = null
 ) {
     val circleColor = if (isDarkMode) Color(0xFF2B3F56) else Color(0xFFB7D8F2)
     val valueColor = if (isDarkMode) Color.White else Color(0xFF0D2A45)
@@ -497,7 +497,7 @@ private fun UserProfileStatItem(
 
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier.clickable { onClick() }
+        modifier = if (onClick != null) Modifier.clickable { onClick() } else Modifier
     ) {
         Box(
             modifier = Modifier

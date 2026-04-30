@@ -143,8 +143,10 @@ fun AuthenticatedContent(
                 userProfile = userProfile,
                 homeViewModel = homeViewModel,
                 friendsViewModel = friendsViewModel,
+                chatViewModel = chatViewModel,
                 onScreenChange = onScreenChange,
                 onSignOut = onSignOut,
+                onSetSelectedChat = onSetSelectedChat,
                 homeResetVersion = homeResetVersion,
                 openGroupsManager = openGroupsManager,
                 onOpenGroupsManagerConsumed = onOpenGroupsManagerConsumed
@@ -512,8 +514,10 @@ private fun HomeScreenContent(
     userProfile: UserProfile,
     homeViewModel: HomeViewModel,
     friendsViewModel: FriendsViewModel,
+    chatViewModel: ChatViewModel,
     onScreenChange: (Screen) -> Unit,
     onSignOut: () -> Unit,
+    onSetSelectedChat: (ChatSession, String) -> Unit,
     homeResetVersion: Int = 0,
     openGroupsManager: Boolean = false,
     onOpenGroupsManagerConsumed: () -> Unit = {}
@@ -557,7 +561,32 @@ private fun HomeScreenContent(
             onScreenChange(Screen.EditPhoto(flick, returnTo = Screen.Home))
         },
         openGroupsManager = openGroupsManager,
-        onOpenGroupsManagerConsumed = onOpenGroupsManagerConsumed
+        onOpenGroupsManagerConsumed = onOpenGroupsManagerConsumed,
+        onOpenGroupChat = { group ->
+            chatViewModel.startGroupChat(
+                ownerUserId = userProfile.uid,
+                ownerName = userProfile.displayName,
+                ownerPhoto = userProfile.photoUrl,
+                groupId = group.id,
+                groupName = group.name,
+                groupIcon = group.icon,
+                memberIds = group.effectiveMemberIds()
+            ) { chatId ->
+                val session = chatViewModel.chatSessions.firstOrNull { it.id == chatId }
+                    ?: ChatSession(
+                        id = chatId,
+                        participants = group.effectiveMemberIds(),
+                        participantNames = emptyMap(),
+                        participantPhotos = emptyMap(),
+                        isGroup = true,
+                        groupId = group.id,
+                        groupName = group.name,
+                        groupIcon = group.icon
+                    )
+                onSetSelectedChat(session, "group:${group.id}")
+                onScreenChange(Screen.ChatDetail)
+            }
+        }
     )
 }
 
@@ -856,12 +885,11 @@ private fun ChatDetailScreenContent(
             chatViewModel.loadChatSessions(userProfile.uid)
         }
 
-        val tenDaysAgo = remember { System.currentTimeMillis() - (10L * 24L * 60L * 60L * 1000L) }
-        val quickSwitchChats = remember(chatViewModel.chatSessions, userProfile.uid, tenDaysAgo) {
+        val quickSwitchChats = remember(chatViewModel.chatSessions, userProfile.uid) {
             chatViewModel.chatSessions
                 .asSequence()
                 .filter { session ->
-                    session.participants.contains(userProfile.uid) && session.lastTimestamp >= tenDaysAgo
+                    session.participants.contains(userProfile.uid)
                 }
                 .mapNotNull { session ->
                     if (session.isGroup) {
@@ -1733,15 +1761,8 @@ private fun UserProfileScreenContent(
                     "${target.displayName}'s Friends"
                 )
             },
-            onAchievementsClick = {
-                // Use User B data on the shared achievements screen path
-                profileViewModel.loadUserPhotos(target.uid)
-                onScreenChange(Screen.StreakAchievements)
-            },
-            onPlanClick = {
-                // Always open User A plan details
-                onScreenChange(Screen.PlanOptions)
-            },
+            onAchievementsClick = null,
+            onPlanClick = null,
             achievementsValue = targetUserStreak,
             onReaction = { flick, reactionType ->
                 homeViewModel.toggleReaction(
