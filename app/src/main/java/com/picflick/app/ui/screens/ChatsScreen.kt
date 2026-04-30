@@ -894,7 +894,7 @@ private fun NewGroupFromComposeDialog(
                 onValueChange = { groupName = it },
                 singleLine = true,
                 textStyle = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
-                placeholder = { Text("GROUP NAME", fontWeight = FontWeight.Bold) },
+                placeholder = { Text("Group Name", fontWeight = FontWeight.Bold) },
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 12.dp, vertical = 10.dp),
