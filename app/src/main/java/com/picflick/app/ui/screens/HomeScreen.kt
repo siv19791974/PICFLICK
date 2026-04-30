@@ -123,7 +123,8 @@ fun HomeScreen(
     friends: List<UserProfile> = emptyList(), // Friends list for profile picture lookup
     onEditPhotoClick: (Flick) -> Unit = {}, // Navigate to edit photo screen
     openGroupsManager: Boolean = false,
-    onOpenGroupsManagerConsumed: () -> Unit = {}
+    onOpenGroupsManagerConsumed: () -> Unit = {},
+    onOpenGroupChat: (FriendGroup) -> Unit = {}
 ) {
     val context = LocalContext.current
     val prefs = remember(context) {
@@ -641,7 +642,8 @@ fun HomeScreen(
                 currentDeleted.add(title)
                 prefs.edit().putStringSet(deletedExampleGroupsKey, currentDeleted).apply()
             },
-            onReorderGroups = { orderedGroupIds -> viewModel.reorderFriendGroups(userProfile.uid, orderedGroupIds) }
+            onReorderGroups = { orderedGroupIds -> viewModel.reorderFriendGroups(userProfile.uid, orderedGroupIds) },
+            onOpenGroupChat = onOpenGroupChat
         )
     }
 
@@ -1563,7 +1565,8 @@ private fun GroupManagerSheet(
     onDeleteGroup: (FriendGroup) -> Unit,
     onExitGroup: (FriendGroup) -> Unit,
     onDeleteTemporaryGroup: (String) -> Unit,
-    onReorderGroups: (List<String>) -> Unit
+    onReorderGroups: (List<String>) -> Unit,
+    onOpenGroupChat: (FriendGroup) -> Unit = {}
 ) {
     BackHandler(onBack = onDismiss)
 
@@ -1586,7 +1589,7 @@ private fun GroupManagerSheet(
     var confirmDeleteTempTitle by remember { mutableStateOf<String?>(null) }
     var searchQuery by remember { mutableStateOf("") }
 
-    val filteredOrderedGroupIds = remember(orderedGroupIdsState, sortedGroups, searchQuery) {
+    val filteredOrderedGroupIds by remember { derivedStateOf {
         if (searchQuery.isBlank()) {
             orderedGroupIdsState.toList()
         } else {
@@ -1599,7 +1602,7 @@ private fun GroupManagerSheet(
                     )
             }
         }
-    }
+    } }
 
     confirmDeleteGroup?.let { group ->
         val isOwner = group.isOwner(currentUserId)
@@ -1740,6 +1743,13 @@ private fun GroupManagerSheet(
                         colour = group.color,
                         selected = isSelected,
                         onClick = { onSelectGroup(FeedFilter.ByGroup(group)) },
+                        onAvatarClick = {
+                            if (group.isAdmin(currentUserId)) {
+                                onEditGroup(group)
+                            } else {
+                                onViewGroup(group)
+                            }
+                        },
                         onLongPress = { draggingGroupId = group.id },
                         onDrag = { deltaY ->
                             if (draggingGroupId != group.id) {
@@ -1813,7 +1823,7 @@ private fun GroupManagerSheet(
                                             )
                                         }
                                         DropdownMenuItem(
-                                            text = { Text(if (group.isAdmin(currentUserId)) "Edit album" else "View album") },
+                                            text = { Text(if (group.isAdmin(currentUserId)) "Edit album" else "View members") },
                                             onClick = {
                                                 showGroupMenu = false
                                                 if (group.isAdmin(currentUserId)) {
@@ -1822,7 +1832,34 @@ private fun GroupManagerSheet(
                                                     onViewGroup(group)
                                                 }
                                             },
-                                            leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null) }
+                                            leadingIcon = { Icon(if (group.isAdmin(currentUserId)) Icons.Default.Edit else Icons.Default.Group, contentDescription = null) }
+                                        )
+                                        DropdownMenuItem(
+                                            text = { Text("Open chat") },
+                                            onClick = {
+                                                showGroupMenu = false
+                                                onOpenGroupChat(group)
+                                            },
+                                            leadingIcon = { Icon(Icons.Default.ChatBubble, contentDescription = null) }
+                                        )
+                                        DropdownMenuItem(
+                                            text = { Text("Pin to top") },
+                                            onClick = {
+                                                showGroupMenu = false
+                                                val currentIndex = orderedGroupIdsState.indexOf(group.id)
+                                                if (currentIndex > 0) {
+                                                    orderedGroupIdsState.removeAt(currentIndex)
+                                                    orderedGroupIdsState.add(0, group.id)
+                                                    onReorderGroups(orderedGroupIdsState.toList())
+                                                }
+                                            },
+                                            leadingIcon = { Icon(Icons.Default.PushPin, contentDescription = null) }
+                                        )
+                                        DropdownMenuItem(
+                                            text = { Text("${group.effectiveMemberIds().size} members") },
+                                            onClick = { showGroupMenu = false },
+                                            enabled = false,
+                                            leadingIcon = { Icon(Icons.Default.People, contentDescription = null) }
                                         )
                                         DropdownMenuItem(
                                             text = { Text(if (group.isOwner(currentUserId)) "Delete album" else "Exit album") },
@@ -1922,6 +1959,7 @@ private fun GroupRowCard(
     colour: String,
     selected: Boolean,
     onClick: () -> Unit,
+    onAvatarClick: (() -> Unit)? = null,
     onLongPress: (() -> Unit)? = null,
     onDrag: ((Float) -> Unit)? = null,
     onDragEnd: (() -> Unit)? = null,
@@ -1932,10 +1970,11 @@ private fun GroupRowCard(
     val rowBackground = if (selected) Color(0x221565C0) else Color.Transparent
 
     Column(modifier = Modifier.fillMaxWidth()) {
-        Row(
+                    Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .background(rowBackground)
+                .clickable(enabled = enabled) { onClick() }
                 .pointerInput(enabled, onDrag, onDragEnd, onLongPress) {
                     if (enabled && onDrag != null) {
                         detectDragGesturesAfterLongPress(
@@ -1949,7 +1988,6 @@ private fun GroupRowCard(
                         )
                     }
                 }
-                .clickable(enabled = enabled) { onClick() }
                 .padding(horizontal = 16.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -1958,7 +1996,8 @@ private fun GroupRowCard(
                     .size(56.dp)
                     .border(2.dp, Color.Black, CircleShape)
                     .clip(CircleShape)
-                    .background(Color.Transparent),
+                    .background(Color.Transparent)
+                    .clickable(enabled = onAvatarClick != null) { onAvatarClick?.invoke() },
                 contentAlignment = Alignment.Center
             ) {
                 if (icon.startsWith("http")) {
