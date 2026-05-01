@@ -3015,7 +3015,7 @@ private fun ShareFriendsDialog(
                         .background(Color.Black)
                 ) {
                     AsyncImage(
-                        model = withCacheBust(flick.imageUrl, flick.timestamp),
+                        model = withCacheBust(flick.thumbnailUrl512.ifBlank { flick.imageUrl }, flick.timestamp),
                         contentDescription = null,
                         modifier = Modifier.fillMaxSize(),
                         contentScale = ContentScale.Crop
@@ -3274,7 +3274,7 @@ private fun TagFriendsDialog(
                         .background(Color.Black)
                 ) {
                     AsyncImage(
-                        model = withCacheBust(flick.imageUrl, flick.timestamp),
+                        model = withCacheBust(flick.thumbnailUrl512.ifBlank { flick.imageUrl }, flick.timestamp),
                         contentDescription = null,
                         modifier = Modifier.fillMaxSize(),
                         contentScale = ContentScale.Crop
