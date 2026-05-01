@@ -155,8 +155,8 @@ object Constants {
      * Add Thomas Sivyer's UID here when known.
      */
     val DEVELOPER_UIDS = setOf(
-        "LpSqE40IZGeAGMknTAEzysqp5l33"
-        // TODO: add Thomas Sivyer's UID here
+        "LpSqE40IZGeAGMknTAEzysqp5l33",
+        "cuj8dU3zNMN9TELEU2qmPR6Np5A2"  // Thomas Sivyer
     )
     const val DEVELOPER_DISPLAY_NAME = "PicFlick Developer"
     const val DEVELOPER_ACCESS_PASSWORD = "687495"
