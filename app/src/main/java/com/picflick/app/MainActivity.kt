@@ -693,6 +693,14 @@ fun MainScreen(
         billingViewModel.initialize(context)
     }
 
+    // Bridge validated tier changes from BillingViewModel → AuthViewModel immediately
+    // so UploadViewModel and other features see the new tier before Firestore listener fires.
+    LaunchedEffect(Unit) {
+        billingViewModel.validatedTierEvent.collect { (tier, expiryMillis) ->
+            authViewModel.optimisticallyUpdateSubscriptionTier(tier, expiryMillis)
+        }
+    }
+
     // Restore cached profile when app resumes (prevents data loss)
     LaunchedEffect(Unit) {
         authViewModel.restoreCachedProfile()
