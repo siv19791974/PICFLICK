@@ -2411,6 +2411,7 @@ class FlickRepository private constructor() {
         text: String
     ): Result<Unit> {
         return try {
+            android.util.Log.d("CommentReplyDebug", "addReply START: flickId=$flickId, parentCommentId=$parentCommentId, userId=$userId")
             val reply = Comment(
                 id = UUID.randomUUID().toString(),
                 flickId = flickId,
@@ -2423,7 +2424,8 @@ class FlickRepository private constructor() {
             )
 
             // Add reply
-            db.collection("comments").add(reply).await()
+            val docRef = db.collection("comments").add(reply).await()
+            android.util.Log.d("CommentReplyDebug", "Reply added with docId=${docRef.id}")
 
             // Update parent comment reply count
             db.collection("comments").document(parentCommentId)
@@ -2436,10 +2438,12 @@ class FlickRepository private constructor() {
                 .await()
 
             // Create notification for comment owner (if not the replier)
+            android.util.Log.d("CommentReplyDebug", "Triggering createCommentReplyNotification for parentCommentId=$parentCommentId")
             createCommentReplyNotification(parentCommentId, flickId, userId, userName, userPhotoUrl, text)
 
             Result.Success(Unit)
         } catch (e: Exception) {
+            android.util.Log.e("CommentReplyDebug", "addReply FAILED: ${e.message}", e)
             Result.Error(e, "Failed to add reply")
         }
     }
@@ -2455,11 +2459,18 @@ class FlickRepository private constructor() {
         replierPhotoUrl: String,
         replyText: String
     ) {
+        android.util.Log.d("CommentReplyDebug", "createCommentReplyNotification START: parentCommentId=$parentCommentId, flickId=$flickId, replierId=$replierId")
         // Get the parent comment to find its owner
         db.collection("comments").document(parentCommentId).get()
             .addOnSuccessListener { commentDoc ->
+                android.util.Log.d("CommentReplyDebug", "Parent comment lookup SUCCESS: exists=${commentDoc.exists()}, docId=${commentDoc.id}")
+                if (!commentDoc.exists()) {
+                    android.util.Log.w("CommentReplyDebug", "Parent comment NOT FOUND for id=$parentCommentId")
+                    return@addOnSuccessListener
+                }
                 val commentOwnerId = commentDoc.getString("userId")
-                
+                android.util.Log.d("CommentReplyDebug", "commentOwnerId=$commentOwnerId, replierId=$replierId")
+
                 // Don't notify if user replies to their own comment
                 if (commentOwnerId != null && commentOwnerId != replierId) {
                     val truncatedReply = if (replyText.length > 50)
@@ -2482,10 +2493,16 @@ class FlickRepository private constructor() {
                         "timestamp" to System.currentTimeMillis()
                     )
 
+                    android.util.Log.d("CommentReplyDebug", "Creating COMMENT_REPLY notification for owner=$commentOwnerId")
                     createNotificationIfAllowed(commentOwnerId, NotificationType.COMMENT) {
                         notification
                     }
+                } else {
+                    android.util.Log.d("CommentReplyDebug", "Skipping notification: owner=$commentOwnerId, self-reply=${commentOwnerId == replierId}")
                 }
+            }
+            .addOnFailureListener { e ->
+                android.util.Log.e("CommentReplyDebug", "Parent comment lookup FAILED for id=$parentCommentId: ${e.message}", e)
             }
     }
 
