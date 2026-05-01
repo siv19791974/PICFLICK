@@ -85,6 +85,9 @@ fun BottomNavBar(
 
         NavigationBarItem(
             icon = {
+                if (unreadMessages > 0) {
+                    android.util.Log.d("BottomNavBar", "Messages badge: unreadMessages=$unreadMessages")
+                }
                 BadgedBox(
                     badge = {
                         if (unreadMessages > 0) {
