@@ -113,13 +113,13 @@ class PhotoRepository private constructor() {
                 }
 
                 // Delete thumbnails if they exist and are different from original
-                val thumb256 = flick?.thumbnailUrl256
-                if (!thumb256.isNullOrBlank() && thumb256 != imageUrl) {
-                    runCatching { storage.getReferenceFromUrl(thumb256).delete().await() }
-                }
                 val thumb512 = flick?.thumbnailUrl512
                 if (!thumb512.isNullOrBlank() && thumb512 != imageUrl) {
                     runCatching { storage.getReferenceFromUrl(thumb512).delete().await() }
+                }
+                val thumb1080 = flick?.thumbnailUrl1080
+                if (!thumb1080.isNullOrBlank() && thumb1080 != imageUrl) {
+                    runCatching { storage.getReferenceFromUrl(thumb1080).delete().await() }
                 }
 
                 flickRef.delete().await()

@@ -12,8 +12,8 @@ import java.io.ByteArrayOutputStream
  */
 object ImageResizer {
 
-    const val THUMBNAIL_SIZE_256 = 256
     const val THUMBNAIL_SIZE_512 = 512
+    const val THUMBNAIL_SIZE_1080 = 1080
     const val THUMBNAIL_QUALITY = 85
 
     /**

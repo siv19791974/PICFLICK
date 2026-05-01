@@ -7,8 +7,8 @@ import com.google.firebase.firestore.IgnoreExtraProperties
  */
 data class ImageUploadResult(
     val imageUrl: String,
-    val thumbnailUrl256: String,
-    val thumbnailUrl512: String
+    val thumbnailUrl512: String,
+    val thumbnailUrl1080: String
 )
 
 /**
@@ -21,8 +21,9 @@ data class Flick(
     val userName: String = "",
     val userPhotoUrl: String = "", // User's profile picture URL
     val imageUrl: String = "",
-    val thumbnailUrl256: String = "", // 256px thumbnail for grid
-    val thumbnailUrl512: String = "",   // 512px thumbnail for fullscreen
+    val thumbnailUrl256: String = "", // Legacy 256px thumbnail (no longer generated)
+    val thumbnailUrl512: String = "",   // 512px thumbnail for grids
+    val thumbnailUrl1080: String = "",  // 1080px thumbnail for fullscreen viewer
     val description: String = "",
     val timestamp: Long = 0,
     val reactions: Map<String, String> = emptyMap(), // userId -> reactionType

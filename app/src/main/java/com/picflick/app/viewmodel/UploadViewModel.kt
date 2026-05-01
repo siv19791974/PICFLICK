@@ -289,8 +289,8 @@ class UploadViewModel : ViewModel() {
                     userName = userProfile.displayName,
                     userPhotoUrl = userProfile.photoUrl,
                     imageUrl = uploadResult.imageUrl,
-                    thumbnailUrl256 = uploadResult.thumbnailUrl256,
                     thumbnailUrl512 = uploadResult.thumbnailUrl512,
+                    thumbnailUrl1080 = uploadResult.thumbnailUrl1080,
                     description = description,
                     timestamp = System.currentTimeMillis(),
                     reactions = emptyMap(),
@@ -427,8 +427,8 @@ class UploadViewModel : ViewModel() {
                         userName = userProfile.displayName,
                         userPhotoUrl = userProfile.photoUrl,
                         imageUrl = uploadResult.imageUrl,
-                        thumbnailUrl256 = uploadResult.thumbnailUrl256,
                         thumbnailUrl512 = uploadResult.thumbnailUrl512,
+                        thumbnailUrl1080 = uploadResult.thumbnailUrl1080,
                         description = "",
                         timestamp = System.currentTimeMillis(),
                         reactions = emptyMap(),
@@ -481,8 +481,8 @@ class UploadViewModel : ViewModel() {
 
     data class UploadResult(
         val imageUrl: String,
-        val thumbnailUrl256: String,
         val thumbnailUrl512: String,
+        val thumbnailUrl1080: String,
         val uploadedBytes: Long
     )
 
@@ -511,20 +511,20 @@ class UploadViewModel : ViewModel() {
                 val uploadedBytes = imageRef.metadata.await().sizeBytes
                 val downloadUrl = imageRef.downloadUrl.await().toString()
 
-                // Generate and upload thumbnails
-                val thumbnail256Url = uploadThumbnail(
-                    context, photoUri, userId, baseName,
-                    ImageResizer.THUMBNAIL_SIZE_256, "thumbnails_256"
-                )
+                // Generate and upload 512px (grid) and 1080px (fullscreen) thumbnails
                 val thumbnail512Url = uploadThumbnail(
                     context, photoUri, userId, baseName,
                     ImageResizer.THUMBNAIL_SIZE_512, "thumbnails_512"
                 )
+                val thumbnail1080Url = uploadThumbnail(
+                    context, photoUri, userId, baseName,
+                    ImageResizer.THUMBNAIL_SIZE_1080, "thumbnails_1080"
+                )
 
                 return UploadResult(
                     imageUrl = downloadUrl,
-                    thumbnailUrl256 = thumbnail256Url ?: downloadUrl,
                     thumbnailUrl512 = thumbnail512Url ?: downloadUrl,
+                    thumbnailUrl1080 = thumbnail1080Url ?: downloadUrl,
                     uploadedBytes = uploadedBytes
                 )
             } catch (e: Exception) {
