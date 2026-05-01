@@ -137,83 +137,8 @@ class UploadViewModel : ViewModel() {
         }
     }
 
-    /**
-     * Recalculate precise storage usage from Firebase Storage and persist to Firestore.
-     */
-    private suspend fun recalculateStorageUsedBytes(userId: String) {
-        try {
-            val root = storage.reference.child("photos").child(userId)
-            val totalBytes = calculateFolderBytesRecursive(root)
-            val userRef = firestore.collection("users").document(userId)
-            userRef.update("storageUsedBytes", totalBytes).await()
-            maybeCreateStorageMilestoneWarnings(userId, totalBytes)
-        } catch (e: Exception) {
-            android.util.Log.w("UploadViewModel", "Failed to recalculate storageUsedBytes", e)
-        }
-    }
-
-    private suspend fun maybeCreateStorageMilestoneWarnings(userId: String, storageUsedBytes: Long) {
-        try {
-            val userRef = firestore.collection("users").document(userId)
-            val userSnap = userRef.get().await()
-            val tierRaw = (userSnap.getString("subscriptionTier") ?: userSnap.getString("tier") ?: "FREE")
-            val tier = runCatching { com.picflick.app.data.SubscriptionTier.valueOf(tierRaw.uppercase(Locale.getDefault())) }
-                .getOrDefault(com.picflick.app.data.SubscriptionTier.FREE)
-            val storageLimit = tier.getStorageLimitBytes()
-            if (storageLimit <= 0L) return
-
-            val usagePercent = ((storageUsedBytes.toDouble() / storageLimit.toDouble()) * 100.0).toInt().coerceAtLeast(0)
-            val reached = STORAGE_WARNING_MILESTONES.filter { it <= usagePercent }
-            if (reached.isEmpty()) return
-
-            val reachedStrings = reached.map { it.toString() }
-            val alreadyWarned = (userSnap.get("storageWarningMilestones") as? List<*>)
-                ?.mapNotNull { it?.toString() }
-                ?.toSet()
-                ?: emptySet()
-
-            val newMilestones = reachedStrings.filter { it !in alreadyWarned }
-            if (newMilestones.isEmpty()) return
-
-            val notifications = firestore.collection("notifications")
-            val now = System.currentTimeMillis()
-            newMilestones.forEachIndexed { index, milestone ->
-                notifications.add(
-                    mapOf(
-                        "userId" to userId,
-                        "senderId" to "system",
-                        "senderName" to "PicFlick",
-                        "senderPhotoUrl" to "",
-                        "type" to "SYSTEM",
-                        "title" to "Storage usage warning",
-                        "message" to "You have reached $milestone% of your storage limit.",
-                        "targetScreen" to "manage_storage",
-                        "isRead" to false,
-                        "timestamp" to (now + index)
-                    )
-                ).await()
-            }
-
-            userRef.update("storageWarningMilestones", FieldValue.arrayUnion(*newMilestones.toTypedArray())).await()
-        } catch (e: Exception) {
-            android.util.Log.w("UploadViewModel", "Failed to create storage milestone warning", e)
-        }
-    }
-
-    private suspend fun calculateFolderBytesRecursive(folderRef: StorageReference): Long {
-        val listResult = folderRef.listAll().await()
-        var total = 0L
-
-        listResult.items.forEach { itemRef ->
-            total += itemRef.metadata.await().sizeBytes
-        }
-
-        listResult.prefixes.forEach { childFolder ->
-            total += calculateFolderBytesRecursive(childFolder)
-        }
-
-        return total
-    }
+    // Storage is now tracked incrementally via flickRepository.incrementStorageUsedBytes()
+    // (original + thumbnail sizes summed at upload time). No recursive Storage scans needed.
 
     /**
      * Upload a photo to Firebase Storage and create a Flick
@@ -313,9 +238,9 @@ class UploadViewModel : ViewModel() {
                 incrementDailyUploadCount(userProfile.uid)
                 dailyUploadCount++
 
-                // Increment total photos count
+                // Increment total photos count and storage
                 incrementTotalPhotos(userProfile.uid)
-                recalculateStorageUsedBytes(userProfile.uid)
+                flickRepository.incrementStorageUsedBytes(userProfile.uid, uploadResult.totalBytes)
 
                 onOptimisticRemove?.invoke(optimisticFlickId, true)
                 uploadSuccess = true
@@ -448,7 +373,7 @@ class UploadViewModel : ViewModel() {
                     incrementDailyUploadCount(userProfile.uid)
                     dailyUploadCount++
                     incrementTotalPhotos(userProfile.uid)
-                    rollingStorageUsed += uploadResult.uploadedBytes
+                    rollingStorageUsed += uploadResult.totalBytes
 
                     onOptimisticRemove?.invoke(optimisticFlickId, true)
                     successCount++
@@ -459,7 +384,11 @@ class UploadViewModel : ViewModel() {
                 }
             }
 
-            recalculateStorageUsedBytes(userProfile.uid)
+            // Apply incremental storage update for the entire batch (one Firestore write)
+            val totalBytesAdded = rollingStorageUsed - userProfile.storageUsedBytes
+            if (totalBytesAdded > 0) {
+                flickRepository.incrementStorageUsedBytes(userProfile.uid, totalBytesAdded)
+            }
 
             if (successCount > 0) {
                 uploadSuccess = true
@@ -483,7 +412,8 @@ class UploadViewModel : ViewModel() {
         val imageUrl: String,
         val thumbnailUrl512: String,
         val thumbnailUrl1080: String,
-        val uploadedBytes: Long
+        val uploadedBytes: Long,
+        val totalBytes: Long = uploadedBytes // original + all thumbnails
     )
 
     /**
@@ -508,7 +438,7 @@ class UploadViewModel : ViewModel() {
                     imageRef.putStream(inputStream).await()
                 } ?: throw IllegalStateException("Cannot open photo stream")
 
-                val uploadedBytes = imageRef.metadata.await().sizeBytes
+                val originalBytes = imageRef.metadata.await().sizeBytes
                 val downloadUrl = imageRef.downloadUrl.await().toString()
 
                 // Generate and upload 512px (grid) and 1080px (fullscreen) thumbnails
@@ -521,11 +451,19 @@ class UploadViewModel : ViewModel() {
                     ImageResizer.THUMBNAIL_SIZE_1080, "thumbnails_1080"
                 )
 
+                // Read thumbnail metadata sizes for accurate incremental storage tracking
+                val thumb512Ref = storage.reference.child("photos/${userId}/thumbnails_512/${baseName}.jpg")
+                val thumb1080Ref = storage.reference.child("photos/${userId}/thumbnails_1080/${baseName}.jpg")
+                val thumb512Bytes = runCatching { thumb512Ref.metadata.await().sizeBytes }.getOrDefault(0L)
+                val thumb1080Bytes = runCatching { thumb1080Ref.metadata.await().sizeBytes }.getOrDefault(0L)
+                val totalBytes = originalBytes + thumb512Bytes + thumb1080Bytes
+
                 return UploadResult(
                     imageUrl = downloadUrl,
                     thumbnailUrl512 = thumbnail512Url ?: downloadUrl,
                     thumbnailUrl1080 = thumbnail1080Url ?: downloadUrl,
-                    uploadedBytes = uploadedBytes
+                    uploadedBytes = originalBytes,
+                    totalBytes = totalBytes
                 )
             } catch (e: Exception) {
                 lastError = e

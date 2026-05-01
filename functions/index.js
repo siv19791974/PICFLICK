@@ -4,15 +4,30 @@ const admin = require('firebase-admin');
 // Initialize Firebase Admin
 admin.initializeApp();
 
-// Emergency runtime kill-switch (1st gen functions config).
-// Set with: firebase functions:config:set safety.disable_triggers="true"
-// Then deploy functions to apply.
-const runtimeConfig = functions.config() || {};
-const areSafetyTriggersDisabled = runtimeConfig?.safety?.disable_triggers === 'true';
+// Emergency runtime kill-switch loaded from Firestore appConfig/functions.
+// Set appConfig/functions.disableTriggers = true to globally disable triggers.
+// Caches for 60s to avoid excessive Firestore reads.
+let cachedDisableTriggers = false;
+let cacheExpiryMs = 0;
+const CONFIG_CACHE_TTL_MS = 60000;
 
-function shouldSkipTrigger(triggerName) {
-  if (!areSafetyTriggersDisabled) return false;
-  console.warn(`[SAFETY] Trigger disabled by runtime config: ${triggerName}`);
+async function isTriggersDisabled() {
+  const now = Date.now();
+  if (now < cacheExpiryMs) return cachedDisableTriggers;
+  try {
+    const doc = await admin.firestore().doc('appConfig/functions').get();
+    cachedDisableTriggers = doc.exists && doc.data().disableTriggers === true;
+  } catch (e) {
+    console.warn('[SAFETY] Failed to load runtime config from Firestore:', e.message);
+    cachedDisableTriggers = false;
+  }
+  cacheExpiryMs = now + CONFIG_CACHE_TTL_MS;
+  return cachedDisableTriggers;
+}
+
+async function shouldSkipTrigger(triggerName) {
+  if (!await isTriggersDisabled()) return false;
+  console.warn(`[SAFETY] Trigger disabled by Firestore runtime config: ${triggerName}`);
   return true;
 }
 
@@ -29,7 +44,7 @@ exports.sendPushNotification = functions
   .firestore
   .document('notifications/{notificationId}')
   .onCreate(async (snap, context) => {
-    if (shouldSkipTrigger('sendPushNotification')) return null;
+    if (await shouldSkipTrigger('sendPushNotification')) return null;
 
     const notification = snap.data();
     
@@ -186,7 +201,7 @@ exports.cleanupOldNotifications = functions
   .schedule('0 0 * * *') // Run at midnight every day
   .timeZone('UTC')
   .onRun(async (context) => {
-    if (shouldSkipTrigger('cleanupOldNotifications')) return null;
+    if (await shouldSkipTrigger('cleanupOldNotifications')) return null;
 
     const thirtyDaysAgo = admin.firestore.Timestamp.fromDate(
       new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
@@ -219,7 +234,7 @@ exports.sendWelcomeNotification = functions
   .firestore
   .document('users/{userId}')
   .onCreate(async (snap, context) => {
-    if (shouldSkipTrigger('sendWelcomeNotification')) return null;
+    if (await shouldSkipTrigger('sendWelcomeNotification')) return null;
 
     const user = snap.data();
     
@@ -283,7 +298,7 @@ exports.sendFeedbackPushToDeveloper = functions
   .firestore
   .document('feedback/{feedbackId}')
   .onCreate(async (snap, context) => {
-    if (shouldSkipTrigger('sendFeedbackPushToDeveloper')) return null;
+    if (await shouldSkipTrigger('sendFeedbackPushToDeveloper')) return null;
 
     const feedback = snap.data() || {};
     const supportUid = feedback.assignedToUid || 'LpSqE40IZGeAGMknTAEzysqp5l33';
@@ -407,7 +422,7 @@ exports.validateCanonicalGroupWrite = functions
   .firestore
   .document('groups/{groupId}')
   .onWrite(async (change, context) => {
-    if (shouldSkipTrigger('validateCanonicalGroupWrite')) return null;
+    if (await shouldSkipTrigger('validateCanonicalGroupWrite')) return null;
     if (!change.after.exists) return null;
 
     const before = change.before.exists ? (change.before.data() || {}) : null;
@@ -472,7 +487,7 @@ exports.validateChatSessionSchema = functions
   .firestore
   .document('chatSessions/{chatId}')
   .onWrite(async (change, context) => {
-    if (shouldSkipTrigger('validateChatSessionSchema')) return null;
+    if (await shouldSkipTrigger('validateChatSessionSchema')) return null;
     if (!change.after.exists) return null;
 
     const before = change.before.exists ? (change.before.data() || {}) : null;
@@ -698,7 +713,7 @@ exports.migrateReactionsToSubcollection = functions
   .firestore
   .document('flicks/{flickId}')
   .onUpdate(async (change, context) => {
-    if (shouldSkipTrigger('migrateReactionsToSubcollection')) return null;
+    if (await shouldSkipTrigger('migrateReactionsToSubcollection')) return null;
 
     const before = change.before.exists ? change.before.data() : {};
     const after = change.after.exists ? change.after.data() : {};

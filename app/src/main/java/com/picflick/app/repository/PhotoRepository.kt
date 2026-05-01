@@ -125,7 +125,7 @@ class PhotoRepository private constructor() {
                 flickRef.delete().await()
 
                 if (ownerId.isNotBlank()) {
-                    recalculateStorageUsedBytes(ownerId)
+                    decrementStorageUsedBytes(ownerId, flick?.imageSizeBytes ?: 0L)
                 }
 
                 onResult(Result.Success(Unit))
@@ -135,31 +135,19 @@ class PhotoRepository private constructor() {
         }
     }
 
-    private suspend fun recalculateStorageUsedBytes(userId: String) {
+    /**
+     * Decrement user's storageUsedBytes by the given amount on photo delete.
+     * Uses Firestore atomic increment — no recursive Storage scan needed.
+     */
+    private suspend fun decrementStorageUsedBytes(userId: String, bytes: Long) {
+        if (bytes <= 0 || userId.isBlank()) return
         try {
-            val root = storage.reference.child("photos").child(userId)
-            val totalBytes = calculateFolderBytesRecursive(root)
             db.collection("users").document(userId)
-                .update("storageUsedBytes", totalBytes)
+                .update("storageUsedBytes", FieldValue.increment(-bytes))
                 .await()
         } catch (e: Exception) {
-            android.util.Log.w("PhotoRepository", "Failed to recalculate storageUsedBytes for user=$userId", e)
+            android.util.Log.w("PhotoRepository", "Failed to decrement storageUsedBytes for user=$userId by $bytes", e)
         }
-    }
-
-    private suspend fun calculateFolderBytesRecursive(folderRef: com.google.firebase.storage.StorageReference): Long {
-        val listResult = folderRef.listAll().await()
-        var total = 0L
-
-        listResult.items.forEach { itemRef ->
-            total += itemRef.metadata.await().sizeBytes
-        }
-
-        listResult.prefixes.forEach { childFolder ->
-            total += calculateFolderBytesRecursive(childFolder)
-        }
-
-        return total
     }
 
     /**

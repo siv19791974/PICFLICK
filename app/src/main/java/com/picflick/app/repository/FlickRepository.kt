@@ -288,6 +288,7 @@ class FlickRepository private constructor() {
 
             storageRef.putBytes(imageBytes).await()
             val downloadUrl = storageRef.downloadUrl.await().toString()
+            val originalBytes = storageRef.metadata.await().sizeBytes
 
             // Generate and upload 512px (grid) and 1080px (fullscreen) thumbnails
             val thumb512Url = uploadThumbnailBytes(
@@ -297,7 +298,14 @@ class FlickRepository private constructor() {
                 imageBytes, userId, baseName, ImageResizer.THUMBNAIL_SIZE_1080, "thumbnails_1080"
             ) ?: downloadUrl
 
-            Result.Success(ImageUploadResult(downloadUrl, thumb512Url, thumb1080Url))
+            // Read thumbnail sizes from metadata for accurate incremental storage tracking
+            val thumb512Ref = storage.reference.child("photos/${userId}/thumbnails_512/${baseName}.jpg")
+            val thumb1080Ref = storage.reference.child("photos/${userId}/thumbnails_1080/${baseName}.jpg")
+            val thumb512Bytes = runCatching { thumb512Ref.metadata.await().sizeBytes }.getOrDefault(0L)
+            val thumb1080Bytes = runCatching { thumb1080Ref.metadata.await().sizeBytes }.getOrDefault(0L)
+            val totalBytes = originalBytes + thumb512Bytes + thumb1080Bytes
+
+            Result.Success(ImageUploadResult(downloadUrl, thumb512Url, thumb1080Url, totalBytes))
         } catch (e: Exception) {
             Result.Error(e, "Failed to upload image")
         }
@@ -744,7 +752,7 @@ class FlickRepository private constructor() {
                 flickRef.delete().await()
 
                 if (ownerId.isNotBlank()) {
-                    recalculateStorageUsedBytes(ownerId)
+                    decrementStorageUsedBytes(ownerId, flick?.imageSizeBytes ?: 0L)
                 }
 
                 onResult(Result.Success(Unit))
@@ -754,31 +762,34 @@ class FlickRepository private constructor() {
         }
     }
 
-    private suspend fun recalculateStorageUsedBytes(userId: String) {
+    /**
+     * Increment user's storageUsedBytes by the given amount (original + thumbnails).
+     * Uses Firestore atomic increment — no recursive Storage scan needed.
+     */
+    suspend fun incrementStorageUsedBytes(userId: String, bytes: Long) {
+        if (bytes <= 0 || userId.isBlank()) return
         try {
-            val root = storage.reference.child("photos").child(userId)
-            val totalBytes = calculateFolderBytesRecursive(root)
             db.collection("users").document(userId)
-                .update("storageUsedBytes", totalBytes)
+                .update("storageUsedBytes", FieldValue.increment(bytes))
                 .await()
         } catch (e: Exception) {
-            android.util.Log.w("FlickRepository", "Failed to recalculate storageUsedBytes for user=$userId", e)
+            android.util.Log.w("FlickRepository", "Failed to increment storageUsedBytes for user=$userId by $bytes", e)
         }
     }
 
-    private suspend fun calculateFolderBytesRecursive(folderRef: com.google.firebase.storage.StorageReference): Long {
-        val listResult = folderRef.listAll().await()
-        var total = 0L
-
-        listResult.items.forEach { itemRef ->
-            total += itemRef.metadata.await().sizeBytes
+    /**
+     * Decrement user's storageUsedBytes by the given amount on photo delete.
+     * Uses Firestore atomic increment — no recursive Storage scan needed.
+     */
+    suspend fun decrementStorageUsedBytes(userId: String, bytes: Long) {
+        if (bytes <= 0 || userId.isBlank()) return
+        try {
+            db.collection("users").document(userId)
+                .update("storageUsedBytes", FieldValue.increment(-bytes))
+                .await()
+        } catch (e: Exception) {
+            android.util.Log.w("FlickRepository", "Failed to decrement storageUsedBytes for user=$userId by $bytes", e)
         }
-
-        listResult.prefixes.forEach { childFolder ->
-            total += calculateFolderBytesRecursive(childFolder)
-        }
-
-        return total
     }
 
     fun getFlickById(flickId: String, onResult: (Result<Flick>) -> Unit) {
@@ -2437,7 +2448,6 @@ class FlickRepository private constructor() {
         text: String
     ): Result<Unit> {
         return try {
-            android.util.Log.d("CommentReplyDebug", "addReply START: flickId=$flickId, parentCommentId=$parentCommentId, notifyCommentId=$notifyCommentId, userId=$userId")
             val reply = Comment(
                 id = UUID.randomUUID().toString(),
                 flickId = flickId,
@@ -2450,8 +2460,7 @@ class FlickRepository private constructor() {
             )
 
             // Add reply
-            val docRef = db.collection("comments").add(reply).await()
-            android.util.Log.d("CommentReplyDebug", "Reply added with docId=${docRef.id}")
+            db.collection("comments").add(reply).await()
 
             // Update parent comment reply count
             db.collection("comments").document(parentCommentId)
@@ -2464,12 +2473,10 @@ class FlickRepository private constructor() {
                 .await()
 
             // Create notification for the owner of the comment being directly replied to
-            android.util.Log.d("CommentReplyDebug", "Triggering createCommentReplyNotification for notifyCommentId=$notifyCommentId")
             createCommentReplyNotification(notifyCommentId, flickId, userId, userName, userPhotoUrl, text)
 
             Result.Success(Unit)
         } catch (e: Exception) {
-            android.util.Log.e("CommentReplyDebug", "addReply FAILED: ${e.message}", e)
             Result.Error(e, "Failed to add reply")
         }
     }
@@ -2486,17 +2493,13 @@ class FlickRepository private constructor() {
         replierPhotoUrl: String,
         replyText: String
     ) {
-        android.util.Log.d("CommentReplyDebug", "createCommentReplyNotification START: notifyCommentId=$notifyCommentId, flickId=$flickId, replierId=$replierId")
         // Get the comment being replied to in order to find its owner
         db.collection("comments").document(notifyCommentId).get()
             .addOnSuccessListener { commentDoc ->
-                android.util.Log.d("CommentReplyDebug", "Notify comment lookup SUCCESS: exists=${commentDoc.exists()}, docId=${commentDoc.id}")
                 if (!commentDoc.exists()) {
-                    android.util.Log.w("CommentReplyDebug", "Notify comment NOT FOUND for id=$notifyCommentId")
                     return@addOnSuccessListener
                 }
                 val commentOwnerId = commentDoc.getString("userId")
-                android.util.Log.d("CommentReplyDebug", "commentOwnerId=$commentOwnerId, replierId=$replierId")
 
                 // Don't notify if user replies to their own comment
                 if (commentOwnerId != null && commentOwnerId != replierId) {
@@ -2520,17 +2523,12 @@ class FlickRepository private constructor() {
                         "timestamp" to System.currentTimeMillis()
                     )
 
-                    android.util.Log.d("CommentReplyDebug", "Creating COMMENT_REPLY notification for owner=$commentOwnerId")
                     createNotificationIfAllowed(commentOwnerId, NotificationType.COMMENT) {
                         notification
                     }
-                } else {
-                    android.util.Log.d("CommentReplyDebug", "Skipping notification: owner=$commentOwnerId, self-reply=${commentOwnerId == replierId}")
                 }
             }
-            .addOnFailureListener { e ->
-                android.util.Log.e("CommentReplyDebug", "Notify comment lookup FAILED for id=$notifyCommentId: ${e.message}", e)
-            }
+            .addOnFailureListener { }
     }
 
     /**
@@ -2700,7 +2698,8 @@ class FlickRepository private constructor() {
         newImageUrl: String,
         taggedFriends: List<String>,
         thumbnailUrl512: String = "",
-        thumbnailUrl1080: String = ""
+        thumbnailUrl1080: String = "",
+        imageSizeBytes: Long = 0
     ): Result<Unit> {
         return try {
             val updates = hashMapOf<String, Any>(
@@ -2712,7 +2711,8 @@ class FlickRepository private constructor() {
             )
             if (thumbnailUrl512.isNotBlank()) updates["thumbnailUrl512"] = thumbnailUrl512
             if (thumbnailUrl1080.isNotBlank()) updates["thumbnailUrl1080"] = thumbnailUrl1080
-            
+            if (imageSizeBytes > 0) updates["imageSizeBytes"] = imageSizeBytes
+
             db.collection("flicks").document(flickId)
                 .update(updates)
                 .await()

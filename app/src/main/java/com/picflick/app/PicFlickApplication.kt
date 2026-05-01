@@ -52,7 +52,7 @@ class PicFlickApplication : Application(), SingletonImageLoader.Factory {
             .diskCache {
                 DiskCache.Builder()
                     .directory(context.cacheDir.resolve("picflick_image_cache").toOkioPath())
-                    .maxSizeBytes(100L * 1024 * 1024) // 100 MB
+                    .maxSizeBytes(250L * 1024 * 1024) // 250 MB
                     .build()
             }
             .logger(DebugLogger())
