@@ -10,7 +10,7 @@ object Constants {
      * Pagination and Query Limits
      */
     object Pagination {
-        const val FLICKS_PER_PAGE = 120
+        const val FLICKS_PER_PAGE = 40
         const val EXPLORE_FLICKS_LIMIT = 100
         const val USERS_PER_PAGE = 100
         const val SUGGESTED_USERS_LIMIT = 20
@@ -129,5 +129,18 @@ object Constants {
         const val MAX_MEMORY_CACHE_SIZE_MB = 50
         const val MAX_DISK_CACHE_SIZE_MB = 200
         const val CACHE_EXPIRY_HOURS = 24
+    }
+
+    /**
+     * Feature Flags / Cost Control
+     * Checked from Firestore remote config collection
+     */
+    object FeatureFlags {
+        const val CONFIG_COLLECTION = "appConfig"
+        const val CONFIG_DOCUMENT = "featureFlags"
+        const val KILL_SNAPSHOT_LISTENERS = "killSnapshotListeners"
+        const val KILL_CHAT_LISTENERS = "killChatListeners"
+        const val KILL_NOTIFICATION_LISTENERS = "killNotificationListeners"
+        const val REDUCE_PAGINATION = "reducePagination"
     }
 }

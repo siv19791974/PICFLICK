@@ -21,7 +21,10 @@ const db = admin.firestore();
  * This function verifies purchases with Google Play Developer API
  * and updates user's subscription in Firestore
  */
-exports.validatePurchase = functions.https.onCall(async (data, context) => {
+exports.validatePurchase = functions
+  .runWith({ memory: '256MB', timeoutSeconds: 60 })
+  .https
+  .onCall(async (data, context) => {
   // Check authentication
   if (!context.auth) {
     throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated');
@@ -189,7 +192,10 @@ exports.validatePurchase = functions.https.onCall(async (data, context) => {
 /**
  * Handle purchase cancellation
  */
-exports.handlePurchaseCancelled = functions.https.onCall(async (data, context) => {
+exports.handlePurchaseCancelled = functions
+  .runWith({ memory: '256MB', timeoutSeconds: 60 })
+  .https
+  .onCall(async (data, context) => {
   if (!context.auth) {
     throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated');
   }
@@ -223,7 +229,9 @@ exports.handlePurchaseCancelled = functions.https.onCall(async (data, context) =
  * Scheduled function to check expired subscriptions
  * Runs daily at midnight
  */
-exports.checkExpiredSubscriptions = functions.pubsub
+exports.checkExpiredSubscriptions = functions
+  .runWith({ memory: '256MB', timeoutSeconds: 120 })
+  .pubsub
   .schedule('0 0 * * *') // Every day at midnight
   .timeZone('UTC')
   .onRun(async (context) => {
@@ -266,7 +274,10 @@ exports.checkExpiredSubscriptions = functions.pubsub
  * Real-time subscription monitoring via Pub/Sub
  * Google Play can send real-time notifications
  */
-exports.handleRealtimeNotification = functions.https.onRequest(async (req, res) => {
+exports.handleRealtimeNotification = functions
+  .runWith({ memory: '256MB', timeoutSeconds: 60 })
+  .https
+  .onRequest(async (req, res) => {
   try {
     if (req.method !== 'POST') {
       return res.status(405).send('Method not allowed');
@@ -540,7 +551,9 @@ async function downgradeToFree(notification) {
   });
 }
 
-exports.enforceStorageOveragePolicy = functions.pubsub
+exports.enforceStorageOveragePolicy = functions
+  .runWith({ memory: '512MB', timeoutSeconds: 300 })
+  .pubsub
   .schedule('15 0 * * *')
   .timeZone('UTC')
   .onRun(async () => {

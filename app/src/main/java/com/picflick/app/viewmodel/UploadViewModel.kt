@@ -25,6 +25,7 @@ import java.util.UUID
 import com.picflick.app.data.getDailyUploadLimit
 import com.picflick.app.data.getStorageLimitBytes
 import com.picflick.app.utils.Analytics
+import com.picflick.app.util.ImageResizer
 
 /**
  * ViewModel for handling photo upload with filters and daily limits
@@ -278,8 +279,8 @@ class UploadViewModel : ViewModel() {
                 optimisticFlickId = optimisticFlick.id
                 onOptimisticAdd?.invoke(optimisticFlick)
 
-                // 1. Upload image to Firebase Storage
-                val (imageUrl, uploadedBytes) = uploadImageToStorage(context, photoUri, userProfile.uid)
+                // 1. Upload image to Firebase Storage (with thumbnails)
+                val uploadResult = uploadImageToStorage(context, photoUri, userProfile.uid)
 
                 // 2. Create Flick using repository (sends notifications to followers & tagged friends)
                 val flick = Flick(
@@ -287,7 +288,9 @@ class UploadViewModel : ViewModel() {
                     userId = userProfile.uid,
                     userName = userProfile.displayName,
                     userPhotoUrl = userProfile.photoUrl,
-                    imageUrl = imageUrl,
+                    imageUrl = uploadResult.imageUrl,
+                    thumbnailUrl256 = uploadResult.thumbnailUrl256,
+                    thumbnailUrl512 = uploadResult.thumbnailUrl512,
                     description = description,
                     timestamp = System.currentTimeMillis(),
                     reactions = emptyMap(),
@@ -295,7 +298,7 @@ class UploadViewModel : ViewModel() {
                     privacy = "friends",
                     sharedGroupId = sharedGroupId,
                     taggedFriends = taggedFriends,
-                    imageSizeBytes = uploadedBytes,
+                    imageSizeBytes = uploadResult.uploadedBytes,
                     clientUploadId = clientUploadId
                 )
 
@@ -417,13 +420,15 @@ class UploadViewModel : ViewModel() {
                     optimisticFlickId = optimisticFlick.id
                     onOptimisticAdd?.invoke(optimisticFlick)
 
-                    val (imageUrl, uploadedBytes) = uploadImageToStorage(context, photoUri, userProfile.uid)
+                    val uploadResult = uploadImageToStorage(context, photoUri, userProfile.uid)
                     val flick = Flick(
                         id = "",
                         userId = userProfile.uid,
                         userName = userProfile.displayName,
                         userPhotoUrl = userProfile.photoUrl,
-                        imageUrl = imageUrl,
+                        imageUrl = uploadResult.imageUrl,
+                        thumbnailUrl256 = uploadResult.thumbnailUrl256,
+                        thumbnailUrl512 = uploadResult.thumbnailUrl512,
                         description = "",
                         timestamp = System.currentTimeMillis(),
                         reactions = emptyMap(),
@@ -431,7 +436,7 @@ class UploadViewModel : ViewModel() {
                         privacy = "friends",
                         sharedGroupId = sharedGroupId,
                         taggedFriends = emptyList(),
-                        imageSizeBytes = uploadedBytes,
+                        imageSizeBytes = uploadResult.uploadedBytes,
                         clientUploadId = clientUploadId
                     )
 
@@ -443,7 +448,7 @@ class UploadViewModel : ViewModel() {
                     incrementDailyUploadCount(userProfile.uid)
                     dailyUploadCount++
                     incrementTotalPhotos(userProfile.uid)
-                    rollingStorageUsed += uploadedBytes
+                    rollingStorageUsed += uploadResult.uploadedBytes
 
                     onOptimisticRemove?.invoke(optimisticFlickId, true)
                     successCount++
@@ -474,31 +479,54 @@ class UploadViewModel : ViewModel() {
         }
     }
 
+    data class UploadResult(
+        val imageUrl: String,
+        val thumbnailUrl256: String,
+        val thumbnailUrl512: String,
+        val uploadedBytes: Long
+    )
+
     /**
-     * Upload image file to Firebase Storage
+     * Upload image file to Firebase Storage along with 256px and 512px thumbnails.
      */
     private suspend fun uploadImageToStorage(
         context: Context,
         photoUri: Uri,
         userId: String
-    ): Pair<String, Long> {
+    ): UploadResult {
         val storageRef = storage.reference
-        val imageName = "photos/${userId}/${UUID.randomUUID()}.jpg"
+        val baseName = UUID.randomUUID().toString()
+        val imageName = "photos/${userId}/${baseName}.jpg"
         val imageRef = storageRef.child(imageName)
 
         var lastError: Exception? = null
 
         repeat(MAX_UPLOAD_RETRIES) { attempt ->
             try {
-                // Re-open stream on every retry attempt (streams are one-shot).
+                // Upload original image
                 context.contentResolver.openInputStream(photoUri)?.use { inputStream ->
                     imageRef.putStream(inputStream).await()
                 } ?: throw IllegalStateException("Cannot open photo stream")
 
-                // Get exact uploaded size + download URL
                 val uploadedBytes = imageRef.metadata.await().sizeBytes
                 val downloadUrl = imageRef.downloadUrl.await().toString()
-                return downloadUrl to uploadedBytes
+
+                // Generate and upload thumbnails
+                val thumbnail256Url = uploadThumbnail(
+                    context, photoUri, userId, baseName,
+                    ImageResizer.THUMBNAIL_SIZE_256, "thumbnails_256"
+                )
+                val thumbnail512Url = uploadThumbnail(
+                    context, photoUri, userId, baseName,
+                    ImageResizer.THUMBNAIL_SIZE_512, "thumbnails_512"
+                )
+
+                return UploadResult(
+                    imageUrl = downloadUrl,
+                    thumbnailUrl256 = thumbnail256Url ?: downloadUrl,
+                    thumbnailUrl512 = thumbnail512Url ?: downloadUrl,
+                    uploadedBytes = uploadedBytes
+                )
             } catch (e: Exception) {
                 lastError = e
                 if (attempt < MAX_UPLOAD_RETRIES - 1) {
@@ -509,5 +537,25 @@ class UploadViewModel : ViewModel() {
         }
 
         throw lastError ?: IllegalStateException("Upload failed")
+    }
+
+    private suspend fun uploadThumbnail(
+        context: Context,
+        photoUri: Uri,
+        userId: String,
+        baseName: String,
+        maxDimension: Int,
+        folderName: String
+    ): String? {
+        return try {
+            val thumbBytes = ImageResizer.resizeToThumbnail(context, photoUri, maxDimension)
+                ?: return null
+            val thumbRef = storage.reference.child("photos/${userId}/${folderName}/${baseName}.jpg")
+            thumbRef.putBytes(thumbBytes).await()
+            thumbRef.downloadUrl.await().toString()
+        } catch (e: Exception) {
+            android.util.Log.w("UploadViewModel", "Thumbnail upload failed for $maxDimension", e)
+            null
+        }
     }
 }

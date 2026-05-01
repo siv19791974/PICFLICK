@@ -127,6 +127,9 @@ import kotlinx.coroutines.tasks.await
  * Uses clean architecture with ViewModels and separated concerns
  */
 class MainActivity : ComponentActivity() {
+
+    lateinit var chatViewModelRef: ChatViewModel
+
     override fun attachBaseContext(newBase: android.content.Context) {
         // Apply saved locale to the context
         val context = LocaleHelper.applySavedLocale(newBase)
@@ -135,6 +138,9 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // Start cost-control feature-flag refresh (checks every 60s)
+        com.picflick.app.util.CostControlManager.startRefresh()
 
         // Handle push tap when app is launched from a killed/background state
         handlePushNotification(intent)
@@ -163,6 +169,15 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         WindowInsetsControllerCompat(window, window.decorView).show(WindowInsetsCompat.Type.statusBars())
+    }
+
+    override fun onStop() {
+        super.onStop()
+        // Close chat listeners when app backgrounds to reduce Firestore costs.
+        // They will re-open automatically when the user returns to Chats.
+        if (::chatViewModelRef.isInitialized) {
+            chatViewModelRef.stopAllListeners()
+        }
     }
 
     // Store push notification data for handling when app opens
@@ -376,6 +391,12 @@ fun MainScreen(
     chatViewModel: ChatViewModel = viewModel(),
     uploadViewModel: UploadViewModel = viewModel()
 ) {
+    // Store reference for lifecycle callbacks (e.g. backgrounding)
+    val mainActivity = LocalContext.current as? MainActivity
+    LaunchedEffect(chatViewModel) {
+        mainActivity?.chatViewModelRef = chatViewModel
+    }
+
     var currentScreen by remember { mutableStateOf<Screen>(Screen.Home) }
     var openHomeGroupsManager by remember { mutableStateOf(false) }
     var wasPreviouslyLoggedOut by remember { mutableStateOf(true) }
@@ -723,14 +744,15 @@ fun MainScreen(
 
                         when (result) {
                             is com.picflick.app.data.Result.Success -> {
+                                val imageUrl = result.data.imageUrl
                                 // Update profile with new photo URL
-                                authViewModel.updateProfilePhoto(result.data)
+                                authViewModel.updateProfilePhoto(imageUrl)
 
                                 // Notify mutual friends that profile photo changed
                                 val notificationResult = repository.createProfilePhotoUpdatedNotifications(
                                     userId = profile.uid,
                                     userName = profile.displayName,
-                                    userPhotoUrl = result.data
+                                    userPhotoUrl = imageUrl
                                 )
                                 if (notificationResult is com.picflick.app.data.Result.Error) {
                                     android.util.Log.w(

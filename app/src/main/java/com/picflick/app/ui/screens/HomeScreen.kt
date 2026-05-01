@@ -286,10 +286,11 @@ fun HomeScreen(
             if (imageBytes != null) {
                 when (val uploadResult = com.picflick.app.repository.FlickRepository.getInstance().uploadFlickImage(userProfile.uid, imageBytes)) {
                     is com.picflick.app.data.Result.Success -> {
+                        val imageUrl = uploadResult.data.imageUrl
                         if (target == "create") {
-                            createDialogIconOverride = uploadResult.data
+                            createDialogIconOverride = imageUrl
                         } else {
-                            editDialogIconOverride = uploadResult.data
+                            editDialogIconOverride = imageUrl
                         }
                         Toast.makeText(context, "Album photo added", Toast.LENGTH_SHORT).show()
                     }

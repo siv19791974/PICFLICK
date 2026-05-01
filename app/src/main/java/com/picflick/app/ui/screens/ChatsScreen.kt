@@ -240,9 +240,10 @@ fun ChatsScreen(
             if (imageBytes != null) {
                 when (val uploadResult = FlickRepository.getInstance().uploadFlickImage(userProfile.uid, imageBytes)) {
                     is Result.Success -> {
+                        val imageUrl = uploadResult.data.imageUrl
                         when (pendingChatGroupIconTarget) {
-                            "edit_chat" -> chatEditDialogIconOverride = uploadResult.data
-                            else -> createDialogIconOverride = uploadResult.data
+                            "edit_chat" -> chatEditDialogIconOverride = imageUrl
+                            else -> createDialogIconOverride = imageUrl
                         }
                         Toast.makeText(context, "Group photo added", Toast.LENGTH_SHORT).show()
                     }

@@ -3,6 +3,15 @@ package com.picflick.app.data
 import com.google.firebase.firestore.IgnoreExtraProperties
 
 /**
+ * Result of an image upload, including thumbnail URLs.
+ */
+data class ImageUploadResult(
+    val imageUrl: String,
+    val thumbnailUrl256: String,
+    val thumbnailUrl512: String
+)
+
+/**
  * Data class representing a photo flick/post in the PicFlick app
  */
 @IgnoreExtraProperties
@@ -12,6 +21,8 @@ data class Flick(
     val userName: String = "",
     val userPhotoUrl: String = "", // User's profile picture URL
     val imageUrl: String = "",
+    val thumbnailUrl256: String = "", // 256px thumbnail for grid
+    val thumbnailUrl512: String = "",   // 512px thumbnail for fullscreen
     val description: String = "",
     val timestamp: Long = 0,
     val reactions: Map<String, String> = emptyMap(), // userId -> reactionType
@@ -21,7 +32,9 @@ data class Flick(
     val taggedFriends: List<String> = emptyList(), // List of tagged friend userIds
     val reportCount: Int = 0, // Number of reports for moderation
     val imageSizeBytes: Long = 0, // Exact uploaded image size in bytes (for storage accounting)
-    val clientUploadId: String = "" // Client-side id used to reconcile optimistic -> real upload
+    val clientUploadId: String = "", // Client-side id used to reconcile optimistic -> real upload
+    val reactionsCount: Int = 0, // Cached count for fast reads (may differ from reactions.size when migrated)
+    val reactionsMigrated: Boolean = false // True when reactions moved to subcollection
 ) {
     /**
      * Get total reaction count
