@@ -50,12 +50,12 @@ class ChatRepository {
             ?.filterIsInstance<String>()
             ?: emptyList()
 
-        val unreadFromDirectField = getIntFromAny("unreadCount_$userId")
         val unreadFromMap = (get("unreadCount") as? Map<*, *>)
             ?.get(userId)
             .toIntOrNullSafe()
+        val unreadFromDirectField = getIntFromAny("unreadCount_$userId")
 
-        val resolvedUnread = unreadFromDirectField ?: unreadFromMap ?: 0
+        val resolvedUnread = unreadFromMap ?: unreadFromDirectField ?: 0
 
         return ChatSession(
             id = getString("id").orEmpty().ifBlank { id },
@@ -252,9 +252,11 @@ class ChatRepository {
             participants.forEach { participantId ->
                 if (participantId == senderId) {
                     updates["unreadCount.$participantId"] = 0
+                    updates["unreadCount_$participantId"] = 0
                     android.util.Log.d("ChatRepository", "sendMessage: resetting unreadCount for sender=$participantId")
                 } else {
                     updates["unreadCount.$participantId"] = FieldValue.increment(1)
+                    updates["unreadCount_$participantId"] = FieldValue.increment(1)
                     android.util.Log.d("ChatRepository", "sendMessage: incrementing unreadCount for recipient=$participantId")
                 }
             }
@@ -874,11 +876,11 @@ class ChatRepository {
                 // Count unread messages from the session data
                 var count = 0
                 snapshot?.documents?.forEach { doc ->
-                    val unreadFromDirectField = doc.getIntFromAny("unreadCount_$userId")
                     val unreadFromMap = (doc.get("unreadCount") as? Map<*, *>)
                         ?.get(userId)
                         .toIntOrNullSafe()
-                    val sessionUnread = unreadFromDirectField ?: unreadFromMap ?: 0
+                    val unreadFromDirectField = doc.getIntFromAny("unreadCount_$userId")
+                    val sessionUnread = unreadFromMap ?: unreadFromDirectField ?: 0
                     android.util.Log.d("ChatRepository", "getUnreadMessageCount: session=${doc.id} direct=$unreadFromDirectField map=$unreadFromMap resolved=$sessionUnread")
                     count += sessionUnread
                 }
