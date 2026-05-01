@@ -76,6 +76,8 @@ import com.picflick.app.viewmodel.BillingViewModel
 import com.picflick.app.viewmodel.HomeViewModel
 import com.picflick.app.viewmodel.UploadViewModel
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
@@ -128,18 +130,29 @@ fun DeveloperScreen(
             feedbackLoading = true
             feedbackError = null
             try {
-                val snapshot = withContext(Dispatchers.IO) {
-                    FirebaseFirestore.getInstance()
-                        .collection("feedback")
-                        .whereIn("assignedToUid", developerUids)
-                        .limit(120)
-                        .get()
-                        .await()
+                // Firestore rules often reject whereIn on auth.uid fields.
+                // Run separate whereEqualTo queries (one per dev UID) in parallel
+                // and merge client-side — each query independently satisfies the rule.
+                val db = FirebaseFirestore.getInstance()
+                val allDocs = withContext(Dispatchers.IO) {
+                    developerUids.map { uid ->
+                        async {
+                            db.collection("feedback")
+                                .whereEqualTo("assignedToUid", uid)
+                                .limit(60)
+                                .get()
+                                .await()
+                                .documents
+                        }
+                    }.awaitAll().flatten()
                 }
 
-                feedbackItems = snapshot.documents.mapNotNull { doc ->
-                    doc.toObject(Feedback::class.java)?.copy(id = doc.getString("id") ?: doc.id)
-                }
+                // Deduplicate by document ID in case of overlap
+                feedbackItems = allDocs
+                    .distinctBy { it.id }
+                    .mapNotNull { doc ->
+                        doc.toObject(Feedback::class.java)?.copy(id = doc.getString("id") ?: doc.id)
+                    }
                     .sortedByDescending { it.timestamp }
                     .take(80)
                 devLogs.add(0, "Feedback inbox loaded (${feedbackItems.size})")
