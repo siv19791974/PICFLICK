@@ -102,22 +102,17 @@ async function runBackfill() {
       await thumb256File.save(thumb256Buffer, {
         metadata: { contentType: 'image/jpeg', cacheControl: 'public, max-age=31536000' }
       });
-      await thumb256File.makePublic();
-      const [thumb256Url] = await thumb256File.getSignedUrl({
-        action: 'read',
-        expires: '01-01-2030'
-      });
+      // Make public via ACL instead of signed URLs (avoids iam.serviceAccounts.signBlob)
+      await thumb256File.acl.add({ entity: 'allUsers', role: 'READER' });
+      const thumb256Url = `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(thumb256Path)}?alt=media`;
 
       // Upload 512px
       const thumb512File = bucket.file(thumb512Path);
       await thumb512File.save(thumb512Buffer, {
         metadata: { contentType: 'image/jpeg', cacheControl: 'public, max-age=31536000' }
       });
-      await thumb512File.makePublic();
-      const [thumb512Url] = await thumb512File.getSignedUrl({
-        action: 'read',
-        expires: '01-01-2030'
-      });
+      await thumb512File.acl.add({ entity: 'allUsers', role: 'READER' });
+      const thumb512Url = `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(thumb512Path)}?alt=media`;
 
       // Update Firestore flick document
       await doc.ref.update({
