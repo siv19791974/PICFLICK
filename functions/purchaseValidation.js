@@ -551,7 +551,7 @@ async function downgradeToFree(notification) {
   });
 }
 
-exports.enforceStorageOveragePolicy = functions
+exports.checkStorageOverage = functions
   .runWith({ memory: '512MB', timeoutSeconds: 300 })
   .pubsub
   .schedule('15 0 * * *')

@@ -1,6 +1,8 @@
 package com.picflick.app.repository
 
 import com.picflick.app.data.*
+import com.picflick.app.util.CostControlManager
+import com.picflick.app.Constants
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
@@ -416,7 +418,7 @@ class PhotoRepository private constructor() {
         db.collection("flicks")
             .whereEqualTo("privacy", "public")
             .orderBy("timestamp", Query.Direction.DESCENDING)
-            .limit(100)
+            .limit(CostControlManager.getEffectivePageSize(Constants.Pagination.EXPLORE_FLICKS_LIMIT).toLong())
             .get()
             .addOnSuccessListener { snapshot ->
                 val flicks = snapshot.documents.mapNotNull { it.toObject(Flick::class.java) }
@@ -446,10 +448,11 @@ class PhotoRepository private constructor() {
             usersToInclude.add(userId)
         }
 
+        val effectivePageSize = CostControlManager.getEffectivePageSize(pageSize)
         var query = db.collection("flicks")
             .whereIn("userId", usersToInclude.take(10)) // Firestore limit
             .orderBy("timestamp", Query.Direction.DESCENDING)
-            .limit(pageSize.toLong())
+            .limit(effectivePageSize.toLong())
 
         // Apply pagination cursor if provided
         if (lastTimestamp != null) {
@@ -487,7 +490,7 @@ class PhotoRepository private constructor() {
         db.collection("flicks")
             .whereIn("userId", usersToInclude.take(10))
             .orderBy("timestamp", Query.Direction.DESCENDING)
-            .limit(100)
+            .limit(CostControlManager.getEffectivePageSize(100).toLong())
             .get()
             .addOnSuccessListener { snapshot ->
                 val flicks = snapshot.documents.mapNotNull { it.toObject(Flick::class.java) }

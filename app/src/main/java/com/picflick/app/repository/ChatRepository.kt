@@ -3,6 +3,8 @@ package com.picflick.app.repository
 import com.picflick.app.data.ChatMessage
 import com.picflick.app.data.ChatSession
 import com.picflick.app.data.Result
+import com.picflick.app.util.CostControlManager
+import com.picflick.app.Constants
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
@@ -76,6 +78,12 @@ class ChatRepository {
      * Get all chat sessions for a user
      */
     fun getChatSessions(userId: String): Flow<List<ChatSession>> = callbackFlow {
+        if (CostControlManager.isEnabled(Constants.FeatureFlags.KILL_CHAT_LISTENERS)) {
+            android.util.Log.w("ChatRepository", "getChatSessions blocked by cost kill-switch")
+            trySend(emptyList())
+            awaitClose { }
+            return@callbackFlow
+        }
         val subscription = db.collection("chatSessions")
             .whereArrayContains("participants", userId)
             // Removed orderBy - requires composite index. Sort client-side instead.
@@ -115,6 +123,12 @@ class ChatRepository {
      * Get messages for a specific chat session
      */
     fun getMessages(chatId: String, currentUserId: String): Flow<List<ChatMessage>> = callbackFlow {
+        if (CostControlManager.isEnabled(Constants.FeatureFlags.KILL_CHAT_LISTENERS)) {
+            android.util.Log.w("ChatRepository", "getMessages blocked by cost kill-switch")
+            trySend(emptyList())
+            awaitClose { }
+            return@callbackFlow
+        }
         android.util.Log.d("ChatRepository", "Setting up messages listener for chat: $chatId")
         val subscription = db.collection("chatSessions")
             .document(chatId)

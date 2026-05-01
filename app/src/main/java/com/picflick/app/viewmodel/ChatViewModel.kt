@@ -79,14 +79,6 @@ class ChatViewModel : ViewModel() {
             return
         }
 
-        // Cost kill-switch: if chat listeners are disabled, skip real-time and emit empty.
-        if (com.picflick.app.util.CostControlManager.isEnabled(com.picflick.app.Constants.FeatureFlags.KILL_CHAT_LISTENERS)) {
-            android.util.Log.w("ChatViewModel", "Chat sessions listener blocked by cost kill-switch")
-            chatSessions = emptyList()
-            isLoading = false
-            return
-        }
-
         if (observingChatSessionsUserId == userId && chatSessionsJob?.isActive == true) {
             return
         }
@@ -126,13 +118,6 @@ class ChatViewModel : ViewModel() {
     fun loadMessages(chatId: String, currentUserId: String) {
         // Cancel any existing message collection job
         messagesJob?.cancel()
-
-        // Cost kill-switch: if chat listeners are disabled, skip real-time.
-        if (com.picflick.app.util.CostControlManager.isEnabled(com.picflick.app.Constants.FeatureFlags.KILL_CHAT_LISTENERS)) {
-            android.util.Log.w("ChatViewModel", "Message listener blocked by cost kill-switch")
-            messages = emptyList()
-            return
-        }
 
         currentChatId = chatId
         messagesJob = viewModelScope.launch {

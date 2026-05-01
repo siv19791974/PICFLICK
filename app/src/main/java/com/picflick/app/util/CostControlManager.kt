@@ -1,6 +1,7 @@
 package com.picflick.app.util
 
 import com.google.firebase.firestore.FirebaseFirestore
+import com.picflick.app.Constants
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -26,6 +27,10 @@ object CostControlManager {
 
     /** Check a cached flag synchronously (safe from any thread). */
     fun isEnabled(flagName: String): Boolean = flags[flagName] == true
+
+    /** Return reduced page size when REDUCE_PAGINATION flag is active. */
+    fun getEffectivePageSize(default: Int): Int =
+        if (isEnabled(Constants.FeatureFlags.REDUCE_PAGINATION)) (default / 2).coerceAtLeast(1) else default
 
     /** Start periodic refresh (call once from Application.onCreate or MainActivity). */
     fun startRefresh(periodMs: Long = 60_000L) {

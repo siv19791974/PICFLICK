@@ -18,6 +18,7 @@ import java.util.UUID
 import com.picflick.app.Constants
 import com.picflick.app.data.ImageUploadResult
 import com.picflick.app.util.ImageResizer
+import com.picflick.app.util.CostControlManager
 
 /**
  * Repository class for handling all Firebase Firestore and Storage operations
@@ -548,9 +549,14 @@ class FlickRepository private constructor() {
      * Get flicks - DEPRECATED: Use getFlicksForUser() for privacy
      */
     fun getFlicks(onResult: (Result<List<Flick>>) -> Unit) {
+        if (CostControlManager.isEnabled(Constants.FeatureFlags.KILL_SNAPSHOT_LISTENERS)) {
+            android.util.Log.w("FlickRepository", "getFlicks snapshot listener blocked by cost kill-switch")
+            onResult(Result.Success(emptyList()))
+            return
+        }
         db.collection(Constants.FirebaseCollections.FLICKS)
             .orderBy("timestamp", Query.Direction.DESCENDING)
-            .limit(Constants.Pagination.FLICKS_PER_PAGE.toLong())
+            .limit(CostControlManager.getEffectivePageSize(Constants.Pagination.FLICKS_PER_PAGE).toLong())
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
                     onResult(Result.Error(Exception(error.message), "Failed to load photos"))
@@ -568,9 +574,14 @@ class FlickRepository private constructor() {
      * Get flicks for a specific user
      */
     fun getUserFlicks(userId: String, onResult: (Result<List<Flick>>) -> Unit) {
+        if (CostControlManager.isEnabled(Constants.FeatureFlags.KILL_SNAPSHOT_LISTENERS)) {
+            android.util.Log.w("FlickRepository", "getUserFlicks snapshot listener blocked by cost kill-switch")
+            onResult(Result.Success(emptyList()))
+            return
+        }
         db.collection(Constants.FirebaseCollections.FLICKS)
             .whereEqualTo("userId", userId)
-            .limit(Constants.Pagination.FLICKS_PER_PAGE.toLong())
+            .limit(CostControlManager.getEffectivePageSize(Constants.Pagination.FLICKS_PER_PAGE).toLong())
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
                     onResult(Result.Error(Exception(error.message), "Failed to load user photos"))
@@ -852,6 +863,11 @@ class FlickRepository private constructor() {
      * Listen to user profile realtime updates
      */
     fun listenToUserProfile(userId: String, onResult: (Result<UserProfile>) -> Unit): ListenerRegistration {
+        if (CostControlManager.isEnabled(Constants.FeatureFlags.KILL_SNAPSHOT_LISTENERS)) {
+            android.util.Log.w("FlickRepository", "listenToUserProfile snapshot listener blocked by cost kill-switch")
+            onResult(Result.Error(Exception("Listeners disabled"), "Profile updates paused (cost control)"))
+            return ListenerRegistration { }
+        }
         onResult(Result.Loading)
         return db.collection("users").document(userId)
             .addSnapshotListener { snapshot, error ->
@@ -1826,11 +1842,16 @@ class FlickRepository private constructor() {
         onUpdate: (List<Notification>) -> Unit,
         onError: (String) -> Unit
     ): com.google.firebase.firestore.ListenerRegistration {
+        if (CostControlManager.isEnabled(Constants.FeatureFlags.KILL_NOTIFICATION_LISTENERS)) {
+            android.util.Log.w("FlickRepository", "Notification listener blocked by cost kill-switch")
+            onUpdate(emptyList())
+            return com.google.firebase.firestore.ListenerRegistration { }
+        }
         android.util.Log.d("FlickRepository", "Setting up notification listener for user: $userId")
         return db.collection(Constants.FirebaseCollections.NOTIFICATIONS)
             .whereEqualTo("userId", userId)
             // REMOVED: .orderBy("timestamp") - requires composite index!
-            // REMOVED: .limit() - let client handle pagination
+            .limit(CostControlManager.getEffectivePageSize(Constants.Pagination.NOTIFICATIONS_PER_PAGE).toLong())
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
                     android.util.Log.e("FlickRepository", "Notification listener error: ${error.message}")
