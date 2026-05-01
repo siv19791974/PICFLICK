@@ -817,6 +817,13 @@ fun MainScreen(
         }
     }
 
+    // Observe unread chat count globally so the bottom nav badge updates on all screens
+    LaunchedEffect(userProfile?.uid) {
+        userProfile?.uid?.let { uid ->
+            chatViewModel.observeUnreadCount(uid)
+        }
+    }
+
     // Ensure shared albums are available in Add -> Share privately target picker
     LaunchedEffect(userProfile?.uid) {
         userProfile?.uid?.let { uid ->

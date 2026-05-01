@@ -2088,37 +2088,6 @@ modifier = Modifier
     }
 }
 
-/**
- * Read receipt indicator: double blue checks for read, single gray check for delivered.
- */
-@Composable
-private fun ReadReceiptIcon(read: Boolean, delivered: Boolean) {
-    if (!delivered) {
-        // Message still sending - show clock or nothing
-        return
-    }
-    Row(
-        modifier = Modifier.wrapContentSize(),
-        horizontalArrangement = Arrangement.spacedBy((-4).dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Icon(
-            imageVector = Icons.Default.Check,
-            contentDescription = if (read) "Read" else "Delivered",
-            modifier = Modifier.size(12.dp),
-            tint = if (read) Color(0xFF1565C0) else Color.Gray
-        )
-        if (read) {
-            Icon(
-                imageVector = Icons.Default.Check,
-                contentDescription = null,
-                modifier = Modifier.size(12.dp),
-                tint = Color(0xFF1565C0)
-            )
-        }
-    }
-}
-
 private fun formatMessageTime(timestamp: Long): String {
     return SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(timestamp))
 }
