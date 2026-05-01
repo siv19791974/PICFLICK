@@ -104,7 +104,8 @@ fun AuthenticatedContent(
     onOpenUploadSourceDialog: () -> Unit,
     pushPhoto: Flick? = null,
     pushPhotoOpenComments: Boolean = false,
-    onPushPhotoConsumed: () -> Unit = {}
+    onPushPhotoConsumed: () -> Unit = {},
+    onPushPhotoUpdated: (Flick) -> Unit = {}
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -493,6 +494,11 @@ fun AuthenticatedContent(
                     )
                 },
                 onReaction = { f, reactionType ->
+                    val newReactions = f.reactions.toMutableMap().apply {
+                        if (reactionType == null) remove(userProfile.uid) else put(userProfile.uid, reactionType.name)
+                    }
+                    val updatedFlick = f.copy(reactions = newReactions.toMap())
+                    onPushPhotoUpdated(updatedFlick)
                     reactionType?.let {
                         homeViewModel.toggleReaction(
                             f, userProfile.uid, userProfile.displayName, userProfile.photoUrl, it

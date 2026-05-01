@@ -1172,6 +1172,9 @@ fun MainScreen(
                     onPushPhotoConsumed = {
                         pushPhoto = null
                         pushPhotoOpenComments = false
+                    },
+                    onPushPhotoUpdated = { updated ->
+                        pushPhoto = updated
                     }
                 )
             } else {
