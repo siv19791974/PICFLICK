@@ -745,4 +745,7 @@ Object.assign(exports, require('./purchaseValidation'));
 // Export thumbnail backfill callable + HTTP trigger.
 Object.assign(exports, require('./thumbnailBackfill'));
 
+// Debug helper: check if a thumbnail file exists in Storage.
+Object.assign(exports, require('./checkThumbnail'));
+
 // deploy-bump 

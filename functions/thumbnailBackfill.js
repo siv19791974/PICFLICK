@@ -35,7 +35,11 @@ async function runBackfill() {
 
   const docsToProcess = allSnapshot.docs.filter(doc => {
     const data = doc.data();
-    return (!data.thumbnailUrl256 || data.thumbnailUrl256 === '') && data.imageUrl;
+    // Re-process if missing thumbnails OR if URL uses broken firebasestorage.googleapis.com format
+    const needsBackfill = !data.thumbnailUrl256 ||
+                          data.thumbnailUrl256 === '' ||
+                          data.thumbnailUrl256.startsWith('https://firebasestorage.googleapis.com');
+    return needsBackfill && data.imageUrl;
   });
 
   const snapshot = {
@@ -97,22 +101,33 @@ async function runBackfill() {
         .jpeg({ quality: 90, progressive: true })
         .toBuffer();
 
+      // Generate Firebase download tokens (required for public URL access)
+      const token256 = require('crypto').randomUUID();
+      const token512 = require('crypto').randomUUID();
+
       // Upload 256px
       const thumb256File = bucket.file(thumb256Path);
       await thumb256File.save(thumb256Buffer, {
-        metadata: { contentType: 'image/jpeg', cacheControl: 'public, max-age=31536000' }
+        metadata: {
+          contentType: 'image/jpeg',
+          cacheControl: 'public, max-age=31536000'
+        }
       });
-      // Make public via ACL instead of signed URLs (avoids iam.serviceAccounts.signBlob)
+      // Make public via ACL so GCS direct URL works (no Firebase token needed)
       await thumb256File.acl.add({ entity: 'allUsers', role: 'READER' });
-      const thumb256Url = `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(thumb256Path)}?alt=media`;
+      // Use GCS direct public URL — works with allUsers ACL, bypasses Firebase token auth
+      const thumb256Url = `https://storage.googleapis.com/${bucket.name}/${thumb256Path}`;
 
       // Upload 512px
       const thumb512File = bucket.file(thumb512Path);
       await thumb512File.save(thumb512Buffer, {
-        metadata: { contentType: 'image/jpeg', cacheControl: 'public, max-age=31536000' }
+        metadata: {
+          contentType: 'image/jpeg',
+          cacheControl: 'public, max-age=31536000'
+        }
       });
       await thumb512File.acl.add({ entity: 'allUsers', role: 'READER' });
-      const thumb512Url = `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(thumb512Path)}?alt=media`;
+      const thumb512Url = `https://storage.googleapis.com/${bucket.name}/${thumb512Path}`;
 
       // Update Firestore flick document
       await doc.ref.update({
