@@ -17,6 +17,7 @@ object Constants {
         const val MAX_FRIENDS_BATCH = 10  // Firestore whereIn limit is 10
         const val COMMENTS_PER_PAGE = 50
         const val NOTIFICATIONS_PER_PAGE = 50
+        const val HOME_FEED_DAYS = 30     // Home feed only shows flicks from last 30 days
     }
 
     /**
