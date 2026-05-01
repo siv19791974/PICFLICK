@@ -6,6 +6,7 @@ admin.initializeApp();
 
 // Emergency runtime kill-switch loaded from Firestore appConfig/functions.
 // Set appConfig/functions.disableTriggers = true to globally disable triggers.
+// Also checks appConfig/featureFlags.panicMode (set from Developer menu).
 // Caches for 60s to avoid excessive Firestore reads.
 let cachedDisableTriggers = false;
 let cacheExpiryMs = 0;
@@ -15,8 +16,16 @@ async function isTriggersDisabled() {
   const now = Date.now();
   if (now < cacheExpiryMs) return cachedDisableTriggers;
   try {
-    const doc = await admin.firestore().doc('appConfig/functions').get();
-    cachedDisableTriggers = doc.exists && doc.data().disableTriggers === true;
+    const functionsDoc = await admin.firestore().doc('appConfig/functions').get();
+    const functionsDisabled = functionsDoc.exists && functionsDoc.data().disableTriggers === true;
+
+    const flagsDoc = await admin.firestore().doc('appConfig/featureFlags').get();
+    const panicMode = flagsDoc.exists && flagsDoc.data().panicMode === true;
+
+    cachedDisableTriggers = functionsDisabled || panicMode;
+    if (panicMode) {
+      console.warn('[SAFETY] Panic mode detected in appConfig/featureFlags — all triggers disabled');
+    }
   } catch (e) {
     console.warn('[SAFETY] Failed to load runtime config from Firestore:', e.message);
     cachedDisableTriggers = false;

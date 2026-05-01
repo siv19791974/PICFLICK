@@ -436,6 +436,7 @@ fun DeveloperScreen(
                 var disableAnalytics by remember { mutableStateOf(false) }
                 var disableBilling by remember { mutableStateOf(false) }
                 var freeTierBypass by remember { mutableStateOf(false) }
+                var panicMode by remember { mutableStateOf(false) }
 
                 LaunchedEffect(Unit) {
                     try {
@@ -452,12 +453,60 @@ fun DeveloperScreen(
                             disableAnalytics = data[Constants.FeatureFlags.DISABLE_ANALYTICS] == true
                             disableBilling = data[Constants.FeatureFlags.DISABLE_BILLING] == true
                             freeTierBypass = data[Constants.FeatureFlags.FREE_TIER_BYPASS] == true
+                            panicMode = data[Constants.FeatureFlags.PANIC_MODE] == true
                         }
                         devLogs.add(0, "Kill-switches loaded from Firestore")
                     } catch (e: Exception) {
                         devLogs.add(0, "Kill-switches load failed: ${e.message}")
                     }
                 }
+
+                // Panic Mode master switch
+                if (panicMode) {
+                    Text(
+                        text = "PANIC MODE ACTIVE — All cost controls engaged",
+                        color = Color(0xFFE53935),
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+                }
+                DevToggleRow("PANIC MODE", panicMode, isDarkMode) {
+                    scope.launch {
+                        val value = it
+                        CostControlManager.writeFlag(Constants.FeatureFlags.PANIC_MODE, value)
+                        panicMode = value
+                        if (value) {
+                            // Cascade all kill-switches ON
+                            CostControlManager.writeFlag(Constants.FeatureFlags.KILL_SNAPSHOT_LISTENERS, true)
+                            CostControlManager.writeFlag(Constants.FeatureFlags.KILL_CHAT_LISTENERS, true)
+                            CostControlManager.writeFlag(Constants.FeatureFlags.KILL_NOTIFICATION_LISTENERS, true)
+                            CostControlManager.writeFlag(Constants.FeatureFlags.REDUCE_PAGINATION, true)
+                            CostControlManager.writeFlag(Constants.FeatureFlags.DISABLE_ANALYTICS, true)
+                            killSnapshot = true
+                            killChat = true
+                            killNotifications = true
+                            reducePagination = true
+                            disableAnalytics = true
+                            devLogs.add(0, "PANIC MODE ON — all listeners killed, pagination reduced, analytics stopped")
+                        } else {
+                            // Restore all to OFF
+                            CostControlManager.writeFlag(Constants.FeatureFlags.KILL_SNAPSHOT_LISTENERS, false)
+                            CostControlManager.writeFlag(Constants.FeatureFlags.KILL_CHAT_LISTENERS, false)
+                            CostControlManager.writeFlag(Constants.FeatureFlags.KILL_NOTIFICATION_LISTENERS, false)
+                            CostControlManager.writeFlag(Constants.FeatureFlags.REDUCE_PAGINATION, false)
+                            CostControlManager.writeFlag(Constants.FeatureFlags.DISABLE_ANALYTICS, false)
+                            killSnapshot = false
+                            killChat = false
+                            killNotifications = false
+                            reducePagination = false
+                            disableAnalytics = false
+                            devLogs.add(0, "Panic mode OFF — normal operation restored")
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
 
                 DevToggleRow("Kill snapshot listeners", killSnapshot, isDarkMode) {
                     scope.launch {
