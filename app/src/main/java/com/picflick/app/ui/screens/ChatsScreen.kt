@@ -1239,7 +1239,7 @@ private fun ChatListItem(
                     } else {
                         MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                     },
-                    fontWeight = if (hasUnread) FontWeight.SemiBold else FontWeight.Normal,
+                    fontWeight = if (hasUnread) FontWeight.Bold else FontWeight.Normal,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f)
