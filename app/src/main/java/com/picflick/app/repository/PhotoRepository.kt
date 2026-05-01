@@ -110,6 +110,16 @@ class PhotoRepository private constructor() {
                     }
                 }
 
+                // Delete thumbnails if they exist and are different from original
+                val thumb256 = flick?.thumbnailUrl256
+                if (!thumb256.isNullOrBlank() && thumb256 != imageUrl) {
+                    runCatching { storage.getReferenceFromUrl(thumb256).delete().await() }
+                }
+                val thumb512 = flick?.thumbnailUrl512
+                if (!thumb512.isNullOrBlank() && thumb512 != imageUrl) {
+                    runCatching { storage.getReferenceFromUrl(thumb512).delete().await() }
+                }
+
                 flickRef.delete().await()
 
                 if (ownerId.isNotBlank()) {
@@ -186,7 +196,8 @@ class PhotoRepository private constructor() {
     }
 
     /**
-     * Toggle reaction on a flick
+     * Toggle reaction on a flick.
+     * Handles both inline reactions (legacy, < 500) and subcollection reactions (>= 500 migrated).
      * @param flickId The flick to react to
      * @param userId The user reacting
      * @param userName The name of the reacting user (for notification)
@@ -206,55 +217,178 @@ class PhotoRepository private constructor() {
 
         flickRef.get()
             .addOnSuccessListener { document ->
-                if (document.exists()) {
-                    @Suppress("UNCHECKED_CAST")
-                    val reactions = document.get("reactions") as? Map<String, String> ?: emptyMap()
-                    val existingReaction = reactions[userId]
+                if (!document.exists()) {
+                    onResult(Result.Error(Exception("Flick not found"), "Flick not found"))
+                    return@addOnSuccessListener
+                }
 
-                    val updateMap = when {
-                        // Adding new reaction
-                        existingReaction == null && reactionType != null -> {
-                            mapOf(
-                                "reactions.${userId}" to reactionType.name,
-                                "reactionsCount" to FieldValue.increment(1)
-                            )
-                        }
-                        // Changing reaction
-                        existingReaction != null && reactionType != null && existingReaction != reactionType.name -> {
-                            mapOf("reactions.${userId}" to reactionType.name)
-                        }
-                        // Removing reaction
-                        existingReaction != null && reactionType == null -> {
-                            mapOf(
-                                "reactions.${userId}" to FieldValue.delete(),
-                                "reactionsCount" to FieldValue.increment(-1)
-                            )
-                        }
-                        else -> emptyMap()
-                    }
+                val isMigrated = document.getBoolean("reactionsMigrated") == true
 
-                    if (updateMap.isNotEmpty()) {
-                        flickRef.update(updateMap)
-                            .addOnSuccessListener {
-                                // Create notification for new reactions (not for removing)
-                                if (reactionType != null && existingReaction == null) {
-                                    notificationRepository.createReactionNotification(
-                                        flickId = flickId,
-                                        reactorId = userId,
-                                        reactorName = userName,
-                                        reactionType = reactionType,
-                                        ownerId = ownerId
-                                    )
-                                }
-                                onResult(Result.Success(Unit))
-                            }
-                            .addOnFailureListener { e -> onResult(Result.Error(e, "Failed to toggle reaction")) }
-                    } else {
-                        onResult(Result.Success(Unit))
-                    }
+                if (isMigrated) {
+                    toggleReactionSubcollection(
+                        flickId, userId, userName, reactionType, ownerId, onResult
+                    )
+                } else {
+                    toggleReactionInline(
+                        flickRef, document, userId, userName, reactionType, ownerId, onResult
+                    )
                 }
             }
             .addOnFailureListener { e -> onResult(Result.Error(e, "Failed to fetch flick")) }
+    }
+
+    private fun toggleReactionInline(
+        flickRef: com.google.firebase.firestore.DocumentReference,
+        document: com.google.firebase.firestore.DocumentSnapshot,
+        userId: String,
+        userName: String,
+        reactionType: ReactionType?,
+        ownerId: String,
+        onResult: (Result<Unit>) -> Unit
+    ) {
+        @Suppress("UNCHECKED_CAST")
+        val reactions = document.get("reactions") as? Map<String, String> ?: emptyMap()
+        val existingReaction = reactions[userId]
+
+        val updateMap = when {
+            existingReaction == null && reactionType != null -> {
+                mapOf(
+                    "reactions.${userId}" to reactionType.name,
+                    "reactionsCount" to FieldValue.increment(1)
+                )
+            }
+            existingReaction != null && reactionType != null && existingReaction != reactionType.name -> {
+                mapOf("reactions.${userId}" to reactionType.name)
+            }
+            existingReaction != null && reactionType == null -> {
+                mapOf(
+                    "reactions.${userId}" to FieldValue.delete(),
+                    "reactionsCount" to FieldValue.increment(-1)
+                )
+            }
+            else -> emptyMap()
+        }
+
+        if (updateMap.isNotEmpty()) {
+            flickRef.update(updateMap)
+                .addOnSuccessListener {
+                    if (reactionType != null && existingReaction == null) {
+                        notificationRepository.createReactionNotification(
+                            flickId = flickRef.id,
+                            reactorId = userId,
+                            reactorName = userName,
+                            reactionType = reactionType,
+                            ownerId = ownerId
+                        )
+                    }
+                    onResult(Result.Success(Unit))
+                }
+                .addOnFailureListener { e -> onResult(Result.Error(e, "Failed to toggle reaction")) }
+        } else {
+            onResult(Result.Success(Unit))
+        }
+    }
+
+    private fun toggleReactionSubcollection(
+        flickId: String,
+        userId: String,
+        userName: String,
+        reactionType: ReactionType?,
+        ownerId: String,
+        onResult: (Result<Unit>) -> Unit
+    ) {
+        val reactionRef = db.collection("flicks").document(flickId)
+            .collection("reactions").document(userId)
+        val flickRef = db.collection("flicks").document(flickId)
+
+        reactionRef.get()
+            .addOnSuccessListener { doc ->
+                val existing = if (doc.exists()) doc.getString("reactionType") else null
+
+                when {
+                    // Adding new reaction
+                    existing == null && reactionType != null -> {
+                        val batch = db.batch()
+                        batch.set(reactionRef, mapOf(
+                            "userId" to userId,
+                            "reactionType" to reactionType.name,
+                            "createdAt" to FieldValue.serverTimestamp()
+                        ))
+                        batch.update(flickRef, mapOf("reactionsCount" to FieldValue.increment(1)))
+                        batch.commit()
+                            .addOnSuccessListener {
+                                notificationRepository.createReactionNotification(
+                                    flickId = flickId,
+                                    reactorId = userId,
+                                    reactorName = userName,
+                                    reactionType = reactionType,
+                                    ownerId = ownerId
+                                )
+                                onResult(Result.Success(Unit))
+                            }
+                            .addOnFailureListener { e -> onResult(Result.Error(e, "Failed to add reaction")) }
+                    }
+                    // Changing reaction
+                    existing != null && reactionType != null && existing != reactionType.name -> {
+                        reactionRef.update("reactionType", reactionType.name)
+                            .addOnSuccessListener { onResult(Result.Success(Unit)) }
+                            .addOnFailureListener { e -> onResult(Result.Error(e, "Failed to change reaction")) }
+                    }
+                    // Removing reaction
+                    existing != null && reactionType == null -> {
+                        val batch = db.batch()
+                        batch.delete(reactionRef)
+                        batch.update(flickRef, mapOf("reactionsCount" to FieldValue.increment(-1)))
+                        batch.commit()
+                            .addOnSuccessListener { onResult(Result.Success(Unit)) }
+                            .addOnFailureListener { e -> onResult(Result.Error(e, "Failed to remove reaction")) }
+                    }
+                    else -> onResult(Result.Success(Unit))
+                }
+            }
+            .addOnFailureListener { e -> onResult(Result.Error(e, "Failed to check existing reaction")) }
+    }
+
+    /**
+     * Get a user's reaction on a flick.
+     * Works for both inline reactions (unmigrated) and subcollection reactions (migrated).
+     * @param flickId The flick ID
+     * @param userId The user ID
+     * @param onResult Callback with ReactionType or null
+     */
+    fun getUserReactionForFlick(
+        flickId: String,
+        userId: String,
+        onResult: (Result<ReactionType?>) -> Unit
+    ) {
+        val flickRef = db.collection("flicks").document(flickId)
+        flickRef.get()
+            .addOnSuccessListener { doc ->
+                if (!doc.exists()) {
+                    onResult(Result.Success(null))
+                    return@addOnSuccessListener
+                }
+
+                val isMigrated = doc.getBoolean("reactionsMigrated") == true
+                if (!isMigrated) {
+                    @Suppress("UNCHECKED_CAST")
+                    val reactions = doc.get("reactions") as? Map<String, String> ?: emptyMap()
+                    val type = reactions[userId]?.let { ReactionType.valueOf(it) }
+                    onResult(Result.Success(type))
+                    return@addOnSuccessListener
+                }
+
+                // Migrated: read from subcollection
+                flickRef.collection("reactions").document(userId).get()
+                    .addOnSuccessListener { rDoc ->
+                        val type = if (rDoc.exists()) {
+                            rDoc.getString("reactionType")?.let { ReactionType.valueOf(it) }
+                        } else null
+                        onResult(Result.Success(type))
+                    }
+                    .addOnFailureListener { e -> onResult(Result.Error(e, "Failed to fetch subcollection reaction")) }
+            }
+            .addOnFailureListener { e -> onResult(Result.Error(e, "Failed to fetch flick for reaction")) }
     }
 
     /**

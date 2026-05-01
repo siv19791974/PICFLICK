@@ -791,12 +791,12 @@ class HomeViewModel : ViewModel() {
         }
     }
 
-    internal suspend fun runUploadWithRetry(
+    internal suspend fun <T> runUploadWithRetry(
         maxRetries: Int = 3,
         baseDelayMs: Long = 500L,
-        uploadCall: suspend () -> Result<String>
-    ): Result<String> {
-        var result: Result<String> = Result.Error(IllegalStateException("Upload failed"), "Upload failed")
+        uploadCall: suspend () -> Result<T>
+    ): Result<T> {
+        var result: Result<T> = Result.Error(IllegalStateException("Upload failed"), "Upload failed")
 
         repeat(maxRetries.coerceAtLeast(1)) { attempt ->
             result = uploadCall()
@@ -858,8 +858,11 @@ class HomeViewModel : ViewModel() {
                 
                 when (uploadResult) {
                     is Result.Success -> {
-                        val imageUrl = uploadResult.data
-                        
+                        val uploadData = uploadResult.data
+                        val imageUrl = uploadData.imageUrl
+                        val thumb256 = uploadData.thumbnailUrl256
+                        val thumb512 = uploadData.thumbnailUrl512
+
                         // Create flick document with privacy setting and tagged friends
                         val flick = Flick(
                             id = "",
@@ -867,6 +870,8 @@ class HomeViewModel : ViewModel() {
                             userName = userDisplayName,
                             userPhotoUrl = userPhotoUrl,
                             imageUrl = imageUrl,
+                            thumbnailUrl256 = thumb256,
+                            thumbnailUrl512 = thumb512,
                             description = caption,
                             timestamp = System.currentTimeMillis(),
                             reactions = emptyMap(),

@@ -16,6 +16,8 @@ import java.util.Calendar
 import java.util.Locale
 import java.util.UUID
 import com.picflick.app.Constants
+import com.picflick.app.data.ImageUploadResult
+import com.picflick.app.util.ImageResizer
 
 /**
  * Repository class for handling all Firebase Firestore and Storage operations
@@ -274,19 +276,48 @@ class FlickRepository private constructor() {
     }
 
     /**
-     * Upload flick image to Firebase Storage
+     * Upload flick image to Firebase Storage with 256px and 512px thumbnails.
+     * @return ImageUploadResult with original and thumbnail URLs.
      */
-    suspend fun uploadFlickImage(userId: String, imageBytes: ByteArray): Result<String> {
+    suspend fun uploadFlickImage(userId: String, imageBytes: ByteArray): Result<ImageUploadResult> {
         return try {
-            val filename = "photos/${userId}/${UUID.randomUUID()}.jpg"
+            val baseName = UUID.randomUUID().toString()
+            val filename = "photos/${userId}/${baseName}.jpg"
             val storageRef = storage.reference.child(filename)
 
             storageRef.putBytes(imageBytes).await()
-            val downloadUrl = storageRef.downloadUrl.await()
+            val downloadUrl = storageRef.downloadUrl.await().toString()
 
-            Result.Success(downloadUrl.toString())
+            // Generate and upload thumbnails
+            val thumb256Url = uploadThumbnailBytes(
+                imageBytes, userId, baseName, ImageResizer.THUMBNAIL_SIZE_256, "thumbnails_256"
+            ) ?: downloadUrl
+            val thumb512Url = uploadThumbnailBytes(
+                imageBytes, userId, baseName, ImageResizer.THUMBNAIL_SIZE_512, "thumbnails_512"
+            ) ?: downloadUrl
+
+            Result.Success(ImageUploadResult(downloadUrl, thumb256Url, thumb512Url))
         } catch (e: Exception) {
             Result.Error(e, "Failed to upload image")
+        }
+    }
+
+    private suspend fun uploadThumbnailBytes(
+        imageBytes: ByteArray,
+        userId: String,
+        baseName: String,
+        maxDimension: Int,
+        folderName: String
+    ): String? {
+        return try {
+            val thumbBytes = ImageResizer.resizeBytesToThumbnail(imageBytes, maxDimension)
+                ?: return null
+            val thumbRef = storage.reference.child("photos/${userId}/${folderName}/${baseName}.jpg")
+            thumbRef.putBytes(thumbBytes).await()
+            thumbRef.downloadUrl.await().toString()
+        } catch (e: Exception) {
+            android.util.Log.w("FlickRepository", "Thumbnail upload failed for $maxDimension", e)
+            null
         }
     }
 
@@ -670,6 +701,24 @@ class FlickRepository private constructor() {
                         imageRef.delete().await()
                     } catch (e: Exception) {
                         android.util.Log.w("FlickRepository", "Failed to delete storage object for flick=$flickId", e)
+                    }
+                }
+
+                // Delete thumbnails if they exist and differ from original
+                val thumb256 = flick?.thumbnailUrl256
+                if (!thumb256.isNullOrBlank() && thumb256 != imageUrl) {
+                    try {
+                        storage.getReferenceFromUrl(thumb256).delete().await()
+                    } catch (e: Exception) {
+                        android.util.Log.w("FlickRepository", "Failed to delete 256px thumbnail for flick=$flickId", e)
+                    }
+                }
+                val thumb512 = flick?.thumbnailUrl512
+                if (!thumb512.isNullOrBlank() && thumb512 != imageUrl) {
+                    try {
+                        storage.getReferenceFromUrl(thumb512).delete().await()
+                    } catch (e: Exception) {
+                        android.util.Log.w("FlickRepository", "Failed to delete 512px thumbnail for flick=$flickId", e)
                     }
                 }
 
@@ -2584,7 +2633,9 @@ class FlickRepository private constructor() {
         description: String,
         filterType: String,
         newImageUrl: String,
-        taggedFriends: List<String>
+        taggedFriends: List<String>,
+        thumbnailUrl256: String = "",
+        thumbnailUrl512: String = ""
     ): Result<Unit> {
         return try {
             val updates = hashMapOf<String, Any>(
@@ -2594,6 +2645,8 @@ class FlickRepository private constructor() {
                 "taggedFriends" to taggedFriends,
                 "editedAt" to FieldValue.serverTimestamp()
             )
+            if (thumbnailUrl256.isNotBlank()) updates["thumbnailUrl256"] = thumbnailUrl256
+            if (thumbnailUrl512.isNotBlank()) updates["thumbnailUrl512"] = thumbnailUrl512
             
             db.collection("flicks").document(flickId)
                 .update(updates)

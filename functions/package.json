@@ -1,7 +1,7 @@
 {
   "name": "picflick-functions",
   "description": "Cloud Functions for PicFlick push notifications",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "scripts": {
     "serve": "firebase emulators:start --only functions",
     "shell": "firebase functions:shell",

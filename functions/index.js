@@ -21,7 +21,11 @@ function shouldSkipTrigger(triggerName) {
  * This function listens to the 'notifications' collection and sends FCM push
  */
 exports.sendPushNotification = functions
-  .runWith({ serviceAccount: 'picflick-4793175b@appspot.gserviceaccount.com' })
+  .runWith({
+    serviceAccount: 'picflick-4793175b@appspot.gserviceaccount.com',
+    memory: '256MB',
+    timeoutSeconds: 60,
+  })
   .firestore
   .document('notifications/{notificationId}')
   .onCreate(async (snap, context) => {
@@ -176,7 +180,9 @@ exports.sendPushNotification = functions
  * Cloud Function: Clean up old notifications (run daily)
  * Deletes notifications older than 30 days
  */
-exports.cleanupOldNotifications = functions.pubsub
+exports.cleanupOldNotifications = functions
+  .runWith({ memory: '256MB', timeoutSeconds: 120 })
+  .pubsub
   .schedule('0 0 * * *') // Run at midnight every day
   .timeZone('UTC')
   .onRun(async (context) => {
@@ -208,7 +214,9 @@ exports.cleanupOldNotifications = functions.pubsub
 /**
  * Cloud Function: Send welcome notification when new user joins
  */
-exports.sendWelcomeNotification = functions.firestore
+exports.sendWelcomeNotification = functions
+  .runWith({ memory: '256MB', timeoutSeconds: 60 })
+  .firestore
   .document('users/{userId}')
   .onCreate(async (snap, context) => {
     if (shouldSkipTrigger('sendWelcomeNotification')) return null;
@@ -270,7 +278,9 @@ exports.sendWelcomeNotification = functions.firestore
 /**
  * Cloud Function: Send push notification to assigned support user on new feedback
  */
-exports.sendFeedbackPushToDeveloper = functions.firestore
+exports.sendFeedbackPushToDeveloper = functions
+  .runWith({ memory: '256MB', timeoutSeconds: 60 })
+  .firestore
   .document('feedback/{feedbackId}')
   .onCreate(async (snap, context) => {
     if (shouldSkipTrigger('sendFeedbackPushToDeveloper')) return null;
@@ -392,7 +402,9 @@ function isValidChatSessionSchema(session) {
  * Validation guard: flag malformed canonical group writes.
  * This is a temporary safety net until strict rules are fully rolled out.
  */
-exports.validateCanonicalGroupWrite = functions.firestore
+exports.validateCanonicalGroupWrite = functions
+  .runWith({ memory: '256MB', timeoutSeconds: 60 })
+  .firestore
   .document('groups/{groupId}')
   .onWrite(async (change, context) => {
     if (shouldSkipTrigger('validateCanonicalGroupWrite')) return null;
@@ -455,7 +467,9 @@ exports.validateCanonicalGroupWrite = functions.firestore
  * Validation guard: flag malformed chat session writes.
  * Enforces map-based unreadCount and blocks legacy unreadCount_<uid> keys.
  */
-exports.validateChatSessionSchema = functions.firestore
+exports.validateChatSessionSchema = functions
+  .runWith({ memory: '256MB', timeoutSeconds: 60 })
+  .firestore
   .document('chatSessions/{chatId}')
   .onWrite(async (change, context) => {
     if (shouldSkipTrigger('validateChatSessionSchema')) return null;
@@ -517,7 +531,10 @@ exports.validateChatSessionSchema = functions.firestore
  * Admin-only callable: migrate legacy group schemas to canonical shape.
  * Idempotent and safe to run multiple times.
  */
-exports.migrateGroupsToCanonicalSchema = functions.https.onCall(async (data, context) => {
+exports.migrateGroupsToCanonicalSchema = functions
+  .runWith({ memory: '512MB', timeoutSeconds: 120 })
+  .https
+  .onCall(async (data, context) => {
   if (!context.auth) {
     throw new functions.https.HttpsError('unauthenticated', 'Authentication required');
   }
@@ -597,7 +614,10 @@ exports.migrateGroupsToCanonicalSchema = functions.https.onCall(async (data, con
  * Admin-only callable: migrate chat unread counters to canonical map-only format.
  * Reads legacy unreadCount_<uid> values and stores them into unreadCount.{uid}.
  */
-exports.migrateChatUnreadToMap = functions.https.onCall(async (data, context) => {
+exports.migrateChatUnreadToMap = functions
+  .runWith({ memory: '512MB', timeoutSeconds: 120 })
+  .https
+  .onCall(async (data, context) => {
   if (!context.auth) {
     throw new functions.https.HttpsError('unauthenticated', 'Authentication required');
   }
@@ -666,5 +686,60 @@ exports.migrateChatUnreadToMap = functions.https.onCall(async (data, context) =>
   return { success: true, dryRun, scanned, updated };
 });
 
+const REACTIONS_SUBCOLLECTION_THRESHOLD = 500;
+
+/**
+ * Cloud Function: Auto-migrate inline reactions to subcollection when count exceeds threshold.
+ * Keeps reactionsCount on the parent doc for fast reads; moves individual reactions to
+ * flicks/{flickId}/reactions/{userId} documents.
+ */
+exports.migrateReactionsToSubcollection = functions
+  .runWith({ memory: '512MB', timeoutSeconds: 120 })
+  .firestore
+  .document('flicks/{flickId}')
+  .onUpdate(async (change, context) => {
+    if (shouldSkipTrigger('migrateReactionsToSubcollection')) return null;
+
+    const before = change.before.exists ? change.before.data() : {};
+    const after = change.after.exists ? change.after.data() : {};
+
+    // Only act when crossing the threshold and inline reactions still exist
+    const reactionsCount = Number(after.reactionsCount || 0);
+    const inlineReactions = after.reactions;
+    const alreadyMigrated = after.reactionsMigrated === true;
+
+    if (reactionsCount < REACTIONS_SUBCOLLECTION_THRESHOLD) return null;
+    if (alreadyMigrated) return null;
+    if (!inlineReactions || typeof inlineReactions !== 'object' || Array.isArray(inlineReactions)) return null;
+    const entries = Object.entries(inlineReactions);
+    if (entries.length === 0) return null;
+
+    const flickId = context.params.flickId;
+    const batch = admin.firestore().batch();
+    let written = 0;
+
+    entries.forEach(([userId, reactionType]) => {
+      const ref = admin.firestore().collection('flicks').doc(flickId).collection('reactions').doc(userId);
+      batch.set(ref, {
+        userId,
+        reactionType: String(reactionType),
+        createdAt: admin.firestore.FieldValue.serverTimestamp()
+      }, { merge: true });
+      written += 1;
+    });
+
+    // Mark migrated and remove inline reactions map
+    batch.update(change.after.ref, {
+      reactionsMigrated: true,
+      reactions: admin.firestore.FieldValue.delete()
+    });
+
+    await batch.commit();
+    console.log(`Migrated ${written} reactions to subcollection for flick=${flickId}`);
+    return null;
+  });
+
 // Export purchase/subscription validation callables from the dedicated module.
 Object.assign(exports, require('./purchaseValidation'));
+  
+// deploy-bump 
