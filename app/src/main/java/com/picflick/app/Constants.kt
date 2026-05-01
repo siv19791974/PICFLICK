@@ -143,5 +143,9 @@ object Constants {
         const val KILL_CHAT_LISTENERS = "killChatListeners"
         const val KILL_NOTIFICATION_LISTENERS = "killNotificationListeners"
         const val REDUCE_PAGINATION = "reducePagination"
+        // Client-side developer kill-switches
+        const val DISABLE_ANALYTICS = "disableAnalytics"
+        const val DISABLE_BILLING = "disableBilling"
+        const val FREE_TIER_BYPASS = "freeTierBypass"
     }
 }

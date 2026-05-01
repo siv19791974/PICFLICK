@@ -433,6 +433,9 @@ fun DeveloperScreen(
                 var killChat by remember { mutableStateOf(false) }
                 var killNotifications by remember { mutableStateOf(false) }
                 var reducePagination by remember { mutableStateOf(false) }
+                var disableAnalytics by remember { mutableStateOf(false) }
+                var disableBilling by remember { mutableStateOf(false) }
+                var freeTierBypass by remember { mutableStateOf(false) }
 
                 LaunchedEffect(Unit) {
                     try {
@@ -446,6 +449,9 @@ fun DeveloperScreen(
                             killChat = data[Constants.FeatureFlags.KILL_CHAT_LISTENERS] == true
                             killNotifications = data[Constants.FeatureFlags.KILL_NOTIFICATION_LISTENERS] == true
                             reducePagination = data[Constants.FeatureFlags.REDUCE_PAGINATION] == true
+                            disableAnalytics = data[Constants.FeatureFlags.DISABLE_ANALYTICS] == true
+                            disableBilling = data[Constants.FeatureFlags.DISABLE_BILLING] == true
+                            freeTierBypass = data[Constants.FeatureFlags.FREE_TIER_BYPASS] == true
                         }
                         devLogs.add(0, "Kill-switches loaded from Firestore")
                     } catch (e: Exception) {
@@ -479,6 +485,27 @@ fun DeveloperScreen(
                         CostControlManager.writeFlag(Constants.FeatureFlags.REDUCE_PAGINATION, it)
                         reducePagination = it
                         devLogs.add(0, "reducePagination=$it (live in ~60s)")
+                    }
+                }
+                DevToggleRow("Disable analytics", disableAnalytics, isDarkMode) {
+                    scope.launch {
+                        CostControlManager.writeFlag(Constants.FeatureFlags.DISABLE_ANALYTICS, it)
+                        disableAnalytics = it
+                        devLogs.add(0, "disableAnalytics=$it (immediate)")
+                    }
+                }
+                DevToggleRow("Disable billing", disableBilling, isDarkMode) {
+                    scope.launch {
+                        CostControlManager.writeFlag(Constants.FeatureFlags.DISABLE_BILLING, it)
+                        disableBilling = it
+                        devLogs.add(0, "disableBilling=$it (restart app to take effect)")
+                    }
+                }
+                DevToggleRow("Free tier bypass (PRO)", freeTierBypass, isDarkMode) {
+                    scope.launch {
+                        CostControlManager.writeFlag(Constants.FeatureFlags.FREE_TIER_BYPASS, it)
+                        freeTierBypass = it
+                        devLogs.add(0, "freeTierBypass=$it (immediate)")
                     }
                 }
                 DevActionRow(Icons.Default.Sync, "Force refresh flags now") {

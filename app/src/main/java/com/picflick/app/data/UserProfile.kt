@@ -2,6 +2,8 @@ package com.picflick.app.data
 
 import com.google.firebase.Timestamp
 import com.google.firebase.firestore.PropertyName
+import com.picflick.app.Constants
+import com.picflick.app.util.CostControlManager
 
 /**
  * Data class representing a user profile in the PicFlick app
@@ -72,9 +74,13 @@ data class UserProfile(
      */
     fun isMutualFriend(userId: String): Boolean = following.contains(userId) && followers.contains(userId)
     /**
-     * Get the current subscription tier (with legacy fallback)
+     * Get the current subscription tier (with legacy fallback).
+     * If the freeTierBypass kill-switch is active, always returns PRO for UI testing.
      */
     fun getEffectiveTier(): SubscriptionTier {
+        if (CostControlManager.isEnabled(Constants.FeatureFlags.FREE_TIER_BYPASS)) {
+            return SubscriptionTier.PRO
+        }
         if (!subscriptionActive) return SubscriptionTier.FREE
 
         return when {
