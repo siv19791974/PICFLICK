@@ -509,7 +509,7 @@ private fun PopularPhotoRow(
 
         // Thumbnail
         AsyncImage(
-            model = withCacheBust(flick.thumbnailUrl256.ifBlank { flick.imageUrl }, flick.timestamp),
+            model = withCacheBust(flick.thumbnailUrl512.ifBlank { flick.imageUrl }, flick.timestamp),
             contentDescription = null,
             modifier = Modifier
                 .size(80.dp)

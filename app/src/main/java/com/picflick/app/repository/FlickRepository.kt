@@ -289,15 +289,15 @@ class FlickRepository private constructor() {
             storageRef.putBytes(imageBytes).await()
             val downloadUrl = storageRef.downloadUrl.await().toString()
 
-            // Generate and upload thumbnails
-            val thumb256Url = uploadThumbnailBytes(
-                imageBytes, userId, baseName, ImageResizer.THUMBNAIL_SIZE_256, "thumbnails_256"
-            ) ?: downloadUrl
+            // Generate and upload 512px (grid) and 1080px (fullscreen) thumbnails
             val thumb512Url = uploadThumbnailBytes(
                 imageBytes, userId, baseName, ImageResizer.THUMBNAIL_SIZE_512, "thumbnails_512"
             ) ?: downloadUrl
+            val thumb1080Url = uploadThumbnailBytes(
+                imageBytes, userId, baseName, ImageResizer.THUMBNAIL_SIZE_1080, "thumbnails_1080"
+            ) ?: downloadUrl
 
-            Result.Success(ImageUploadResult(downloadUrl, thumb256Url, thumb512Url))
+            Result.Success(ImageUploadResult(downloadUrl, thumb512Url, thumb1080Url))
         } catch (e: Exception) {
             Result.Error(e, "Failed to upload image")
         }
@@ -716,20 +716,20 @@ class FlickRepository private constructor() {
                 }
 
                 // Delete thumbnails if they exist and differ from original
-                val thumb256 = flick?.thumbnailUrl256
-                if (!thumb256.isNullOrBlank() && thumb256 != imageUrl) {
-                    try {
-                        storage.getReferenceFromUrl(thumb256).delete().await()
-                    } catch (e: Exception) {
-                        android.util.Log.w("FlickRepository", "Failed to delete 256px thumbnail for flick=$flickId", e)
-                    }
-                }
                 val thumb512 = flick?.thumbnailUrl512
                 if (!thumb512.isNullOrBlank() && thumb512 != imageUrl) {
                     try {
                         storage.getReferenceFromUrl(thumb512).delete().await()
                     } catch (e: Exception) {
                         android.util.Log.w("FlickRepository", "Failed to delete 512px thumbnail for flick=$flickId", e)
+                    }
+                }
+                val thumb1080 = flick?.thumbnailUrl1080
+                if (!thumb1080.isNullOrBlank() && thumb1080 != imageUrl) {
+                    try {
+                        storage.getReferenceFromUrl(thumb1080).delete().await()
+                    } catch (e: Exception) {
+                        android.util.Log.w("FlickRepository", "Failed to delete 1080px thumbnail for flick=$flickId", e)
                     }
                 }
 
@@ -2691,8 +2691,8 @@ class FlickRepository private constructor() {
         filterType: String,
         newImageUrl: String,
         taggedFriends: List<String>,
-        thumbnailUrl256: String = "",
-        thumbnailUrl512: String = ""
+        thumbnailUrl512: String = "",
+        thumbnailUrl1080: String = ""
     ): Result<Unit> {
         return try {
             val updates = hashMapOf<String, Any>(
@@ -2702,8 +2702,8 @@ class FlickRepository private constructor() {
                 "taggedFriends" to taggedFriends,
                 "editedAt" to FieldValue.serverTimestamp()
             )
-            if (thumbnailUrl256.isNotBlank()) updates["thumbnailUrl256"] = thumbnailUrl256
             if (thumbnailUrl512.isNotBlank()) updates["thumbnailUrl512"] = thumbnailUrl512
+            if (thumbnailUrl1080.isNotBlank()) updates["thumbnailUrl1080"] = thumbnailUrl1080
             
             db.collection("flicks").document(flickId)
                 .update(updates)

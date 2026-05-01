@@ -860,8 +860,8 @@ class HomeViewModel : ViewModel() {
                     is Result.Success -> {
                         val uploadData = uploadResult.data
                         val imageUrl = uploadData.imageUrl
-                        val thumb256 = uploadData.thumbnailUrl256
                         val thumb512 = uploadData.thumbnailUrl512
+                        val thumb1080 = uploadData.thumbnailUrl1080
 
                         // Create flick document with privacy setting and tagged friends
                         val flick = Flick(
@@ -870,8 +870,8 @@ class HomeViewModel : ViewModel() {
                             userName = userDisplayName,
                             userPhotoUrl = userPhotoUrl,
                             imageUrl = imageUrl,
-                            thumbnailUrl256 = thumb256,
                             thumbnailUrl512 = thumb512,
+                            thumbnailUrl1080 = thumb1080,
                             description = caption,
                             timestamp = System.currentTimeMillis(),
                             reactions = emptyMap(),

@@ -524,9 +524,10 @@ val canDeleteCurrent = currentFlick.userId == currentUser.uid
             prefetchInFlightKeys[prefetchKey] = true
             prefetchLastEnqueuedAt[prefetchKey] = now
 
-            android.util.Log.d("ThumbVerify", "Fullscreen prefetch: flick=${neighbor.id.take(8)} using ORIGINAL")
+            val prefetchUrl = neighbor.thumbnailUrl1080.ifBlank { neighbor.imageUrl }
+            android.util.Log.d("ThumbVerify", "Fullscreen prefetch: flick=${neighbor.id.take(8)} using ${if (neighbor.thumbnailUrl1080.isNotBlank()) "THUMB_1080" else "ORIGINAL"}")
             val request = ImageRequest.Builder(context)
-                .data(withCacheBust(neighbor.imageUrl, neighbor.timestamp))
+                .data(withCacheBust(prefetchUrl, neighbor.timestamp))
                 .size(requestWidthPx, requestHeightPx)
                 .crossfade(false)
                 .memoryCachePolicy(CachePolicy.ENABLED)
@@ -1092,8 +1093,8 @@ val canDeleteCurrent = currentFlick.userId == currentUser.uid
                                 ),
                             contentAlignment = Alignment.Center
                         ) {
-                            val displayUrl = photo.imageUrl
-                            android.util.Log.d("ThumbVerify", "Fullscreen viewer: flick=${photo.id.take(8)} using ORIGINAL")
+                            val displayUrl = photo.thumbnailUrl1080.ifBlank { photo.imageUrl }
+                            android.util.Log.d("ThumbVerify", "Fullscreen viewer: flick=${photo.id.take(8)} using ${if (photo.thumbnailUrl1080.isNotBlank()) "THUMB_1080" else "ORIGINAL"}")
                             val photoModel = remember(displayUrl, photo.timestamp, requestWidthPx, requestHeightPx) {
                                 ImageRequest.Builder(context)
                                     .data(withCacheBust(displayUrl, photo.timestamp))

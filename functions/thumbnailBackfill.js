@@ -27,18 +27,18 @@ async function runBackfill() {
   const db = admin.firestore();
   const bucket = admin.storage().bucket();
 
-  // Fetch all flicks and filter in-memory for those missing thumbnails.
+  // Fetch all flicks and filter in-memory for those missing the 1080px thumbnail.
   const allSnapshot = await db.collection('flicks')
-    .select('imageUrl', 'thumbnailUrl256')
+    .select('imageUrl', 'thumbnailUrl512', 'thumbnailUrl1080')
     .limit(500)
     .get();
 
   const docsToProcess = allSnapshot.docs.filter(doc => {
     const data = doc.data();
-    // Re-process if missing thumbnails OR if URL uses broken firebasestorage.googleapis.com format
-    const needsBackfill = !data.thumbnailUrl256 ||
-                          data.thumbnailUrl256 === '' ||
-                          data.thumbnailUrl256.startsWith('https://firebasestorage.googleapis.com');
+    // Re-process if 1080px thumbnail is missing or if 512px uses broken Firebase URL format
+    const needsBackfill = !data.thumbnailUrl1080 ||
+                          data.thumbnailUrl1080 === '' ||
+                          (data.thumbnailUrl512 && data.thumbnailUrl512.startsWith('https://firebasestorage.googleapis.com'));
     return needsBackfill && data.imageUrl;
   });
 
@@ -83,40 +83,23 @@ async function runBackfill() {
       // Derive thumbnail paths
       const dir = filePath.substring(0, filePath.lastIndexOf('/'));
       const baseName = filePath.substring(filePath.lastIndexOf('/') + 1);
-      const thumb256Path = `${dir}/thumbnails_256/${baseName}`;
       const thumb512Path = `${dir}/thumbnails_512/${baseName}`;
+      const thumb1080Path = `${dir}/thumbnails_1080/${baseName}`;
 
       // Download original via public URL (bypasses IAM permission issues)
       const originalBuffer = await downloadUrl(imageUrl);
 
-      // Generate 256px thumbnail
-      const thumb256Buffer = await sharp(originalBuffer)
-        .resize(256, 256, { fit: 'inside', withoutEnlargement: false })
-        .jpeg({ quality: 90, progressive: true })
-        .toBuffer();
-
-      // Generate 512px thumbnail
+      // Generate 512px thumbnail (grid views)
       const thumb512Buffer = await sharp(originalBuffer)
         .resize(512, 512, { fit: 'inside', withoutEnlargement: false })
         .jpeg({ quality: 90, progressive: true })
         .toBuffer();
 
-      // Generate Firebase download tokens (required for public URL access)
-      const token256 = require('crypto').randomUUID();
-      const token512 = require('crypto').randomUUID();
-
-      // Upload 256px
-      const thumb256File = bucket.file(thumb256Path);
-      await thumb256File.save(thumb256Buffer, {
-        metadata: {
-          contentType: 'image/jpeg',
-          cacheControl: 'public, max-age=31536000'
-        }
-      });
-      // Make public via ACL so GCS direct URL works (no Firebase token needed)
-      await thumb256File.acl.add({ entity: 'allUsers', role: 'READER' });
-      // Use GCS direct public URL — works with allUsers ACL, bypasses Firebase token auth
-      const thumb256Url = `https://storage.googleapis.com/${bucket.name}/${thumb256Path}`;
+      // Generate 1080px thumbnail (fullscreen viewer)
+      const thumb1080Buffer = await sharp(originalBuffer)
+        .resize(1080, 1080, { fit: 'inside', withoutEnlargement: false })
+        .jpeg({ quality: 90, progressive: true })
+        .toBuffer();
 
       // Upload 512px
       const thumb512File = bucket.file(thumb512Path);
@@ -126,13 +109,25 @@ async function runBackfill() {
           cacheControl: 'public, max-age=31536000'
         }
       });
+      // Make public via ACL so GCS direct URL works (no Firebase token needed)
       await thumb512File.acl.add({ entity: 'allUsers', role: 'READER' });
       const thumb512Url = `https://storage.googleapis.com/${bucket.name}/${thumb512Path}`;
 
+      // Upload 1080px
+      const thumb1080File = bucket.file(thumb1080Path);
+      await thumb1080File.save(thumb1080Buffer, {
+        metadata: {
+          contentType: 'image/jpeg',
+          cacheControl: 'public, max-age=31536000'
+        }
+      });
+      await thumb1080File.acl.add({ entity: 'allUsers', role: 'READER' });
+      const thumb1080Url = `https://storage.googleapis.com/${bucket.name}/${thumb1080Path}`;
+
       // Update Firestore flick document
       await doc.ref.update({
-        thumbnailUrl256: thumb256Url,
-        thumbnailUrl512: thumb512Url
+        thumbnailUrl512: thumb512Url,
+        thumbnailUrl1080: thumb1080Url
       });
 
       results.push({ flickId, status: 'success', filePath });
@@ -155,7 +150,7 @@ async function runBackfill() {
 }
 
 /**
- * Admin-only HTTPS callable: backfill 256px and 512px thumbnails for all flicks
+ * Admin-only HTTPS callable: backfill 512px and 1080px thumbnails for all flicks
  * that are missing thumbnail URLs. Safe to re-run (idempotent).
  */
 exports.backfillThumbnails = functions

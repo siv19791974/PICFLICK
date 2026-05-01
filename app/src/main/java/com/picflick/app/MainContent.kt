@@ -435,8 +435,8 @@ fun AuthenticatedContent(
                             filterType = filterType,
                             newImageUrl = uploadResult.data.imageUrl,
                             taggedFriends = taggedFriends,
-                            thumbnailUrl256 = uploadResult.data.thumbnailUrl256,
-                            thumbnailUrl512 = uploadResult.data.thumbnailUrl512
+                            thumbnailUrl512 = uploadResult.data.thumbnailUrl512,
+                            thumbnailUrl1080 = uploadResult.data.thumbnailUrl1080
                         )
                         when (result) {
                             is com.picflick.app.data.Result.Success -> {
