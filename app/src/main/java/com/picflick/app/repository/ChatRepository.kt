@@ -134,6 +134,7 @@ class ChatRepository {
             .document(chatId)
             .collection("messages")
             .orderBy("timestamp", Query.Direction.ASCENDING)
+            .limit(100)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
                     android.util.Log.e("ChatRepository", "Messages listener error: ${error.message}")
@@ -860,6 +861,12 @@ class ChatRepository {
      * Get unread message count for a user
      */
     fun getUnreadMessageCount(userId: String): Flow<Int> = callbackFlow {
+        if (CostControlManager.isEnabled(Constants.FeatureFlags.KILL_CHAT_LISTENERS)) {
+            android.util.Log.w("ChatRepository", "getUnreadMessageCount blocked by cost kill-switch")
+            trySend(0)
+            awaitClose { }
+            return@callbackFlow
+        }
         android.util.Log.d("ChatRepository", "getUnreadMessageCount: starting listener for $userId")
         val subscription = db.collection("chatSessions")
             .whereArrayContains("participants", userId)

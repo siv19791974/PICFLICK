@@ -1,9 +1,11 @@
 package com.picflick.app.repository
 
+import com.picflick.app.Constants
 import com.picflick.app.data.*
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ListenerRegistration
 import com.google.firebase.firestore.Query
+import com.picflick.app.util.CostControlManager
 import kotlinx.coroutines.tasks.await
 import java.util.UUID
 
@@ -38,6 +40,11 @@ class NotificationRepository private constructor() {
         onUpdate: (List<Notification>) -> Unit,
         onError: (String) -> Unit
     ): ListenerRegistration {
+        if (CostControlManager.isEnabled(Constants.FeatureFlags.KILL_NOTIFICATION_LISTENERS)) {
+            android.util.Log.w("NotificationRepository", "listenToNotifications blocked by cost kill-switch")
+            onUpdate(emptyList())
+            return ListenerRegistration { }
+        }
         return db.collection("notifications")
             .whereEqualTo("userId", userId)
             .orderBy("timestamp", Query.Direction.DESCENDING)

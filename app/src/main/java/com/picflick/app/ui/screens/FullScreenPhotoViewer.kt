@@ -172,6 +172,7 @@ fun FullScreenPhotoViewer(
     
     var comments by remember { mutableStateOf<List<Comment>>(emptyList()) }
     var newCommentText by remember { mutableStateOf("") }
+    var lastCommentSentAt by remember { mutableStateOf(0L) }
     var isLoadingComments by remember { mutableStateOf(true) }
     var commentsRefreshNonce by remember { mutableStateOf(0) }
     var isRefreshingComments by remember { mutableStateOf(false) }
@@ -1828,8 +1829,11 @@ if (canDeleteCurrent) {
                                             return@FloatingActionButton
                                         }
 
-                                        if (newCommentText.isNotBlank()) {
+                                        val now = System.currentTimeMillis()
+                                        val debounceMs = 2_000L // 2-second rate limit between comments
+                                        if (newCommentText.isNotBlank() && (now - lastCommentSentAt) >= debounceMs) {
                                             val text = newCommentText.trim()
+                                            lastCommentSentAt = now
                                             val parentComment = replyingToComment
                                             val replyParentCommentId = parentComment?.parentCommentId ?: parentComment?.id
                                             // The comment directly being replied to (for notification target)
