@@ -10,8 +10,11 @@ import com.picflick.app.Constants
 import com.picflick.app.data.SubscriptionTier
 import com.google.firebase.functions.FirebaseFunctions
 import com.picflick.app.util.CostControlManager
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
@@ -90,6 +93,15 @@ class BillingViewModel : ViewModel() {
 
     private val _currentTier = MutableStateFlow(SubscriptionTier.FREE)
     val currentTier: StateFlow<SubscriptionTier> = _currentTier.asStateFlow()
+
+    /**
+     * Emitted whenever a tier is validated (or invalidated) by the server.
+     * Pair<SubscriptionTier, expiryMillis?> — expiry is null for downgrades/free.
+     * Collect this in MainActivity to optimistically update AuthViewModel.userProfile
+     * so UploadViewModel and other features see the new tier immediately.
+     */
+    private val _validatedTierEvent = MutableSharedFlow<Pair<SubscriptionTier, Long?>>(extraBufferCapacity = 1)
+    val validatedTierEvent: SharedFlow<Pair<SubscriptionTier, Long?>> = _validatedTierEvent.asSharedFlow()
 
     /**
      * Initialize the billing client.
@@ -269,6 +281,7 @@ class BillingViewModel : ViewModel() {
                     .call(hashMapOf<String, Any>())
                     .await()
                 _currentTier.value = SubscriptionTier.FREE
+                _validatedTierEvent.tryEmit(SubscriptionTier.FREE to null)
                 Log.d("BillingViewModel", "No active purchases found; server subscription state downgraded to FREE")
             } catch (e: Exception) {
                 Log.w("BillingViewModel", "Failed to sync no-active-purchase state with server", e)
@@ -331,7 +344,14 @@ class BillingViewModel : ViewModel() {
             .maxByOrNull { tier -> tier.ordinal }
             ?: SubscriptionTier.FREE
 
-        _currentTier.value = highestActiveTier
+        if (_currentTier.value != highestActiveTier) {
+            _currentTier.value = highestActiveTier
+            // Optimistic default expiry: 30 days from now for upgrades, null for FREE
+            val defaultExpiry = if (highestActiveTier != SubscriptionTier.FREE) {
+                System.currentTimeMillis() + 30L * 24 * 60 * 60 * 1000
+            } else null
+            _validatedTierEvent.tryEmit(highestActiveTier to defaultExpiry)
+        }
     }
 
     /**
@@ -402,10 +422,21 @@ class BillingViewModel : ViewModel() {
         val tierName = data["tier"] as? String ?: return
         val parsedTier = runCatching { SubscriptionTier.valueOf(tierName.uppercase()) }.getOrNull() ?: return
 
+        // Parse ISO expiry from server (e.g. "2026-05-01T20:00:00.000Z")
+        val expiryIso = data["expiryDate"] as? String
+        val expiryMillis = expiryIso?.let { iso ->
+            try {
+                java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", java.util.Locale.US)
+                    .apply { timeZone = java.util.TimeZone.getTimeZone("UTC") }
+                    .parse(iso)?.time
+            } catch (e: Exception) { null }
+        } ?: (System.currentTimeMillis() + 30L * 24 * 60 * 60 * 1000) // fallback 30 days
+
         validatedTierByPurchaseToken[purchase.purchaseToken] = parsedTier
         if (parsedTier.ordinal >= _currentTier.value.ordinal) {
             _currentTier.value = parsedTier
         }
+        _validatedTierEvent.tryEmit(parsedTier to expiryMillis)
     }
 
     /**

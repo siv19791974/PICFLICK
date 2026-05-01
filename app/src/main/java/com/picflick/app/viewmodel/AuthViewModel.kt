@@ -1,6 +1,7 @@
 package com.picflick.app.viewmodel
 
 import android.content.Context
+import android.util.Log
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -9,6 +10,7 @@ import androidx.credentials.CredentialManager
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.picflick.app.data.Result
+import com.picflick.app.data.SubscriptionTier
 import com.picflick.app.data.UserProfile
 import com.picflick.app.repository.FlickRepository
 import com.picflick.app.utils.Analytics
@@ -42,6 +44,26 @@ class AuthViewModel : ViewModel() {
         private set
 
     private var profileListener: ListenerRegistration? = null
+
+    /**
+     * Optimistically update the local userProfile subscription tier immediately.
+     * Called from MainActivity when BillingViewModel validates a purchase (or downgrade),
+     * so UploadViewModel and other features see the new tier before Firestore listener fires.
+     */
+    fun optimisticallyUpdateSubscriptionTier(tier: SubscriptionTier, expiryMillis: Long?) {
+        val current = userProfile ?: return
+        if (current.subscriptionTier == tier &&
+            current.subscriptionActive == (tier != SubscriptionTier.FREE)
+        ) {
+            return // already up to date
+        }
+        userProfile = current.copy(
+            subscriptionTier = tier,
+            subscriptionActive = tier != SubscriptionTier.FREE,
+            subscriptionExpiryDate = expiryMillis ?: 0L
+        )
+        Log.d("AuthViewModel", "Optimistically updated tier to $tier (expiry=$expiryMillis)")
+    }
 
     init {
         // Listen for auth state changes
