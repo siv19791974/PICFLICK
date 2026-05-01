@@ -1063,6 +1063,7 @@ Column(modifier = Modifier.fillMaxSize()) {
                                                     }
                                                 )
                                         ) {
+                                            android.util.Log.d("ThumbVerify", "Chat photo picker: flick=${flick.id.take(8)} using ${if (flick.thumbnailUrl512.isNotBlank()) "THUMB_512" else "ORIGINAL"}")
                                             AsyncImage(
                                                 model = flick.thumbnailUrl512.ifBlank { flick.imageUrl },
                                                 contentDescription = "PicFlick photo",
