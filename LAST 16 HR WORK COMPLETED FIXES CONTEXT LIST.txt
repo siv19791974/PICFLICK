@@ -1,0 +1,76 @@
+PICFLICK3 — LAST 16 HR WORK COMPLETED FIXES CONTEXT LIST
+Updated: 2026-04-01
+
+1) HOME FEED / UPLOAD STABILITY
+- Investigated repeated post-upload thumbnail flicker in Home feed.
+- Applied and iterated multiple reconciliation/identity fixes in Home upload pipeline.
+- Final working direction retained with latest pushed fixes and follow-up rollback/re-apply cycles as tested.
+
+2) GRID SIZE + SPACING CONSISTENCY
+- Synced Home/Profile/UserProfile grid thumb sizing to match.
+- Tuned Home top grid spacer (latest set to 1dp).
+- Locked user-approved grid height balance after micro-adjustments.
+
+3) MESSAGES / UNREAD BADGE ACCURACY
+- Fixed false unread counter behavior in My Messages path.
+- Updated message badge styling (red badge requirement previously applied).
+- Rechecked unread source mapping in chat session parsing paths.
+
+4) NOTIFICATION ROUTING + COPY
+- Fixed message notification tap to open direct in-chat target.
+- Improved comment-heart notification behavior/routing paths.
+- Ensured photo reaction notification flow goes to correct viewer intent.
+
+5) EDIT/RETURN NAVIGATION RELIABILITY
+- Stabilized edit-photo return-screen behavior and related back-flow issues.
+- Fixed forced-home lifecycle/navigation regressions triggered by app state transitions.
+
+6) DEVELOPER + FEEDBACK TOOLS
+- Added/expanded Developer tooling with feedback inbox behavior.
+- Added developer access gate/password flow and related settings wiring.
+- Updated feedback access/firestore permission paths and related handling.
+
+7) SETTINGS / APPEARANCE / ABOUT POLISH
+- Added 3-mode appearance behavior (Light / Dark / System) in settings flow.
+- Restyled popups to dark shared template where requested.
+- Updated About/Version presentation and spacing tweaks per iterative feedback.
+
+8) CONTACT US / LEGAL ADJUSTMENTS
+- Moved Contact UX toward popup-based flow where requested.
+- Restored Legal routing behavior when requested rollback was made.
+- Adjusted Contact submit button disabled-state text/icon styling to black.
+
+9) ALBUM / GROUP / ICON DISPLAY FIXES
+- Applied multiple UI consistency fixes for album/group icon display, borders, and rendering behavior.
+- Synced icon visual treatment in several screens to match requested design language.
+
+10) EXTERNAL SHARE IMPORT FLOW
+- Kept share-to-app flow active with import choice behavior.
+- Rechecked and restored fast feed refresh behavior for shared import success path.
+
+11) STORAGE USAGE BAR INVESTIGATION + HARDENING
+- Investigated underreported storage usage (example: low GB shown despite many photos).
+- Hardened recursive storage byte calculation paths in ManageStorage/Settings to avoid full-total failure when individual metadata/list calls fail.
+
+12) CHAT OPEN UX REGRESSION + FIX
+- A chat loading/spinner regression was introduced while trying to remove initial top-to-bottom jump.
+- Removed the blocking initial gate and restored immediate chat rendering behavior.
+
+13) LINT/BUILD SUPPORT
+- Repeated compile/lint fixes across touched files after each adjustment cycle.
+- Resolved import/symbol mismatches introduced during rapid iteration.
+
+14) GIT WORKFLOW
+- Multiple commits/pushes completed throughout the session as requested.
+- Several targeted rollbacks/restores were performed to recover known-good behavior when regressions appeared.
+
+CURRENT CONTEXT NOTES
+- Home flicker issue was the most iterative/high-risk area with multiple attempts and partial regressions during experiments.
+- Recent fixes were focused on stabilizing behavior while preserving requested UX tweaks.
+- Current chat loading and storage calculation issues have just been patched again and lint is clean on touched files.
+
+RECOMMENDED NEXT QUICK CHECKS
+- Verify Home upload behavior over 30s (normal upload + external share upload).
+- Verify storage bars against expected count/size after reopening Manage Storage.
+- Verify chat opens immediately with no persistent spinner.
+- If stable, commit/push current uncommitted changes as one clean checkpoint.
