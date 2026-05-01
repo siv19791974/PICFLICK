@@ -373,7 +373,7 @@ private fun FeaturedPhotoCard(
         Column {
             // Photo
             AsyncImage(
-                model = withCacheBust(flick.imageUrl, flick.timestamp),
+                model = withCacheBust(flick.thumbnailUrl512.ifBlank { flick.imageUrl }, flick.timestamp),
                 contentDescription = null,
                 modifier = Modifier
                     .fillMaxWidth()
@@ -451,7 +451,7 @@ private fun ExplorePhotoCard(
     ) {
         Box {
             AsyncImage(
-                model = withCacheBust(flick.imageUrl, flick.timestamp),
+                model = withCacheBust(flick.thumbnailUrl256.ifBlank { flick.imageUrl }, flick.timestamp),
                 contentDescription = null,
                 modifier = Modifier.fillMaxSize(),
                 contentScale = ContentScale.Crop
@@ -509,7 +509,7 @@ private fun PopularPhotoRow(
 
         // Thumbnail
         AsyncImage(
-            model = withCacheBust(flick.imageUrl, flick.timestamp),
+            model = withCacheBust(flick.thumbnailUrl256.ifBlank { flick.imageUrl }, flick.timestamp),
             contentDescription = null,
             modifier = Modifier
                 .size(80.dp)
@@ -568,7 +568,7 @@ private fun NewPhotoCard(
         ) {
             // Thumbnail
             AsyncImage(
-                model = withCacheBust(flick.imageUrl, flick.timestamp),
+                model = withCacheBust(flick.thumbnailUrl256.ifBlank { flick.imageUrl }, flick.timestamp),
                 contentDescription = null,
                 modifier = Modifier
                     .size(80.dp)
