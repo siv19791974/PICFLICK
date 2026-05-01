@@ -170,21 +170,29 @@ class ChatRepository {
 
     /**
      * Observe per-user typing state for a chat session.
+     * Uses a dedicated subcollection to avoid re-fetching the entire chat document on every keystroke.
      */
     fun observeTypingStatus(chatId: String): Flow<Map<String, Boolean>> = callbackFlow {
         val subscription = db.collection("chatSessions")
             .document(chatId)
+            .collection("typing")
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
                     close(error)
                     return@addSnapshotListener
                 }
 
-                val typingMap = (snapshot?.get("typingStatus") as? Map<*, *>)
-                    ?.mapNotNull { (k, v) ->
-                        val key = k as? String ?: return@mapNotNull null
-                        val value = v as? Boolean ?: false
-                        key to value
+                val now = System.currentTimeMillis()
+                val staleThresholdMs = 30000L // 30 seconds
+
+                val typingMap = snapshot?.documents
+                    ?.mapNotNull { doc ->
+                        val uid = doc.id
+                        val isTyping = doc.getBoolean("isTyping") ?: false
+                        val updatedAt = doc.getLong("updatedAt") ?: 0L
+                        // Filter out stale typing indicators (older than 30s)
+                        if (!isTyping || (now - updatedAt) > staleThresholdMs) null
+                        else uid to true
                     }
                     ?.toMap()
                     ?: emptyMap()
@@ -197,15 +205,18 @@ class ChatRepository {
 
     /**
      * Update current user's typing state for this chat.
+     * Writes to a dedicated subcollection doc to avoid touching the main session document.
      */
     suspend fun setTypingStatus(chatId: String, userId: String, isTyping: Boolean): Result<Unit> {
         return try {
             db.collection("chatSessions")
                 .document(chatId)
-                .update(
+                .collection("typing")
+                .document(userId)
+                .set(
                     mapOf(
-                        "typingStatus.$userId" to isTyping,
-                        "typingUpdatedAt" to System.currentTimeMillis()
+                        "isTyping" to isTyping,
+                        "updatedAt" to System.currentTimeMillis()
                     )
                 )
                 .await()

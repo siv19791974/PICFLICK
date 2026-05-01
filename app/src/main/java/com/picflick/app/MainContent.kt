@@ -429,6 +429,8 @@ fun AuthenticatedContent(
                 val uploadResult = repository.uploadFlickImage(flick.userId, bytes)
                 when (uploadResult) {
                     is com.picflick.app.data.Result.Success -> {
+                        // Track storage for the new filtered image (+ thumbnails)
+                        repository.incrementStorageUsedBytes(flick.userId, uploadResult.data.totalStorageBytes)
                         val result = repository.updateFlickWithFilter(
                             flickId = flick.id,
                             description = description,
@@ -436,7 +438,8 @@ fun AuthenticatedContent(
                             newImageUrl = uploadResult.data.imageUrl,
                             taggedFriends = taggedFriends,
                             thumbnailUrl512 = uploadResult.data.thumbnailUrl512,
-                            thumbnailUrl1080 = uploadResult.data.thumbnailUrl1080
+                            thumbnailUrl1080 = uploadResult.data.thumbnailUrl1080,
+                            imageSizeBytes = uploadResult.data.totalStorageBytes
                         )
                         when (result) {
                             is com.picflick.app.data.Result.Success -> {

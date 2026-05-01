@@ -8,7 +8,8 @@ import com.google.firebase.firestore.IgnoreExtraProperties
 data class ImageUploadResult(
     val imageUrl: String,
     val thumbnailUrl512: String,
-    val thumbnailUrl1080: String
+    val thumbnailUrl1080: String,
+    val totalStorageBytes: Long = 0L // original + all thumbnails (for incremental storage accounting)
 )
 
 /**

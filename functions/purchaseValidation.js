@@ -53,8 +53,14 @@ exports.validatePurchase = functions
       googleApi = require('googleapis').google;
     }
 
-    // Get service account credentials from Firebase config
-    let serviceAccount = functions.config().googleplay.service_account;
+    // Get service account credentials from Firebase config (graceful fallback if missing)
+    let serviceAccount = null;
+    try {
+      const gpConfig = functions.config().googleplay || {};
+      serviceAccount = gpConfig.service_account;
+    } catch (configErr) {
+      console.warn('Google Play Firebase config not available:', configErr.message);
+    }
 
     if (typeof serviceAccount === 'string') {
       if (serviceAccount.trim() === '-' || serviceAccount.trim().length === 0) {
@@ -436,7 +442,12 @@ async function sendExpiryNotification(userId, userData) {
  * Helper functions for realtime notifications
  */
 function verifyRealtimeNotificationRequest(req) {
-  const sharedSecret = functions.config().googleplay?.rtdn_secret;
+  let sharedSecret = null;
+  try {
+    sharedSecret = functions.config().googleplay?.rtdn_secret;
+  } catch (configErr) {
+    console.warn('Google Play Firebase config not available for RTDN:', configErr.message);
+  }
   if (!sharedSecret) {
     console.error('Missing googleplay.rtdn_secret for RTDN verification');
     return false;
@@ -562,11 +573,14 @@ exports.checkStorageOverage = functions
       .limit(500)
       .get();
 
+    const docs = usersSnapshot.docs;
+    const CHUNK_SIZE = 10;
     let processed = 0;
-    for (const userDoc of usersSnapshot.docs) {
-      // eslint-disable-next-line no-await-in-loop
-      await processUserStorageOverage(userDoc);
-      processed += 1;
+    for (let i = 0; i < docs.length; i += CHUNK_SIZE) {
+      const chunk = docs.slice(i, i + CHUNK_SIZE);
+      // Process chunk in parallel
+      await Promise.all(chunk.map(doc => processUserStorageOverage(doc)));
+      processed += chunk.length;
     }
 
     console.log(`Storage overage policy processed users=${processed}`);
