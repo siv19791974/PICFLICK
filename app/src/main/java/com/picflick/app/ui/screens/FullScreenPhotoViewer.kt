@@ -22,6 +22,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.*
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.material.pullrefresh.PullRefreshIndicator
 import androidx.compose.material.pullrefresh.pullRefresh
 import androidx.compose.material.pullrefresh.rememberPullRefreshState
@@ -637,236 +638,6 @@ val canDeleteCurrent = currentFlick.userId == currentUser.uid
                     Text("Cancel")
                 }
             }
-        )
-    }
-
-    // REPORT PHOTO DIALOG
-    if (showReportDialog) {
-        val reportReasons = listOf(
-            "Sexual or inappropriate content",
-            "Violence or dangerous content",
-            "Harassment or bullying",
-            "Spam or scam",
-            "Hate speech",
-            "Copyright violation",
-            "Other"
-        )
-
-        AlertDialog(
-            onDismissRequest = { showReportDialog = false },
-            title = { Text("Report Photo", color = Color.White) },
-            text = {
-                Column {
-                    Text(
-                        "Why are you reporting this photo?",
-                        color = Color.Gray,
-                        modifier = Modifier.padding(bottom = 16.dp)
-                    )
-                    reportReasons.forEach { reason ->
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable { selectedReportReason = reason }
-                                .padding(vertical = 8.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            RadioButton(
-                                selected = selectedReportReason == reason,
-                                onClick = { selectedReportReason = reason },
-                                colors = RadioButtonDefaults.colors(
-                                    selectedColor = Color(0xFFD7ECFF)
-                                )
-                            )
-                            Text(
-                                text = reason,
-                                color = Color.White,
-                                modifier = Modifier.padding(start = 8.dp)
-                            )
-                        }
-                    }
-                }
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        if (selectedReportReason.isNotEmpty()) {
-                            coroutineScope.launch {
-                                val result = repository.reportPhoto(
-                                    flickId = currentFlick.id,
-                                    reporterId = currentUser.uid,
-                                    reason = selectedReportReason,
-                                    details = "Reported from photo viewer"
-                                )
-                                when (result) {
-                                    is com.picflick.app.data.Result.Success -> {
-                                        showPicFlickToast("Report submitted. Thank you!")
-                                    }
-                                    is com.picflick.app.data.Result.Error -> {
-                                        showPicFlickToast("Failed to submit report")
-                                    }
-                                    else -> {}
-                                }
-                            }
-                            showReportDialog = false
-                            selectedReportReason = ""
-                        }
-                    },
-                    enabled = selectedReportReason.isNotEmpty()
-                ) {
-                    Text("Submit Report", color = if (selectedReportReason.isNotEmpty()) Color(0xFFFF6B6B) else Color.Gray)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { 
-                    showReportDialog = false
-                    selectedReportReason = ""
-                }) {
-                    Text("Cancel")
-                }
-            },
-            containerColor = Color(0xFF1C1C1E),
-            titleContentColor = Color.White,
-            textContentColor = Color.White
-        )
-    }
-
-    // MUTE USER DIALOG
-    if (showMuteUserDialog) {
-        val muteDurations = listOf(
-            "1 hour" to TimeUnit.HOURS.toMillis(1),
-            "1 day" to TimeUnit.DAYS.toMillis(1),
-            "1 week" to TimeUnit.DAYS.toMillis(7),
-            "1 month" to TimeUnit.DAYS.toMillis(30),
-            "1 year" to TimeUnit.DAYS.toMillis(365),
-            "Mute user" to Long.MAX_VALUE
-        )
-
-        AlertDialog(
-            onDismissRequest = {
-                showMuteUserDialog = false
-                selectedMuteDurationMillis = null
-            },
-            title = { Text("Mute User", color = Color.White) },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(
-                        "Hide ${currentFlick.userName}'s uploads for how long?",
-                        color = Color.Gray
-                    )
-                    muteDurations.forEach { (label, durationMs) ->
-                        FilterChip(
-                            selected = selectedMuteDurationMillis == durationMs,
-                            onClick = { selectedMuteDurationMillis = durationMs },
-                            label = {
-                                Text(
-                                    label,
-                                    color = if (selectedMuteDurationMillis == durationMs) Color.Black else Color.White
-                                )
-                            },
-                            colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = Color(0xFF58A6FF),
-                                containerColor = Color(0xFF2C2C2E),
-                                selectedLabelColor = Color.Black,
-                                labelColor = Color.White
-                            )
-                        )
-                    }
-                }
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        val selectedDuration = selectedMuteDurationMillis ?: return@TextButton
-                        val muteUntil = if (selectedDuration == Long.MAX_VALUE) Long.MAX_VALUE else System.currentTimeMillis() + selectedDuration
-                        repository.muteUser(
-                            currentUserId = currentUser.uid,
-                            targetUserId = currentFlick.userId,
-                            muteUntilEpochMs = muteUntil
-                        ) { muteResult ->
-                            when (muteResult) {
-                                is com.picflick.app.data.Result.Success -> {
-                                    showPicFlickToast("User muted")
-                                    onDismiss()
-                                }
-                                is com.picflick.app.data.Result.Error -> showPicFlickToast("Failed to mute user")
-                                else -> Unit
-                            }
-                        }
-                        showMuteUserDialog = false
-                        selectedMuteDurationMillis = null
-                    },
-                    enabled = selectedMuteDurationMillis != null
-                ) {
-                    Text(
-                        "Mute",
-                        color = if (selectedMuteDurationMillis != null) Color(0xFFFFB347) else Color.Gray
-                    )
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = {
-                    showMuteUserDialog = false
-                    selectedMuteDurationMillis = null
-                }) {
-                    Text("Cancel")
-                }
-            },
-            containerColor = Color(0xFF1C1C1E),
-            titleContentColor = Color.White,
-            textContentColor = Color.White
-        )
-    }
-
-    // BLOCK USER CONFIRMATION DIALOG
-    if (showBlockConfirmation) {
-        AlertDialog(
-            onDismissRequest = { showBlockConfirmation = false },
-            title = { Text("Block User?", color = Color.White) },
-            text = {
-                Text(
-                    "You are about to block ${currentFlick.userName}.\n\n" +
-                    "They will no longer be able to:\n" +
-                    "� See your photos\n" +
-                    "� Message you\n" +
-                    "� Find you in search\n\n" +
-                    "You can unblock them anytime from Privacy Settings.",
-                    color = Color.Gray
-                )
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        coroutineScope.launch {
-                            val result = repository.blockUser(
-                                currentUserId = currentUser.uid,
-                                targetUserId = currentFlick.userId
-                            ) { blockResult ->
-                                when (blockResult) {
-                                    is com.picflick.app.data.Result.Success -> {
-                                        showPicFlickToast("User blocked")
-                                        onDismiss() // Close the photo viewer
-                                    }
-                                    is com.picflick.app.data.Result.Error -> {
-                                        showPicFlickToast("Failed to block user")
-                                    }
-                                    else -> {}
-                                }
-                            }
-                        }
-                        showBlockConfirmation = false
-                    }
-                ) {
-                    Text("Block", color = Color.Red)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showBlockConfirmation = false }) {
-                    Text("Cancel")
-                }
-            },
-            containerColor = Color(0xFF1C1C1E),
-            titleContentColor = Color.White,
-            textContentColor = Color.White
         )
     }
 
@@ -1978,6 +1749,288 @@ if (canDeleteCurrent) {
                     )
                 }
                 
+                // BLOCK CONFIRMATION BOTTOM SHEET - Sexy popup menu
+                if (showBlockConfirmation) {
+                    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+                    ModalBottomSheet(
+                        onDismissRequest = { showBlockConfirmation = false },
+                        sheetState = sheetState,
+                        containerColor = Color(0xFF121212),
+                        contentColor = Color.White,
+                        dragHandle = {
+                            Surface(
+                                modifier = Modifier
+                                    .padding(top = 8.dp)
+                                    .size(width = 44.dp, height = 5.dp),
+                                shape = RoundedCornerShape(50),
+                                color = Color.White.copy(alpha = 0.28f)
+                            ) {}
+                        }
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 24.dp, vertical = 20.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text(
+                                text = "Block User",
+                                color = Color.White,
+                                fontSize = 20.sp,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(bottom = 20.dp)
+                            )
+
+                            ActionSheetRow(
+                                icon = Icons.Default.Close,
+                                title = "Keep Viewing",
+                                subtitle = "Go back to photo",
+                                accentColor = Color(0xFF4B5563),
+                                onClick = { showBlockConfirmation = false }
+                            )
+
+                            Spacer(modifier = Modifier.height(12.dp))
+
+                            ActionSheetRow(
+                                icon = Icons.Default.Block,
+                                title = "Block User",
+                                subtitle = "You won't see their photos anymore",
+                                accentColor = Color(0xFFFF6B6B),
+                                onClick = {
+                                    repository.blockUser(currentUser.uid, currentFlick.userId) { result ->
+                                        when (result) {
+                                            is com.picflick.app.data.Result.Success -> {
+                                                showPicFlickToast("User blocked")
+                                                deletedFlickIds.add(currentFlick.id)
+                                            }
+                                            is com.picflick.app.data.Result.Error -> {
+                                                showPicFlickToast("Failed to block user")
+                                            }
+                                            else -> {}
+                                        }
+                                    }
+                                    showBlockConfirmation = false
+                                }
+                            )
+
+                            Spacer(modifier = Modifier.height(12.dp))
+                        }
+                    }
+                }
+                
+                // MUTE USER BOTTOM SHEET - Sexy popup menu
+                if (showMuteUserDialog) {
+                    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+                    var selectedDuration by remember { mutableStateOf<Long?>(null) }
+                    val durations = listOf(
+                        Triple("24 hours", TimeUnit.HOURS.toMillis(24), "Hide for one day"),
+                        Triple("7 days", TimeUnit.DAYS.toMillis(7), "Hide for one week"),
+                        Triple("30 days", TimeUnit.DAYS.toMillis(30), "Hide for one month")
+                    )
+                    ModalBottomSheet(
+                        onDismissRequest = { showMuteUserDialog = false },
+                        sheetState = sheetState,
+                        containerColor = Color(0xFF121212),
+                        contentColor = Color.White,
+                        dragHandle = {
+                            Surface(
+                                modifier = Modifier
+                                    .padding(top = 8.dp)
+                                    .size(width = 44.dp, height = 5.dp),
+                                shape = RoundedCornerShape(50),
+                                color = Color.White.copy(alpha = 0.28f)
+                            ) {}
+                        }
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 24.dp, vertical = 20.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text(
+                                text = "Mute User",
+                                color = Color.White,
+                                fontSize = 20.sp,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(bottom = 4.dp)
+                            )
+                            Text(
+                                text = "Temporarily hide photos from ${currentFlick.userName}.",
+                                color = Color(0xFFB7BDC9),
+                                fontSize = 14.sp,
+                                modifier = Modifier.padding(bottom = 20.dp)
+                            )
+
+                            durations.forEach { (label, millis, desc) ->
+                                val isSelected = selectedDuration == millis
+                                ActionSheetRow(
+                                    icon = Icons.Default.Schedule,
+                                    title = label,
+                                    subtitle = desc,
+                                    accentColor = if (isSelected) Color(0xFFFFB347) else Color(0xFFFFB347).copy(alpha = 0.38f),
+                                    isSelected = isSelected,
+                                    onClick = { selectedDuration = millis }
+                                )
+                                Spacer(modifier = Modifier.height(12.dp))
+                            }
+
+                            ActionSheetRow(
+                                icon = Icons.Default.Close,
+                                title = "Cancel",
+                                subtitle = "Keep seeing photos",
+                                accentColor = Color(0xFF4B5563),
+                                onClick = { showMuteUserDialog = false }
+                            )
+
+                            AnimatedVisibility(
+                                visible = selectedDuration != null,
+                                enter = fadeIn() + expandVertically(),
+                                exit = fadeOut() + shrinkVertically()
+                            ) {
+                                Column {
+                                    Spacer(modifier = Modifier.height(12.dp))
+                                    ActionSheetRow(
+                                        icon = Icons.Default.NotificationsOff,
+                                        title = "Mute",
+                                        subtitle = "Hide for selected time",
+                                        accentColor = Color(0xFFFFB347),
+                                        onClick = {
+                                            selectedDuration?.let { duration ->
+                                                val muteUntil = System.currentTimeMillis() + duration
+                                                repository.muteUser(currentUser.uid, currentFlick.userId, muteUntil) { result ->
+                                                    when (result) {
+                                                        is com.picflick.app.data.Result.Success -> {
+                                                            showPicFlickToast("User muted")
+                                                            deletedFlickIds.add(currentFlick.id)
+                                                        }
+                                                        is com.picflick.app.data.Result.Error -> {
+                                                            showPicFlickToast("Failed to mute user")
+                                                        }
+                                                        else -> {}
+                                                    }
+                                                }
+                                                showMuteUserDialog = false
+                                            }
+                                        }
+                                    )
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(12.dp))
+                        }
+                    }
+                }
+                
+                // REPORT PHOTO BOTTOM SHEET - Sexy popup menu
+                if (showReportDialog) {
+                    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+                    var selectedReason by remember { mutableStateOf("") }
+                    val reasons = listOf(
+                        Triple("Spam", "Unwanted or repetitive content", Icons.Default.ContentCopy),
+                        Triple("Inappropriate content", "Sexual or violent content", Icons.Default.Warning),
+                        Triple("Harassment", "Bullying or targeting someone", Icons.Default.PersonOff),
+                        Triple("Other", "Something else", Icons.Default.Report)
+                    )
+                    ModalBottomSheet(
+                        onDismissRequest = { showReportDialog = false },
+                        sheetState = sheetState,
+                        containerColor = Color(0xFF121212),
+                        contentColor = Color.White,
+                        dragHandle = {
+                            Surface(
+                                modifier = Modifier
+                                    .padding(top = 8.dp)
+                                    .size(width = 44.dp, height = 5.dp),
+                                shape = RoundedCornerShape(50),
+                                color = Color.White.copy(alpha = 0.28f)
+                            ) {}
+                        }
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 24.dp, vertical = 20.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text(
+                                text = "Report Photo",
+                                color = Color.White,
+                                fontSize = 20.sp,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(bottom = 4.dp)
+                            )
+                            Text(
+                                text = "Why are you reporting this photo?",
+                                color = Color(0xFFB7BDC9),
+                                fontSize = 14.sp,
+                                modifier = Modifier.padding(bottom = 20.dp)
+                            )
+
+                            reasons.forEach { (reason, desc, icon) ->
+                                val isSelected = selectedReason == reason
+                                ActionSheetRow(
+                                    icon = icon,
+                                    title = reason,
+                                    subtitle = desc,
+                                    accentColor = if (isSelected) Color(0xFFFF6B6B) else Color(0xFFFF6B6B).copy(alpha = 0.38f),
+                                    isSelected = isSelected,
+                                    onClick = { selectedReason = reason }
+                                )
+                                Spacer(modifier = Modifier.height(12.dp))
+                            }
+
+                            ActionSheetRow(
+                                icon = Icons.Default.Close,
+                                title = "Cancel",
+                                subtitle = "Go back to photo",
+                                accentColor = Color(0xFF4B5563),
+                                onClick = { showReportDialog = false }
+                            )
+
+                            AnimatedVisibility(
+                                visible = selectedReason.isNotBlank(),
+                                enter = fadeIn() + expandVertically(),
+                                exit = fadeOut() + shrinkVertically()
+                            ) {
+                                Column {
+                                    Spacer(modifier = Modifier.height(12.dp))
+                                    ActionSheetRow(
+                                        icon = Icons.Default.Flag,
+                                        title = "Report",
+                                        subtitle = "Submit report to moderators",
+                                        accentColor = Color(0xFFFF6B6B),
+                                        onClick = {
+                                            if (selectedReason.isNotBlank()) {
+                                                showReportDialog = false
+                                                coroutineScope.launch {
+                                                    val result = repository.reportPhoto(
+                                                        currentFlick.id,
+                                                        currentUser.uid,
+                                                        selectedReason
+                                                    )
+                                                    when (result) {
+                                                        is com.picflick.app.data.Result.Success -> {
+                                                            showPicFlickToast("Report submitted")
+                                                        }
+                                                        is com.picflick.app.data.Result.Error -> {
+                                                            showPicFlickToast("Failed to submit report")
+                                                        }
+                                                        else -> {}
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    )
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(12.dp))
+                        }
+                    }
+                }
+                
+                // BOTTOM USER INFO - With gradient transparent box
                 // BOTTOM USER INFO - With gradient transparent box
                 // Completely hidden when comment panel opens using AnimatedVisibility
                 AnimatedVisibility(
@@ -2394,6 +2447,59 @@ if (canDeleteCurrent) {
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun ActionSheetRow(
+    icon: ImageVector,
+    title: String,
+    subtitle: String,
+    accentColor: Color,
+    isSelected: Boolean = false,
+    onClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(Color(0xFF1C1F26))
+            .border(1.dp, accentColor.copy(alpha = if (isSelected) 0.85f else 0.38f), RoundedCornerShape(16.dp))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = title,
+            tint = accentColor,
+            modifier = Modifier.size(28.dp)
+        )
+
+        Spacer(modifier = Modifier.width(14.dp))
+
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = title,
+                color = Color.White,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.SemiBold
+            )
+            Text(
+                text = subtitle,
+                color = Color(0xFFB7BDC9),
+                fontSize = 14.sp
+            )
+        }
+
+        if (isSelected) {
+            Icon(
+                imageVector = Icons.Default.Check,
+                contentDescription = "Selected",
+                tint = accentColor,
+                modifier = Modifier.size(24.dp)
+            )
         }
     }
 }

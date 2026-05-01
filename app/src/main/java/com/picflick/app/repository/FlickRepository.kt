@@ -3015,9 +3015,14 @@ class FlickRepository private constructor() {
             db.collection("reports").add(report).await()
 
             // Also increment report count on the flick for auto-moderation
-            db.collection("flicks").document(flickId)
-                .update("reportCount", FieldValue.increment(1))
-                .await()
+            // (swallow errors so chat photos / deleted flicks don't block the report)
+            try {
+                db.collection("flicks").document(flickId)
+                    .update("reportCount", FieldValue.increment(1))
+                    .await()
+            } catch (_: Exception) {
+                // Flick may not exist (chat photo, already deleted, etc.) — report is still saved
+            }
 
             Result.Success(Unit)
         } catch (e: Exception) {
