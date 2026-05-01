@@ -3171,13 +3171,14 @@ private fun FlickGrid(
                     if (start > end) return@collect
                     for (i in start..end) {
                         val flick = flicks[i]
-                        if (flick.id.isBlank() || flick.imageUrl.isBlank() || prefetchedFlickIds.contains(flick.id)) continue
+                        val gridImageUrl = flick.thumbnailUrl256.ifBlank { flick.imageUrl }
+                        if (flick.id.isBlank() || gridImageUrl.isBlank() || prefetchedFlickIds.contains(flick.id)) continue
                         prefetchedFlickIds.add(flick.id)
                         val prefetchIdentity = flick.clientUploadId.takeIf { it.isNotBlank() }
                             ?: flick.id.takeIf { it.isNotBlank() }
                             ?: "flick_${flick.timestamp}"
                         val request = ImageRequest.Builder(context)
-                            .data(withCacheBust(flick.imageUrl, prefetchIdentity))
+                            .data(withCacheBust(gridImageUrl, prefetchIdentity))
                             .crossfade(false)
                             .memoryCachePolicy(CachePolicy.ENABLED)
                             .diskCachePolicy(CachePolicy.ENABLED)
@@ -3225,7 +3226,8 @@ private fun FlickGrid(
                     ?: flick.id.takeIf { it.isNotBlank() }
                     ?: "flick_${flick.timestamp}"
 
-                val cacheBusted = withCacheBust(flick.imageUrl, stableIdentity)
+                val gridImageUrl = flick.thumbnailUrl256.ifBlank { flick.imageUrl }
+                val cacheBusted = withCacheBust(gridImageUrl, stableIdentity)
                 val imageModel = remember(stableIdentity, cacheBusted) {
                     if (cacheBusted.isNotBlank()) {
                         ImageRequest.Builder(context)

@@ -525,7 +525,7 @@ val canDeleteCurrent = currentFlick.userId == currentUser.uid
             prefetchLastEnqueuedAt[prefetchKey] = now
 
             val request = ImageRequest.Builder(context)
-                .data(withCacheBust(neighbor.imageUrl, neighbor.timestamp))
+                .data(withCacheBust(neighbor.thumbnailUrl512.ifBlank { neighbor.imageUrl }, neighbor.timestamp))
                 .size(requestWidthPx, requestHeightPx)
                 .crossfade(false)
                 .memoryCachePolicy(CachePolicy.ENABLED)
@@ -1091,9 +1091,10 @@ val canDeleteCurrent = currentFlick.userId == currentUser.uid
                                 ),
                             contentAlignment = Alignment.Center
                         ) {
-                            val photoModel = remember(photo.imageUrl, photo.timestamp, requestWidthPx, requestHeightPx) {
+                            val displayUrl = photo.thumbnailUrl512.ifBlank { photo.imageUrl }
+                            val photoModel = remember(displayUrl, photo.timestamp, requestWidthPx, requestHeightPx) {
                                 ImageRequest.Builder(context)
-                                    .data(withCacheBust(photo.imageUrl, photo.timestamp))
+                                    .data(withCacheBust(displayUrl, photo.timestamp))
                                     .size(requestWidthPx, requestHeightPx)
                                     .crossfade(false)
                                     .memoryCachePolicy(CachePolicy.ENABLED)
