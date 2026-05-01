@@ -741,5 +741,8 @@ exports.migrateReactionsToSubcollection = functions
 
 // Export purchase/subscription validation callables from the dedicated module.
 Object.assign(exports, require('./purchaseValidation'));
-  
+
+// Export thumbnail backfill callable + HTTP trigger.
+Object.assign(exports, require('./thumbnailBackfill'));
+
 // deploy-bump 
