@@ -3172,6 +3172,7 @@ private fun FlickGrid(
                     for (i in start..end) {
                         val flick = flicks[i]
                         val gridImageUrl = flick.thumbnailUrl256.ifBlank { flick.imageUrl }
+                        android.util.Log.d("ThumbVerify", "HomeScreen prefetch: flick=${flick.id.take(8)} using ${if (flick.thumbnailUrl256.isNotBlank()) "THUMB_256" else "ORIGINAL"} (${gridImageUrl.length} chars)")
                         if (flick.id.isBlank() || gridImageUrl.isBlank() || prefetchedFlickIds.contains(flick.id)) continue
                         prefetchedFlickIds.add(flick.id)
                         val prefetchIdentity = flick.clientUploadId.takeIf { it.isNotBlank() }
@@ -3227,6 +3228,7 @@ private fun FlickGrid(
                     ?: "flick_${flick.timestamp}"
 
                 val gridImageUrl = flick.thumbnailUrl256.ifBlank { flick.imageUrl }
+                android.util.Log.d("ThumbVerify", "HomeScreen grid cell: flick=${flick.id.take(8)} using ${if (flick.thumbnailUrl256.isNotBlank()) "THUMB_256" else "ORIGINAL"}")
                 val cacheBusted = withCacheBust(gridImageUrl, stableIdentity)
                 val imageModel = remember(stableIdentity, cacheBusted) {
                     if (cacheBusted.isNotBlank()) {

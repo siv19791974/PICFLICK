@@ -896,6 +896,7 @@ private fun DynamicPhotoGrid(
                 colors = CardDefaults.cardColors(containerColor = Color.DarkGray)
             ) {
                 Box(modifier = Modifier.fillMaxSize()) {
+                    android.util.Log.d("ThumbVerify", "ProfileScreen grid: flick=${flick.id.take(8)} using ${if (flick.thumbnailUrl256.isNotBlank()) "THUMB_256" else "ORIGINAL"}")
                     AsyncImage(
                         model = withCacheBust(flick.thumbnailUrl256.ifBlank { flick.imageUrl }, flick.timestamp),
                         contentDescription = null,
@@ -1111,6 +1112,7 @@ private fun PhotoGridItem(
         colors = CardDefaults.cardColors(containerColor = Color.Transparent)
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
+            android.util.Log.d("ThumbVerify", "ProfileScreen grid: flick=${flick.id.take(8)} using ${if (flick.thumbnailUrl256.isNotBlank()) "THUMB_256" else "ORIGINAL"}")
             AsyncImage(
                 model = withCacheBust(flick.thumbnailUrl256.ifBlank { flick.imageUrl }, flick.timestamp),
                 contentDescription = null,
@@ -1139,6 +1141,7 @@ private fun ProfilePhotoGridItem(
         colors = CardDefaults.cardColors(containerColor = Color.Transparent)
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
+            android.util.Log.d("ThumbVerify", "ProfileScreen grid: flick=${flick.id.take(8)} using ${if (flick.thumbnailUrl256.isNotBlank()) "THUMB_256" else "ORIGINAL"}")
             AsyncImage(
                 model = withCacheBust(flick.thumbnailUrl256.ifBlank { flick.imageUrl }, flick.timestamp),
                 contentDescription = null,
