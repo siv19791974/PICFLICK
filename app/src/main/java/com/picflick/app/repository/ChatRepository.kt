@@ -252,12 +252,16 @@ class ChatRepository {
             participants.forEach { participantId ->
                 if (participantId == senderId) {
                     updates["unreadCount.$participantId"] = 0
+                    android.util.Log.d("ChatRepository", "sendMessage: resetting unreadCount for sender=$participantId")
                 } else {
                     updates["unreadCount.$participantId"] = FieldValue.increment(1)
+                    android.util.Log.d("ChatRepository", "sendMessage: incrementing unreadCount for recipient=$participantId")
                 }
             }
 
+            android.util.Log.d("ChatRepository", "sendMessage: applying session updates=$updates")
             sessionDoc.update(updates).await()
+            android.util.Log.d("ChatRepository", "sendMessage: session update SUCCESS")
 
             // Create notification for recipient
             val notificationMessage = when {
