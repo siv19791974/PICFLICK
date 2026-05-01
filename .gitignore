@@ -15,3 +15,5 @@
 .externalNativeBuild
 .cxx
 local.properties
+deploy_debug*.txt  
+cloud_build_error_links.txt  
