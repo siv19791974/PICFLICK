@@ -21,7 +21,6 @@ import androidx.compose.material.icons.filled.Upgrade
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -30,6 +29,7 @@ import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -60,7 +60,6 @@ import com.picflick.app.viewmodel.SubscriptionProduct
 import com.google.firebase.Timestamp
 import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FirebaseFirestore
-import com.google.firebase.firestore.ListenerRegistration
 import com.google.firebase.storage.FirebaseStorage
 import com.google.firebase.storage.StorageReference
 import kotlinx.coroutines.tasks.await
@@ -93,23 +92,32 @@ fun ManageStorageScreen(
     val remainingGB = totalGB - usedGB
     val isDarkMode = ThemeManager.isDarkMode.value
 
-    // Live storage sync from user profile document.
-    DisposableEffect(userProfile.uid) {
-        val registration: ListenerRegistration = FirebaseFirestore.getInstance()
-            .collection("users")
-            .document(userProfile.uid)
-            .addSnapshotListener { snapshot, _ ->
-                val liveBytes = snapshot?.getNumericLong("storageUsedBytes") ?: return@addSnapshotListener
-                storageUsed = liveBytes
-            }
+    val context = LocalContext.current
 
-        onDispose {
-            registration.remove()
-        }
+    // One-time storage fetch (avoids spawning a snapshot listener per settings visit)
+    LaunchedEffect(userProfile.uid) {
+        val snapshot = runCatching {
+            FirebaseFirestore.getInstance()
+                .collection("users")
+                .document(userProfile.uid)
+                .get()
+                .await()
+        }.getOrNull()
+        snapshot?.getNumericLong("storageUsedBytes")?.let { storageUsed = it }
     }
 
     // Storage accuracy sync: recalculate from Storage and update profile if drifted.
+    // Rate-limited to once per day to avoid expensive recursive listAll() scans.
     LaunchedEffect(userProfile.uid) {
+        val prefs = context.getSharedPreferences("picflick_storage_sync", android.content.Context.MODE_PRIVATE)
+        val lastSyncKey = "last_sync_${userProfile.uid}"
+        val lastSync = prefs.getLong(lastSyncKey, 0L)
+        val oneDayMs = 24 * 60 * 60 * 1000L
+        if (System.currentTimeMillis() - lastSync < oneDayMs) {
+            android.util.Log.d("ManageStorageScreen", "Skipping storage recalculation: last sync was <24h ago")
+            return@LaunchedEffect
+        }
+
         val recalculation = runCatching { calculateStorageUsedBytesFromFiles(userProfile.uid) }.getOrNull() ?: return@LaunchedEffect
         if (recalculation.hadErrors) {
             android.util.Log.w("ManageStorageScreen", "Skipping storageUsedBytes update due to partial Storage scan errors for user=${userProfile.uid}")
@@ -130,6 +138,7 @@ fun ManageStorageScreen(
                     .await()
             }
         }
+        prefs.edit().putLong(lastSyncKey, System.currentTimeMillis()).apply()
     }
     
     // Calculate actual photo count from Firestore

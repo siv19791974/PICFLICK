@@ -45,7 +45,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.graphics.createBitmap
-import coil3.ImageLoader
+import coil3.SingletonImageLoader
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.allowHardware
@@ -1808,7 +1808,7 @@ private suspend fun loadBitmapFromUri(context: android.content.Context, uri: Uri
             .size(coil3.size.Dimension.Undefined, coil3.size.Dimension.Undefined)
             .build()
 
-        val imageLoader = ImageLoader.Builder(context).build()
+        val imageLoader = SingletonImageLoader.get(context)
         val result = imageLoader.execute(request)
         result.image?.toBitmap()
     } catch (e: Exception) {

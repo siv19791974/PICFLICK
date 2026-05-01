@@ -55,7 +55,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import kotlin.math.roundToInt
-import coil3.ImageLoader
+import coil3.SingletonImageLoader
 import coil3.compose.AsyncImage
 import coil3.request.CachePolicy
 import coil3.request.ImageRequest
@@ -156,7 +156,7 @@ fun FullScreenPhotoViewer(
     
     val repository = remember { FlickRepository.getInstance() }
     val coroutineScope = rememberCoroutineScope()
-    val prefetchImageLoader = remember(context) { ImageLoader.Builder(context).build() }
+    val prefetchImageLoader = remember(context) { SingletonImageLoader.get(context) }
 
     DisposableEffect(Unit) {
         val activity = context.findActivity()

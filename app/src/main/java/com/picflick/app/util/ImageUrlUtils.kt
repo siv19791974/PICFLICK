@@ -1,7 +1,7 @@
 package com.picflick.app.util
 
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -67,19 +67,16 @@ fun rememberLiveUserPhotoUrl(userId: String, fallbackPhotoUrl: String?): String 
         mutableStateOf(normalizePhotoUrl(fallbackPhotoUrl))
     }
 
-    DisposableEffect(userId) {
-        if (userId.isBlank()) {
-            onDispose { }
-        } else {
-            val listener = FlickRepository.getInstance().listenToUserProfile(userId) { result ->
-                if (result is Result.Success) {
-                    val liveUrl = normalizePhotoUrl(result.data.photoUrl)
-                    if (liveUrl.isNotBlank()) {
-                        resolvedPhotoUrl = liveUrl
-                    }
+    LaunchedEffect(userId) {
+        if (userId.isBlank()) return@LaunchedEffect
+        // One-time fetch to avoid spawning a snapshot listener per composable instance
+        FlickRepository.getInstance().getUserProfile(userId) { result ->
+            if (result is Result.Success) {
+                val fetchedUrl = normalizePhotoUrl(result.data.photoUrl)
+                if (fetchedUrl.isNotBlank()) {
+                    resolvedPhotoUrl = fetchedUrl
                 }
             }
-            onDispose { listener.remove() }
         }
     }
 
@@ -93,16 +90,13 @@ fun rememberLiveUserTierColor(userId: String): Color {
         mutableStateOf(SubscriptionTier.FREE.getColor())
     }
 
-    DisposableEffect(userId) {
-        if (userId.isBlank()) {
-            onDispose { }
-        } else {
-            val listener = FlickRepository.getInstance().listenToUserProfile(userId) { result ->
-                if (result is Result.Success) {
-                    tierColor = result.data.getEffectiveTier().getColor()
-                }
+    LaunchedEffect(userId) {
+        if (userId.isBlank()) return@LaunchedEffect
+        // One-time fetch to avoid spawning a snapshot listener per composable instance
+        FlickRepository.getInstance().getUserProfile(userId) { result ->
+            if (result is Result.Success) {
+                tierColor = result.data.getEffectiveTier().getColor()
             }
-            onDispose { listener.remove() }
         }
     }
 
