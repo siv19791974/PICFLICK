@@ -748,4 +748,7 @@ Object.assign(exports, require('./thumbnailBackfill'));
 // Debug helper: check if a thumbnail file exists in Storage.
 Object.assign(exports, require('./checkThumbnail'));
 
+// Legacy 256px thumbnail cleanup (one-off).
+Object.assign(exports, require('./cleanup256'));
+
 // deploy-bump 
