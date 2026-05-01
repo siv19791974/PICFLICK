@@ -1,5 +1,6 @@
 package com.picflick.app.ui.screens
 
+import com.picflick.app.Constants
 import android.app.Activity
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -96,8 +97,7 @@ fun SettingsScreen(
             context.packageManager.getPackageInfo(context.packageName, 0).versionName ?: "-"
         }.getOrDefault("-")
     }
-    val developerUid = "LpSqE40IZGeAGMknTAEzysqp5l33"
-    val isDeveloperUser = userProfile.uid == developerUid
+    val isDeveloperUser = userProfile.uid in Constants.DEVELOPER_UIDS
     var showSignOutDialog by remember { mutableStateOf(false) }
     var showDeleteAccountDialog by remember { mutableStateOf(false) }
     var showDeleteAccountFinalDialog by remember { mutableStateOf(false) }
@@ -132,7 +132,7 @@ fun SettingsScreen(
     var developerPasswordError by remember { mutableStateOf<String?>(null) }
     // Use ThemeManager for theme state (persists across sessions)
     val isDarkMode by ThemeManager.isDarkMode
-    val developerAccessPassword = "687495"
+    val developerAccessPassword = Constants.DEVELOPER_ACCESS_PASSWORD
     
     // Calculate actual cache size
     fun calculateDirSize(dir: java.io.File): Long {

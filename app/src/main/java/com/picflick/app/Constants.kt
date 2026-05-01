@@ -149,4 +149,15 @@ object Constants {
         const val FREE_TIER_BYPASS = "freeTierBypass"
         const val PANIC_MODE = "panicMode"
     }
+
+    /**
+     * Developer access — UIDs that always see the Developer menu entry.
+     * Add Thomas Sivyer's UID here when known.
+     */
+    val DEVELOPER_UIDS = setOf(
+        "LpSqE40IZGeAGMknTAEzysqp5l33"
+        // TODO: add Thomas Sivyer's UID here
+    )
+    const val DEVELOPER_DISPLAY_NAME = "PicFlick Developer"
+    const val DEVELOPER_ACCESS_PASSWORD = "687495"
 }

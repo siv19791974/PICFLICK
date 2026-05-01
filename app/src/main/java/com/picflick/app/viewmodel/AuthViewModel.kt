@@ -9,6 +9,7 @@ import androidx.credentials.ClearCredentialStateRequest
 import androidx.credentials.CredentialManager
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.picflick.app.Constants
 import com.picflick.app.data.Result
 import com.picflick.app.data.SubscriptionTier
 import com.picflick.app.data.UserProfile
@@ -28,8 +29,8 @@ class AuthViewModel : ViewModel() {
     private val repository = FlickRepository.getInstance()
     private val auth = FirebaseAuth.getInstance()
 
-    private val developerUid = "LpSqE40IZGeAGMknTAEzysqp5l33"
-    private val developerDisplayName = "PicFlick Developer"
+    private val developerUids = Constants.DEVELOPER_UIDS
+    private val developerDisplayName = Constants.DEVELOPER_DISPLAY_NAME
 
     var currentUser by mutableStateOf<FirebaseUser?>(auth.currentUser)
         private set
@@ -172,7 +173,7 @@ class AuthViewModel : ViewModel() {
     }
 
     private fun enforceDeveloperDisplayName(profile: UserProfile): UserProfile {
-        if (profile.uid != developerUid) return profile
+        if (profile.uid !in developerUids) return profile
         if (profile.displayName == developerDisplayName) return profile
         return profile.copy(
             displayName = developerDisplayName,
