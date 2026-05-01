@@ -1845,8 +1845,13 @@ Box(
                                                 color = Color.White
                                             )
                                             Spacer(modifier = Modifier.width(4.dp))
-                                            // Read receipt: blue double-check for read, gray single-check for delivered
-                                            ReadReceiptIcon(read = message.read, delivered = message.delivered)
+                                            val dotColor = if (message.read) Color(0xFF25D366) else Color.Red
+                                            Box(
+                                                modifier = Modifier
+                                                    .size(6.dp)
+                                                    .clip(CircleShape)
+                                                    .background(dotColor)
+                                            )
                                         }
                                     }
                                     if (message.text.isNotBlank()) {
@@ -1878,8 +1883,13 @@ Box(
                                         color = Color.Black.copy(alpha = 0.5f)
                                     )
                                     Spacer(modifier = Modifier.width(4.dp))
-                                    // Read receipt: blue double-check for read, gray single-check for delivered
-                                    ReadReceiptIcon(read = message.read, delivered = message.delivered)
+                                    val dotColor = if (message.read) Color(0xFF25D366) else Color.Red
+                                    Box(
+                                        modifier = Modifier
+                                            .size(6.dp)
+                                            .clip(CircleShape)
+                                            .background(dotColor)
+                                    )
                                 }
                             }
 }
