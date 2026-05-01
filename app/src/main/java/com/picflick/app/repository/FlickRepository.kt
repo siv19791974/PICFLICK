@@ -2303,6 +2303,11 @@ class FlickRepository private constructor() {
      * Get notifications for a user
      */
     fun getNotifications(userId: String, onResult: (Result<List<Map<String, Any>>>) -> Unit) {
+        if (CostControlManager.isEnabled(Constants.FeatureFlags.KILL_NOTIFICATION_LISTENERS)) {
+            android.util.Log.w("FlickRepository", "getNotifications blocked by cost kill-switch")
+            onResult(Result.Success(emptyList()))
+            return
+        }
         db.collection(Constants.FirebaseCollections.NOTIFICATIONS)
             .whereEqualTo("userId", userId)
             .orderBy("timestamp", Query.Direction.DESCENDING)
@@ -2378,6 +2383,7 @@ class FlickRepository private constructor() {
     fun getComments(flickId: String, onResult: (Result<List<Comment>>) -> Unit): ListenerRegistration {
         return db.collection("comments")
             .whereEqualTo("flickId", flickId)
+            .limit(50)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
                     onResult(Result.Error(error, "Failed to load comments"))

@@ -63,7 +63,6 @@ import com.picflick.app.utils.LocaleHelper
 import com.picflick.app.util.rememberLiveUserPhotoUrl
 import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FirebaseFirestore
-import com.google.firebase.firestore.ListenerRegistration
 import com.google.firebase.storage.FirebaseStorage
 import com.google.firebase.storage.StorageReference
 import kotlinx.coroutines.launch
@@ -995,6 +994,7 @@ private fun ProfileHeaderWithStorage(
     onProfileClick: () -> Unit,
     isDarkMode: Boolean
 ) {
+    val context = LocalContext.current
     val tier = userProfile.getEffectiveTier()
     val tierColor = tier.getColor()
     var storageUsed by remember(userProfile.uid) { mutableStateOf(userProfile.storageUsedBytes) }
@@ -1005,22 +1005,30 @@ private fun ProfileHeaderWithStorage(
     } else 0
     val storagePercent = rawStoragePercent
 
-    DisposableEffect(userProfile.uid) {
-        val registration: ListenerRegistration = FirebaseFirestore.getInstance()
-            .collection("users")
-            .document(userProfile.uid)
-            .addSnapshotListener { snapshot, _ ->
-                val liveBytes = snapshot?.getNumericLong("storageUsedBytes") ?: return@addSnapshotListener
-                storageUsed = liveBytes
-            }
-
-        onDispose {
-            registration.remove()
-        }
+    // One-time storage fetch (avoids spawning a snapshot listener per settings visit)
+    LaunchedEffect(userProfile.uid) {
+        val snapshot = runCatching {
+            FirebaseFirestore.getInstance()
+                .collection("users")
+                .document(userProfile.uid)
+                .get()
+                .await()
+        }.getOrNull()
+        snapshot?.getNumericLong("storageUsedBytes")?.let { storageUsed = it }
     }
 
     // Storage accuracy sync: recalculate from Storage and update profile if drifted.
+    // Rate-limited to once per day to avoid expensive recursive listAll() scans.
     LaunchedEffect(userProfile.uid) {
+        val prefs = context.getSharedPreferences("picflick_storage_sync", android.content.Context.MODE_PRIVATE)
+        val lastSyncKey = "last_sync_${userProfile.uid}"
+        val lastSync = prefs.getLong(lastSyncKey, 0L)
+        val oneDayMs = 24 * 60 * 60 * 1000L
+        if (System.currentTimeMillis() - lastSync < oneDayMs) {
+            android.util.Log.d("SettingsScreen", "Skipping storage recalculation: last sync was <24h ago")
+            return@LaunchedEffect
+        }
+
         val recalculation = runCatching { calculateStorageUsedBytesFromFiles(userProfile.uid) }.getOrNull() ?: return@LaunchedEffect
         if (recalculation.hadErrors) {
             android.util.Log.w("SettingsScreen", "Skipping storageUsedBytes update due to partial Storage scan errors for user=${userProfile.uid}")
@@ -1041,6 +1049,7 @@ private fun ProfileHeaderWithStorage(
                     .await()
             }
         }
+        prefs.edit().putLong(lastSyncKey, System.currentTimeMillis()).apply()
     }
     
     Column(

@@ -87,6 +87,7 @@ class ChatRepository {
         val subscription = db.collection("chatSessions")
             .whereArrayContains("participants", userId)
             // Removed orderBy - requires composite index. Sort client-side instead.
+            .limit(50)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
                     android.util.Log.e("ChatRepository", "Error loading chat sessions: ${error.message}")

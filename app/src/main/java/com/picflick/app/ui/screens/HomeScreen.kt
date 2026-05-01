@@ -67,7 +67,7 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.FileProvider
-import coil3.ImageLoader
+import coil3.SingletonImageLoader
 import coil3.compose.AsyncImage
 import coil3.compose.AsyncImagePainter
 import coil3.compose.rememberAsyncImagePainter
@@ -3127,7 +3127,7 @@ private fun FlickGrid(
         // Track scroll position for infinite scroll
         val listState = rememberLazyGridState()
         val context = LocalContext.current
-        val prefetchImageLoader = remember(context) { ImageLoader.Builder(context).build() }
+        val prefetchImageLoader = remember(context) { SingletonImageLoader.get(context) }
         val prefetchedFlickIds = remember { mutableSetOf<String>() }
         var hasRequestedForCurrentSize by remember { mutableStateOf(false) }
         val optimisticImageBridge: SnapshotStateMap<String, String> = remember { mutableStateMapOf() }
