@@ -1064,7 +1064,7 @@ Column(modifier = Modifier.fillMaxSize()) {
                                                 )
                                         ) {
                                             AsyncImage(
-                                                model = flick.imageUrl,
+                                                model = flick.thumbnailUrl512.ifBlank { flick.imageUrl },
                                                 contentDescription = "PicFlick photo",
                                                 modifier = Modifier.fillMaxSize(),
                                                 contentScale = ContentScale.Crop

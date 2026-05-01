@@ -897,7 +897,7 @@ private fun DynamicPhotoGrid(
             ) {
                 Box(modifier = Modifier.fillMaxSize()) {
                     AsyncImage(
-                        model = withCacheBust(flick.imageUrl, flick.timestamp),
+                        model = withCacheBust(flick.thumbnailUrl256.ifBlank { flick.imageUrl }, flick.timestamp),
                         contentDescription = null,
                         modifier = Modifier.fillMaxSize(),
                         contentScale = ContentScale.Crop
@@ -1112,7 +1112,7 @@ private fun PhotoGridItem(
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
             AsyncImage(
-                model = withCacheBust(flick.imageUrl, flick.timestamp),
+                model = withCacheBust(flick.thumbnailUrl256.ifBlank { flick.imageUrl }, flick.timestamp),
                 contentDescription = null,
                 modifier = Modifier.fillMaxSize(),
                 contentScale = ContentScale.Crop
@@ -1140,12 +1140,12 @@ private fun ProfilePhotoGridItem(
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
             AsyncImage(
-                model = withCacheBust(flick.imageUrl, flick.timestamp),
+                model = withCacheBust(flick.thumbnailUrl256.ifBlank { flick.imageUrl }, flick.timestamp),
                 contentDescription = null,
                 modifier = Modifier.fillMaxSize(),
                 contentScale = ContentScale.Crop
             )
-            
+
             // Tiny reaction overlay (top right)
             userReaction?.let { reaction ->
                 Box(
@@ -1327,9 +1327,10 @@ private fun MyPhotoCard(
     val context = LocalContext.current
     val density = LocalDensity.current
     val rowHeightPx = with(density) { rowHeight.roundToPx() }
-    val thumbRequest = remember(flick.imageUrl, flick.timestamp, rowHeightPx) {
+    val gridImageUrl = flick.thumbnailUrl256.ifBlank { flick.imageUrl }
+    val thumbRequest = remember(gridImageUrl, flick.timestamp, rowHeightPx) {
         ImageRequest.Builder(context)
-            .data(withCacheBust(flick.imageUrl, flick.timestamp))
+            .data(withCacheBust(gridImageUrl, flick.timestamp))
             .size(rowHeightPx)
             .memoryCachePolicy(CachePolicy.ENABLED)
             .diskCachePolicy(CachePolicy.ENABLED)
