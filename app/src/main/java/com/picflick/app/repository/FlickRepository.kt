@@ -374,7 +374,8 @@ class FlickRepository private constructor() {
         lastTimestamp: Long? = null,
         lastFlickId: String? = null,
         pageSize: Int = 50,  // Increased from 20 to load more photos at once
-        excludeIds: Set<String> = emptySet()
+        excludeIds: Set<String> = emptySet(),
+        recentDays: Int? = null  // If set, only return flicks from last N days (home feed freshness)
     ): Result<List<Flick>> {
         return try {
             android.util.Log.d("FlickRepository", "Loading photos for user: $userId, lastTimestamp: $lastTimestamp, lastFlickId: $lastFlickId, pageSize: $pageSize, excludeIds: ${excludeIds.size}")
@@ -457,7 +458,14 @@ class FlickRepository private constructor() {
                 )
             
             android.util.Log.d("FlickRepository", "After deduplication: ${allFlicks.size} photos")
-            
+
+            // Time-window filter: home feed only shows recent flicks (e.g. last 30 days)
+            if (recentDays != null && recentDays > 0) {
+                val cutoff = System.currentTimeMillis() - (recentDays * 24 * 60 * 60 * 1000L)
+                allFlicks = allFlicks.filter { it.timestamp >= cutoff }
+                android.util.Log.d("FlickRepository", "After ${recentDays}-day time filter: ${allFlicks.size} photos")
+            }
+
             // Manual pagination with timestamp+id tie-breaker to prevent same-timestamp stalls.
             // If boundary ids are blank/missing, fall back to inclusive timestamp window and rely on excludeIds.
             if (lastTimestamp != null) {

@@ -122,7 +122,8 @@ class HomeViewModel : ViewModel() {
                         lastTimestamp = null,
                         lastFlickId = null,
                         pageSize = Constants.Pagination.FLICKS_PER_PAGE,
-                        excludeIds = emptySet()
+                        excludeIds = emptySet(),
+                        recentDays = Constants.Pagination.HOME_FEED_DAYS
                     )) {
                         is Result.Success -> {
                             val merged = mergeWithOptimistic(result.data)
@@ -190,7 +191,8 @@ class HomeViewModel : ViewModel() {
                 lastTimestamp = cursorTimestamp,
                 lastFlickId = cursorId,
                 pageSize = Constants.Pagination.FLICKS_PER_PAGE,
-                excludeIds = existingIds
+                excludeIds = existingIds,
+                recentDays = Constants.Pagination.HOME_FEED_DAYS
             )) {
                 is Result.Success -> {
                     val newFlicks = result.data
