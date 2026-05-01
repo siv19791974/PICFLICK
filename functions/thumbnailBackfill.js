@@ -83,6 +83,7 @@ async function runBackfill() {
       // Derive thumbnail paths
       const dir = filePath.substring(0, filePath.lastIndexOf('/'));
       const baseName = filePath.substring(filePath.lastIndexOf('/') + 1);
+      const thumb256Path = `${dir}/thumbnails_256/${baseName}`;
       const thumb512Path = `${dir}/thumbnails_512/${baseName}`;
       const thumb1080Path = `${dir}/thumbnails_1080/${baseName}`;
 
@@ -124,10 +125,24 @@ async function runBackfill() {
       await thumb1080File.acl.add({ entity: 'allUsers', role: 'READER' });
       const thumb1080Url = `https://storage.googleapis.com/${bucket.name}/${thumb1080Path}`;
 
-      // Update Firestore flick document
+      // Delete legacy 256px thumbnail from Storage (if it exists)
+      try {
+        const thumb256File = bucket.file(thumb256Path);
+        const [exists256] = await thumb256File.exists();
+        if (exists256) {
+          await thumb256File.delete();
+          console.log(`Deleted legacy 256px thumbnail for ${flickId}: ${thumb256Path}`);
+        }
+      } catch (delErr) {
+        // Non-fatal: may not exist
+        console.log(`No legacy 256px to delete for ${flickId}: ${delErr.message}`);
+      }
+
+      // Update Firestore flick document: set new URLs and remove legacy 256 field
       await doc.ref.update({
         thumbnailUrl512: thumb512Url,
-        thumbnailUrl1080: thumb1080Url
+        thumbnailUrl1080: thumb1080Url,
+        thumbnailUrl256: admin.firestore.FieldValue.delete()
       });
 
       results.push({ flickId, status: 'success', filePath });
