@@ -61,10 +61,11 @@ fun BottomNavBar(
                             text = "Albums",
                             color = Color.White,
                             fontWeight = FontWeight.ExtraBold,
-                            fontSize = 12.sp,
-                            letterSpacing = 0.1.sp,
+                            fontSize = 11.sp,
+                            letterSpacing = 0.05.sp,
                             fontFamily = PoppinsFontFamily,
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                            maxLines = 1,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                         )
                     }
                 } else {
