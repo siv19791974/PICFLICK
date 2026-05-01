@@ -147,5 +147,6 @@ object Constants {
         const val DISABLE_ANALYTICS = "disableAnalytics"
         const val DISABLE_BILLING = "disableBilling"
         const val FREE_TIER_BYPASS = "freeTierBypass"
+        const val PANIC_MODE = "panicMode"
     }
 }
