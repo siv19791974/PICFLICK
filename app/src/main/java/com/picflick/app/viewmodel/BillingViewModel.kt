@@ -6,8 +6,10 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.android.billingclient.api.*
+import com.picflick.app.Constants
 import com.picflick.app.data.SubscriptionTier
 import com.google.firebase.functions.FirebaseFunctions
+import com.picflick.app.util.CostControlManager
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -90,10 +92,16 @@ class BillingViewModel : ViewModel() {
     val currentTier: StateFlow<SubscriptionTier> = _currentTier.asStateFlow()
 
     /**
-     * Initialize the billing client
+     * Initialize the billing client.
+     * Skips initialization if the disableBilling kill-switch is active.
      */
     fun initialize(context: Context) {
         if (billingClient != null) return
+        if (CostControlManager.isEnabled(Constants.FeatureFlags.DISABLE_BILLING)) {
+            Log.w("BillingViewModel", "Billing disabled by kill-switch; skipping Google Play connect")
+            _isConnected.value = false
+            return
+        }
 
         // Initialize Firebase Functions
         functions = FirebaseFunctions.getInstance()

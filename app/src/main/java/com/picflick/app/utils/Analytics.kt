@@ -4,16 +4,24 @@ import android.os.Bundle
 import com.google.firebase.analytics.FirebaseAnalytics
 import com.google.firebase.analytics.ktx.analytics
 import com.google.firebase.ktx.Firebase
+import com.picflick.app.Constants
+import com.picflick.app.util.CostControlManager
 
 /**
  * Firebase Analytics helper for tracking user engagement
- * Centralized location for all analytics events
+ * Centralized location for all analytics events.
+ *
+ * Can be globally disabled via the disableAnalytics feature flag
+ * (set in Firestore appConfig/featureFlags).
  */
 object Analytics {
 
     private val firebaseAnalytics: FirebaseAnalytics by lazy {
         Firebase.analytics
     }
+
+    private val isDisabled: Boolean
+        get() = CostControlManager.isEnabled(Constants.FeatureFlags.DISABLE_ANALYTICS)
 
     // ==================== EVENT NAMES ====================
     object Events {
@@ -187,11 +195,13 @@ object Analytics {
     // ==================== HELPER METHODS ====================
 
     private inline fun logEvent(eventName: String, block: Bundle.() -> Unit = {}) {
+        if (isDisabled) return
         val params = Bundle().apply(block)
         firebaseAnalytics.logEvent(eventName, params)
     }
 
     private fun logEvent(eventName: String) {
+        if (isDisabled) return
         firebaseAnalytics.logEvent(eventName, null)
     }
 }
