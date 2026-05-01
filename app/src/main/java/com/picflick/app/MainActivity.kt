@@ -169,6 +169,10 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         WindowInsetsControllerCompat(window, window.decorView).show(WindowInsetsCompat.Type.statusBars())
+        // Restart unread count observer if it stopped while backgrounded
+        if (::chatViewModelRef.isInitialized) {
+            chatViewModelRef.restartUnreadCountIfNeeded()
+        }
     }
 
     override fun onStop() {
@@ -828,13 +832,6 @@ fun MainScreen(
     LaunchedEffect(userProfile?.uid) {
         userProfile?.uid?.let { uid ->
             homeViewModel.loadFriendGroups(uid)
-        }
-    }
-
-    // Observe unread chat count globally so bottom-nav badge updates on every screen.
-    LaunchedEffect(userProfile?.uid) {
-        userProfile?.uid?.let { uid ->
-            chatViewModel.observeUnreadCount(uid)
         }
     }
 

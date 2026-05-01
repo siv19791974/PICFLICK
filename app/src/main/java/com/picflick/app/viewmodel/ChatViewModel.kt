@@ -487,24 +487,44 @@ class ChatViewModel : ViewModel() {
      * Observe unread message count
      */
     fun observeUnreadCount(userId: String) {
-        if (userId.isBlank()) return
+        if (userId.isBlank()) {
+            android.util.Log.w("ChatViewModel", "observeUnreadCount: blank userId, skipping")
+            return
+        }
 
         if (observingUnreadUserId == userId && unreadCountJob?.isActive == true) {
+            android.util.Log.d("ChatViewModel", "observeUnreadCount: already observing $userId, skipping")
             return
         }
 
         unreadCountJob?.cancel()
         observingUnreadUserId = userId
+        android.util.Log.d("ChatViewModel", "observeUnreadCount: starting for $userId")
 
         unreadCountJob = viewModelScope.launch {
             try {
                 repository.getUnreadMessageCount(userId).collectLatest { count ->
+                    android.util.Log.d("ChatViewModel", "observeUnreadCount: emitted count=$count")
                     unreadCount = count
                 }
             } catch (e: Exception) {
                 if (e is kotlinx.coroutines.CancellationException) {
                     android.util.Log.d("ChatViewModel", "Unread listener cancelled")
+                } else {
+                    android.util.Log.e("ChatViewModel", "observeUnreadCount error: ${e.message}", e)
                 }
+            }
+        }
+    }
+
+    /**
+     * Restart unread count observer if it stopped (e.g. after app backgrounding).
+     */
+    fun restartUnreadCountIfNeeded() {
+        observingUnreadUserId?.let { userId ->
+            if (unreadCountJob?.isActive != true) {
+                android.util.Log.d("ChatViewModel", "restartUnreadCountIfNeeded: restarting for $userId")
+                observeUnreadCount(userId)
             }
         }
     }

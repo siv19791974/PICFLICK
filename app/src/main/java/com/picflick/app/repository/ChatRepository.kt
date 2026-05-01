@@ -854,13 +854,18 @@ class ChatRepository {
      * Get unread message count for a user
      */
     fun getUnreadMessageCount(userId: String): Flow<Int> = callbackFlow {
+        android.util.Log.d("ChatRepository", "getUnreadMessageCount: starting listener for $userId")
         val subscription = db.collection("chatSessions")
             .whereArrayContains("participants", userId)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
+                    android.util.Log.e("ChatRepository", "getUnreadMessageCount error: ${error.message}")
                     close(error)
                     return@addSnapshotListener
                 }
+
+                val docCount = snapshot?.documents?.size ?: 0
+                android.util.Log.d("ChatRepository", "getUnreadMessageCount: snapshot has $docCount sessions")
 
                 // Count unread messages from the session data
                 var count = 0
@@ -870,10 +875,15 @@ class ChatRepository {
                         ?.get(userId)
                         .toIntOrNullSafe()
                     val sessionUnread = unreadFromDirectField ?: unreadFromMap ?: 0
+                    android.util.Log.d("ChatRepository", "getUnreadMessageCount: session=${doc.id} direct=$unreadFromDirectField map=$unreadFromMap resolved=$sessionUnread")
                     count += sessionUnread
                 }
+                android.util.Log.d("ChatRepository", "getUnreadMessageCount: total=$count")
                 trySend(count)
             }
-        awaitClose { subscription.remove() }
+        awaitClose {
+            android.util.Log.d("ChatRepository", "getUnreadMessageCount: listener removed")
+            subscription.remove()
+        }
     }
 }
