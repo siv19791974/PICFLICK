@@ -109,7 +109,8 @@ fun DeveloperScreen(
     var showClearCacheDialog by remember { mutableStateOf(false) }
     var showResetLocalDialog by remember { mutableStateOf(false) }
 
-    val feedbackAssigneeUid = "LpSqE40IZGeAGMknTAEzysqp5l33"
+    // Support shared feedback inbox: any feedback assigned to any developer UID is visible
+    val developerUids = Constants.DEVELOPER_UIDS.toList()
     var feedbackItems by remember { mutableStateOf<List<Feedback>>(emptyList()) }
     var feedbackLoading by remember { mutableStateOf(false) }
     var feedbackError by remember { mutableStateOf<String?>(null) }
@@ -130,7 +131,7 @@ fun DeveloperScreen(
                 val snapshot = withContext(Dispatchers.IO) {
                     FirebaseFirestore.getInstance()
                         .collection("feedback")
-                        .whereEqualTo("assignedToUid", feedbackAssigneeUid)
+                        .whereIn("assignedToUid", developerUids)
                         .limit(120)
                         .get()
                         .await()
@@ -259,7 +260,7 @@ fun DeveloperScreen(
             DevSectionCard("SUPPORT / FEEDBACK", isDarkMode) {
                 DevActionRow(Icons.Default.Info, "Open Contact / Feedback") { onNavigate(Screen.Contact) }
                 DevActionRow(Icons.Default.Refresh, "Refresh Feedback Inbox") { loadFeedbackInbox() }
-                DevInfo("Assignee UID", feedbackAssigneeUid, isDarkMode)
+                DevInfo("Assignee UIDs", developerUids.joinToString(", ") { it.take(8) + "…" }, isDarkMode)
                 DevInfo("Inbox count", feedbackItems.size.toString(), isDarkMode)
 
                 when {

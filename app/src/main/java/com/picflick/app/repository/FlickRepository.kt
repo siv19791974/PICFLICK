@@ -3041,7 +3041,7 @@ class FlickRepository private constructor() {
     ): Result<String> {
         return try {
             val docRef = db.collection("feedback").document()
-            val supportAssigneeUid = "LpSqE40IZGeAGMknTAEzysqp5l33"
+            val supportAssigneeUid = Constants.DEVELOPER_UIDS.firstOrNull() ?: ""
             val feedback = hashMapOf(
                 "id" to docRef.id,
                 "userId" to userId,
