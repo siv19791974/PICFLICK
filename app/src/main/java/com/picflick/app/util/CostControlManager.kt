@@ -55,4 +55,26 @@ object CostControlManager {
             // Fail-open: keep previous flags on error
         }
     }
+
+    /** Write a single flag value to Firestore and immediately update local cache. */
+    suspend fun writeFlag(flagName: String, value: Boolean) {
+        try {
+            db.collection(com.picflick.app.Constants.FeatureFlags.CONFIG_COLLECTION)
+                .document(com.picflick.app.Constants.FeatureFlags.CONFIG_DOCUMENT)
+                .update(flagName, value)
+                .await()
+            flags = flags.toMutableMap().apply { put(flagName, value) }
+        } catch (_: Exception) {
+            // If document doesn't exist, create it
+            try {
+                db.collection(com.picflick.app.Constants.FeatureFlags.CONFIG_COLLECTION)
+                    .document(com.picflick.app.Constants.FeatureFlags.CONFIG_DOCUMENT)
+                    .set(mapOf(flagName to value))
+                    .await()
+                flags = flags.toMutableMap().apply { put(flagName, value) }
+            } catch (_: Exception) {
+                // Fail silently
+            }
+        }
+    }
 }

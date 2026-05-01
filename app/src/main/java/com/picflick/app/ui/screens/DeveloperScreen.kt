@@ -63,9 +63,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.edit
 import com.google.firebase.firestore.FirebaseFirestore
+import com.picflick.app.Constants
 import com.picflick.app.data.Feedback
 import com.picflick.app.data.UserProfile
 import com.picflick.app.navigation.Screen
+import com.picflick.app.util.CostControlManager
 import com.picflick.app.ui.theme.FeatureFlags
 import com.picflick.app.ui.theme.ThemeManager
 import com.picflick.app.ui.theme.isDarkModeBackground
@@ -422,6 +424,68 @@ fun DeveloperScreen(
                 DevActionRow(Icons.Default.Flag, "Reset flags to defaults") {
                     FeatureFlags.resetDefaults(context)
                     if (FeatureFlags.verboseLogs.value) devLogs.add(0, "Feature flags reset")
+                }
+            }
+
+            DevSectionCard("COST KILL-SWITCHES", isDarkMode) {
+                val db = remember { FirebaseFirestore.getInstance() }
+                var killSnapshot by remember { mutableStateOf(false) }
+                var killChat by remember { mutableStateOf(false) }
+                var killNotifications by remember { mutableStateOf(false) }
+                var reducePagination by remember { mutableStateOf(false) }
+
+                LaunchedEffect(Unit) {
+                    try {
+                        withContext(Dispatchers.IO) {
+                            val doc = db.collection(Constants.FeatureFlags.CONFIG_COLLECTION)
+                                .document(Constants.FeatureFlags.CONFIG_DOCUMENT)
+                                .get()
+                                .await()
+                            val data = doc.data ?: emptyMap()
+                            killSnapshot = data[Constants.FeatureFlags.KILL_SNAPSHOT_LISTENERS] == true
+                            killChat = data[Constants.FeatureFlags.KILL_CHAT_LISTENERS] == true
+                            killNotifications = data[Constants.FeatureFlags.KILL_NOTIFICATION_LISTENERS] == true
+                            reducePagination = data[Constants.FeatureFlags.REDUCE_PAGINATION] == true
+                        }
+                        devLogs.add(0, "Kill-switches loaded from Firestore")
+                    } catch (e: Exception) {
+                        devLogs.add(0, "Kill-switches load failed: ${e.message}")
+                    }
+                }
+
+                DevToggleRow("Kill snapshot listeners", killSnapshot, isDarkMode) {
+                    scope.launch {
+                        CostControlManager.writeFlag(Constants.FeatureFlags.KILL_SNAPSHOT_LISTENERS, it)
+                        killSnapshot = it
+                        devLogs.add(0, "killSnapshotListeners=$it (live in ~60s)")
+                    }
+                }
+                DevToggleRow("Kill chat listeners", killChat, isDarkMode) {
+                    scope.launch {
+                        CostControlManager.writeFlag(Constants.FeatureFlags.KILL_CHAT_LISTENERS, it)
+                        killChat = it
+                        devLogs.add(0, "killChatListeners=$it (live in ~60s)")
+                    }
+                }
+                DevToggleRow("Kill notification listeners", killNotifications, isDarkMode) {
+                    scope.launch {
+                        CostControlManager.writeFlag(Constants.FeatureFlags.KILL_NOTIFICATION_LISTENERS, it)
+                        killNotifications = it
+                        devLogs.add(0, "killNotificationListeners=$it (live in ~60s)")
+                    }
+                }
+                DevToggleRow("Reduce pagination", reducePagination, isDarkMode) {
+                    scope.launch {
+                        CostControlManager.writeFlag(Constants.FeatureFlags.REDUCE_PAGINATION, it)
+                        reducePagination = it
+                        devLogs.add(0, "reducePagination=$it (live in ~60s)")
+                    }
+                }
+                DevActionRow(Icons.Default.Sync, "Force refresh flags now") {
+                    scope.launch {
+                        CostControlManager.refresh()
+                        devLogs.add(0, "CostControlManager refreshed")
+                    }
                 }
             }
 
