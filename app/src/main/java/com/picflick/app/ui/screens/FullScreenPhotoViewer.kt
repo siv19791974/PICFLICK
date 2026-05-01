@@ -524,9 +524,9 @@ val canDeleteCurrent = currentFlick.userId == currentUser.uid
             prefetchInFlightKeys[prefetchKey] = true
             prefetchLastEnqueuedAt[prefetchKey] = now
 
-            android.util.Log.d("ThumbVerify", "Fullscreen prefetch: flick=${neighbor.id.take(8)} using ${if (neighbor.thumbnailUrl512.isNotBlank()) "THUMB_512" else "ORIGINAL"}")
+            android.util.Log.d("ThumbVerify", "Fullscreen prefetch: flick=${neighbor.id.take(8)} using ORIGINAL")
             val request = ImageRequest.Builder(context)
-                .data(withCacheBust(neighbor.thumbnailUrl512.ifBlank { neighbor.imageUrl }, neighbor.timestamp))
+                .data(withCacheBust(neighbor.imageUrl, neighbor.timestamp))
                 .size(requestWidthPx, requestHeightPx)
                 .crossfade(false)
                 .memoryCachePolicy(CachePolicy.ENABLED)
@@ -1092,8 +1092,8 @@ val canDeleteCurrent = currentFlick.userId == currentUser.uid
                                 ),
                             contentAlignment = Alignment.Center
                         ) {
-                            val displayUrl = photo.thumbnailUrl512.ifBlank { photo.imageUrl }
-                            android.util.Log.d("ThumbVerify", "Fullscreen viewer: flick=${photo.id.take(8)} using ${if (photo.thumbnailUrl512.isNotBlank()) "THUMB_512" else "ORIGINAL"}")
+                            val displayUrl = photo.imageUrl
+                            android.util.Log.d("ThumbVerify", "Fullscreen viewer: flick=${photo.id.take(8)} using ORIGINAL")
                             val photoModel = remember(displayUrl, photo.timestamp, requestWidthPx, requestHeightPx) {
                                 ImageRequest.Builder(context)
                                     .data(withCacheBust(displayUrl, photo.timestamp))
@@ -3015,7 +3015,7 @@ private fun ShareFriendsDialog(
                         .background(Color.Black)
                 ) {
                     AsyncImage(
-                        model = withCacheBust(flick.thumbnailUrl512.ifBlank { flick.imageUrl }, flick.timestamp),
+                        model = withCacheBust(flick.imageUrl, flick.timestamp),
                         contentDescription = null,
                         modifier = Modifier.fillMaxSize(),
                         contentScale = ContentScale.Crop
@@ -3274,7 +3274,7 @@ private fun TagFriendsDialog(
                         .background(Color.Black)
                 ) {
                     AsyncImage(
-                        model = withCacheBust(flick.thumbnailUrl512.ifBlank { flick.imageUrl }, flick.timestamp),
+                        model = withCacheBust(flick.imageUrl, flick.timestamp),
                         contentDescription = null,
                         modifier = Modifier.fillMaxSize(),
                         contentScale = ContentScale.Crop

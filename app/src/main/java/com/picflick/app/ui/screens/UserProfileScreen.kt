@@ -542,7 +542,7 @@ private fun ProfilePhotoCard(
         .take(5)
     val context = LocalContext.current
     val rowHeightPx = with(LocalDensity.current) { rowHeight.roundToPx() }
-    val gridImageUrl = flick.thumbnailUrl256.ifBlank { flick.imageUrl }
+    val gridImageUrl = flick.thumbnailUrl512.ifBlank { flick.imageUrl }
     val imageModel = remember(gridImageUrl, flick.timestamp, rowHeightPx) {
         ImageRequest.Builder(context)
             .data(withCacheBust(gridImageUrl, flick.timestamp))
