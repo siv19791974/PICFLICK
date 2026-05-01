@@ -2551,7 +2551,9 @@ private fun CompactCommentItem(
                                 text = "${localReactions.size}",
                                 color = Color.White,
                                 fontSize = 10.sp,
-                                fontWeight = FontWeight.Bold
+                                fontWeight = FontWeight.Bold,
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier.wrapContentSize()
                             )
                         }
                     }
@@ -2770,7 +2772,9 @@ private fun CompactReplyItem(
                         text = "${localReactions.size}",
                         color = Color.White,
                         fontSize = 9.sp,
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.Bold,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.wrapContentSize()
                     )
                 }
             }
