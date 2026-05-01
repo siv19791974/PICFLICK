@@ -1832,6 +1832,8 @@ if (canDeleteCurrent) {
                                             val text = newCommentText.trim()
                                             val parentComment = replyingToComment
                                             val replyParentCommentId = parentComment?.parentCommentId ?: parentComment?.id
+                                            // The comment directly being replied to (for notification target)
+                                            val notifyCommentId = parentComment?.id
 
                                             val targetFlickId = canonicalCommentFlickId ?: currentFlick.id
 
@@ -1847,19 +1849,20 @@ if (canDeleteCurrent) {
                                                 timestamp = java.util.Date()
                                             )
                                             comments = comments + tempComment
-                                            
+
                                             // Clear input immediately
                                             newCommentText = ""
                                             keyboardController?.hide()
                                             replyingToComment = null
-                                            
+
                                             // Send to Firestore in background
                                             coroutineScope.launch {
-                                                android.util.Log.d("CommentAdd", "Adding comment: text='$text', userId='${currentUser.uid}', flickId='$targetFlickId',")
-                                                val result = if (parentComment != null && !replyParentCommentId.isNullOrBlank()) {
+                                                android.util.Log.d("CommentAdd", "Adding comment: text='$text', userId='${currentUser.uid}', flickId='$targetFlickId', replyParent=$replyParentCommentId, notify=$notifyCommentId")
+                                                val result = if (parentComment != null && !replyParentCommentId.isNullOrBlank() && !notifyCommentId.isNullOrBlank()) {
                                                     repository.addReply(
                                                         flickId = targetFlickId,
                                                         parentCommentId = replyParentCommentId,
+                                                        notifyCommentId = notifyCommentId,
                                                         userId = currentUser.uid,
                                                         userName = currentUser.displayName ?: "",
                                                         userPhotoUrl = currentUser.photoUrl ?: "",
