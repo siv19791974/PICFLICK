@@ -62,6 +62,7 @@ data class NotificationPreferences(
             NotificationType.LIKE -> pushLikes
             NotificationType.REACTION -> pushReactions
             NotificationType.COMMENT -> pushComments
+            NotificationType.COMMENT_REPLY -> pushComments
             NotificationType.FOLLOW -> pushFollows
             NotificationType.FOLLOW_ACCEPTED -> pushFollows
             NotificationType.FRIEND_REQUEST -> pushFollows
@@ -86,6 +87,7 @@ data class NotificationPreferences(
             NotificationType.LIKE -> likes
             NotificationType.REACTION -> reactions
             NotificationType.COMMENT -> comments
+            NotificationType.COMMENT_REPLY -> comments
             NotificationType.FOLLOW -> follows
             NotificationType.FOLLOW_ACCEPTED -> follows
             NotificationType.FRIEND_REQUEST -> follows

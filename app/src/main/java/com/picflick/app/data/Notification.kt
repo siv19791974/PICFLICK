@@ -31,6 +31,7 @@ enum class NotificationType {
     LIKE,           // Someone liked your photo
     REACTION,       // Someone reacted to your photo (emoji reactions)
     COMMENT,        // Someone commented on your photo
+    COMMENT_REPLY,  // Someone replied to your comment
     FOLLOW,         // Someone followed you
     FOLLOW_ACCEPTED, // Your follow/friend request was accepted ("You are now connected")
     FRIEND_REQUEST, // Someone sent friend request

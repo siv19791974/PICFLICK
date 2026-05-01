@@ -301,12 +301,13 @@ fun NotificationsScreen(
                                                 NotificationType.LIKE,
                                                 NotificationType.REACTION,
                                                 NotificationType.COMMENT,
+                                                NotificationType.COMMENT_REPLY,
                                                 NotificationType.MENTION,
                                                 NotificationType.PHOTO_ADDED -> {
                                                     val fallbackId = notification.flickId ?: notification.id
                                                     val isCommentHeart = notification.type == NotificationType.REACTION &&
                                                         (notification.title.contains("comment", ignoreCase = true) || !notification.commentId.isNullOrBlank())
-                                                    val openCommentsFirst = notification.type == NotificationType.COMMENT || isCommentHeart
+                                                    val openCommentsFirst = notification.type == NotificationType.COMMENT || notification.type == NotificationType.COMMENT_REPLY || isCommentHeart
                                                     onPhotoClick(fallbackId, notification.flickImageUrl, notification.senderId, openCommentsFirst)
                                                 }
                                                 NotificationType.FOLLOW,
@@ -399,12 +400,13 @@ fun NotificationsScreen(
                                                 NotificationType.LIKE,
                                                 NotificationType.REACTION,
                                                 NotificationType.COMMENT,
+                                                NotificationType.COMMENT_REPLY,
                                                 NotificationType.MENTION,
                                                 NotificationType.PHOTO_ADDED -> {
                                                     val fallbackId = notification.flickId ?: notification.id
                                                     val isCommentHeart = notification.type == NotificationType.REACTION &&
                                                         (notification.title.contains("comment", ignoreCase = true) || !notification.commentId.isNullOrBlank())
-                                                    val openCommentsFirst = notification.type == NotificationType.COMMENT || isCommentHeart
+                                                    val openCommentsFirst = notification.type == NotificationType.COMMENT || notification.type == NotificationType.COMMENT_REPLY || isCommentHeart
                                                     onPhotoClick(fallbackId, notification.flickImageUrl, notification.senderId, openCommentsFirst)
                                                 }
                                                 NotificationType.FOLLOW,
@@ -894,6 +896,7 @@ private fun getNotificationIcon(type: NotificationType) = when (type) {
     NotificationType.LIKE -> Icons.Default.Favorite
     NotificationType.REACTION -> Icons.Default.Favorite // Will show emoji instead
     NotificationType.COMMENT -> Icons.Default.Email
+    NotificationType.COMMENT_REPLY -> Icons.Default.Email
     NotificationType.FOLLOW -> Icons.Default.Person
     NotificationType.FOLLOW_ACCEPTED -> Icons.Default.Person
     NotificationType.FRIEND_REQUEST -> Icons.Default.Person
@@ -912,6 +915,7 @@ private fun getNotificationColor(type: NotificationType) = when (type) {
     NotificationType.LIKE -> Color(0xFFE91E63) // Pink
     NotificationType.REACTION -> Color(0xFFE91E63) // Pink (same as LIKE)
     NotificationType.COMMENT -> Color(0xFF4FC3F7) // Light Blue
+    NotificationType.COMMENT_REPLY -> Color(0xFF4FC3F7) // Light Blue
     NotificationType.FOLLOW -> Color(0xFF4CAF50) // Green
     NotificationType.FOLLOW_ACCEPTED -> Color(0xFF4CAF50) // Green
     NotificationType.FRIEND_REQUEST -> Color(0xFF9C27B0) // Purple
