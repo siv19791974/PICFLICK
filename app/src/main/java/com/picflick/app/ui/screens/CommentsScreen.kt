@@ -58,6 +58,7 @@ fun CommentsScreen(
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var newCommentText by remember { mutableStateOf("") }
     var isSending by remember { mutableStateOf(false) }
+    var lastCommentSentAt by remember { mutableStateOf(0L) }
     var refreshNonce by remember { mutableStateOf(0) }
     var isRefreshing by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
@@ -173,8 +174,11 @@ fun CommentsScreen(
                     // Send button
                     IconButton(
                         onClick = {
-                            if (newCommentText.isNotBlank() && !isSending) {
+                            val now = System.currentTimeMillis()
+                            val debounceMs = 2_000L // 2-second rate limit between comments
+                            if (newCommentText.isNotBlank() && !isSending && (now - lastCommentSentAt) >= debounceMs) {
                                 val text = newCommentText.trim()
+                                lastCommentSentAt = now
                                 val tempComment = Comment(
                                     id = "temp_${System.currentTimeMillis()}",
                                     flickId = flick.id,

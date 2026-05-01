@@ -386,7 +386,7 @@ class FlickRepository private constructor() {
             
             android.util.Log.d("FlickRepository", "User has ${friends.size} friends: $friends")
 
-            val fetchPoolSize = maxOf(pageSize * 20, 800).toLong()
+            val fetchPoolSize = maxOf(pageSize * 5, 200).toLong()
 
             // Query user's own photos (NO orderBy to avoid composite index requirement)
             val ownFlicksSnapshot = db.collection("flicks")
