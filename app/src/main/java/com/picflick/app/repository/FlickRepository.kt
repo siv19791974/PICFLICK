@@ -440,6 +440,7 @@ class FlickRepository private constructor() {
                 .filterValues { it == Long.MAX_VALUE || it > System.currentTimeMillis() }
                 .keys
             val blockedUserIds = userProfile?.blockedUsers ?: emptyList()
+            android.util.Log.d("FlickRepository", "DEBUG: activeMuted=$activeMutedUserIds blocked=$blockedUserIds")
 
             // Merge, remove duplicates, filter muted/blocked users, and sort by timestamp DESC (client-side sorting)
             val visibleAlbumTargetGroupIds = runCatching {
@@ -450,22 +451,47 @@ class FlickRepository private constructor() {
                 groupsSnapshot.documents.map { it.id }.toSet()
             }.getOrElse { emptySet() }
 
+            // Deduplicate: prefer items with real Firestore id over optimistic uploads (id="") that share the same clientUploadId.
             var allFlicks = (ownFlicks + friendsFlicks)
-                .distinctBy { it.id }
-                .filterNot { flick ->
-                    flick.userId != userId && (activeMutedUserIds.contains(flick.userId) || blockedUserIds.contains(flick.userId))
+                .groupBy { flick ->
+                    if (flick.clientUploadId.isNotBlank()) "cu_${flick.userId}_${flick.clientUploadId}"
+                    else if (flick.id.isNotBlank()) flick.id
+                    else "ts_${flick.userId}_${flick.timestamp}"
                 }
-                .filter { flick ->
-                    flick.sharedGroupId.isBlank() ||
-                        flick.userId == userId ||
-                        visibleAlbumTargetGroupIds.contains(flick.sharedGroupId)
+                .map { (_, group) ->
+                    // Prefer the one with a real id; if both are blank, take the first (usually the optimistic one)
+                    group.maxByOrNull { if (it.id.isNotBlank()) 2 else if (it.clientUploadId.isNotBlank()) 1 else 0 } ?: group.first()
                 }
-                .sortedWith(
-                    compareByDescending<Flick> { it.timestamp }
-                        .thenByDescending { it.id }
+
+            android.util.Log.d("FlickRepository", "After dedup: ${allFlicks.size} photos. Friend breakdown: ${friendsFlicks.groupingBy { it.userId }.eachCount()}")
+
+            allFlicks = allFlicks.filterNot { flick ->
+                flick.userId != userId && (activeMutedUserIds.contains(flick.userId) || blockedUserIds.contains(flick.userId))
+            }
+            android.util.Log.d("FlickRepository", "After mute/block filter: ${allFlicks.size} photos")
+
+            val filteredByGroup = allFlicks.filterNot { flick ->
+                flick.sharedGroupId.isBlank() ||
+                    flick.userId == userId ||
+                    visibleAlbumTargetGroupIds.contains(flick.sharedGroupId)
+            }
+            if (filteredByGroup.isNotEmpty()) {
+                android.util.Log.d("FlickRepository", "sharedGroupId HIDDEN ${filteredByGroup.size} photos (groups=$visibleAlbumTargetGroupIds): ${filteredByGroup.map { "id=${it.id.take(8)} user=${it.userId.take(8)} group=${it.sharedGroupId.take(8)}" }}"
                 )
-            
-            android.util.Log.d("FlickRepository", "After deduplication: ${allFlicks.size} photos")
+            }
+
+            allFlicks = allFlicks.filter { flick ->
+                flick.sharedGroupId.isBlank() ||
+                    flick.userId == userId ||
+                    visibleAlbumTargetGroupIds.contains(flick.sharedGroupId)
+            }
+            android.util.Log.d("FlickRepository", "After sharedGroupId filter: ${allFlicks.size} photos")
+
+            allFlicks = allFlicks.sortedWith(
+                compareByDescending<Flick> { it.timestamp }
+                    .thenByDescending { it.id }
+            )
+            android.util.Log.d("FlickRepository", "After sort: ${allFlicks.size} photos")
 
             // Time-window filter: home feed only shows recent flicks (e.g. last 30 days)
             if (recentDays != null && recentDays > 0) {

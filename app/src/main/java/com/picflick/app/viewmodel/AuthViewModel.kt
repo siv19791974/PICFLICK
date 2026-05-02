@@ -30,7 +30,7 @@ class AuthViewModel : ViewModel() {
     private val auth = FirebaseAuth.getInstance()
 
     private val developerUids = Constants.DEVELOPER_UIDS
-    private val developerDisplayName = Constants.DEVELOPER_DISPLAY_NAME
+    private val developerDisplayNames = Constants.DEVELOPER_DISPLAY_NAMES
 
     var currentUser by mutableStateOf<FirebaseUser?>(auth.currentUser)
         private set
@@ -174,10 +174,11 @@ class AuthViewModel : ViewModel() {
 
     private fun enforceDeveloperDisplayName(profile: UserProfile): UserProfile {
         if (profile.uid !in developerUids) return profile
-        if (profile.displayName == developerDisplayName) return profile
+        val expectedName = developerDisplayNames[profile.uid] ?: return profile
+        if (profile.displayName == expectedName) return profile
         return profile.copy(
-            displayName = developerDisplayName,
-            displayNameLower = developerDisplayName.lowercase()
+            displayName = expectedName,
+            displayNameLower = expectedName.lowercase()
         )
     }
 

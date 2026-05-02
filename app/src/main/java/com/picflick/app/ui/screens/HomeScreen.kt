@@ -3203,6 +3203,15 @@ private fun FlickGrid(
             }
         }
 
+        // Defensive deduplication: if two flicks somehow share the same key, keep the first.
+        val visibleFlicks = flicks.distinctBy { flick ->
+            when {
+                flick.clientUploadId.isNotBlank() -> "cu_${flick.userId}_${flick.clientUploadId}"
+                flick.id.isNotBlank() -> flick.id
+                else -> "flick_${flick.userId}_${flick.timestamp}"
+            }
+        }
+
         LazyVerticalGrid(
             columns = GridCells.Fixed(3),
             modifier = Modifier.fillMaxSize(),
@@ -3212,12 +3221,12 @@ private fun FlickGrid(
             verticalArrangement = Arrangement.spacedBy(1.dp)
         ) {
             items(
-                flicks,
+                visibleFlicks,
                 key = { flick ->
                     when {
-                        flick.clientUploadId.isNotBlank() -> "cu_${flick.clientUploadId}"
+                        flick.clientUploadId.isNotBlank() -> "cu_${flick.userId}_${flick.clientUploadId}"
                         flick.id.isNotBlank() -> flick.id
-                        else -> "flick_${flick.timestamp}"
+                        else -> "flick_${flick.userId}_${flick.timestamp}"
                     }
                 }
             ) { flick ->
