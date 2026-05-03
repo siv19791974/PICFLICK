@@ -303,8 +303,11 @@ service cloud.firestore {
     match /reports/{reportId} {
       // Reporter must be authenticated and match reporterId field
       allow create: if isAuth() && request.resource.data.reporterId == request.auth.uid;
-      // Users can read only their own reports
-      allow read: if isAuth() && resource.data.reporterId == request.auth.uid;
+      // Users can read their own reports; devs can read ALL reports (moderation inbox)
+      allow read: if isAuth() && (
+        resource.data.reporterId == request.auth.uid ||
+        isDevInboxUser()
+      );
       allow update, delete: if false;
     }
     

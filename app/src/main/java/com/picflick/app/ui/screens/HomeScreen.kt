@@ -59,6 +59,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -194,8 +195,28 @@ fun HomeScreen(
 
     // Load data
     LaunchedEffect(userProfile.uid) {
+        // Pass reported flick IDs so the feed filters them out
+        val prefs = context.getSharedPreferences("picflick_reports", Context.MODE_PRIVATE)
+        viewModel.reportedFlickIds = prefs.getStringSet("reported_flick_ids", emptySet())?.toSet() ?: emptySet()
         viewModel.loadFlicks(userProfile.uid)
         viewModel.loadFriendGroups(userProfile.uid)
+    }
+
+    // Re-read reported IDs whenever HomeScreen resumes (e.g. returning from FullScreenPhotoViewer)
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
+                val prefs = context.getSharedPreferences("picflick_reports", Context.MODE_PRIVATE)
+                val fresh = prefs.getStringSet("reported_flick_ids", emptySet())?.toSet() ?: emptySet()
+                if (fresh != viewModel.reportedFlickIds) {
+                    viewModel.reportedFlickIds = fresh
+                    viewModel.loadFlicks(userProfile.uid)
+                }
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
     LaunchedEffect(openGroupsManager) {
@@ -208,6 +229,8 @@ fun HomeScreen(
     // External reset trigger (e.g., app foreground): refresh newest feed and return to top.
     LaunchedEffect(resetToTopVersion) {
         if (resetToTopVersion > 0) {
+            val prefs = context.getSharedPreferences("picflick_reports", Context.MODE_PRIVATE)
+            viewModel.reportedFlickIds = prefs.getStringSet("reported_flick_ids", emptySet())?.toSet() ?: emptySet()
             viewModel.loadFlicks(userProfile.uid)
         }
     }
@@ -331,6 +354,8 @@ fun HomeScreen(
         val pullRefreshState = rememberPullRefreshState(
             refreshing = viewModel.isLoading,
             onRefresh = {
+                val prefs = context.getSharedPreferences("picflick_reports", Context.MODE_PRIVATE)
+                viewModel.reportedFlickIds = prefs.getStringSet("reported_flick_ids", emptySet())?.toSet() ?: emptySet()
                 viewModel.loadFlicks(userProfile.uid)
             }
         )
@@ -347,7 +372,11 @@ fun HomeScreen(
                 viewModel.isLoading && viewModel.flicks.isEmpty() -> PhotoGridShimmer()
                 viewModel.errorMessage != null -> ErrorMessage(
                     message = viewModel.errorMessage ?: "Unknown error",
-                    onRetry = { viewModel.loadFlicks(userProfile.uid) }
+                    onRetry = {
+                        val prefs = context.getSharedPreferences("picflick_reports", Context.MODE_PRIVATE)
+                        viewModel.reportedFlickIds = prefs.getStringSet("reported_flick_ids", emptySet())?.toSet() ?: emptySet()
+                        viewModel.loadFlicks(userProfile.uid)
+                    }
                 )
                 viewModel.flicks.isEmpty() -> EmptyState()
                 else -> FlickGrid(
