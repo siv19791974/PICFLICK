@@ -52,13 +52,18 @@ service cloud.firestore {
       allow create: if isAuth() && isMine(request.resource.data.userId);
       
       // Owner can update anything, others can only update reactions or commentCount
+      // Devs can update autoHiddenByReports and updatedAt for moderation
       allow update: if isAuth() && (
         isMine(resource.data.userId) || 
         request.resource.data.diff(resource.data).affectedKeys()
           .hasOnly(['reactions', 'reactionCount', 'updatedAt']) ||
         // Allow anyone to increment/decrement commentCount
         request.resource.data.diff(resource.data).affectedKeys()
-          .hasOnly(['commentCount'])
+          .hasOnly(['commentCount']) ||
+        // Dev moderation: hide reported photos
+        (isDevInboxUser() &&
+          request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['autoHiddenByReports', 'updatedAt']))
       );
       
       // Only owner can delete
@@ -309,7 +314,10 @@ service cloud.firestore {
         resource.data.reporterId == request.auth.uid ||
         isDevInboxUser()
       );
-      allow update, delete: if false;
+      // Devs can update only status/updatedAt (moderation actions: reviewed, dismissed, action_taken)
+      allow update: if isDevInboxUser() &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updatedAt']);
+      allow delete: if false;
     }
     
     // CHAT SESSIONS - Fixed collection name and rules
