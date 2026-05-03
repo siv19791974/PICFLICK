@@ -34,6 +34,9 @@ class HomeViewModel : ViewModel() {
 
     private val repository = FlickRepository.getInstance()
 
+    /** Flick IDs the current user has reported — filtered from feed */
+    var reportedFlickIds: Set<String> = emptySet()
+
     /** List of flicks for the main feed */
     var flicks = mutableStateListOf<Flick>()
         private set
@@ -122,7 +125,7 @@ class HomeViewModel : ViewModel() {
                         lastTimestamp = null,
                         lastFlickId = null,
                         pageSize = Constants.Pagination.FLICKS_PER_PAGE,
-                        excludeIds = emptySet(),
+                        excludeIds = reportedFlickIds,
                         recentDays = Constants.Pagination.HOME_FEED_DAYS
                     )) {
                         is Result.Success -> {
@@ -191,7 +194,7 @@ class HomeViewModel : ViewModel() {
                 lastTimestamp = cursorTimestamp,
                 lastFlickId = cursorId,
                 pageSize = Constants.Pagination.FLICKS_PER_PAGE,
-                excludeIds = existingIds,
+                excludeIds = existingIds + reportedFlickIds,
                 recentDays = Constants.Pagination.HOME_FEED_DAYS
             )) {
                 is Result.Success -> {

@@ -445,6 +445,8 @@ fun AuthenticatedContent(
                         )
                         when (result) {
                             is com.picflick.app.data.Result.Success -> {
+                                val prefs = context.getSharedPreferences("picflick_reports", android.content.Context.MODE_PRIVATE)
+                                homeViewModel.reportedFlickIds = prefs.getStringSet("reported_flick_ids", emptySet())?.toSet() ?: emptySet()
                                 homeViewModel.loadFlicks(userProfile.uid)
                                 profileViewModel.loadUserPhotos(userProfile.uid)
                                 true
