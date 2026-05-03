@@ -693,6 +693,13 @@ fun MainScreen(
         billingViewModel.initialize(context)
     }
 
+    // Show in-app payment recovery messages when billing connects
+    LaunchedEffect(billingViewModel.isConnected.value) {
+        if (billingViewModel.isConnected.value && activity != null) {
+            billingViewModel.showInAppMessages(activity)
+        }
+    }
+
     // Bridge validated tier changes from BillingViewModel → AuthViewModel immediately
     // so UploadViewModel and other features see the new tier before Firestore listener fires.
     LaunchedEffect(Unit) {
