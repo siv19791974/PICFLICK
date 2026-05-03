@@ -208,16 +208,19 @@ fun DeveloperScreen(
                 val db = FirebaseFirestore.getInstance()
                 val snapshot = withContext(Dispatchers.IO) {
                     db.collection("reports")
-                        .whereEqualTo("status", "pending")
                         .orderBy("timestamp", com.google.firebase.firestore.Query.Direction.DESCENDING)
-                        .limit(50)
+                        .limit(100)
                         .get()
                         .await()
                 }
-                reportItems = snapshot.documents.mapNotNull { doc ->
-                    doc.toObject(Report::class.java)?.copy(id = doc.id)
-                }
-                devLogs.add(0, "Reports inbox loaded (${reportItems.size})")
+                // Filter pending client-side to avoid Firestore composite index requirement
+                reportItems = snapshot.documents
+                    .mapNotNull { doc ->
+                        doc.toObject(Report::class.java)?.copy(id = doc.id)
+                    }
+                    .filter { it.status == "pending" }
+                    .take(50)
+                devLogs.add(0, "Reports inbox loaded (${reportItems.size} pending)")
             } catch (e: Exception) {
                 reportError = e.message ?: "Failed to load reports inbox"
                 devLogs.add(0, "Reports inbox load failed: ${e.message}")
