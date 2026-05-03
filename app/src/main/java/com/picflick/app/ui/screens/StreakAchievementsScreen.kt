@@ -26,6 +26,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -339,17 +340,17 @@ fun StreakAchievementsScreen(
             state = pagerState,
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 24.dp)
+                .padding(horizontal = 12.dp)
         ) { page ->
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                    .verticalScroll(rememberScrollState())
             ) {
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(8.dp))
 
-                categories[page].achievements.forEach { item ->
+                val achievements = categories[page].achievements
+                achievements.forEachIndexed { index, item ->
                     val itemProgress = (item.currentValue.toFloat() / item.requiredValue.toFloat()).coerceIn(0f, 1f)
                     val unlocked = item.unlocked
 
@@ -437,6 +438,14 @@ fun StreakAchievementsScreen(
                                 )
                             }
                         }
+                    }
+                    // Faint divider between achievements (not after the last one)
+                    if (index < achievements.size - 1) {
+                        HorizontalDivider(
+                            modifier = Modifier.padding(horizontal = 8.dp),
+                            thickness = 0.5.dp,
+                            color = textSecondary.copy(alpha = 0.12f)
+                        )
                     }
                 }
                 Spacer(modifier = Modifier.height(24.dp))
