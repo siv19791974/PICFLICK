@@ -909,130 +909,353 @@ exports.autoHideReportedPhoto = functions
 
 /**
  * Cloud Function: Monthly Mythic Draw — 1st of every month at 00:00 UTC
- * Eligible: users with streak.current >= configurable threshold (default 100)
- * Prize: 3-month PRO upgrade for one random winner
+ *
+ * FEATURES:
+ * - Progressive thresholds: Month 1=10, 2=30, 3=50, 4=70, 5+=100
+ * - Tiered prizes: 1st (3mo PRO + gold crown), 2nd (1mo PRO + silver crown), 3rd (2wk PRO + bronze crown)
+ * - Streak-weighted tickets: 1 ticket per 10 streak days
+ * - Winner repeat protection: 3-month cooldown
+ * - Storage bonus (+50MB) for all entrants
+ * - Contender badge tracking for all entrants
+ * - All users notified of ALL winners
+ * - Past winners / Hall of Fame tracking
+ * - Leaderboard snapshot stored in draw doc
  */
 async function executeMythicDraw(db, isManual = false, forcedMonthKey = null) {
   const now = Date.now();
-
-  // Build month key: YYYY-MM
-  const date = new Date();
+  const date = forcedMonthKey ? new Date(forcedMonthKey + '-01T00:00:00Z') : new Date();
   const monthKey = forcedMonthKey || `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}`;
   const drawDocRef = db.collection('system').doc(`mythic_draw_${monthKey}`);
 
-  // Idempotency check — has this month's draw already run?
+  // ─── IDEMPOTENCY ───
   const existingDraw = await drawDocRef.get();
   if (existingDraw.exists && !isManual) {
-    console.log(`Mythic draw for ${monthKey} already completed. Winner:`, existingDraw.data().winnerUserId);
-    return { alreadyRun: true, monthKey, winnerId: existingDraw.data().winnerUserId };
+    console.log(`Mythic draw ${monthKey} already completed.`);
+    return { alreadyRun: true, monthKey, winners: existingDraw.data().winners || [] };
   }
 
-  // Read configurable threshold from Firestore (default 100 for production)
-  const configDoc = await db.collection('appConfig').doc('mythicDraw').get();
-  const streakThreshold = configDoc.exists ? (configDoc.data().streakThreshold || 100) : 100;
-  console.log(`Mythic draw ${monthKey}: using streak threshold = ${streakThreshold}`);
+  // ─── MONTH NUMBER & PROGRESSIVE THRESHOLD ───
+  // Count how many previous mythic draws exist
+  const allSystemDocs = await db.collection('system').listDocuments();
+  const previousDraws = allSystemDocs.filter((d) => d.id.startsWith('mythic_draw_') && d.id !== `mythic_draw_${monthKey}`);
+  const monthNumber = previousDraws.length + 1;
+  const progressiveThresholds = { 1: 10, 2: 30, 3: 50, 4: 70 };
+  const streakThreshold = monthNumber >= 5 ? 100 : (progressiveThresholds[monthNumber] || 100);
+  console.log(`Mythic draw ${monthKey} (month #${monthNumber}): threshold = ${streakThreshold} days`);
 
-  // Query all eligible users (streak.current >= threshold)
-  const eligibleSnapshot = await db
-    .collection('users')
-    .where('streak.current', '>=', streakThreshold)
-    .get();
-
-  const eligibleUsers = eligibleSnapshot.docs
+  // ─── QUERY ALL USERS (we need everyone for notifications & leaderboard) ───
+  const allUsersSnapshot = await db.collection('users').get();
+  const allUsers = allUsersSnapshot.docs
     .map((doc) => ({ uid: doc.id, ...doc.data() }))
     .filter((u) => u.uid && u.uid.length > 0);
 
-  console.log(`Mythic draw ${monthKey}: ${eligibleUsers.length} eligible user(s)`);
+  // ─── ELIGIBLE USERS (streak >= threshold) ───
+  const eligibleUsers = allUsers.filter((u) => {
+    const streak = u.streak?.current || 0;
+    return streak >= streakThreshold;
+  });
 
+  console.log(`Mythic draw ${monthKey}: ${eligibleUsers.length}/${allUsers.length} eligible (threshold=${streakThreshold})`);
+
+  // ─── NO ELIGIBLE USERS ───
   if (eligibleUsers.length === 0) {
-    // No eligible users — mark draw as completed with no winner
     await drawDocRef.set({
       monthKey,
-      winnerUserId: null,
+      monthNumber,
+      streakThreshold,
+      winners: [],
       eligibleUserCount: 0,
+      allEntrantIds: [],
       createdAt: now,
       notificationSent: true,
       noWinner: true,
-      streakThreshold,
+      leaderboard: buildLeaderboard(allUsers, 10),
     });
+    // Notify all users that no one was eligible this month
+    await notifyAllUsersNoWinner(db, allUsers, monthKey, monthNumber, streakThreshold, now);
     console.log(`Mythic draw ${monthKey}: no eligible users. Draw marked complete.`);
-    return { noWinner: true, monthKey, streakThreshold };
+    return { noWinner: true, monthKey, monthNumber, streakThreshold };
   }
 
-  // Random winner
-  const winnerIndex = Math.floor(Math.random() * eligibleUsers.length);
-  const winner = eligibleUsers[winnerIndex];
-  const winnerId = winner.uid;
-  const winnerName = winner.displayName || 'A PicFlick creator';
-
-  console.log(`Mythic draw ${monthKey}: winner is ${winnerId} (${winnerName})`);
-
-  // 3-month PRO expiry
-  const threeMonthsMs = 90 * 24 * 60 * 60 * 1000;
-  const expiryDate = now + threeMonthsMs;
-
-  // Update winner subscription tier
-  await db.collection('users').doc(winnerId).update({
-    subscriptionTier: 'PRO',
-    subscriptionActive: true,
-    subscriptionExpiryDate: expiryDate,
-    mythicDrawWonAt: now,
-    mythicDrawWonMonth: monthKey,
-  });
-
-  // Create personal congratulatory notification for the winner
-  const winnerNotifRef = db.collection('notifications').doc();
-  await winnerNotifRef.set({
-    userId: winnerId,
-    senderId: 'system',
-    senderName: 'PicFlick',
-    senderPhotoUrl: '',
-    type: 'SYSTEM',
-    title: '🎉 You Won the Mythic Monthly Draw!',
-    message: `Congratulations ${winnerName}! Your ${streakThreshold}-day Mythic streak earned you a 3-month PRO upgrade. Enjoy unlimited uploads, premium features, and priority support. Keep the flame burning!`,
-    targetScreen: 'plan_options',
-    isRead: false,
-    timestamp: now,
-    monthKey,
-    mythicDrawWinner: true,
-  });
-
-  // Also send a direct FCM push to the winner (bypass the type filter)
-  try {
-    const winnerUserDoc = await db.collection('users').doc(winnerId).get();
-    const winnerFcmToken = winnerUserDoc.get('fcmToken');
-    if (winnerFcmToken) {
-      await admin.messaging().send({
-        token: winnerFcmToken,
-        notification: {
-          title: '🎉 You Won the Mythic Monthly Draw!',
-          body: `Your ${streakThreshold}-day streak earned you 3 months of PRO. Open PicFlick to claim!`,
-        },
-        data: {
-          type: 'SYSTEM',
-          targetScreen: 'plan_options',
-          click_action: 'FLUTTER_NOTIFICATION_CLICK',
-        },
-        android: { priority: 'high', notification: { sound: 'default', clickAction: 'FLUTTER_NOTIFICATION_CLICK' } },
-        apns: { headers: { 'apns-priority': '10' }, payload: { aps: { sound: 'default', badge: 1 } } },
-      });
-      console.log(`FCM push sent to winner ${winnerId}`);
+  // ─── WINNER REPEAT PROTECTION ───
+  // Build set of users who won in the last 3 months
+  const recentWinnerIds = new Set();
+  const recentMonths = getRecentMonthKeys(monthKey, 3);
+  for (const mk of recentMonths) {
+    const pastDraw = await db.collection('system').doc(`mythic_draw_${mk}`).get();
+    if (pastDraw.exists) {
+      const pw = pastDraw.data().winners || [];
+      pw.forEach((w) => { if (w.userId) recentWinnerIds.add(w.userId); });
     }
-  } catch (pushErr) {
-    console.error('Error sending winner FCM push:', pushErr.message);
+  }
+  console.log(`Repeat protection: ${recentWinnerIds.size} recent winners excluded`);
+
+  // ─── BUILD WEIGHTED TICKET POOL ───
+  // 1 ticket per 10 streak days (minimum 1 ticket if eligible)
+  const ticketPool = [];
+  eligibleUsers.forEach((u) => {
+    const streak = u.streak?.current || 0;
+    const tickets = Math.max(1, Math.floor(streak / 10));
+    const isProtected = recentWinnerIds.has(u.uid);
+    if (!isProtected) {
+      for (let i = 0; i < tickets; i++) {
+        ticketPool.push(u);
+      }
+    }
+  });
+
+  console.log(`Ticket pool: ${ticketPool.length} tickets from ${eligibleUsers.length - recentWinnerIds.size} eligible non-recent-winners`);
+
+  // ─── PICK 3 UNIQUE WINNERS ───
+  const prizes = [
+    { place: 1, label: '1st', proMonths: 3, crown: 'gold', crownEmoji: '👑', messagePrefix: '🎉 GRAND PRIZE WINNER' },
+    { place: 2, label: '2nd', proMonths: 1, crown: 'silver', crownEmoji: '🥈', messagePrefix: '🎉 RUNNER-UP WINNER' },
+    { place: 3, label: '3rd', proMonths: 0.5, crown: 'bronze', crownEmoji: '🥉', messagePrefix: '🎉 THIRD PLACE WINNER' },
+  ];
+
+  const winners = [];
+  const pickedIds = new Set();
+  const usedPool = [...ticketPool];
+
+  for (const prize of prizes) {
+    if (usedPool.length === 0) break;
+
+    // Simple random pick — NO ALGORITHM
+    const idx = Math.floor(Math.random() * usedPool.length);
+    const winner = usedPool[idx];
+    if (pickedIds.has(winner.uid)) {
+      // Remove all instances of this already-picked user and retry
+      for (let i = usedPool.length - 1; i >= 0; i--) {
+        if (usedPool[i].uid === winner.uid) usedPool.splice(i, 1);
+      }
+      continue; // Try next prize with cleaned pool
+    }
+
+    pickedIds.add(winner.uid);
+    winners.push({
+      place: prize.place,
+      userId: winner.uid,
+      userName: winner.displayName || 'A PicFlick creator',
+      streak: winner.streak?.current || 0,
+      crown: prize.crown,
+      crownEmoji: prize.crownEmoji,
+      proMonths: prize.proMonths,
+      prizeLabel: prize.label,
+      messagePrefix: prize.messagePrefix,
+    });
+
+    // Remove all instances of this winner from pool
+    for (let i = usedPool.length - 1; i >= 0; i--) {
+      if (usedPool[i].uid === winner.uid) usedPool.splice(i, 1);
+    }
   }
 
-  // Create announcement notification for ALL users (except winner — they got a personal one)
-  try {
-    const allUsersSnapshot = await db.collection('users').get();
+  console.log(`Mythic draw ${monthKey}: ${winners.length} winner(s) picked`, winners.map((w) => `#${w.place} ${w.userName} (${w.streak}d)`).join(', '));
+
+  // ─── AWARD PRIZES, CROWNS, BANNERS TO WINNERS ───
+  const winnerBannerText = `Mythic Draw Winner — ${monthKey}`;
+  for (const w of winners) {
+    const proMs = w.proMonths * 30 * 24 * 60 * 60 * 1000;
+    const expiryDate = now + proMs;
+
+    // Update user doc with prize, crown, banner, history
+    const userRef = db.collection('users').doc(w.userId);
+    const userDoc = await userRef.get();
+    const existingHistory = userDoc.get('mythicDrawHistory') || [];
+
+    await userRef.update({
+      subscriptionTier: 'PRO',
+      subscriptionActive: true,
+      subscriptionExpiryDate: expiryDate,
+      mythicDrawWonAt: now,
+      mythicDrawWonMonth: monthKey,
+      mythicCrown: w.crown,
+      mythicCrownExpiry: now + (30 * 24 * 60 * 60 * 1000), // Crown lasts 1 month
+      mythicWinnerBanner: winnerBannerText,
+      mythicWinnerBannerExpiry: now + (30 * 24 * 60 * 60 * 1000), // Banner lasts 1 month
+      mythicLastWonMonthKey: monthKey,
+      mythicDrawHistory: admin.firestore.FieldValue.arrayUnion({
+        monthKey,
+        monthNumber,
+        place: w.place,
+        prizeLabel: w.prizeLabel,
+        streak: w.streak,
+        wonAt: now,
+      }),
+    });
+
+    // Send personal FCM push to winner
+    try {
+      const winnerFcmToken = userDoc.get('fcmToken');
+      if (winnerFcmToken) {
+        await admin.messaging().send({
+          token: winnerFcmToken,
+          notification: {
+            title: `${w.messagePrefix}!`,
+            body: `You placed ${w.prizeLabel} in the Mythic Monthly Draw with a ${w.streak}-day streak! ${w.proMonths >= 1 ? w.proMonths + ' month' : '2 week'} PRO upgrade awarded.`,
+          },
+          data: {
+            type: 'SYSTEM',
+            targetScreen: 'achievements',
+            click_action: 'FLUTTER_NOTIFICATION_CLICK',
+          },
+          android: { priority: 'high', notification: { sound: 'default', clickAction: 'FLUTTER_NOTIFICATION_CLICK' } },
+          apns: { headers: { 'apns-priority': '10' }, payload: { aps: { sound: 'default', badge: 1 } } },
+        });
+        console.log(`FCM push sent to ${w.prizeLabel} winner ${w.userId}`);
+      }
+    } catch (pushErr) {
+      console.error(`Error sending FCM push to ${w.prizeLabel} winner:`, pushErr.message);
+    }
+  }
+
+  // ─── STORAGE BONUS + CONTENDER BADGE FOR ALL ENTRANTS ───
+  const entrantIds = eligibleUsers.map((u) => u.uid);
+  const STORAGE_BONUS_MB = 50;
+  for (const entrant of eligibleUsers) {
+    const entrantRef = db.collection('users').doc(entrant.uid);
+    await entrantRef.update({
+      mythicContenderCount: admin.firestore.FieldValue.increment(1),
+      mythicStorageBonusTotal: admin.firestore.FieldValue.increment(STORAGE_BONUS_MB),
+    });
+  }
+  console.log(`Storage bonus (+${STORAGE_BONUS_MB}MB) and contender badge awarded to ${eligibleUsers.length} entrants`);
+
+  // ─── NOTIFY ALL USERS (including winners get a separate announcement too) ───
+  const winnerNamesList = winners.map((w) => `${w.crownEmoji} ${w.userName} (${w.prizeLabel}, ${w.streak}d)`).join(', ');
+  const winnerSummary = winners.length > 0
+    ? `Winners: ${winnerNamesList}`
+    : 'No winners this month.';
+
+  // Send batch notifications to ALL users (winners get this too, in addition to their personal push)
+  await batchNotifyAllUsers(db, allUsers, {
+    title: '🏆 Mythic Monthly Draw Results',
+    message: `The ${monthKey} Mythic Draw is complete! ${winnerSummary}. Keep uploading daily to enter next month's draw!`,
+    targetScreen: 'achievements',
+    monthKey,
+    monthNumber,
+    streakThreshold,
+    eligibleUserCount: eligibleUsers.length,
+    isMythicDrawAnnouncement: true,
+    winners: winners.map((w) => ({
+      place: w.place,
+      userId: w.userId,
+      userName: w.userName,
+      streak: w.streak,
+      crown: w.crown,
+    })),
+    timestamp: now,
+  });
+
+  // ─── HALL OF FAME ───
+  const hallOfFameRef = db.collection('system').doc('mythic_hall_of_fame');
+  const hallSnap = await hallOfFameRef.get();
+  const hallData = hallSnap.exists ? hallSnap.data() : { winners: [] };
+  const updatedHall = [...(hallData.winners || [])];
+  for (const w of winners) {
+    updatedHall.push({
+      monthKey,
+      monthNumber,
+      place: w.place,
+      userId: w.userId,
+      userName: w.userName,
+      streak: w.streak,
+      crown: w.crown,
+      wonAt: now,
+    });
+  }
+  await hallOfFameRef.set({ winners: updatedHall, lastUpdated: now }, { merge: true });
+
+  // ─── LEADERBOARD (top 10 streaks) ───
+  const leaderboard = buildLeaderboard(allUsers, 10);
+
+  // ─── SAVE DRAW RESULT ───
+  await drawDocRef.set({
+    monthKey,
+    monthNumber,
+    streakThreshold,
+    winners: winners.map((w) => ({
+      place: w.place,
+      userId: w.userId,
+      userName: w.userName,
+      streak: w.streak,
+      crown: w.crown,
+      proMonths: w.proMonths,
+    })),
+    allEntrantIds: entrantIds,
+    eligibleUserCount: eligibleUsers.length,
+    totalUserCount: allUsers.length,
+    createdAt: now,
+    notificationSent: true,
+    leaderboard,
+    ticketPoolSize: ticketPool.length,
+    recentWinnersExcluded: Array.from(recentWinnerIds),
+  });
+
+  // ─── DEV FEEDBACK ───
+  const devFeedbackRef = db.collection('feedback').doc();
+  await devFeedbackRef.set({
+    userId: 'system',
+    userName: 'Mythic Draw Bot',
+    userEmail: 'system@picflick.app',
+    subject: `Mythic Draw — ${monthKey} (Month #${monthNumber})`,
+    message: `Mythic Draw completed for ${monthKey}.\n\nMonth #: ${monthNumber}\nThreshold: ${streakThreshold} days\nEligible: ${eligibleUsers.length}/${allUsers.length}\nTicket pool: ${ticketPool.length}\nWinners:\n${winners.map((w) => `  #${w.place}: ${w.userName} (${w.userId}) — ${w.streak}d streak — ${w.proMonths}mo PRO + ${w.crown} crown`).join('\n')}\nRecent winners excluded: ${Array.from(recentWinnerIds).length}`,
+    category: 'GENERAL',
+    timestamp: now,
+    status: 'NEW',
+    assignedToUid: 'LpSqE40IZGeAGMknTAEzysqp5l33',
+    appVersion: 'cloud-function',
+    deviceInfo: `month=${monthKey}|monthNumber=${monthNumber}|threshold=${streakThreshold}|eligible=${eligibleUsers.length}|winners=${winners.length}`,
+  });
+
+  console.log(`Mythic draw ${monthKey} completed. Month #${monthNumber}, ${winners.length} winner(s), ${eligibleUsers.length} eligible.`);
+  return { monthKey, monthNumber, winners, eligibleCount: eligibleUsers.length, streakThreshold };
+}
+
+/**
+ * Build a streak leaderboard from all users
+ */
+function buildLeaderboard(allUsers, limit = 10) {
+  return allUsers
+    .map((u) => ({
+      userId: u.uid,
+      userName: u.displayName || 'Unknown',
+      streak: u.streak?.current || 0,
+      photoUrl: u.photoUrl || '',
+    }))
+    .sort((a, b) => b.streak - a.streak)
+    .slice(0, limit);
+}
+
+/**
+ * Get the last N month keys before the given monthKey
+ */
+function getRecentMonthKeys(monthKey, count) {
+  const result = [];
+  const [yearStr, monthStr] = monthKey.split('-');
+  let year = parseInt(yearStr, 10);
+  let month = parseInt(monthStr, 10);
+  for (let i = 0; i < count; i++) {
+    month--;
+    if (month <= 0) { month = 12; year--; }
+    result.push(`${year}-${String(month).padStart(2, '0')}`);
+  }
+  return result;
+}
+
+/**
+ * Send notifications to all users in batches (500 per batch — Firestore limit)
+ */
+async function batchNotifyAllUsers(db, allUsers, notificationData) {
+  const BATCH_SIZE = 500;
+  const batches = [];
+  for (let i = 0; i < allUsers.length; i += BATCH_SIZE) {
     const batch = db.batch();
-    let batchCount = 0;
-    const maxBatch = 500; // Firestore batch limit
-
-    allUsersSnapshot.docs.forEach((userDoc) => {
-      const uid = userDoc.id;
-      if (!uid || uid === winnerId) return; // Skip winner — they got personal notif + push
-
+    const chunk = allUsers.slice(i, i + BATCH_SIZE);
+    let count = 0;
+    chunk.forEach((userDoc) => {
+      const uid = userDoc.uid;
+      if (!uid) return;
       const notifRef = db.collection('notifications').doc();
       batch.set(notifRef, {
         userId: uid,
@@ -1040,64 +1263,34 @@ async function executeMythicDraw(db, isManual = false, forcedMonthKey = null) {
         senderName: 'PicFlick',
         senderPhotoUrl: '',
         type: 'SYSTEM',
-        title: '🏆 Mythic Monthly Draw Winner',
-        message: `${winnerName} won this month's Mythic Draw with a ${streakThreshold}-day streak and gets 3 months of PRO! Keep uploading daily to be in next month's draw.`,
-        targetScreen: 'achievements',
-        isRead: false,
-        timestamp: now,
-        monthKey,
-        winnerUserId: winnerId,
-        winnerName,
-        streakThreshold,
-        eligibleUserCount: eligibleUsers.length,
-        isMythicDrawAnnouncement: true,
+        ...notificationData,
       });
-      batchCount++;
-
-      if (batchCount >= maxBatch) {
-        // Firestore batch limit — would need to commit and start new batch
-        // For now, just log warning. In practice with <500 users this never hits.
-        console.warn(`Mythic draw announcement batch approaching limit (${batchCount}/${maxBatch}). Some users may not receive announcement.`);
-      }
+      count++;
     });
-
-    await batch.commit();
-    console.log(`Mythic draw announcement sent to ${batchCount} user(s)`);
-  } catch (announceErr) {
-    console.error('Error sending Mythic draw announcement to all users:', announceErr.message);
-    // Non-blocking — don't fail the draw if announcement fails
+    batches.push(batch.commit().then(() => count));
   }
+  const results = await Promise.all(batches);
+  const totalSent = results.reduce((a, b) => a + b, 0);
+  console.log(`Mythic draw announcement sent to ${totalSent} user(s) in ${batches.length} batch(es)`);
+}
 
-  // Create dev feedback notification (both devs get notified via existing sendFeedbackPushToDeveloper)
-  const devFeedbackRef = db.collection('feedback').doc();
-  await devFeedbackRef.set({
-    userId: 'system',
-    userName: 'Mythic Draw Bot',
-    userEmail: 'system@picflick.app',
-    subject: `Mythic Draw Winner — ${monthKey}`,
-    message: `Monthly Mythic Draw completed for ${monthKey}.\n\nThreshold: ${streakThreshold} days\nWinner: ${winnerName} (${winnerId})\nEligible entries: ${eligibleUsers.length}\nPrize: 3-month PRO upgrade (expires ${new Date(expiryDate).toISOString()})`,
-    category: 'GENERAL',
-    timestamp: now,
-    status: 'NEW',
-    assignedToUid: 'LpSqE40IZGeAGMknTAEzysqp5l33',
-    appVersion: 'cloud-function',
-    deviceInfo: `month=${monthKey}|threshold=${streakThreshold}|eligible=${eligibleUsers.length}|winner=${winnerId}`,
-  });
-
-  // Mark draw as completed
-  await drawDocRef.set({
+/**
+ * Notify all users when there are no eligible entrants
+ */
+async function notifyAllUsersNoWinner(db, allUsers, monthKey, monthNumber, streakThreshold, now) {
+  const nextThreshold = monthNumber >= 4 ? 100 : ({ 1: 30, 2: 50, 3: 70 }[monthNumber] || 100);
+  await batchNotifyAllUsers(db, allUsers, {
+    title: '🏆 Mythic Monthly Draw — No Eligible Entrants',
+    message: `The ${monthKey} Mythic Draw had no eligible entrants (threshold: ${streakThreshold} days). Next month's threshold is ${nextThreshold} days — keep uploading daily to enter!`,
+    targetScreen: 'achievements',
     monthKey,
-    winnerUserId: winnerId,
-    winnerName,
-    eligibleUserCount: eligibleUsers.length,
-    createdAt: now,
-    notificationSent: true,
-    expiryDate,
+    monthNumber,
     streakThreshold,
+    eligibleUserCount: 0,
+    isMythicDrawAnnouncement: true,
+    noWinner: true,
+    timestamp: now,
   });
-
-  console.log(`Mythic draw ${monthKey} completed. Winner: ${winnerId}, eligible: ${eligibleUsers.length}`);
-  return { winnerId, winnerName, monthKey, eligibleCount: eligibleUsers.length, streakThreshold };
 }
 
 /**
