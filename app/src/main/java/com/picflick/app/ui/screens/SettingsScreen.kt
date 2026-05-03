@@ -462,74 +462,147 @@ fun SettingsScreen(
     }
 
     if (showDeveloperPasswordDialog) {
-        AlertDialog(
+        ModalBottomSheet(
             onDismissRequest = {
                 showDeveloperPasswordDialog = false
                 developerPasswordInput = ""
                 developerPasswordError = null
             },
-            title = { Text("Developer Access") },
-            text = {
-                Column {
-                    Text(
-                        text = "Enter developer password",
-                        color = if (isDarkMode) Color.LightGray else Color.DarkGray,
-                        fontSize = 13.sp
-                    )
-                    Spacer(modifier = Modifier.height(10.dp))
-                    OutlinedTextField(
-                        value = developerPasswordInput,
-                        onValueChange = {
-                            developerPasswordInput = it
-                            developerPasswordError = null
-                        },
-                        singleLine = true,
-                        label = { Text("Password") },
-                        visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation(),
-                        modifier = Modifier.fillMaxWidth(),
-                        isError = developerPasswordError != null
-                    )
-                    developerPasswordError?.let { err ->
-                        Spacer(modifier = Modifier.height(6.dp))
-                        Text(
-                            text = err,
-                            color = MaterialTheme.colorScheme.error,
-                            fontSize = 12.sp
-                        )
-                    }
+            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+            containerColor = Color(0xFF121212),
+            contentColor = Color.White,
+            dragHandle = {
+                Surface(
+                    modifier = Modifier.padding(top = 12.dp, bottom = 8.dp),
+                    color = Color.White.copy(alpha = 0.28f),
+                    shape = RoundedCornerShape(44.dp)
+                ) {
+                    Box(modifier = Modifier.width(44.dp).height(5.dp))
                 }
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        if (developerPasswordInput == developerAccessPassword) {
-                            showDeveloperPasswordDialog = false
-                            developerPasswordInput = ""
-                            developerPasswordError = null
-                            onDeveloper()
-                        } else {
-                            developerPasswordError = "Incorrect password"
+            }
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp)
+                    .padding(bottom = 32.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = "Developer Access",
+                    color = Color.White,
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "Enter developer password",
+                    color = Color(0xFFB7BDC9),
+                    fontSize = 14.sp
+                )
+                Spacer(modifier = Modifier.height(20.dp))
+                OutlinedTextField(
+                    value = developerPasswordInput,
+                    onValueChange = {
+                        developerPasswordInput = it
+                        developerPasswordError = null
+                    },
+                    singleLine = true,
+                    label = { Text("Password", color = Color(0xFFB7BDC9)) },
+                    visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation(),
+                    modifier = Modifier.fillMaxWidth(),
+                    isError = developerPasswordError != null,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = Color(0xFF34C759),
+                        unfocusedBorderColor = Color(0xFF2C2C2E),
+                        focusedLabelColor = Color(0xFF34C759),
+                        unfocusedLabelColor = Color(0xFFB7BDC9),
+                        focusedTextColor = Color.White,
+                        unfocusedTextColor = Color.White,
+                        cursorColor = Color(0xFF34C759),
+                        errorBorderColor = Color.Red,
+                        errorLabelColor = Color.Red
+                    )
+                )
+                developerPasswordError?.let { err ->
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text(
+                        text = err,
+                        color = Color.Red,
+                        fontSize = 12.sp,
+                        modifier = Modifier.align(Alignment.Start)
+                    )
+                }
+                Spacer(modifier = Modifier.height(24.dp))
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Surface(
+                        shape = RoundedCornerShape(16.dp),
+                        color = Color(0xFF1C1F26),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF34C759).copy(alpha = 0.38f)),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    if (developerPasswordInput == developerAccessPassword) {
+                                        showDeveloperPasswordDialog = false
+                                        developerPasswordInput = ""
+                                        developerPasswordError = null
+                                        onDeveloper()
+                                    } else {
+                                        developerPasswordError = "Incorrect password"
+                                    }
+                                }
+                                .padding(horizontal = 16.dp, vertical = 14.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            androidx.compose.material3.Icon(
+                                imageVector = Icons.Default.Lock,
+                                contentDescription = null,
+                                tint = Color(0xFF34C759),
+                                modifier = Modifier.size(28.dp)
+                            )
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text("Unlock", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+                                Text("Access developer tools", color = Color(0xFFB7BDC9), fontSize = 14.sp)
+                            }
                         }
                     }
-                ) {
-                    Text("Unlock")
-                }
-            },
-            dismissButton = {
-                TextButton(
-                    onClick = {
-                        showDeveloperPasswordDialog = false
-                        developerPasswordInput = ""
-                        developerPasswordError = null
+                    Surface(
+                        shape = RoundedCornerShape(16.dp),
+                        color = Color(0xFF1C1F26),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF8E8E93).copy(alpha = 0.38f)),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    showDeveloperPasswordDialog = false
+                                    developerPasswordInput = ""
+                                    developerPasswordError = null
+                                }
+                                .padding(horizontal = 16.dp, vertical = 14.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            androidx.compose.material3.Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = null,
+                                tint = Color(0xFF8E8E93),
+                                modifier = Modifier.size(28.dp)
+                            )
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text("Cancel", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+                                Text("Keep using app", color = Color(0xFFB7BDC9), fontSize = 14.sp)
+                            }
+                        }
                     }
-                ) {
-                    Text("Cancel")
                 }
-            },
-            containerColor = if (isDarkMode) Color(0xFF1C1C1E) else Color.White,
-            titleContentColor = if (isDarkMode) Color.White else Color.Black,
-            textContentColor = if (isDarkMode) Color.White else Color.Black
-        )
+            }
+        }
     }
 
     if (showContactPopup) {
