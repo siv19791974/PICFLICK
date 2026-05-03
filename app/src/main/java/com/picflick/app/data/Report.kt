@@ -12,6 +12,15 @@ data class Report(
     @PropertyName("flickId")
     val flickId: String = "",
 
+    @PropertyName("flickImageUrl")
+    val flickImageUrl: String = "",
+
+    @PropertyName("flickOwnerId")
+    val flickOwnerId: String = "",
+
+    @PropertyName("flickOwnerName")
+    val flickOwnerName: String = "",
+
     @PropertyName("reporterId")
     val reporterId: String = "",
 
