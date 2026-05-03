@@ -58,6 +58,7 @@ class BillingViewModel : ViewModel() {
     private var billingClient: BillingClient? = null
     private lateinit var functions: FirebaseFunctions
     private val validatedTierByPurchaseToken = mutableMapOf<String, SubscriptionTier>()
+    private val validatedExpiryByPurchaseToken = mutableMapOf<String, Long>()
 
     // Product IDs for each subscription tier
     companion object {
@@ -348,11 +349,25 @@ class BillingViewModel : ViewModel() {
             .asSequence()
             .filter { it.purchaseState == Purchase.PurchaseState.PURCHASED }
             .mapNotNull { purchase ->
-                purchase.products
+                val tierFromProductId = purchase.products
                     .asSequence()
                     .mapNotNull { productId -> getTierFromProductId(productId) }
                     .maxByOrNull { it.ordinal }
-                    ?: validatedTierByPurchaseToken[purchase.purchaseToken]
+
+                if (tierFromProductId != null) {
+                    return@mapNotNull tierFromProductId
+                }
+
+                // Fallback to server-validated tier only if not expired
+                val cachedTier = validatedTierByPurchaseToken[purchase.purchaseToken]
+                val expiryMillis = validatedExpiryByPurchaseToken[purchase.purchaseToken]
+                if (cachedTier != null && expiryMillis != null && System.currentTimeMillis() > expiryMillis) {
+                    Log.d("BillingViewModel", "Purchase token ${purchase.purchaseToken} expired at $expiryMillis; treating as FREE")
+                    validatedTierByPurchaseToken.remove(purchase.purchaseToken)
+                    validatedExpiryByPurchaseToken.remove(purchase.purchaseToken)
+                    return@mapNotNull null
+                }
+                cachedTier
             }
             .maxByOrNull { tier -> tier.ordinal }
             ?: SubscriptionTier.FREE
@@ -446,6 +461,7 @@ class BillingViewModel : ViewModel() {
         } ?: (System.currentTimeMillis() + 30L * 24 * 60 * 60 * 1000) // fallback 30 days
 
         validatedTierByPurchaseToken[purchase.purchaseToken] = parsedTier
+        validatedExpiryByPurchaseToken[purchase.purchaseToken] = expiryMillis
         if (parsedTier.ordinal >= _currentTier.value.ordinal) {
             _currentTier.value = parsedTier
         }
