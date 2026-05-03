@@ -169,7 +169,7 @@
     <string name="explore_follow_more_friends_subtitle">Φωτογραφίες από άτομα που ακολουθείτε</string>
     <string name="explore_from_people_you_follow">Από Άτομα Που Ακολουθείτε</string>
     <string name="explore_reactions_count">%d αντιδράσεις</string>
-    <string name="explore_reactions_comments">%d αντιδράσεις • %d σχόλια</string>
+    <string name="explore_reactions_comments">%1$d αντιδράσεις • %2$d σχόλια</string>
     <string name="explore_trending_badge">🔥 ΔΗΜΟΦΙΛΗ</string>
     <string name="explore_new_badge">✨ ΝΕΟ</string>
     <string name="explore_no_photos_upload">Δεν υπάρχουν φωτογραφίες ακόμα. Μεταφορτώστε μία!</string>

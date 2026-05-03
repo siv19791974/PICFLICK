@@ -172,7 +172,7 @@
     <string name="explore_follow_more_friends_subtitle">Photos from people you follow will appear here</string>
     <string name="explore_from_people_you_follow">From People You Follow</string>
     <string name="explore_reactions_count">%d reactions</string>
-    <string name="explore_reactions_comments">%d reactions • %d comments</string>
+    <string name="explore_reactions_comments">%1$d reactions • %2$d comments</string>
     <string name="explore_trending_badge">🔥 TRENDING</string>
     <string name="explore_new_badge">✨ NEW</string>
     <string name="explore_no_photos_upload">No photos yet. Upload one!</string>

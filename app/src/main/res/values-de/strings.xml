@@ -174,7 +174,7 @@
     <string name="explore_follow_more_friends_subtitle">Fotos von Personen, denen Sie folgen, werden hier angezeigt</string>
     <string name="explore_from_people_you_follow">Von Personen, denen Sie folgen</string>
     <string name="explore_reactions_count">%d Reaktionen</string>
-    <string name="explore_reactions_comments">%d Reaktionen \u2022 %d Kommentare</string>
+    <string name="explore_reactions_comments">%1$d Reaktionen \u2022 %2$d Kommentare</string>
     <string name="explore_trending_badge">🔥 BELIEBT</string>
     <string name="explore_new_badge">✨ NEU</string>
     <string name="explore_no_photos_upload">Noch keine Fotos. Laden Sie eines hoch!</string>
