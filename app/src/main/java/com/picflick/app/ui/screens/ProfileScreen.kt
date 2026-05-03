@@ -180,7 +180,7 @@ fun ProfileScreen(
             dragHandle = { Surface(modifier = Modifier.padding(top = 8.dp).size(width = 44.dp, height = 5.dp), shape = RoundedCornerShape(50), color = Color.White.copy(alpha = 0.28f)) {} }
         ) {
             Column(Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 20.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("Edit Bio", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 16.dp))
+                Text("Edit Bio", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 20.dp))
                 OutlinedTextField(
                     value = bioText,
                     onValueChange = { bioText = it },
@@ -196,13 +196,17 @@ fun ProfileScreen(
                         cursorColor = Color(0xFF2A4A73)
                     )
                 )
-                Spacer(Modifier.height(16.dp))
+                Spacer(Modifier.height(12.dp))
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    ActionSheetRow(icon = Icons.Default.Close, title = "Cancel", accentColor = Color.Gray, onClick = { showBioDialog = false })
-                    ActionSheetRow(icon = Icons.Default.Save, title = "Save", accentColor = Color(0xFF4CAF50), onClick = {
-                        onBioUpdated(bioText.trim())
-                        showBioDialog = false
-                    })
+                    Box(modifier = Modifier.weight(1f)) {
+                        ActionSheetRow(icon = Icons.Default.Close, title = "Cancel", accentColor = Color.Gray, onClick = { showBioDialog = false })
+                    }
+                    Box(modifier = Modifier.weight(1f)) {
+                        ActionSheetRow(icon = Icons.Default.Save, title = "Save", accentColor = Color(0xFF4CAF50), onClick = {
+                            onBioUpdated(bioText.trim())
+                            showBioDialog = false
+                        })
+                    }
                 }
                 Spacer(Modifier.height(12.dp))
             }
@@ -721,32 +725,36 @@ private fun ProfilePhotoCropDialog(
                 }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(12.dp))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                ActionSheetRow(icon = Icons.Default.Close, title = "Cancel", accentColor = Color.Gray, onClick = { if (!isSaving) onDismiss() })
-                ActionSheetRow(
-                    icon = Icons.Default.Save,
-                    title = if (isSaving) "Saving..." else "Save",
-                    accentColor = if (sourceBitmap != null && !isSaving && viewportSize.width > 0 && viewportSize.height > 0) Color(0xFF4CAF50) else Color.Gray,
-                    onClick = {
-                        val bitmap = sourceBitmap ?: return@ActionSheetRow
-                        isSaving = true
-                        scope.launch {
-                            val croppedUri = withContext(Dispatchers.IO) {
-                                createCroppedProfileImageUri(
-                                    context = context,
-                                    sourceBitmap = bitmap,
-                                    viewportSize = viewportSize,
-                                    zoomScale = scale,
-                                    panOffset = offset,
-                                    imageQuality = imageQuality
-                                )
+                Box(modifier = Modifier.weight(1f)) {
+                    ActionSheetRow(icon = Icons.Default.Close, title = "Cancel", accentColor = Color.Gray, onClick = { if (!isSaving) onDismiss() })
+                }
+                Box(modifier = Modifier.weight(1f)) {
+                    ActionSheetRow(
+                        icon = Icons.Default.Save,
+                        title = if (isSaving) "Saving..." else "Save",
+                        accentColor = if (sourceBitmap != null && !isSaving && viewportSize.width > 0 && viewportSize.height > 0) Color(0xFF4CAF50) else Color.Gray,
+                        onClick = {
+                            val bitmap = sourceBitmap ?: return@ActionSheetRow
+                            isSaving = true
+                            scope.launch {
+                                val croppedUri = withContext(Dispatchers.IO) {
+                                    createCroppedProfileImageUri(
+                                        context = context,
+                                        sourceBitmap = bitmap,
+                                        viewportSize = viewportSize,
+                                        zoomScale = scale,
+                                        panOffset = offset,
+                                        imageQuality = imageQuality
+                                    )
+                                }
+                                isSaving = false
+                                onConfirm(croppedUri)
                             }
-                            isSaving = false
-                            onConfirm(croppedUri)
                         }
-                    }
-                )
+                    )
+                }
             }
             Spacer(Modifier.height(12.dp))
         }
