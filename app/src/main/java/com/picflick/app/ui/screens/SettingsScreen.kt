@@ -335,16 +335,6 @@ fun SettingsScreen(
                             showDeveloperPasswordDialog = true
                         }
                     )
-                    SettingsItem(
-                        icon = Icons.Default.Info,
-                        title = "Feedback Inbox",
-                        subtitle = "Open Contact submissions",
-                        onClick = {
-                            developerPasswordInput = ""
-                            developerPasswordError = null
-                            showDeveloperPasswordDialog = true
-                        }
-                    )
                 }
                 HorizontalDivider(color = if (isDarkMode) Color(0xFF2C2C2E) else Color.LightGray, thickness = 0.5.dp)
             }
