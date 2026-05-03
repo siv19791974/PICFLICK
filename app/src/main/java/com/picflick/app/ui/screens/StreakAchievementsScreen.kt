@@ -88,7 +88,8 @@ fun StreakAchievementsScreen(
     photos: List<Flick>,
     totalReactionsReceived: Int,
     followingCount: Int,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    onMythicClick: () -> Unit = {}
 ) {
     val isDarkMode = ThemeManager.isDarkMode.value
     val scope = rememberCoroutineScope()
@@ -233,11 +234,12 @@ fun StreakAchievementsScreen(
             )
         }
 
-        // ─── MYTHIC BANNER ───
+        // ─── MYTHIC BANNER (clickable → Mythic Draw page) ───
         Card(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 24.dp, vertical = 16.dp)
+                .clickable { onMythicClick() }
                 .border(
                     1.dp,
                     if (mythicEligible) Color(0xFF4CAF50).copy(alpha = 0.4f) else MidBlue.copy(alpha = 0.35f),

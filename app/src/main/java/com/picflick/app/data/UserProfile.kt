@@ -40,7 +40,16 @@ data class UserProfile(
     val lastUploadResetDate: String = "", // Date string for tracking daily resets
     val isFounder: Boolean = false, // Early tester status
     val defaultPrivacy: String = "friends", // Default privacy for new posts: "friends" or "public"
-    val joinedAt: Long = System.currentTimeMillis()
+    val joinedAt: Long = System.currentTimeMillis(),
+    // Mythic Monthly Draw fields
+    val mythicDrawHistory: List<Map<String, Any>> = emptyList(), // List of {monthKey, place, prizeLabel, streak, wonAt}
+    val mythicCrown: String = "", // "gold", "silver", "bronze", or ""
+    val mythicCrownExpiry: Any? = 0L, // Epoch millis when crown expires
+    val mythicWinnerBanner: String = "", // e.g. "Mythic Draw Winner — 2026-05"
+    val mythicWinnerBannerExpiry: Any? = 0L, // Epoch millis when banner expires
+    val mythicContenderCount: Int = 0, // How many draws entered
+    val mythicStorageBonusTotal: Int = 0, // Total MB bonus earned
+    val mythicLastWonMonthKey: String = "", // Last month they won (for repeat protection display)
 ) {
     /**
      * Check if user has a pending follow request from another user

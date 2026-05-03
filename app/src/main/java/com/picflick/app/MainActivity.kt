@@ -424,6 +424,7 @@ fun MainScreen(
         is Screen.ManageStorage,
         is Screen.SubscriptionStatus,
         is Screen.PlanOptions,
+        is Screen.MythicDraw -> Screen.StreakAchievements
         is Screen.StreakAchievements,
         is Screen.PrivacyPolicy,
         is Screen.Philosophy,

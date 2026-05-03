@@ -116,59 +116,15 @@ class FlickRepository private constructor() {
         return String.format(Locale.US, "%04d-%02d", year, month)
     }
 
+    /**
+     * DEPRECATED: All Mythic Draw logic now runs in the Cloud Function.
+     * This local fallback is disabled to avoid conflicts with server-side draws.
+     * The Cloud Function handles: progressive thresholds, tiered prizes, weighted tickets,
+     * repeat protection, storage bonuses, contender badges, and all-user notifications.
+     */
     private suspend fun maybeRunMonthlyMythicDraw(currentUserStreak: Int) {
-        if (currentUserStreak < 100) return
-
-        val monthKey = getCurrentYearMonthKey()
-        val drawRef = db.collection("system").document("mythic_draw_$monthKey")
-        val existingDraw = drawRef.get().await()
-        if (existingDraw.exists()) return
-
-        val eligibleUsers = db.collection("users").get().await().documents.mapNotNull { doc ->
-            val uid = doc.id
-            val streak = ((doc.get("streak") as? Map<*, *>)?.get("current") as? Long)?.toInt() ?: 0
-            if (uid.isNotBlank() && streak >= 100) uid else null
-        }
-
-        if (eligibleUsers.isEmpty()) return
-
-        val winnerId = eligibleUsers.random()
-        val now = System.currentTimeMillis()
-
-        val drawCreated = try {
-            db.runTransaction { tx ->
-                val fresh = tx.get(drawRef)
-                if (fresh.exists()) {
-                    false
-                } else {
-                    tx.set(
-                        drawRef,
-                        mapOf(
-                            "monthKey" to monthKey,
-                            "winnerUserId" to winnerId,
-                            "eligibleUserCount" to eligibleUsers.size,
-                            "createdAt" to now,
-                            "notificationSent" to false
-                        )
-                    )
-                    true
-                }
-            }.await()
-        } catch (_: Exception) {
-            false
-        }
-
-        if (!drawCreated) return
-
-        runCatching {
-            upgradeUserToProForThreeMonths(winnerId)
-            sendMonthlyMythicWinnerNotifications(
-                winnerId = winnerId,
-                monthKey = monthKey,
-                eligibleCount = eligibleUsers.size
-            )
-            drawRef.update("notificationSent", true).await()
-        }
+        // Cloud Function is the source of truth for all Mythic Draw operations.
+        // Do not run client-side draws.
     }
 
     private suspend fun upgradeUserToProForThreeMonths(userId: String) {

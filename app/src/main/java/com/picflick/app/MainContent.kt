@@ -63,6 +63,7 @@ import com.picflick.app.ui.screens.PrivacyScreen
 import com.picflick.app.ui.screens.ProfileScreen
 import com.picflick.app.ui.screens.SettingsScreen
 import com.picflick.app.ui.screens.StreakAchievementsScreen
+import com.picflick.app.ui.screens.MythicDrawScreen
 import com.picflick.app.ui.screens.SubscriptionStatusScreen
 import com.picflick.app.ui.screens.UserProfileScreen
 import com.picflick.app.viewmodel.AuthViewModel
@@ -297,7 +298,15 @@ fun AuthenticatedContent(
             photos = profileViewModel.photos,
             totalReactionsReceived = profileViewModel.totalReactions,
             followingCount = userProfile.following.size,
-            onBack = { onScreenChange(Screen.Profile) }
+            onBack = { onScreenChange(Screen.Profile) },
+            onMythicClick = { onScreenChange(Screen.MythicDraw) }
+        )
+
+        is Screen.MythicDraw -> MythicDrawScreen(
+            currentStreak = profileViewModel.currentStreak,
+            currentUserId = userProfile.uid,
+            userProfile = userProfile,
+            onBack = { onScreenChange(Screen.StreakAchievements) }
         )
 
         is Screen.Filter -> FilterScreenContent(
