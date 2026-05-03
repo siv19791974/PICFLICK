@@ -349,6 +349,17 @@ class BillingViewModel : ViewModel() {
             .asSequence()
             .filter { it.purchaseState == Purchase.PurchaseState.PURCHASED }
             .mapNotNull { purchase ->
+                // Check server-validated expiry FIRST — even if Google Play still returns
+                // the purchase with the product ID, trust our server-validated expiry.
+                val cachedTier = validatedTierByPurchaseToken[purchase.purchaseToken]
+                val expiryMillis = validatedExpiryByPurchaseToken[purchase.purchaseToken]
+                if (cachedTier != null && expiryMillis != null && System.currentTimeMillis() > expiryMillis) {
+                    Log.d("BillingViewModel", "Purchase token ${purchase.purchaseToken} expired at $expiryMillis (server); treating as FREE")
+                    validatedTierByPurchaseToken.remove(purchase.purchaseToken)
+                    validatedExpiryByPurchaseToken.remove(purchase.purchaseToken)
+                    return@mapNotNull null
+                }
+
                 val tierFromProductId = purchase.products
                     .asSequence()
                     .mapNotNull { productId -> getTierFromProductId(productId) }
@@ -356,16 +367,6 @@ class BillingViewModel : ViewModel() {
 
                 if (tierFromProductId != null) {
                     return@mapNotNull tierFromProductId
-                }
-
-                // Fallback to server-validated tier only if not expired
-                val cachedTier = validatedTierByPurchaseToken[purchase.purchaseToken]
-                val expiryMillis = validatedExpiryByPurchaseToken[purchase.purchaseToken]
-                if (cachedTier != null && expiryMillis != null && System.currentTimeMillis() > expiryMillis) {
-                    Log.d("BillingViewModel", "Purchase token ${purchase.purchaseToken} expired at $expiryMillis; treating as FREE")
-                    validatedTierByPurchaseToken.remove(purchase.purchaseToken)
-                    validatedExpiryByPurchaseToken.remove(purchase.purchaseToken)
-                    return@mapNotNull null
                 }
                 cachedTier
             }
