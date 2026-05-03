@@ -4,6 +4,7 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -210,38 +211,30 @@ fun StreakAchievementsScreen(
             .fillMaxSize()
             .background(bgColor)
     ) {
-        // Header — matches app surface color
-        Box(
+        // Header — sits directly on background, no separate bar
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(48.dp)
-                .background(surfaceColor),
-            contentAlignment = Alignment.CenterStart
+                .padding(horizontal = 12.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                IconButton(onClick = onBack, modifier = Modifier.size(48.dp)) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = "Back",
-                        tint = textPrimary
-                    )
-                }
-                Text(
-                    text = "Streak Achievements",
-                    modifier = Modifier.weight(1f),
-                    color = textPrimary,
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Bold,
-                    textAlign = TextAlign.Center
+            IconButton(onClick = onBack, modifier = Modifier.size(48.dp)) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                    contentDescription = "Back",
+                    tint = textPrimary
                 )
-                Spacer(modifier = Modifier.size(48.dp))
             }
+            Text(
+                text = "Streak Achievements",
+                modifier = Modifier.weight(1f),
+                color = textPrimary,
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center
+            )
+            Spacer(modifier = Modifier.size(48.dp))
         }
-
-        Spacer(modifier = Modifier.height(12.dp))
 
         // Mythic Monthly Draw — uses standard surface card with accent border
         Card(
@@ -303,10 +296,11 @@ fun StreakAchievementsScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Floating pill tabs — no blue strip, just pills on the background
+        // Floating pill tabs — horizontally scrollable so all 5 fit
         Row(
             modifier = Modifier
                 .fillMaxWidth()
+                .horizontalScroll(rememberScrollState())
                 .padding(horizontal = 24.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically
@@ -332,13 +326,13 @@ fun StreakAchievementsScreen(
                             RoundedCornerShape(20.dp)
                         )
                         .clickable { scope.launch { pagerState.animateScrollToPage(index) } }
-                        .padding(horizontal = 14.dp, vertical = 8.dp),
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
                         text = category.title,
                         color = pillText,
-                        fontSize = 12.sp,
+                        fontSize = 13.sp,
                         fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
                         textAlign = TextAlign.Center,
                         maxLines = 1,
