@@ -248,6 +248,15 @@ class BillingViewModel : ViewModel() {
                 _purchases.value = purchasesList
                 updateCurrentTier(purchasesList)
 
+                // Acknowledge any unacknowledged purchases that were already PURCHASED
+                // This handles cases where the app crashed between purchase and acknowledgement
+                purchasesList.forEach { purchase ->
+                    if (purchase.purchaseState == Purchase.PurchaseState.PURCHASED && !purchase.isAcknowledged) {
+                        Log.d("BillingViewModel", "Acknowledging unacknowledged purchase on query: ${purchase.products}")
+                        acknowledgePurchase(purchase)
+                    }
+                }
+
                 if (emitRestoredEvent) {
                     viewModelScope.launch {
                         syncActivePurchasesWithServer(purchasesList)
@@ -458,13 +467,7 @@ class BillingViewModel : ViewModel() {
             return
         }
 
-        val productDetailsParams = BillingFlowParams.ProductDetailsParams.newBuilder()
-            .setProductDetails(product.productDetails)
-            .setOfferToken(offerToken)
-            .build()
-
         val billingFlowBuilder = BillingFlowParams.newBuilder()
-            .setProductDetailsParamsList(listOf(productDetailsParams))
 
         // Explicit upgrade/downgrade handling: tell Google Play this is a plan replacement
         // so billing/proration is handled correctly and users are not double-charged.
@@ -472,15 +475,45 @@ class BillingViewModel : ViewModel() {
             it.purchaseState == Purchase.PurchaseState.PURCHASED && it.products.isNotEmpty()
         }
         val currentProductId = activePurchase?.products?.firstOrNull()
-        if (activePurchase != null && currentProductId != null && currentProductId != product.productId) {
+        val currentTier = currentProductId?.let { getTierFromProductId(it) }
+
+        val productDetailsParams = if (activePurchase != null && currentProductId != null && currentProductId != product.productId && currentTier != null) {
+            // Determine replacement mode based on tier comparison
+            val replacementMode = when {
+                product.tier.ordinal > currentTier.ordinal -> {
+                    // UPGRADE to higher tier: charge prorated price immediately
+                    Log.d("BillingViewModel", "Upgrade detected: ${currentTier.name} -> ${product.tier.name}, mode=CHARGE_PRORATED_PRICE")
+                    BillingFlowParams.SubscriptionUpdateParams.ReplacementMode.CHARGE_PRORATED_PRICE
+                }
+                product.tier.ordinal < currentTier.ordinal -> {
+                    // DOWNGRADE to lower tier: defer until next billing date
+                    Log.d("BillingViewModel", "Downgrade detected: ${currentTier.name} -> ${product.tier.name}, mode=DEFERRED")
+                    BillingFlowParams.SubscriptionUpdateParams.ReplacementMode.DEFERRED
+                }
+                else -> {
+                    // Same tier, different billing cycle (e.g. monthly -> yearly)
+                    BillingFlowParams.SubscriptionUpdateParams.ReplacementMode.WITHOUT_PRORATION
+                }
+            }
+
             val updateParams = BillingFlowParams.SubscriptionUpdateParams.newBuilder()
                 .setOldPurchaseToken(activePurchase.purchaseToken)
-                .setSubscriptionReplacementMode(
-                    BillingFlowParams.SubscriptionUpdateParams.ReplacementMode.WITH_TIME_PRORATION
-                )
+                .setSubscriptionReplacementMode(replacementMode)
                 .build()
             billingFlowBuilder.setSubscriptionUpdateParams(updateParams)
+
+            BillingFlowParams.ProductDetailsParams.newBuilder()
+                .setProductDetails(product.productDetails)
+                .setOfferToken(offerToken)
+                .build()
+        } else {
+            BillingFlowParams.ProductDetailsParams.newBuilder()
+                .setProductDetails(product.productDetails)
+                .setOfferToken(offerToken)
+                .build()
         }
+
+        billingFlowBuilder.setProductDetailsParamsList(listOf(productDetailsParams))
 
         val billingFlowParams = billingFlowBuilder.build()
 
@@ -506,12 +539,30 @@ class BillingViewModel : ViewModel() {
                 purchases?.let { purchaseList ->
                     _purchases.value = purchaseList
                     updateCurrentTier(purchaseList)
+
+                    // Handle each purchase state appropriately
                     purchaseList.forEach { purchase ->
-                        if (purchase.purchaseState == Purchase.PurchaseState.PURCHASED && !purchase.isAcknowledged) {
-                            acknowledgePurchase(purchase)
+                        when (purchase.purchaseState) {
+                            Purchase.PurchaseState.PURCHASED -> {
+                                if (!purchase.isAcknowledged) {
+                                    acknowledgePurchase(purchase)
+                                }
+                            }
+                            Purchase.PurchaseState.PENDING -> {
+                                // Pending transaction (e.g. cash payment, prepaid top-up)
+                                // Don't grant access yet; PurchasesUpdatedListener will fire again when completed
+                                Log.d("BillingViewModel", "Purchase pending: ${purchase.products}, awaiting completion")
+                            }
                         }
                     }
-                    _billingEvent.value = BillingEvent.PurchaseSuccess(purchaseList.first())
+
+                    // Only emit PurchaseSuccess for completed (PURCHASED) items
+                    val completedPurchase = purchaseList.firstOrNull {
+                        it.purchaseState == Purchase.PurchaseState.PURCHASED
+                    }
+                    completedPurchase?.let {
+                        _billingEvent.value = BillingEvent.PurchaseSuccess(it)
+                    }
                 }
             }
             BillingClient.BillingResponseCode.USER_CANCELED -> {
