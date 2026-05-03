@@ -34,6 +34,7 @@ import androidx.compose.material.icons.filled.Restore
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -121,6 +122,7 @@ fun DeveloperScreen(
     var feedbackLoading by remember { mutableStateOf(false) }
     var feedbackError by remember { mutableStateOf<String?>(null) }
     var selectedFeedback by remember { mutableStateOf<Feedback?>(null) }
+    var feedbackReplyText by remember { mutableStateOf("") }
 
     var reportItems by remember { mutableStateOf<List<Report>>(emptyList()) }
     var reportLoading by remember { mutableStateOf(false) }
@@ -196,6 +198,47 @@ fun DeveloperScreen(
                 selectedFeedback = selectedFeedback?.takeIf { it.id != feedback.id } ?: feedback.copy(status = "RESOLVED")
                 devLogs.add(0, "Feedback marked RESOLVED: ${feedback.id}")
                 Toast.makeText(context, "Marked resolved", Toast.LENGTH_SHORT).show()
+            } catch (e: Exception) {
+                Toast.makeText(context, "Failed: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    /**
+     * Send a reply to the user who submitted feedback
+     */
+    fun sendFeedbackReply(feedback: Feedback, replyText: String, onDone: () -> Unit) {
+        scope.launch {
+            try {
+                withContext(Dispatchers.IO) {
+                    FirebaseFirestore.getInstance()
+                        .collection("feedback")
+                        .document(feedback.id)
+                        .update(
+                            mapOf(
+                                "reply" to replyText,
+                                "repliedAt" to System.currentTimeMillis(),
+                                "status" to if (feedback.status == "NEW") "IN_PROGRESS" else feedback.status,
+                                "updatedAt" to System.currentTimeMillis()
+                            )
+                        )
+                        .await()
+                }
+                feedbackItems = feedbackItems.map {
+                    if (it.id == feedback.id) it.copy(
+                        reply = replyText,
+                        repliedAt = System.currentTimeMillis(),
+                        status = if (it.status == "NEW") "IN_PROGRESS" else it.status
+                    ) else it
+                }
+                selectedFeedback = selectedFeedback?.copy(
+                    reply = replyText,
+                    repliedAt = System.currentTimeMillis(),
+                    status = if (selectedFeedback?.status == "NEW") "IN_PROGRESS" else feedback.status
+                )
+                devLogs.add(0, "Feedback reply sent: ${feedback.id}")
+                Toast.makeText(context, "Reply sent", Toast.LENGTH_SHORT).show()
+                onDone()
             } catch (e: Exception) {
                 Toast.makeText(context, "Failed: ${e.message}", Toast.LENGTH_SHORT).show()
             }
@@ -453,8 +496,8 @@ fun DeveloperScreen(
                                     )
                                     Spacer(modifier = Modifier.height(2.dp))
                                     Text(
-                                        text = "${item.userName} • ${item.category} • ${item.status}",
-                                        color = if (isDarkMode) Color.LightGray else Color.DarkGray,
+                                        text = "${item.userName} • ${item.category} • ${item.status}${if (item.reply.isNotBlank()) " • REPLIED" else ""}",
+                                        color = if (item.reply.isNotBlank()) Color(0xFF4CAF50) else if (isDarkMode) Color.LightGray else Color.DarkGray,
                                         fontSize = 12.sp
                                     )
                                     Spacer(modifier = Modifier.height(4.dp))
@@ -464,6 +507,15 @@ fun DeveloperScreen(
                                         fontSize = 12.sp,
                                         maxLines = 2
                                     )
+                                    if (item.reply.isNotBlank()) {
+                                        Spacer(modifier = Modifier.height(2.dp))
+                                        Text(
+                                            text = "Reply: ${item.reply}",
+                                            color = Color(0xFF4CAF50),
+                                            fontSize = 11.sp,
+                                            maxLines = 1
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -959,7 +1011,10 @@ fun DeveloperScreen(
 
     selectedFeedback?.let { feedback ->
         AlertDialog(
-            onDismissRequest = { selectedFeedback = null },
+            onDismissRequest = {
+                selectedFeedback = null
+                feedbackReplyText = ""
+            },
             title = { Text(feedback.subject.ifBlank { "Feedback detail" }) },
             text = {
                 Column {
@@ -978,17 +1033,56 @@ fun DeveloperScreen(
                         Spacer(modifier = Modifier.height(4.dp))
                         Text("Device: ${feedback.deviceInfo}")
                     }
+                    // Show existing reply
+                    if (feedback.reply.isNotBlank()) {
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Text(
+                            text = "Your reply:",
+                            color = Color(0xFF4CAF50),
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 13.sp
+                        )
+                        Text(
+                            text = feedback.reply,
+                            color = Color(0xFF4CAF50),
+                            fontSize = 13.sp
+                        )
+                    }
+                    // Reply input
+                    Spacer(modifier = Modifier.height(12.dp))
+                    OutlinedTextField(
+                        value = feedbackReplyText,
+                        onValueChange = { feedbackReplyText = it },
+                        label = { Text("Reply to user (optional)") },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = androidx.compose.material3.OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = Color(0xFF4CAF50),
+                            unfocusedBorderColor = if (isDarkMode) Color.Gray else Color.LightGray,
+                            focusedLabelColor = Color(0xFF4CAF50)
+                        )
+                    )
                 }
             },
             confirmButton = {
-                TextButton(onClick = {
-                    markFeedbackResolved(feedback)
-                }) {
-                    Text("Mark RESOLVED")
+                TextButton(
+                    onClick = {
+                        if (feedbackReplyText.isNotBlank()) {
+                            sendFeedbackReply(feedback, feedbackReplyText) {
+                                feedbackReplyText = ""
+                            }
+                        } else {
+                            markFeedbackResolved(feedback)
+                        }
+                    }
+                ) {
+                    Text(if (feedbackReplyText.isNotBlank()) "Send Reply" else "Mark RESOLVED")
                 }
             },
             dismissButton = {
-                TextButton(onClick = { selectedFeedback = null }) {
+                TextButton(onClick = {
+                    selectedFeedback = null
+                    feedbackReplyText = ""
+                }) {
                     Text("Close")
                 }
             }
