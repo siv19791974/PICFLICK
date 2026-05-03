@@ -23,6 +23,7 @@ import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.*
 import androidx.compose.ui.graphics.vector.ImageVector
+import com.picflick.app.ui.components.ActionSheetRow
 import androidx.compose.material.pullrefresh.PullRefreshIndicator
 import androidx.compose.material.pullrefresh.pullRefresh
 import androidx.compose.material.pullrefresh.rememberPullRefreshState
@@ -108,6 +109,9 @@ private tailrec fun Context.findActivity(): Activity? = when (this) {
     is ContextWrapper -> baseContext.findActivity()
     else -> null
 }
+
+// Mid blue — matches FindFriendsScreen pill buttons and app accent
+private val MidBlue = Color(0xFF2A4A73)
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class, androidx.compose.material.ExperimentalMaterialApi::class)
 @Composable
@@ -577,83 +581,73 @@ val canDeleteCurrent = currentFlick.userId == currentUser.uid
         }
     }
     
-    // Edit caption dialog
+    // Edit caption bottom sheet
     if (showEditCaption && canDeleteCurrent) {
-        AlertDialog(
+        ModalBottomSheet(
             onDismissRequest = { showEditCaption = false },
-            title = { Text("Edit Caption") },
-            text = {
+            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+            containerColor = Color(0xFF121212),
+            dragHandle = { Surface(modifier = Modifier.padding(top = 8.dp).size(width = 44.dp, height = 5.dp), shape = RoundedCornerShape(50), color = Color.White.copy(alpha = 0.28f)) {} }
+        ) {
+            Column(Modifier.fillMaxWidth().padding(horizontal = 24.dp).padding(bottom = 24.dp)) {
+                Text("Edit Caption", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 16.dp).align(Alignment.CenterHorizontally))
                 OutlinedTextField(
                     value = editCaptionText,
                     onValueChange = { editCaptionText = it },
-                    label = { Text("Caption") },
-                    modifier = Modifier.fillMaxWidth()
+                    label = { Text("Caption", color = Color(0xFFB7BDC9)) },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = MidBlue, unfocusedBorderColor = Color.Gray.copy(alpha = 0.4f),
+                        focusedTextColor = Color.White, unfocusedTextColor = Color.White,
+                        focusedLabelColor = MidBlue, unfocusedLabelColor = Color(0xFFB7BDC9),
+                        cursorColor = MidBlue
+                    )
                 )
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
+                Spacer(Modifier.height(16.dp))
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    ActionSheetRow(icon = Icons.Default.Close, title = "Cancel", accentColor = Color.Gray, onClick = { showEditCaption = false })
+                    ActionSheetRow(icon = Icons.Default.Save, title = "Save", accentColor = Color(0xFF4CAF50), onClick = {
                         coroutineScope.launch {
                             repository.updateFlickDescription(currentFlick.id, editCaptionText)
                             currentDescription = editCaptionText
                             onCaptionUpdated(editCaptionText)
                             showEditCaption = false
                         }
-                    }
-                ) {
-                    Text("Save")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showEditCaption = false }) {
-                    Text("Cancel")
+                    })
                 }
             }
-        )
+        }
     }
 
-    // Delete confirmation dialog
+    // Delete confirmation bottom sheet
     if (showDeleteConfirmation) {
-        AlertDialog(
+        ModalBottomSheet(
             onDismissRequest = { showDeleteConfirmation = false },
-            title = { Text("Delete Photo") },
-            text = { Text("Are you sure you want to delete this photo? This action cannot be undone.") },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        showDeleteConfirmation = false
-
-                        // Optimistic UX: remove immediately in-viewer + parent feed, then delete in background.
-                        val flickIdToDelete = currentFlick.id
-                        deletedFlickIds.add(flickIdToDelete)
-                        onDeleteClick()
-                        onDismiss()
-
-                        repository.deleteFlick(flickIdToDelete) { result ->
-                            when (result) {
-                                is com.picflick.app.data.Result.Success -> {
-                                    showPicFlickToast("Photo Deleted")
-                                }
-                                is com.picflick.app.data.Result.Error -> {
-                                    showPicFlickToast("Delete failed, refreshing...")
-                                    onDeleteClick()
-                                }
-                                else -> {
-                                    // Loading or other states - do nothing
-                                }
-                            }
+            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+            containerColor = Color(0xFF121212),
+            dragHandle = { Surface(modifier = Modifier.padding(top = 8.dp).size(width = 44.dp, height = 5.dp), shape = RoundedCornerShape(50), color = Color.White.copy(alpha = 0.28f)) {} }
+        ) {
+            Column(Modifier.fillMaxWidth().padding(horizontal = 24.dp).padding(bottom = 24.dp)) {
+                Text("Delete Photo", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 8.dp).align(Alignment.CenterHorizontally))
+                Text("Are you sure you want to delete this photo? This action cannot be undone.", color = Color(0xFFB7BDC9), fontSize = 14.sp, modifier = Modifier.padding(bottom = 16.dp))
+                ActionSheetRow(icon = Icons.Default.Close, title = "Keep Photo", accentColor = Color.Gray, onClick = { showDeleteConfirmation = false })
+                Spacer(Modifier.height(8.dp))
+                ActionSheetRow(icon = Icons.Default.Delete, title = "Delete Permanently", accentColor = Color(0xFFFF4444), onClick = {
+                    showDeleteConfirmation = false
+                    val flickIdToDelete = currentFlick.id
+                    deletedFlickIds.add(flickIdToDelete)
+                    onDeleteClick()
+                    onDismiss()
+                    repository.deleteFlick(flickIdToDelete) { result ->
+                        when (result) {
+                            is com.picflick.app.data.Result.Success -> { showPicFlickToast("Photo Deleted") }
+                            is com.picflick.app.data.Result.Error -> { showPicFlickToast("Delete failed, refreshing..."); onDeleteClick() }
+                            else -> {}
                         }
                     }
-                ) {
-                    Text("Delete", color = Color.Red)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showDeleteConfirmation = false }) {
-                    Text("Cancel")
-                }
+                })
             }
-        )
+        }
     }
 
     Dialog(
@@ -1339,22 +1333,13 @@ if (canDeleteCurrent) {
                         containerColor = Color.Black,
                         contentColor = Color.White,
                         dragHandle = {
-                            Box(
+                            Surface(
                                 modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 12.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .width(40.dp)
-                                        .height(4.dp)
-                                        .background(
-                                            Color.White.copy(alpha = 0.3f),
-                                            RoundedCornerShape(2.dp)
-                                        )
-                                )
-                            }
+                                    .padding(top = 8.dp)
+                                    .size(width = 44.dp, height = 5.dp),
+                                shape = RoundedCornerShape(50),
+                                color = Color.White.copy(alpha = 0.28f)
+                            ) {}
                         }
                     ) {
                         Column(
@@ -2509,59 +2494,6 @@ if (canDeleteCurrent) {
                     }
                 }
             }
-        }
-    }
-}
-
-@Composable
-private fun ActionSheetRow(
-    icon: ImageVector,
-    title: String,
-    subtitle: String,
-    accentColor: Color,
-    isSelected: Boolean = false,
-    onClick: () -> Unit
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .background(Color(0xFF1C1F26))
-            .border(1.dp, accentColor.copy(alpha = if (isSelected) 0.85f else 0.38f), RoundedCornerShape(16.dp))
-            .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 14.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = title,
-            tint = accentColor,
-            modifier = Modifier.size(28.dp)
-        )
-
-        Spacer(modifier = Modifier.width(14.dp))
-
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = title,
-                color = Color.White,
-                fontSize = 16.sp,
-                fontWeight = FontWeight.SemiBold
-            )
-            Text(
-                text = subtitle,
-                color = Color(0xFFB7BDC9),
-                fontSize = 14.sp
-            )
-        }
-
-        if (isSelected) {
-            Icon(
-                imageVector = Icons.Default.Check,
-                contentDescription = "Selected",
-                tint = accentColor,
-                modifier = Modifier.size(24.dp)
-            )
         }
     }
 }

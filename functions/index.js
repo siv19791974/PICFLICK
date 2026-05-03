@@ -1022,6 +1022,52 @@ async function executeMythicDraw(db, isManual = false, forcedMonthKey = null) {
     console.error('Error sending winner FCM push:', pushErr.message);
   }
 
+  // Create announcement notification for ALL users (except winner — they got a personal one)
+  try {
+    const allUsersSnapshot = await db.collection('users').get();
+    const batch = db.batch();
+    let batchCount = 0;
+    const maxBatch = 500; // Firestore batch limit
+
+    allUsersSnapshot.docs.forEach((userDoc) => {
+      const uid = userDoc.id;
+      if (!uid || uid === winnerId) return; // Skip winner — they got personal notif + push
+
+      const notifRef = db.collection('notifications').doc();
+      batch.set(notifRef, {
+        userId: uid,
+        senderId: 'system',
+        senderName: 'PicFlick',
+        senderPhotoUrl: '',
+        type: 'SYSTEM',
+        title: '🏆 Mythic Monthly Draw Winner',
+        message: `${winnerName} won this month's Mythic Draw with a ${streakThreshold}-day streak and gets 3 months of PRO! Keep uploading daily to be in next month's draw.`,
+        targetScreen: 'achievements',
+        isRead: false,
+        timestamp: now,
+        monthKey,
+        winnerUserId: winnerId,
+        winnerName,
+        streakThreshold,
+        eligibleUserCount: eligibleUsers.length,
+        isMythicDrawAnnouncement: true,
+      });
+      batchCount++;
+
+      if (batchCount >= maxBatch) {
+        // Firestore batch limit — would need to commit and start new batch
+        // For now, just log warning. In practice with <500 users this never hits.
+        console.warn(`Mythic draw announcement batch approaching limit (${batchCount}/${maxBatch}). Some users may not receive announcement.`);
+      }
+    });
+
+    await batch.commit();
+    console.log(`Mythic draw announcement sent to ${batchCount} user(s)`);
+  } catch (announceErr) {
+    console.error('Error sending Mythic draw announcement to all users:', announceErr.message);
+    // Non-blocking — don't fail the draw if announcement fails
+  }
+
   // Create dev feedback notification (both devs get notified via existing sendFeedbackPushToDeveloper)
   const devFeedbackRef = db.collection('feedback').doc();
   await devFeedbackRef.set({

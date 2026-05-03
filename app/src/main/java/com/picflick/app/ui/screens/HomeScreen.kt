@@ -2,7 +2,6 @@ package com.picflick.app.ui.screens
 
 import android.content.ContentUris
 import android.content.Context
-import android.content.Intent
 import android.content.res.Configuration
 import android.graphics.Bitmap
 import android.net.Uri
@@ -26,7 +25,6 @@ import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
@@ -38,6 +36,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.pullrefresh.PullRefreshIndicator
 import androidx.compose.material.pullrefresh.pullRefresh
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material.pullrefresh.rememberPullRefreshState
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.material.icons.Icons
@@ -53,8 +53,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalConfiguration
@@ -67,15 +65,11 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.core.content.FileProvider
 import coil3.SingletonImageLoader
 import coil3.compose.AsyncImage
-import coil3.compose.AsyncImagePainter
-import coil3.compose.rememberAsyncImagePainter
 import coil3.request.CachePolicy
 import coil3.request.ImageRequest
 import coil3.request.crossfade
-import com.picflick.app.Constants
 import com.picflick.app.data.ChatMessage
 import com.picflick.app.data.FeedFilter
 import com.picflick.app.data.Flick
@@ -85,6 +79,7 @@ import com.picflick.app.data.UserProfile
 import com.picflick.app.data.toEmoji
 import com.picflick.app.repository.ChatRepository
 import com.picflick.app.ui.components.ActionSheetOption
+import com.picflick.app.ui.components.ActionSheetRow
 import com.picflick.app.ui.components.AddPhotoStyleActionSheet
 import com.picflick.app.ui.components.AnimatedReactionPicker
 import com.picflick.app.ui.components.ErrorMessage
@@ -138,7 +133,6 @@ fun HomeScreen(
     val defaultExampleGroups = remember {
         listOf("Uncle John's wedding", "Five a side footie talk")
     }
-    var showUploadDialog by remember { mutableStateOf(false) }
     var showGroupsManager by remember { mutableStateOf(false) }
     val temporaryGroupExamples = remember(userProfile.uid) {
         val deleted = prefs.getStringSet(deletedExampleGroupsKey, emptySet()) ?: emptySet()
@@ -150,7 +144,6 @@ fun HomeScreen(
     var viewingGroup by remember { mutableStateOf<FriendGroup?>(null) }
     var inviteTargetGroup by remember { mutableStateOf<FriendGroup?>(null) }
     var adminTargetGroup by remember { mutableStateOf<FriendGroup?>(null) }
-    var tempCameraUri by remember { mutableStateOf<Uri?>(null) }
     var pendingGroupIconSourceUri by remember { mutableStateOf<Uri?>(null) }
     var showGroupIconCropDialog by remember { mutableStateOf(false) }
     var showGroupIconMediaPicker by remember { mutableStateOf(false) }
@@ -163,15 +156,6 @@ fun HomeScreen(
     var selectedFlick by remember { mutableStateOf<Flick?>(null) }
     var selectedFlickIndex by remember { mutableIntStateOf(0) }
     var lastEdgeLoadMoreAt by remember { mutableLongStateOf(0L) }
-    var privacySetting by remember { mutableStateOf("friends") } // "friends" or "public"
-    var selectedUploadGroupId by remember { mutableStateOf("") }
-    var taggedFriends by remember { mutableStateOf<List<String>>(emptyList()) } // ADDED: Tagged friends
-
-    LaunchedEffect(privacySetting) {
-        if (privacySetting != "friends" && selectedUploadGroupId.isNotBlank()) {
-            selectedUploadGroupId = ""
-        }
-    }
     var showShareToChatDialog by remember { mutableStateOf(false) }
     var flickToShare by remember { mutableStateOf<Flick?>(null) }
     var isSharingPhoto by remember { mutableStateOf(false) }
@@ -241,56 +225,6 @@ fun HomeScreen(
     LaunchedEffect(userProfile.uid) {
         viewModel.checkDailyUploads(userProfile.uid)
     }
-
-    // Camera launcher
-    val cameraLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.TakePicture()
-    ) { success ->
-        if (success && tempCameraUri != null) {
-            showUploadDialog = false
-            viewModel.uploadFlick(
-                userId = userProfile.uid,
-                userDisplayName = userProfile.displayName,
-                userPhotoUrl = currentUserWithLivePhoto.photoUrl,
-                imageUri = tempCameraUri!!,
-                context = context,
-                privacy = privacySetting,
-                sharedGroupId = selectedUploadGroupId,
-                taggedFriends = taggedFriends, // ADDED: Tagged friends
-                onComplete = { success ->
-                    if (success) {
-                        selectedUploadGroupId = ""
-                        viewModel.checkDailyUploads(userProfile.uid)
-                    }
-                }
-            )
-        }
-    }
-
-    // Gallery launcher
-    val galleryLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.GetContent()
-    ) { uri: Uri? ->
-        uri?.let {
-            showUploadDialog = false
-            viewModel.uploadFlick(
-                userId = userProfile.uid,
-                userDisplayName = userProfile.displayName,
-                userPhotoUrl = currentUserWithLivePhoto.photoUrl,
-                imageUri = it,
-                context = context,
-                privacy = privacySetting,
-                sharedGroupId = selectedUploadGroupId,
-                onComplete = { success ->
-                    if (success) {
-                        selectedUploadGroupId = ""
-                        viewModel.checkDailyUploads(userProfile.uid)
-                    }
-                }
-            )
-        }
-    }
-
 
     // Handle cropped group icon upload
     LaunchedEffect(pendingGroupIconSourceUri) {
@@ -559,28 +493,31 @@ fun HomeScreen(
         pendingGroupIconTarget = null
     }
 
-    BackHandler(enabled = showUploadDialog && !showGroupIconCropDialog && !showGroupIconMediaPicker && !showCreateGroupDialog && editingGroup == null && inviteTargetGroup == null && adminTargetGroup == null && !showGroupsManager && !(showShareToChatDialog && flickToShare != null) && !showReactionPicker) {
-        showUploadDialog = false
-    }
-
     if (showShareToChatDialog && flickToShare != null) {
-        AlertDialog(
+        ModalBottomSheet(
             onDismissRequest = {
                 if (!isSharingPhoto) {
                     showShareToChatDialog = false
                     flickToShare = null
                 }
             },
-            title = { Text("Share to chat") },
-            text = {
+            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+            containerColor = Color(0xFF121212),
+            dragHandle = { Surface(modifier = Modifier.padding(top = 8.dp).size(width = 44.dp, height = 5.dp), shape = RoundedCornerShape(50), color = Color.White.copy(alpha = 0.28f)) {} }
+        ) {
+            Column(Modifier.fillMaxWidth().padding(horizontal = 24.dp).padding(bottom = 24.dp)) {
+                Text("Share to chat", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 16.dp).align(Alignment.CenterHorizontally))
                 if (liveFriendProfiles.isEmpty()) {
-                    Text("No friends available to share with yet.")
+                    Text("No friends available to share with yet.", color = Color(0xFFB7BDC9), fontSize = 14.sp, modifier = Modifier.padding(bottom = 16.dp))
                 } else {
-                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         liveFriendProfiles.values.forEach { friend ->
-                            OutlinedButton(
+                            ActionSheetRow(
+                                icon = Icons.Default.Send,
+                                title = friend.displayName,
+                                accentColor = Color(0xFF2A4A73),
                                 onClick = {
-                                    val photo = flickToShare ?: return@OutlinedButton
+                                    val photo = flickToShare ?: return@ActionSheetRow
                                     scope.launch {
                                         isSharingPhoto = true
                                         val chatRepository = com.picflick.app.repository.ChatRepository()
@@ -625,29 +562,20 @@ fun HomeScreen(
                                         }
                                         isSharingPhoto = false
                                     }
-                                },
-                                enabled = !isSharingPhoto,
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Text(friend.displayName)
-                            }
+                                }
+                            )
                         }
                     }
+                    Spacer(Modifier.height(8.dp))
                 }
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        if (!isSharingPhoto) {
-                            showShareToChatDialog = false
-                            flickToShare = null
-                        }
+                ActionSheetRow(icon = Icons.Default.Close, title = if (isSharingPhoto) "Sharing..." else "Cancel", accentColor = Color.Gray, onClick = {
+                    if (!isSharingPhoto) {
+                        showShareToChatDialog = false
+                        flickToShare = null
                     }
-                ) {
-                    Text(if (isSharingPhoto) "Sharing..." else "Cancel")
-                }
+                })
             }
-        )
+        }
     }
 
     if (showGroupsManager) {
@@ -2705,6 +2633,7 @@ private fun CreateChatGroupDialog(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun GroupPhotoCropDialog(
     imageUri: Uri?,
@@ -2728,93 +2657,96 @@ fun GroupPhotoCropDialog(
         offset = Offset.Zero
     }
 
-    AlertDialog(
+    ModalBottomSheet(
         onDismissRequest = {
             if (!isSaving) onDismiss()
         },
-        confirmButton = {
-            TextButton(
-                enabled = sourceBitmap != null && !isSaving && viewportSize.width > 0 && viewportSize.height > 0,
-                onClick = {
-                    val bitmap = sourceBitmap ?: return@TextButton
-                    isSaving = true
-                    scope.launch {
-                        val croppedUri = withContext(Dispatchers.IO) {
-                            createCroppedGroupImageUri(
-                                context = context,
-                                sourceBitmap = bitmap,
-                                viewportSize = viewportSize,
-                                zoomScale = scale,
-                                panOffset = offset,
-                                imageQuality = 90
-                            )
-                        }
-                        isSaving = false
-                        onConfirm(croppedUri)
-                    }
-                }
-            ) {
-                Text(if (isSaving) "Saving..." else "Save")
-            }
-        },
-        dismissButton = {
-            TextButton(enabled = !isSaving, onClick = onDismiss) { Text("Cancel") }
-        },
-        title = { Text("Adjust album photo") },
-        text = {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(
-                    text = "Pinch to zoom and drag to position",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Color.Gray
-                )
-                Spacer(modifier = Modifier.height(12.dp))
+        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+        containerColor = Color(0xFF121212),
+        dragHandle = { Surface(modifier = Modifier.padding(top = 8.dp).size(width = 44.dp, height = 5.dp), shape = RoundedCornerShape(50), color = Color.White.copy(alpha = 0.28f)) {} }
+    ) {
+        Column(Modifier.fillMaxWidth().padding(horizontal = 24.dp).padding(bottom = 24.dp)) {
+            Text("Adjust album photo", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 8.dp).align(Alignment.CenterHorizontally))
+            Text(
+                text = "Pinch to zoom and drag to position",
+                style = MaterialTheme.typography.bodySmall,
+                color = Color.Gray,
+                modifier = Modifier.align(Alignment.CenterHorizontally)
+            )
+            Spacer(modifier = Modifier.height(12.dp))
 
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .aspectRatio(1f)
-                        .clip(CircleShape)
-                        .background(Color.Black)
-                        .onSizeChanged { viewportSize = it }
-                        .pointerInput(sourceBitmap, viewportSize) {
-                            detectTransformGestures { _, pan, zoom, _ ->
-                                val bitmap = sourceBitmap ?: return@detectTransformGestures
-                                val nextScale = (scale * zoom).coerceIn(1f, 6f)
-                                val clampedOffset = clampPanOffsetForGroup(
-                                    viewportSize = viewportSize,
-                                    imageWidth = bitmap.width,
-                                    imageHeight = bitmap.height,
-                                    scale = nextScale,
-                                    currentOffset = offset + pan
-                                )
-                                scale = nextScale
-                                offset = clampedOffset
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .aspectRatio(1f)
+                    .clip(CircleShape)
+                    .background(Color.Black)
+                    .onSizeChanged { viewportSize = it }
+                    .pointerInput(sourceBitmap, viewportSize) {
+                        detectTransformGestures { _, pan, zoom, _ ->
+                            val bitmap = sourceBitmap ?: return@detectTransformGestures
+                            val nextScale = (scale * zoom).coerceIn(1f, 6f)
+                            val clampedOffset = clampPanOffsetForGroup(
+                                viewportSize = viewportSize,
+                                imageWidth = bitmap.width,
+                                imageHeight = bitmap.height,
+                                scale = nextScale,
+                                currentOffset = offset + pan
+                            )
+                            scale = nextScale
+                            offset = clampedOffset
+                        }
+                    },
+                contentAlignment = Alignment.Center
+            ) {
+                if (sourceBitmap == null) {
+                    CircularProgressIndicator()
+                } else {
+                    AsyncImage(
+                        model = sourceBitmap,
+                        contentDescription = "Crop album photo",
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .graphicsLayer {
+                                scaleX = scale
+                                scaleY = scale
+                                translationX = offset.x
+                                translationY = offset.y
                             }
-                        },
-                    contentAlignment = Alignment.Center
-                ) {
-                    if (sourceBitmap == null) {
-                        CircularProgressIndicator()
-                    } else {
-                        AsyncImage(
-                            model = sourceBitmap,
-                            contentDescription = "Crop album photo",
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .graphicsLayer {
-                                    scaleX = scale
-                                    scaleY = scale
-                                    translationX = offset.x
-                                    translationY = offset.y
-                                }
-                        )
-                    }
+                    )
                 }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                ActionSheetRow(icon = Icons.Default.Close, title = "Cancel", accentColor = Color.Gray, onClick = { if (!isSaving) onDismiss() })
+                ActionSheetRow(
+                    icon = Icons.Default.Save,
+                    title = if (isSaving) "Saving..." else "Save",
+                    accentColor = if (sourceBitmap != null && !isSaving && viewportSize.width > 0 && viewportSize.height > 0) Color(0xFF4CAF50) else Color.Gray,
+                    onClick = {
+                        val bitmap = sourceBitmap ?: return@ActionSheetRow
+                        isSaving = true
+                        scope.launch {
+                            val croppedUri = withContext(Dispatchers.IO) {
+                                createCroppedGroupImageUri(
+                                    context = context,
+                                    sourceBitmap = bitmap,
+                                    viewportSize = viewportSize,
+                                    zoomScale = scale,
+                                    panOffset = offset,
+                                    imageQuality = 90
+                                )
+                            }
+                            isSaving = false
+                            onConfirm(croppedUri)
+                        }
+                    }
+                )
             }
         }
-    )
+    }
 }
 
 data class GroupIconMediaPickerItem(

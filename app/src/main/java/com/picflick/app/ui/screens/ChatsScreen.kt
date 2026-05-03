@@ -1,21 +1,15 @@
 package com.picflick.app.ui.screens
 
-import android.graphics.Bitmap
 import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.border
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.gestures.detectTransformGestures
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -27,27 +21,20 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Block
 import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.automirrored.filled.Send
-import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.AddAPhoto
+import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material3.*
-import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.runtime.*
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.layout.onSizeChanged
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
@@ -66,7 +53,9 @@ import com.picflick.app.data.ChatSession
 import com.picflick.app.data.Result
 import com.picflick.app.data.FriendGroup
 import com.picflick.app.data.UserProfile
+import com.picflick.app.ui.components.ActionSheetRow
 import com.picflick.app.ui.components.BottomNavBar
+import com.picflick.app.ui.components.SingleSelectMediaPicker
 import com.picflick.app.ui.components.LogoImage
 import com.picflick.app.ui.theme.PicFlickBannerBackground
 import com.picflick.app.repository.FlickRepository
@@ -88,7 +77,7 @@ import java.util.*
 /**
  * WhatsApp-style Chats List Screen
  */
-@OptIn(ExperimentalMaterialApi::class)
+@OptIn(ExperimentalMaterialApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun ChatsScreen(
     userProfile: UserProfile,
@@ -122,6 +111,7 @@ fun ChatsScreen(
     var viewingChatGroup by remember { mutableStateOf<FriendGroup?>(null) }
     var chatEditDialogIconOverride by remember { mutableStateOf<String?>(null) }
     var pendingChatGroupIconTarget by remember { mutableStateOf<String?>(null) }
+    var showMediaPicker by remember { mutableStateOf(false) }
     val selectedChatIds = remember { mutableStateListOf<String>() }
     var showHeaderMenu by remember { mutableStateOf(false) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
@@ -194,15 +184,6 @@ fun ChatsScreen(
 
     val availableFriendsForNewChat = remember(friendsViewModel.followingUsers, existingChatUserIds) {
         friendsViewModel.followingUsers.filter { it.uid !in existingChatUserIds }
-    }
-
-    val groupIconPickerLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.GetContent()
-    ) { uri ->
-        if (uri != null) {
-            groupIconCropSourceUri = uri
-            showGroupIconCropDialog = true
-        }
     }
 
     // One-level phone back behavior inside Messages stack:
@@ -658,34 +639,31 @@ fun ChatsScreen(
     }
 
     if (showBlockConfirm) {
-        AlertDialog(
+        ModalBottomSheet(
             onDismissRequest = { showBlockConfirm = false },
-            title = { Text("Block user?") },
-            text = { Text("This will instantly report and block this user, and remove this conversation.") },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        val otherUserId = selectedOtherUserId
-                        if (!otherUserId.isNullOrBlank()) {
-                            viewModel.blockAndReportUser(
-                                currentUserId = userProfile.uid,
-                                targetUserId = otherUserId,
-                                chatId = selectedChatId
-                            )
-                        }
-                        selectedChatIds.clear()
-                        showBlockConfirm = false
+            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+            containerColor = Color(0xFF121212),
+            dragHandle = { Surface(modifier = Modifier.padding(top = 8.dp).size(width = 44.dp, height = 5.dp), shape = RoundedCornerShape(50), color = Color.White.copy(alpha = 0.28f)) {} }
+        ) {
+            Column(Modifier.fillMaxWidth().padding(horizontal = 24.dp).padding(bottom = 24.dp)) {
+                Text("Block user?", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 8.dp).align(Alignment.CenterHorizontally))
+                Text("This will instantly report and block this user, and remove this conversation.", color = Color(0xFFB7BDC9), fontSize = 14.sp, modifier = Modifier.padding(bottom = 16.dp))
+                ActionSheetRow(icon = Icons.Default.Close, title = "Cancel", accentColor = Color.Gray, onClick = { showBlockConfirm = false })
+                Spacer(Modifier.height(8.dp))
+                ActionSheetRow(icon = Icons.Default.Block, title = "Block & Report", accentColor = Color(0xFFFF4444), onClick = {
+                    val otherUserId = selectedOtherUserId
+                    if (!otherUserId.isNullOrBlank()) {
+                        viewModel.blockAndReportUser(
+                            currentUserId = userProfile.uid,
+                            targetUserId = otherUserId,
+                            chatId = selectedChatId
+                        )
                     }
-                ) {
-                    Text("Block", color = Color.Red)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showBlockConfirm = false }) {
-                    Text("Cancel")
-                }
+                    selectedChatIds.clear()
+                    showBlockConfirm = false
+                })
             }
-        )
+        }
     }
 
     // New Chat Dialog
@@ -724,7 +702,7 @@ fun ChatsScreen(
                 createDialogIconOverride = null
             },
             onAddPhoto = {
-                groupIconPickerLauncher.launch("image/*")
+                showMediaPicker = true
             },
             onCreateSharedGroup = { name, icon, selectedFriendIds, onDone ->
                 onCreateSharedGroup(name, icon, selectedFriendIds) { success, createdGroup ->
@@ -737,6 +715,18 @@ fun ChatsScreen(
                 }
             },
             onUserProfileClick = onUserProfileClick
+        )
+    }
+
+    if (showMediaPicker) {
+        SingleSelectMediaPicker(
+            isDarkMode = isDarkMode,
+            onBack = { showMediaPicker = false },
+            onPhotoSelected = { uri ->
+                groupIconCropSourceUri = uri
+                showGroupIconCropDialog = true
+                showMediaPicker = false
+            }
         )
     }
 
@@ -773,7 +763,7 @@ fun ChatsScreen(
             },
             onAddPhoto = {
                 pendingChatGroupIconTarget = "edit_chat"
-                groupIconPickerLauncher.launch("image/*")
+                showMediaPicker = true
             },
             onSubmit = { name, icon, selectedFriendIds, color ->
                 homeViewModel?.updateFriendGroup(
