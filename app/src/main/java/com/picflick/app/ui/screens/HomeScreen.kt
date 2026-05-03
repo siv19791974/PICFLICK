@@ -193,8 +193,10 @@ fun HomeScreen(
     // Flying reaction animation state
     var flyingReaction by remember { mutableStateOf<Pair<ReactionType, Int>?>(null) }
 
-    // Load data
+    // Load data — include personally-reported photos so they're hidden from this user's feed
     LaunchedEffect(userProfile.uid) {
+        val prefs = context.getSharedPreferences("picflick_reports_${userProfile.uid}", Context.MODE_PRIVATE)
+        viewModel.reportedFlickIds = prefs.getStringSet("reported_flick_ids", emptySet())?.toSet() ?: emptySet()
         viewModel.loadFlicks(userProfile.uid)
         viewModel.loadFriendGroups(userProfile.uid)
     }

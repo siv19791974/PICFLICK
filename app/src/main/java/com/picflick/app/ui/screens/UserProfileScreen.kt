@@ -1,5 +1,6 @@
 package com.picflick.app.ui.screens
 
+import android.content.Context
 import android.content.res.Configuration
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
@@ -89,6 +90,12 @@ fun UserProfileScreen(
     onReaction: (Flick, ReactionType?) -> Unit = { _, _ -> } // NEW: Reaction callback
 ) {
     BackHandler(onBack = onBack)
+
+    // Filter out photos the current user has personally reported (permanent personal block)
+    val context = LocalContext.current
+    val reportedPrefs = context.getSharedPreferences("picflick_reports_${currentUser.uid}", Context.MODE_PRIVATE)
+    val reportedIds = reportedPrefs.getStringSet("reported_flick_ids", emptySet()) ?: emptySet()
+    val visiblePhotos = photos.filter { !reportedIds.contains(it.id) }
 
     // Pull-to-refresh state
     val pullRefreshState = rememberPullRefreshState(
@@ -281,7 +288,7 @@ fun UserProfileScreen(
                 verticalAlignment = Alignment.Top
             ) {
                 UserProfileStatItem(
-                    value = photos.size.toString(),
+                    value = visiblePhotos.size.toString(),
                     label = "POSTS",
                     isDarkMode = isDarkMode,
                     onClick = {
@@ -312,7 +319,7 @@ fun UserProfileScreen(
 
             // Photos Grid (only for friends)
             if (isFriend) {
-                if (photos.isEmpty()) {
+                if (visiblePhotos.isEmpty()) {
                     Text(
                         text = "No photos yet",
                         color = secondaryTextColor,
@@ -320,7 +327,7 @@ fun UserProfileScreen(
                     )
                 } else {
                     // Match Home/Profile dynamic sizing
-                    val rowCount = ((photos.size + 2) / 3).coerceAtLeast(1)
+                    val rowCount = ((visiblePhotos.size + 2) / 3).coerceAtLeast(1)
                     val homeLikeRowHeight = if (isLandscape) {
                         availableGridHeight / 1.09f
                     } else {
@@ -347,7 +354,7 @@ fun UserProfileScreen(
                             userScrollEnabled = false
                         ) {
                             items(
-                                items = photos,
+                                items = visiblePhotos,
                                 key = { it.id },
                                 contentType = { "photo" }
                             ) { photo ->
@@ -355,7 +362,7 @@ fun UserProfileScreen(
                                     flick = photo,
                                     rowHeight = homeLikeRowHeight,
                                     onPhotoClick = {
-                                        onPhotoClick(photo, photos.indexOf(photo))
+                                        onPhotoClick(photo, visiblePhotos.indexOf(photo))
                                     },
                                     onLongPress = {
                                         // Only allow reacting to OTHER people's photos
