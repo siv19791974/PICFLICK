@@ -775,4 +775,136 @@ Object.assign(exports, require('./checkThumbnail'));
 // Legacy 256px thumbnail cleanup (one-off).
 Object.assign(exports, require('./cleanup256'));
 
+/**
+ * Cloud Function: Send push notification to developers when a new photo report is submitted
+ */
+exports.sendReportPushToDeveloper = functions
+  .runWith({ memory: '256MB', timeoutSeconds: 60 })
+  .firestore
+  .document('reports/{reportId}')
+  .onCreate(async (snap, context) => {
+    if (await shouldSkipTrigger('sendReportPushToDeveloper')) return null;
+
+    const report = snap.data() || {};
+    const devUids = ['LpSqE40IZGeAGMknTAEzysqp5l33', 'cuj8dU3zNMN9TELEU2qmPR6Np5A2'];
+
+    try {
+      // Get reporter name
+      let reporterName = 'A user';
+      if (report.reporterId) {
+        const reporterDoc = await admin.firestore().collection('users').doc(report.reporterId).get();
+        if (reporterDoc.exists) {
+          reporterName = reporterDoc.data().displayName || 'A user';
+        }
+      }
+
+      const reason = report.reason || 'Unknown reason';
+      const title = `Photo Reported: ${reason}`;
+      const body = `${reporterName} reported a photo.`;
+
+      // Send to all devs who have FCM tokens
+      const sendPromises = devUids.map(async (uid) => {
+        const devDoc = await admin.firestore().collection('users').doc(uid).get();
+        if (!devDoc.exists) return null;
+        const devData = devDoc.data() || {};
+        const token = devData.fcmToken;
+        if (!token) return null;
+
+        const message = {
+          token: token,
+          notification: { title, body },
+          data: {
+            type: 'PHOTO_REPORT',
+            reportId: context.params.reportId,
+            flickId: report.flickId || '',
+            reporterId: report.reporterId || '',
+            reason,
+            targetScreen: 'developer',
+            click_action: 'FLUTTER_NOTIFICATION_CLICK',
+          },
+          android: {
+            priority: 'high',
+            notification: {
+              channelId: 'picflick_important_v2',
+              sound: 'default',
+              clickAction: 'FLUTTER_NOTIFICATION_CLICK',
+            },
+          },
+          apns: {
+            headers: { 'apns-priority': '10' },
+            payload: { aps: { sound: 'default', badge: 1, category: 'IMPORTANT' } },
+          },
+        };
+        return admin.messaging().send(message);
+      });
+
+      const results = await Promise.all(sendPromises);
+      const sentCount = results.filter(r => r !== null).length;
+      console.log(`Report push sent to ${sentCount} developer(s)`);
+
+      await snap.ref.update({
+        pushSentToDevs: true,
+        pushSentToDevsAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+      return results;
+    } catch (error) {
+      console.error('Error sending report push to devs:', error);
+      await snap.ref.update({
+        pushSentToDevs: false,
+        pushDevError: error.message || 'unknown',
+      });
+      return null;
+    }
+  });
+
+/**
+ * Cloud Function: Auto-hide photos when they receive 3+ unique reports
+ */
+exports.autoHideReportedPhoto = functions
+  .runWith({ memory: '256MB', timeoutSeconds: 60 })
+  .firestore
+  .document('reports/{reportId}')
+  .onCreate(async (snap, context) => {
+    if (await shouldSkipTrigger('autoHideReportedPhoto')) return null;
+
+    const report = snap.data() || {};
+    const flickId = report.flickId;
+    if (!flickId) return null;
+
+    try {
+      // Count unique reporters for this flick
+      const reportsSnapshot = await admin.firestore()
+        .collection('reports')
+        .where('flickId', '==', flickId)
+        .get();
+
+      const uniqueReporters = new Set();
+      reportsSnapshot.docs.forEach((doc) => {
+        const r = doc.data();
+        if (r.reporterId) uniqueReporters.add(r.reporterId);
+      });
+
+      const reporterCount = uniqueReporters.size;
+      console.log(`Flick ${flickId} has ${reporterCount} unique reporter(s)`);
+
+      if (reporterCount >= 3) {
+        // Auto-hide the flick
+        await admin.firestore()
+          .collection('flicks')
+          .doc(flickId)
+          .update({
+            autoHiddenByReports: true,
+            autoHiddenAt: admin.firestore.FieldValue.serverTimestamp(),
+            autoHiddenReporterCount: reporterCount,
+          });
+        console.log(`Auto-hidden flick ${flickId} after ${reporterCount} unique reports`);
+      }
+
+      return null;
+    } catch (error) {
+      console.error('Error auto-hiding reported photo:', error);
+      return null;
+    }
+  });
+
 // deploy-bump 
