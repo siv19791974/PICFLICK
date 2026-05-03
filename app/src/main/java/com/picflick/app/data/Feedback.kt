@@ -32,10 +32,16 @@ data class Feedback(
     
     @PropertyName("status")
     val status: String = "NEW", // NEW, IN_PROGRESS, RESOLVED, CLOSED
-    
+
+    @PropertyName("reply")
+    val reply: String = "", // Developer reply sent back to user
+
+    @PropertyName("repliedAt")
+    val repliedAt: Long = 0,
+
     @PropertyName("appVersion")
     val appVersion: String = "",
-    
+
     @PropertyName("deviceInfo")
     val deviceInfo: String = ""
 )

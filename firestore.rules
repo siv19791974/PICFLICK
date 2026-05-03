@@ -297,9 +297,9 @@ service cloud.firestore {
         isDevInboxUser()
       );
 
-      // Dev can update only status/updatedAt on any feedback (shared inbox management)
+      // Dev can update status, reply, and timestamps on any feedback (shared inbox management)
       allow update: if isDevInboxUser() &&
-        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updatedAt']);
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updatedAt', 'reply', 'repliedAt']);
 
       // No client-side deletes
       allow delete: if false;
