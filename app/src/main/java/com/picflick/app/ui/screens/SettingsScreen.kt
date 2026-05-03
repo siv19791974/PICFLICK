@@ -496,23 +496,22 @@ fun SettingsScreen(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 24.dp)
-                    .padding(bottom = 32.dp),
+                    .padding(horizontal = 24.dp, vertical = 20.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
                     text = "Developer Access",
                     color = Color.White,
                     fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(bottom = 20.dp)
                 )
-                Spacer(modifier = Modifier.height(8.dp))
                 Text(
                     text = "Enter developer password",
                     color = Color(0xFFB7BDC9),
-                    fontSize = 14.sp
+                    fontSize = 14.sp,
+                    modifier = Modifier.padding(bottom = 16.dp)
                 )
-                Spacer(modifier = Modifier.height(20.dp))
                 OutlinedTextField(
                     value = developerPasswordInput,
                     onValueChange = {
@@ -636,16 +635,16 @@ fun SettingsScreen(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 24.dp, vertical = 16.dp)
+                    .padding(horizontal = 24.dp, vertical = 20.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
                     text = "Contact Us",
                     color = Color.White,
                     fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(bottom = 20.dp)
                 )
-
-                Spacer(modifier = Modifier.height(14.dp))
 
                 OutlinedTextField(
                     value = contactCategories.find { it.first == contactCategory }?.second ?: "General Feedback",

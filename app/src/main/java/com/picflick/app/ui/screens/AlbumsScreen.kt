@@ -371,7 +371,7 @@ private fun CreateAlbumDialog(
             dragHandle = { Surface(modifier = Modifier.padding(top = 8.dp).size(width = 44.dp, height = 5.dp), shape = RoundedCornerShape(50), color = Color.White.copy(alpha = 0.28f)) {} }
     ) {
         Column(Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 20.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-            Text("Create New Album", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 16.dp))
+            Text("Create New Album", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 20.dp))
             OutlinedTextField(
                 value = name,
                 onValueChange = { name = it },
@@ -399,10 +399,14 @@ private fun CreateAlbumDialog(
                     cursorColor = Color(0xFF2A4A73)
                 )
             )
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(12.dp))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                ActionSheetRow(icon = Icons.Default.Close, title = "Cancel", accentColor = Color.Gray, onClick = onDismiss)
-                ActionSheetRow(icon = Icons.Default.Create, title = "Create", accentColor = Color(0xFF4CAF50), onClick = { onCreate(name, description) })
+                Box(modifier = Modifier.weight(1f)) {
+                    ActionSheetRow(icon = Icons.Default.Close, title = "Cancel", accentColor = Color.Gray, onClick = onDismiss)
+                }
+                Box(modifier = Modifier.weight(1f)) {
+                    ActionSheetRow(icon = Icons.Default.Create, title = "Create", accentColor = Color(0xFF4CAF50), onClick = { onCreate(name, description) })
+                }
             }
             Spacer(Modifier.height(12.dp))
         }
