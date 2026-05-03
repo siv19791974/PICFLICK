@@ -59,7 +59,8 @@ service cloud.firestore {
     
     // USERS
     match /users/{userId} {
-      allow read: if true;  // Allow anyone to read user profiles (needed for app startup)
+      // Only authenticated users can read profiles. Public discoverability is handled by the app layer.
+      allow read: if isAuth();
 
       // Owner can always write their own profile.
       // Cross-user writes are limited strictly to social relationship fields used by friend requests.
@@ -275,7 +276,10 @@ service cloud.firestore {
     // FEEDBACK submissions from Contact Us
     match /feedback/{feedbackId} {
       function isDevInboxUser() {
-        return isAuth() && request.auth.uid == "LpSqE40IZGeAGMknTAEzysqp5l33";
+        return isAuth() && (
+          request.auth.uid == "LpSqE40IZGeAGMknTAEzysqp5l33" ||
+          request.auth.uid == "cuj8dU3zNMN9TELEU2qmPR6Np5A2"
+        );
       }
 
       // User can create feedback only for themselves

@@ -34,6 +34,8 @@ import com.picflick.app.data.SubscriptionTier
 import com.picflick.app.data.UserProfile
 import com.picflick.app.data.getImageQuality
 import com.picflick.app.navigation.Screen
+import com.picflick.app.ui.theme.FeatureFlags
+import com.picflick.app.Constants
 import com.picflick.app.repository.ChatRepository
 import com.picflick.app.repository.FlickRepository
 import com.picflick.app.ui.screens.AboutScreen
@@ -63,7 +65,6 @@ import com.picflick.app.ui.screens.SettingsScreen
 import com.picflick.app.ui.screens.StreakAchievementsScreen
 import com.picflick.app.ui.screens.SubscriptionStatusScreen
 import com.picflick.app.ui.screens.UserProfileScreen
-import com.picflick.app.ui.theme.FeatureFlags
 import com.picflick.app.viewmodel.AuthViewModel
 import com.picflick.app.viewmodel.BillingViewModel
 import com.picflick.app.viewmodel.ChatViewModel
@@ -376,7 +377,8 @@ fun AuthenticatedContent(
         )
 
         is Screen.Developer -> {
-            if (!FeatureFlags.developerEntryEnabled.value) {
+            val isDeveloperUser = userProfile.uid in Constants.DEVELOPER_UIDS
+            if (!isDeveloperUser || !FeatureFlags.developerEntryEnabled.value) {
                 onScreenChange(Screen.Settings)
             } else {
                 DeveloperScreen(

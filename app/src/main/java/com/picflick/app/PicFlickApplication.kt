@@ -5,7 +5,6 @@ import coil3.ImageLoader
 import coil3.SingletonImageLoader
 import coil3.disk.DiskCache
 import coil3.memory.MemoryCache
-import coil3.util.DebugLogger
 import com.google.firebase.FirebaseApp
 import com.google.firebase.analytics.FirebaseAnalytics
 import com.google.firebase.analytics.ktx.analytics
@@ -55,7 +54,6 @@ class PicFlickApplication : Application(), SingletonImageLoader.Factory {
                     .maxSizeBytes(250L * 1024 * 1024) // 250 MB
                     .build()
             }
-            .logger(DebugLogger())
             .build()
     }
 }
