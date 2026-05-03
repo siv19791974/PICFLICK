@@ -12,6 +12,14 @@ service cloud.firestore {
       return isAuth() && request.auth.uid == userId;
     }
 
+    // Check if authenticated user is a developer (admin inbox access)
+    function isDevInboxUser() {
+      return isAuth() && (
+        request.auth.uid == "LpSqE40IZGeAGMknTAEzysqp5l33" ||
+        request.auth.uid == "cuj8dU3zNMN9TELEU2qmPR6Np5A2"
+      );
+    }
+
     function isCanonicalGroupData(data) {
       return ('ownerId' in data) &&
         ('memberIds' in data) &&
@@ -275,13 +283,6 @@ service cloud.firestore {
 
     // FEEDBACK submissions from Contact Us
     match /feedback/{feedbackId} {
-      function isDevInboxUser() {
-        return isAuth() && (
-          request.auth.uid == "LpSqE40IZGeAGMknTAEzysqp5l33" ||
-          request.auth.uid == "cuj8dU3zNMN9TELEU2qmPR6Np5A2"
-        );
-      }
-
       // User can create feedback only for themselves
       allow create: if isAuth() && request.resource.data.userId == request.auth.uid;
 
