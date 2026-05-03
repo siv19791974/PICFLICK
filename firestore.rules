@@ -285,15 +285,14 @@ service cloud.firestore {
       // User can create feedback only for themselves
       allow create: if isAuth() && request.resource.data.userId == request.auth.uid;
 
-      // Submitter can read their own entry, dev can read assigned inbox entries
+      // Submitter can read their own entry, dev can read ALL feedback (shared inbox)
       allow read: if isAuth() && (
         resource.data.userId == request.auth.uid ||
-        (isDevInboxUser() && resource.data.assignedToUid == request.auth.uid)
+        isDevInboxUser()
       );
 
-      // Dev can update only status/updatedAt on assigned feedback
+      // Dev can update only status/updatedAt on any feedback (shared inbox management)
       allow update: if isDevInboxUser() &&
-        resource.data.assignedToUid == request.auth.uid &&
         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updatedAt']);
 
       // No client-side deletes
