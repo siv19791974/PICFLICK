@@ -33,6 +33,8 @@ import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Restore
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -65,6 +67,7 @@ import androidx.core.content.edit
 import com.google.firebase.firestore.FirebaseFirestore
 import com.picflick.app.Constants
 import com.picflick.app.data.Feedback
+import com.picflick.app.data.Report
 import com.picflick.app.data.UserProfile
 import com.picflick.app.navigation.Screen
 import com.picflick.app.util.CostControlManager
@@ -117,6 +120,11 @@ fun DeveloperScreen(
     var feedbackLoading by remember { mutableStateOf(false) }
     var feedbackError by remember { mutableStateOf<String?>(null) }
     var selectedFeedback by remember { mutableStateOf<Feedback?>(null) }
+
+    var reportItems by remember { mutableStateOf<List<Report>>(emptyList()) }
+    var reportLoading by remember { mutableStateOf(false) }
+    var reportError by remember { mutableStateOf<String?>(null) }
+    var selectedReport by remember { mutableStateOf<Report?>(null) }
 
     val devLogs = remember { mutableStateListOf<String>() }
 
@@ -192,6 +200,60 @@ fun DeveloperScreen(
         }
     }
 
+    fun loadReportsInbox() {
+        scope.launch {
+            reportLoading = true
+            reportError = null
+            try {
+                val db = FirebaseFirestore.getInstance()
+                val snapshot = withContext(Dispatchers.IO) {
+                    db.collection("reports")
+                        .whereEqualTo("status", "pending")
+                        .orderBy("timestamp", com.google.firebase.firestore.Query.Direction.DESCENDING)
+                        .limit(50)
+                        .get()
+                        .await()
+                }
+                reportItems = snapshot.documents.mapNotNull { doc ->
+                    doc.toObject(Report::class.java)?.copy(id = doc.id)
+                }
+                devLogs.add(0, "Reports inbox loaded (${reportItems.size})")
+            } catch (e: Exception) {
+                reportError = e.message ?: "Failed to load reports inbox"
+                devLogs.add(0, "Reports inbox load failed: ${e.message}")
+            } finally {
+                reportLoading = false
+            }
+        }
+    }
+
+    fun markReportReviewed(report: Report) {
+        scope.launch {
+            try {
+                withContext(Dispatchers.IO) {
+                    FirebaseFirestore.getInstance()
+                        .collection("reports")
+                        .document(report.id)
+                        .update(
+                            mapOf(
+                                "status" to "reviewed",
+                                "updatedAt" to System.currentTimeMillis()
+                            )
+                        )
+                        .await()
+                }
+                reportItems = reportItems.map {
+                    if (it.id == report.id) it.copy(status = "reviewed") else it
+                }
+                selectedReport = selectedReport?.takeIf { it.id != report.id } ?: report.copy(status = "reviewed")
+                devLogs.add(0, "Report marked REVIEWED: ${report.id}")
+                Toast.makeText(context, "Marked reviewed", Toast.LENGTH_SHORT).show()
+            } catch (e: Exception) {
+                Toast.makeText(context, "Failed: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
     LaunchedEffect(Unit) {
         val pInfo = context.packageManager.getPackageInfo(context.packageName, 0)
         val versionCode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
@@ -210,6 +272,7 @@ fun DeveloperScreen(
 
         networkStatus = if (isOnline(context)) "Online" else "Offline"
         loadFeedbackInbox()
+        loadReportsInbox()
     }
 
     Scaffold(
@@ -329,6 +392,80 @@ fun DeveloperScreen(
                                         fontSize = 12.sp,
                                         maxLines = 2
                                     )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            DevSectionCard("PHOTO REPORTS (MODERATION)", isDarkMode) {
+                DevActionRow(Icons.Default.Refresh, "Refresh Reports Inbox") { loadReportsInbox() }
+                DevInfo("Pending reports", reportItems.size.toString(), isDarkMode)
+
+                when {
+                    reportLoading -> {
+                        Text(
+                            text = "Loading reports...",
+                            color = if (isDarkMode) Color.LightGray else Color.DarkGray,
+                            fontSize = 13.sp
+                        )
+                    }
+                    reportError != null -> {
+                        Text(
+                            text = reportError ?: "Unknown error",
+                            color = Color(0xFFFF6B6B),
+                            fontSize = 13.sp
+                        )
+                    }
+                    reportItems.isEmpty() -> {
+                        Text(
+                            text = "No pending reports.",
+                            color = if (isDarkMode) Color.Gray else Color.DarkGray,
+                            fontSize = 13.sp
+                        )
+                    }
+                    else -> {
+                        reportItems.take(12).forEach { item ->
+                            Card(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(top = 8.dp)
+                                    .clickable { selectedReport = item },
+                                colors = CardDefaults.cardColors(
+                                    containerColor = if (isDarkMode) Color(0xFF2A2A2D) else Color(0xFFF5F5F5)
+                                )
+                            ) {
+                                Column(modifier = Modifier.padding(12.dp)) {
+                                    Text(
+                                        text = "${item.reason} • ${item.status.uppercase()}",
+                                        color = if (isDarkMode) Color.White else Color.Black,
+                                        fontWeight = FontWeight.SemiBold,
+                                        fontSize = 14.sp
+                                    )
+                                    Spacer(modifier = Modifier.height(2.dp))
+                                    Text(
+                                        text = "Flick: ${item.flickId.take(12)}… • Reporter: ${item.reporterId.take(8)}…",
+                                        color = if (isDarkMode) Color.LightGray else Color.DarkGray,
+                                        fontSize = 12.sp
+                                    )
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    if (selectedReport?.id == item.id) {
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                        ) {
+                                            Button(
+                                                onClick = { markReportReviewed(item) },
+                                                colors = ButtonDefaults.buttonColors(
+                                                    containerColor = Color(0xFF10B981)
+                                                ),
+                                                modifier = Modifier.weight(1f)
+                                            ) {
+                                                Text("Mark Reviewed", fontSize = 12.sp)
+                                            }
+                                        }
+                                    }
                                 }
                             }
                         }

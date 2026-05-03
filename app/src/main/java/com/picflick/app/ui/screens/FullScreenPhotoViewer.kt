@@ -210,6 +210,7 @@ fun FullScreenPhotoViewer(
     var currentPageIndex by remember { mutableIntStateOf(currentIndex) }
     
     val deletedFlickIds = remember { mutableStateListOf<String>() }
+    val reportedFlickIds = remember { mutableStateListOf<String>() }
     var currentSwipeTraceStartedAt by remember { mutableLongStateOf(System.currentTimeMillis()) }
     var currentSwipeTracePhotoKey by remember { mutableStateOf("") }
     var lastLoggedSuccessPhotoKey by remember { mutableStateOf<String?>(null) }
@@ -247,7 +248,11 @@ fun FullScreenPhotoViewer(
     }
 
     // Filter out photos with empty image URLs and locally deleted items.
-    val validPhotos = sessionPhotos.filter { it.imageUrl.isNotBlank() && !deletedFlickIds.contains(it.id) }
+    val validPhotos = sessionPhotos.filter {
+        it.imageUrl.isNotBlank()
+            && !deletedFlickIds.contains(it.id)
+            && !reportedFlickIds.contains(it.id)
+    }
     
     // Current flick based on page index
     val currentFlick = if (validPhotos.isNotEmpty() && currentPageIndex in validPhotos.indices) {
@@ -1925,6 +1930,7 @@ if (canDeleteCurrent) {
                 // REPORT PHOTO BOTTOM SHEET - Sexy popup menu
                 if (showReportDialog) {
                     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+                    val alreadyReported = reportedFlickIds.contains(currentFlick.id)
                     var selectedReason by remember { mutableStateOf("") }
                     val reasons = listOf(
                         Triple("Spam", "Unwanted or repetitive content", Icons.Default.ContentCopy),
@@ -1954,74 +1960,90 @@ if (canDeleteCurrent) {
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
                             Text(
-                                text = "Report Photo",
+                                text = if (alreadyReported) "Already Reported" else "Report Photo",
                                 color = Color.White,
                                 fontSize = 20.sp,
                                 fontWeight = FontWeight.Bold,
                                 modifier = Modifier.padding(bottom = 4.dp)
                             )
                             Text(
-                                text = "Why are you reporting this photo?",
+                                text = if (alreadyReported)
+                                    "You have already reported this photo."
+                                else
+                                    "Why are you reporting this photo?",
                                 color = Color(0xFFB7BDC9),
                                 fontSize = 14.sp,
                                 modifier = Modifier.padding(bottom = 20.dp)
                             )
 
-                            reasons.forEach { (reason, desc, icon) ->
-                                val isSelected = selectedReason == reason
+                            if (alreadyReported) {
                                 ActionSheetRow(
-                                    icon = icon,
-                                    title = reason,
-                                    subtitle = desc,
-                                    accentColor = if (isSelected) Color(0xFFFF6B6B) else Color(0xFFFF6B6B).copy(alpha = 0.38f),
-                                    isSelected = isSelected,
-                                    onClick = { selectedReason = reason }
+                                    icon = Icons.Default.CheckCircle,
+                                    title = "Reported",
+                                    subtitle = "Moderators will review this photo",
+                                    accentColor = Color(0xFF4B5563),
+                                    onClick = { showReportDialog = false }
                                 )
-                                Spacer(modifier = Modifier.height(12.dp))
-                            }
-
-                            ActionSheetRow(
-                                icon = Icons.Default.Close,
-                                title = "Cancel",
-                                subtitle = "Go back to photo",
-                                accentColor = Color(0xFF4B5563),
-                                onClick = { showReportDialog = false }
-                            )
-
-                            AnimatedVisibility(
-                                visible = selectedReason.isNotBlank(),
-                                enter = fadeIn() + expandVertically(),
-                                exit = fadeOut() + shrinkVertically()
-                            ) {
-                                Column {
-                                    Spacer(modifier = Modifier.height(12.dp))
+                            } else {
+                                reasons.forEach { (reason, desc, icon) ->
+                                    val isSelected = selectedReason == reason
                                     ActionSheetRow(
-                                        icon = Icons.Default.Flag,
-                                        title = "Report",
-                                        subtitle = "Submit report to moderators",
-                                        accentColor = Color(0xFFFF6B6B),
-                                        onClick = {
-                                            if (selectedReason.isNotBlank()) {
-                                                showReportDialog = false
-                                                coroutineScope.launch {
-                                                    val result = repository.reportPhoto(
-                                                        currentFlick.id,
-                                                        currentUser.uid,
-                                                        selectedReason
-                                                    )
-                                                    when (result) {
-                                                        is com.picflick.app.data.Result.Success -> {
-                                                            showPicFlickToast("Report submitted")
+                                        icon = icon,
+                                        title = reason,
+                                        subtitle = desc,
+                                        accentColor = if (isSelected) Color(0xFFFF6B6B) else Color(0xFFFF6B6B).copy(alpha = 0.38f),
+                                        isSelected = isSelected,
+                                        onClick = { selectedReason = reason }
+                                    )
+                                    Spacer(modifier = Modifier.height(12.dp))
+                                }
+
+                                ActionSheetRow(
+                                    icon = Icons.Default.Close,
+                                    title = "Cancel",
+                                    subtitle = "Go back to photo",
+                                    accentColor = Color(0xFF4B5563),
+                                    onClick = { showReportDialog = false }
+                                )
+
+                                AnimatedVisibility(
+                                    visible = selectedReason.isNotBlank(),
+                                    enter = fadeIn() + expandVertically(),
+                                    exit = fadeOut() + shrinkVertically()
+                                ) {
+                                    Column {
+                                        Spacer(modifier = Modifier.height(12.dp))
+                                        ActionSheetRow(
+                                            icon = Icons.Default.Flag,
+                                            title = "Report",
+                                            subtitle = "Submit report to moderators",
+                                            accentColor = Color(0xFFFF6B6B),
+                                            onClick = {
+                                                if (selectedReason.isNotBlank()) {
+                                                    showReportDialog = false
+                                                    coroutineScope.launch {
+                                                        val result = repository.reportPhoto(
+                                                            currentFlick.id,
+                                                            currentUser.uid,
+                                                            selectedReason
+                                                        )
+                                                        when (result) {
+                                                            is com.picflick.app.data.Result.Success -> {
+                                                                showPicFlickToast("Report submitted")
+                                                                // Hide from reporter's feed immediately
+                                                                reportedFlickIds.add(currentFlick.id)
+                                                                deletedFlickIds.add(currentFlick.id)
+                                                            }
+                                                            is com.picflick.app.data.Result.Error -> {
+                                                                showPicFlickToast("Failed to submit report")
+                                                            }
+                                                            else -> {}
                                                         }
-                                                        is com.picflick.app.data.Result.Error -> {
-                                                            showPicFlickToast("Failed to submit report")
-                                                        }
-                                                        else -> {}
                                                     }
                                                 }
                                             }
-                                        }
-                                    )
+                                        )
+                                    }
                                 }
                             }
 
