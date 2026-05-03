@@ -106,7 +106,8 @@ fun AuthenticatedContent(
     pushPhoto: Flick? = null,
     pushPhotoOpenComments: Boolean = false,
     onPushPhotoConsumed: () -> Unit = {},
-    onPushPhotoUpdated: (Flick) -> Unit = {}
+    onPushPhotoUpdated: (Flick) -> Unit = {},
+    devPasswordTrigger: Int = 0
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -265,7 +266,8 @@ fun AuthenticatedContent(
             userProfile = userProfile,
             authViewModel = authViewModel,
             onScreenChange = onScreenChange,
-            onSignOut = onSignOut
+            onSignOut = onSignOut,
+            triggerDevPassword = devPasswordTrigger
         )
 
         is Screen.ManageStorage -> ManageStorageScreenContent(
@@ -1266,7 +1268,8 @@ private fun SettingsScreenContent(
     userProfile: UserProfile,
     authViewModel: AuthViewModel,
     onScreenChange: (Screen) -> Unit,
-    onSignOut: () -> Unit
+    onSignOut: () -> Unit,
+    triggerDevPassword: Int = 0
 ) {
     val context = LocalContext.current
 
@@ -1292,7 +1295,8 @@ private fun SettingsScreenContent(
         onPhilosophy = { onScreenChange(Screen.Philosophy) },
         onLegal = { onScreenChange(Screen.Legal) },
         onProfileClick = { onScreenChange(Screen.Profile) },
-        onDeveloper = { onScreenChange(Screen.Developer) }
+        onDeveloper = { onScreenChange(Screen.Developer) },
+        triggerDevPassword = triggerDevPassword
     )
 }
 

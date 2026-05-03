@@ -471,6 +471,9 @@ fun MainScreen(
 
     val userProfile = authViewModel.userProfile
 
+    // Trigger for showing developer password dialog from push notification
+    var devPasswordTrigger by remember { mutableIntStateOf(0) }
+
     // Shared upload/dialog states (declared early because they're used by effects below)
     var selectedPhotoUri by remember { mutableStateOf<Uri?>(null) }
     var selectedMediaUris by remember { mutableStateOf<List<Uri>>(emptyList()) }
@@ -561,6 +564,10 @@ fun MainScreen(
             when (targetScreen) {
                 "notifications" -> {
                     currentScreen = Screen.Notifications
+                }
+                "developer" -> {
+                    currentScreen = Screen.Settings
+                    devPasswordTrigger++
                 }
                 "chat" -> {
                     val currentUserId = activity.getCurrentUserId()
@@ -1220,7 +1227,8 @@ fun MainScreen(
                     },
                     onPushPhotoUpdated = { updated ->
                         pushPhoto = updated
-                    }
+                    },
+                    devPasswordTrigger = devPasswordTrigger
                 )
             } else {
                 // Loading state - profile not loaded yet

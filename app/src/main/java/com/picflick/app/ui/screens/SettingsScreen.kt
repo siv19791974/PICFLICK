@@ -89,7 +89,8 @@ fun SettingsScreen(
     onPhilosophy: () -> Unit = {},
     onLegal: () -> Unit = {},
     onProfileClick: () -> Unit = {},
-    onDeveloper: () -> Unit = {}
+    onDeveloper: () -> Unit = {},
+    triggerDevPassword: Int = 0
 ) {
     val context = LocalContext.current
     val appVersionName = remember {
@@ -130,6 +131,16 @@ fun SettingsScreen(
     var showDeveloperPasswordDialog by remember { mutableStateOf(false) }
     var developerPasswordInput by remember { mutableStateOf("") }
     var developerPasswordError by remember { mutableStateOf<String?>(null) }
+
+    // Show developer password dialog when triggered from push notification
+    LaunchedEffect(triggerDevPassword) {
+        if (triggerDevPassword > 0) {
+            developerPasswordInput = ""
+            developerPasswordError = null
+            showDeveloperPasswordDialog = true
+        }
+    }
+
     // Use ThemeManager for theme state (persists across sessions)
     val isDarkMode by ThemeManager.isDarkMode
     val developerAccessPassword = Constants.DEVELOPER_ACCESS_PASSWORD
