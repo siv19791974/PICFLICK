@@ -251,27 +251,33 @@ class BillingViewModel : ViewModel() {
         ) { billingResult, purchasesList ->
             if (billingResult.responseCode == BillingClient.BillingResponseCode.OK) {
                 _purchases.value = purchasesList
-                updateCurrentTier(purchasesList)
 
-                // Acknowledge any unacknowledged purchases that were already PURCHASED
-                // This handles cases where the app crashed between purchase and acknowledgement
-                purchasesList.forEach { purchase ->
-                    if (purchase.purchaseState == Purchase.PurchaseState.PURCHASED && !purchase.isAcknowledged) {
-                        Log.d("BillingViewModel", "Acknowledging unacknowledged purchase on query: ${purchase.products}")
-                        acknowledgePurchase(purchase)
+                // Run acknowledgement → server sync → tier update in sequence so
+                // expiry timestamps are fresh before we calculate the tier.
+                viewModelScope.launch {
+                    // Acknowledge any unacknowledged purchases that were already PURCHASED
+                    // This handles cases where the app crashed between purchase and acknowledgement
+                    purchasesList.forEach { purchase ->
+                        if (purchase.purchaseState == Purchase.PurchaseState.PURCHASED && !purchase.isAcknowledged) {
+                            Log.d("BillingViewModel", "Acknowledging unacknowledged purchase on query: ${purchase.products}")
+                            acknowledgePurchase(purchase)
+                        }
                     }
-                }
 
-                if (emitRestoredEvent) {
-                    viewModelScope.launch {
-                        syncActivePurchasesWithServer(purchasesList)
+                    // Sync with server to refresh validated expiry timestamps.
+                    // This MUST happen before updateCurrentTier so cancelled/expired
+                    // subscriptions are dropped immediately.
+                    syncActivePurchasesWithServer(purchasesList)
+
+                    // Now re-evaluate tier with fresh server-validated expiry data
+                    updateCurrentTier(purchasesList)
+
+                    if (emitRestoredEvent) {
                         _billingEvent.value = BillingEvent.PurchasesRestored(
                             purchasesList.size,
                             _currentTier.value
                         )
-                        _isLoading.value = false
                     }
-                } else {
                     _isLoading.value = false
                 }
             } else {
