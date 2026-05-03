@@ -31,6 +31,7 @@ import androidx.compose.material.icons.filled.NetworkCheck
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Restore
+import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -50,6 +51,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -57,6 +59,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
@@ -67,6 +70,7 @@ import androidx.compose.ui.unit.sp
 import androidx.core.content.edit
 import coil3.compose.AsyncImage
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.functions.FirebaseFunctions
 import com.picflick.app.Constants
 import com.picflick.app.data.Feedback
 import com.picflick.app.data.Report
@@ -80,12 +84,16 @@ import com.picflick.app.viewmodel.AuthViewModel
 import com.picflick.app.viewmodel.BillingViewModel
 import com.picflick.app.viewmodel.HomeViewModel
 import com.picflick.app.viewmodel.UploadViewModel
+import androidx.compose.foundation.shape.RoundedCornerShape
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
+
+// Mid blue — matches FindFriendsScreen pill buttons exactly
+private val MidBlue = Color(0xFF2A4A73)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -129,6 +137,11 @@ fun DeveloperScreen(
     var reportError by remember { mutableStateOf<String?>(null) }
     var selectedReport by remember { mutableStateOf<Report?>(null) }
     var fullScreenPhotoUrl by remember { mutableStateOf<String?>(null) }
+
+    // Mythic Draw state
+    var mythicThreshold by remember { mutableIntStateOf(100) }
+    var mythicLastDraw by remember { mutableStateOf<Map<String, Any>?>(null) }
+    var mythicDrawLoading by remember { mutableStateOf(false) }
 
     val devLogs = remember { mutableStateListOf<String>() }
 
@@ -369,6 +382,72 @@ fun DeveloperScreen(
         }
     }
 
+    fun loadMythicDrawConfig() {
+        scope.launch {
+            try {
+                val db = FirebaseFirestore.getInstance()
+                val doc = withContext(Dispatchers.IO) {
+                    db.collection("appConfig").document("mythicDraw").get().await()
+                }
+                mythicThreshold = if (doc.exists()) (doc.getLong("streakThreshold") ?: 100).toInt() else 100
+                devLogs.add(0, "Mythic threshold loaded: $mythicThreshold")
+            } catch (e: Exception) {
+                devLogs.add(0, "Mythic threshold load failed: ${e.message}")
+            }
+        }
+    }
+
+    fun setMythicThreshold(newThreshold: Int) {
+        scope.launch {
+            try {
+                val db = FirebaseFirestore.getInstance()
+                withContext(Dispatchers.IO) {
+                    db.collection("appConfig").document("mythicDraw")
+                        .set(mapOf("streakThreshold" to newThreshold))
+                        .await()
+                }
+                mythicThreshold = newThreshold
+                devLogs.add(0, "Mythic threshold updated to $newThreshold")
+                Toast.makeText(context, "Threshold set to $newThreshold", Toast.LENGTH_SHORT).show()
+            } catch (e: Exception) {
+                Toast.makeText(context, "Failed: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    fun runMythicDrawNow() {
+        scope.launch {
+            mythicDrawLoading = true
+            try {
+                val functions = com.google.firebase.functions.FirebaseFunctions.getInstance()
+                val result = withContext(Dispatchers.IO) {
+                    functions.getHttpsCallable("runMythicDrawManual").call().await()
+                }
+                val data = result.getData() as? Map<*, *>
+                val success = data?.get("success") as? Boolean ?: false
+                if (success) {
+                    val winnerId = data?.get("winnerId") as? String
+                    val eligibleCount = (data?.get("eligibleCount") as? Number)?.toInt() ?: 0
+                    val noWinner = data?.get("noWinner") as? Boolean ?: false
+                    if (noWinner) {
+                        Toast.makeText(context, "Draw complete: no eligible users (threshold=$mythicThreshold)", Toast.LENGTH_LONG).show()
+                        devLogs.add(0, "Manual draw: no eligible users")
+                    } else {
+                        Toast.makeText(context, "Draw complete! Winner: ${winnerId?.take(8)}… ($eligibleCount eligible)", Toast.LENGTH_LONG).show()
+                        devLogs.add(0, "Manual draw winner: $winnerId ($eligibleCount eligible)")
+                    }
+                } else {
+                    Toast.makeText(context, "Draw failed", Toast.LENGTH_SHORT).show()
+                }
+            } catch (e: Exception) {
+                Toast.makeText(context, "Draw error: ${e.message}", Toast.LENGTH_LONG).show()
+                devLogs.add(0, "Manual draw error: ${e.message}")
+            } finally {
+                mythicDrawLoading = false
+            }
+        }
+    }
+
     LaunchedEffect(Unit) {
         val pInfo = context.packageManager.getPackageInfo(context.packageName, 0)
         val versionCode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
@@ -388,6 +467,7 @@ fun DeveloperScreen(
         networkStatus = if (isOnline(context)) "Online" else "Offline"
         loadFeedbackInbox()
         loadReportsInbox()
+        loadMythicDrawConfig()
     }
 
     Scaffold(
@@ -664,6 +744,44 @@ fun DeveloperScreen(
                             }
                         }
                     }
+                }
+            }
+
+            DevSectionCard("MYTHIC DRAW", isDarkMode) {
+                DevInfo("Streak threshold", mythicThreshold.toString(), isDarkMode)
+                DevInfo("Draw status", if (mythicDrawLoading) "Running…" else "Idle", isDarkMode)
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    listOf(3, 7, 30, 100).forEach { threshold ->
+                        val isSelected = mythicThreshold == threshold
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(
+                                    if (isSelected) MidBlue else if (isDarkMode) Color(0xFF2A2A2E) else Color(0xFFF0F0F0)
+                                )
+                                .clickable { setMythicThreshold(threshold) }
+                                .padding(vertical = 8.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "$threshold",
+                                color = if (isSelected) Color.White else if (isDarkMode) Color.LightGray else Color.DarkGray,
+                                fontSize = 13.sp,
+                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                DevActionRow(Icons.Default.EmojiEvents, if (mythicDrawLoading) "Running draw…" else "Run Draw Now") {
+                    if (!mythicDrawLoading) runMythicDrawNow()
                 }
             }
 
