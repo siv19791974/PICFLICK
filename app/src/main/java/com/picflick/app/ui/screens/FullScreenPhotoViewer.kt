@@ -2059,7 +2059,10 @@ if (canDeleteCurrent) {
                                                             currentFlick.id,
                                                             currentUser.uid,
                                                             selectedReason,
-                                                            reportDetails
+                                                            reportDetails,
+                                                            flickImageUrl = currentFlick.imageUrl,
+                                                            flickOwnerId = currentFlick.userId,
+                                                            flickOwnerName = currentFlick.userName
                                                         )
                                                         when (result) {
                                                             is com.picflick.app.data.Result.Success -> {

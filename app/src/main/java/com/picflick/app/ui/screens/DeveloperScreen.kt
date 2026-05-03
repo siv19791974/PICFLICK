@@ -64,6 +64,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.edit
+import coil3.compose.AsyncImage
 import com.google.firebase.firestore.FirebaseFirestore
 import com.picflick.app.Constants
 import com.picflick.app.data.Feedback
@@ -257,6 +258,73 @@ fun DeveloperScreen(
         }
     }
 
+    /**
+     * Approve the reported photo — mark report as dismissed, photo stays visible
+     */
+    fun approveReportedPhoto(report: Report) {
+        scope.launch {
+            try {
+                withContext(Dispatchers.IO) {
+                    FirebaseFirestore.getInstance()
+                        .collection("reports")
+                        .document(report.id)
+                        .update(
+                            mapOf(
+                                "status" to "dismissed",
+                                "updatedAt" to System.currentTimeMillis()
+                            )
+                        )
+                        .await()
+                }
+                reportItems = reportItems.filter { it.id != report.id }
+                selectedReport = null
+                devLogs.add(0, "Photo APPROVED (report dismissed): ${report.flickId.take(12)}")
+                Toast.makeText(context, "Photo approved — report dismissed", Toast.LENGTH_SHORT).show()
+            } catch (e: Exception) {
+                Toast.makeText(context, "Failed: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    /**
+     * Remove the reported photo from all feeds — mark as auto-hidden and action the report
+     */
+    fun removeReportedPhoto(report: Report) {
+        scope.launch {
+            try {
+                withContext(Dispatchers.IO) {
+                    val db = FirebaseFirestore.getInstance()
+                    // Hide the flick from all feeds
+                    db.collection("flicks")
+                        .document(report.flickId)
+                        .update(
+                            mapOf(
+                                "autoHiddenByReports" to true,
+                                "updatedAt" to System.currentTimeMillis()
+                            )
+                        )
+                        .await()
+                    // Mark report as action taken
+                    db.collection("reports")
+                        .document(report.id)
+                        .update(
+                            mapOf(
+                                "status" to "action_taken",
+                                "updatedAt" to System.currentTimeMillis()
+                            )
+                        )
+                        .await()
+                }
+                reportItems = reportItems.filter { it.id != report.id }
+                selectedReport = null
+                devLogs.add(0, "Photo REMOVED (hidden): ${report.flickId.take(12)}")
+                Toast.makeText(context, "Photo removed from all feeds", Toast.LENGTH_SHORT).show()
+            } catch (e: Exception) {
+                Toast.makeText(context, "Failed: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
     LaunchedEffect(Unit) {
         val pInfo = context.packageManager.getPackageInfo(context.packageName, 0)
         val versionCode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
@@ -430,44 +498,111 @@ fun DeveloperScreen(
                     }
                     else -> {
                         reportItems.take(12).forEach { item ->
+                            val isExpanded = selectedReport?.id == item.id
                             Card(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .padding(top = 8.dp)
-                                    .clickable { selectedReport = item },
+                                    .clickable { selectedReport = if (isExpanded) null else item },
                                 colors = CardDefaults.cardColors(
                                     containerColor = if (isDarkMode) Color(0xFF2A2A2D) else Color(0xFFF5F5F5)
                                 )
                             ) {
                                 Column(modifier = Modifier.padding(12.dp)) {
-                                    Text(
-                                        text = "${item.reason} • ${item.status.uppercase()}",
-                                        color = if (isDarkMode) Color.White else Color.Black,
-                                        fontWeight = FontWeight.SemiBold,
-                                        fontSize = 14.sp
-                                    )
-                                    Spacer(modifier = Modifier.height(2.dp))
-                                    Text(
-                                        text = "Flick: ${item.flickId.take(12)}… • Reporter: ${item.reporterId.take(8)}…",
-                                        color = if (isDarkMode) Color.LightGray else Color.DarkGray,
-                                        fontSize = 12.sp
-                                    )
-                                    Spacer(modifier = Modifier.height(4.dp))
-                                    if (selectedReport?.id == item.id) {
+                                    // Top row: photo thumbnail + info
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                    ) {
+                                        // Photo thumbnail (80x80)
+                                        if (item.flickImageUrl.isNotBlank()) {
+                                            AsyncImage(
+                                                model = item.flickImageUrl,
+                                                contentDescription = "Reported photo",
+                                                modifier = Modifier
+                                                    .size(80.dp)
+                                                    .background(Color(0xFF1A1A1A))
+                                            )
+                                        } else {
+                                            Box(
+                                                modifier = Modifier
+                                                    .size(80.dp)
+                                                    .background(Color(0xFF444444)),
+                                                contentAlignment = Alignment.Center
+                                            ) {
+                                                Text(
+                                                    text = "No img",
+                                                    color = Color.Gray,
+                                                    fontSize = 11.sp
+                                                )
+                                            }
+                                        }
+
+                                        // Report info
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            Text(
+                                                text = item.reason.uppercase(),
+                                                color = Color(0xFFFF6B6B),
+                                                fontWeight = FontWeight.Bold,
+                                                fontSize = 13.sp
+                                            )
+                                            Spacer(modifier = Modifier.height(2.dp))
+                                            Text(
+                                                text = "By: ${item.flickOwnerName.ifBlank { "Unknown" }}",
+                                                color = if (isDarkMode) Color.White else Color.Black,
+                                                fontSize = 13.sp
+                                            )
+                                            Text(
+                                                text = "Reporter: ${item.reporterId.take(8)}…",
+                                                color = if (isDarkMode) Color.LightGray else Color.DarkGray,
+                                                fontSize = 11.sp
+                                            )
+                                            if (item.details.isNotBlank()) {
+                                                Spacer(modifier = Modifier.height(2.dp))
+                                                Text(
+                                                    text = "\"${item.details.take(40)}${if (item.details.length > 40) "…" else ""}\"",
+                                                    color = if (isDarkMode) Color(0xFFAAAAAA) else Color(0xFF666666),
+                                                    fontSize = 11.sp,
+                                                    maxLines = 1
+                                                )
+                                            }
+                                        }
+                                    }
+
+                                    // Expanded action buttons
+                                    if (isExpanded) {
+                                        Spacer(modifier = Modifier.height(8.dp))
                                         Row(
                                             modifier = Modifier.fillMaxWidth(),
                                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                                         ) {
+                                            // APPROVE — photo is fine, dismiss report
                                             Button(
-                                                onClick = { markReportReviewed(item) },
+                                                onClick = { approveReportedPhoto(item) },
                                                 colors = ButtonDefaults.buttonColors(
                                                     containerColor = Color(0xFF10B981)
                                                 ),
                                                 modifier = Modifier.weight(1f)
                                             ) {
-                                                Text("Mark Reviewed", fontSize = 12.sp)
+                                                Text("Approve Photo", fontSize = 12.sp)
+                                            }
+                                            // REMOVE — photo violates rules, hide it
+                                            Button(
+                                                onClick = { removeReportedPhoto(item) },
+                                                colors = ButtonDefaults.buttonColors(
+                                                    containerColor = Color(0xFFEF4444)
+                                                ),
+                                                modifier = Modifier.weight(1f)
+                                            ) {
+                                                Text("Remove Photo", fontSize = 12.sp)
                                             }
                                         }
+                                        Spacer(modifier = Modifier.height(4.dp))
+                                        Text(
+                                            text = "Tap card to collapse",
+                                            color = if (isDarkMode) Color.Gray else Color.DarkGray,
+                                            fontSize = 10.sp
+                                        )
                                     }
                                 }
                             }

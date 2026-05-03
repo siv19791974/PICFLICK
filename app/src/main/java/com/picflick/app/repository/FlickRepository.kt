@@ -3033,11 +3033,17 @@ class FlickRepository private constructor() {
         flickId: String,
         reporterId: String,
         reason: String,
-        details: String = ""
+        details: String = "",
+        flickImageUrl: String = "",
+        flickOwnerId: String = "",
+        flickOwnerName: String = ""
     ): Result<Unit> {
         return try {
             val report = hashMapOf(
                 "flickId" to flickId,
+                "flickImageUrl" to flickImageUrl,
+                "flickOwnerId" to flickOwnerId,
+                "flickOwnerName" to flickOwnerName,
                 "reporterId" to reporterId,
                 "reason" to reason,
                 "details" to details,
