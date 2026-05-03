@@ -909,8 +909,153 @@ exports.autoHideReportedPhoto = functions
 
 /**
  * Cloud Function: Monthly Mythic Draw — 1st of every month at 00:00 UTC
- * Eligible: users with streak.current >= 100 (Mythic status)
+ * Eligible: users with streak.current >= configurable threshold (default 100)
  * Prize: 3-month PRO upgrade for one random winner
+ */
+async function executeMythicDraw(db, isManual = false, forcedMonthKey = null) {
+  const now = Date.now();
+
+  // Build month key: YYYY-MM
+  const date = new Date();
+  const monthKey = forcedMonthKey || `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}`;
+  const drawDocRef = db.collection('system').doc(`mythic_draw_${monthKey}`);
+
+  // Idempotency check — has this month's draw already run?
+  const existingDraw = await drawDocRef.get();
+  if (existingDraw.exists && !isManual) {
+    console.log(`Mythic draw for ${monthKey} already completed. Winner:`, existingDraw.data().winnerUserId);
+    return { alreadyRun: true, monthKey, winnerId: existingDraw.data().winnerUserId };
+  }
+
+  // Read configurable threshold from Firestore (default 100 for production)
+  const configDoc = await db.collection('appConfig').doc('mythicDraw').get();
+  const streakThreshold = configDoc.exists ? (configDoc.data().streakThreshold || 100) : 100;
+  console.log(`Mythic draw ${monthKey}: using streak threshold = ${streakThreshold}`);
+
+  // Query all eligible users (streak.current >= threshold)
+  const eligibleSnapshot = await db
+    .collection('users')
+    .where('streak.current', '>=', streakThreshold)
+    .get();
+
+  const eligibleUsers = eligibleSnapshot.docs
+    .map((doc) => ({ uid: doc.id, ...doc.data() }))
+    .filter((u) => u.uid && u.uid.length > 0);
+
+  console.log(`Mythic draw ${monthKey}: ${eligibleUsers.length} eligible user(s)`);
+
+  if (eligibleUsers.length === 0) {
+    // No eligible users — mark draw as completed with no winner
+    await drawDocRef.set({
+      monthKey,
+      winnerUserId: null,
+      eligibleUserCount: 0,
+      createdAt: now,
+      notificationSent: true,
+      noWinner: true,
+      streakThreshold,
+    });
+    console.log(`Mythic draw ${monthKey}: no eligible users. Draw marked complete.`);
+    return { noWinner: true, monthKey, streakThreshold };
+  }
+
+  // Random winner
+  const winnerIndex = Math.floor(Math.random() * eligibleUsers.length);
+  const winner = eligibleUsers[winnerIndex];
+  const winnerId = winner.uid;
+  const winnerName = winner.displayName || 'A PicFlick creator';
+
+  console.log(`Mythic draw ${monthKey}: winner is ${winnerId} (${winnerName})`);
+
+  // 3-month PRO expiry
+  const threeMonthsMs = 90 * 24 * 60 * 60 * 1000;
+  const expiryDate = now + threeMonthsMs;
+
+  // Update winner subscription tier
+  await db.collection('users').doc(winnerId).update({
+    subscriptionTier: 'PRO',
+    subscriptionActive: true,
+    subscriptionExpiryDate: expiryDate,
+    mythicDrawWonAt: now,
+    mythicDrawWonMonth: monthKey,
+  });
+
+  // Create personal congratulatory notification for the winner
+  const winnerNotifRef = db.collection('notifications').doc();
+  await winnerNotifRef.set({
+    userId: winnerId,
+    senderId: 'system',
+    senderName: 'PicFlick',
+    senderPhotoUrl: '',
+    type: 'SYSTEM',
+    title: '🎉 You Won the Mythic Monthly Draw!',
+    message: `Congratulations ${winnerName}! Your ${streakThreshold}-day Mythic streak earned you a 3-month PRO upgrade. Enjoy unlimited uploads, premium features, and priority support. Keep the flame burning!`,
+    targetScreen: 'plan_options',
+    isRead: false,
+    timestamp: now,
+    monthKey,
+    mythicDrawWinner: true,
+  });
+
+  // Also send a direct FCM push to the winner (bypass the type filter)
+  try {
+    const winnerUserDoc = await db.collection('users').doc(winnerId).get();
+    const winnerFcmToken = winnerUserDoc.get('fcmToken');
+    if (winnerFcmToken) {
+      await admin.messaging().send({
+        token: winnerFcmToken,
+        notification: {
+          title: '🎉 You Won the Mythic Monthly Draw!',
+          body: `Your ${streakThreshold}-day streak earned you 3 months of PRO. Open PicFlick to claim!`,
+        },
+        data: {
+          type: 'SYSTEM',
+          targetScreen: 'plan_options',
+          click_action: 'FLUTTER_NOTIFICATION_CLICK',
+        },
+        android: { priority: 'high', notification: { sound: 'default', clickAction: 'FLUTTER_NOTIFICATION_CLICK' } },
+        apns: { headers: { 'apns-priority': '10' }, payload: { aps: { sound: 'default', badge: 1 } } },
+      });
+      console.log(`FCM push sent to winner ${winnerId}`);
+    }
+  } catch (pushErr) {
+    console.error('Error sending winner FCM push:', pushErr.message);
+  }
+
+  // Create dev feedback notification (both devs get notified via existing sendFeedbackPushToDeveloper)
+  const devFeedbackRef = db.collection('feedback').doc();
+  await devFeedbackRef.set({
+    userId: 'system',
+    userName: 'Mythic Draw Bot',
+    userEmail: 'system@picflick.app',
+    subject: `Mythic Draw Winner — ${monthKey}`,
+    message: `Monthly Mythic Draw completed for ${monthKey}.\n\nThreshold: ${streakThreshold} days\nWinner: ${winnerName} (${winnerId})\nEligible entries: ${eligibleUsers.length}\nPrize: 3-month PRO upgrade (expires ${new Date(expiryDate).toISOString()})`,
+    category: 'GENERAL',
+    timestamp: now,
+    status: 'NEW',
+    assignedToUid: 'LpSqE40IZGeAGMknTAEzysqp5l33',
+    appVersion: 'cloud-function',
+    deviceInfo: `month=${monthKey}|threshold=${streakThreshold}|eligible=${eligibleUsers.length}|winner=${winnerId}`,
+  });
+
+  // Mark draw as completed
+  await drawDocRef.set({
+    monthKey,
+    winnerUserId: winnerId,
+    winnerName,
+    eligibleUserCount: eligibleUsers.length,
+    createdAt: now,
+    notificationSent: true,
+    expiryDate,
+    streakThreshold,
+  });
+
+  console.log(`Mythic draw ${monthKey} completed. Winner: ${winnerId}, eligible: ${eligibleUsers.length}`);
+  return { winnerId, winnerName, monthKey, eligibleCount: eligibleUsers.length, streakThreshold };
+}
+
+/**
+ * Cloud Function: Scheduled Monthly Mythic Draw — 1st of every month at 00:00 UTC
  */
 exports.runMonthlyMythicDraw = functions
   .runWith({ memory: '256MB', timeoutSeconds: 120 })
@@ -919,140 +1064,40 @@ exports.runMonthlyMythicDraw = functions
   .timeZone('UTC')
   .onRun(async (context) => {
     if (await shouldSkipTrigger('runMonthlyMythicDraw')) return null;
+    const db = admin.firestore();
+    return executeMythicDraw(db, false);
+  });
+
+/**
+ * Cloud Function: Manual Mythic Draw trigger (Callable — dev only)
+ * Android app calls this via FirebaseFunctions.getInstance().getHttpsCallable("runMythicDrawManual")
+ */
+exports.runMythicDrawManual = functions
+  .runWith({ memory: '256MB', timeoutSeconds: 120 })
+  .https
+  .onCall(async (data, context) => {
+    // Auth check: must be authenticated and a dev UID
+    const callerUid = context.auth?.uid;
+    if (!callerUid) {
+      throw new functions.https.HttpsError('unauthenticated', 'You must be signed in to run a manual draw.');
+    }
+    const devUids = ['LpSqE40IZGeAGMknTAEzysqp5l33', 'cuj8dU3zNMN9TELEU2qmPR6Np5A2'];
+    if (!devUids.includes(callerUid)) {
+      throw new functions.https.HttpsError('permission-denied', 'Only developers can trigger manual draws.');
+    }
 
     const db = admin.firestore();
-    const now = Date.now();
-
-    // Build month key: YYYY-MM
-    const date = new Date();
-    const monthKey = `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}`;
-    const drawDocRef = db.collection('system').doc(`mythic_draw_${monthKey}`);
-
-    // Idempotency check — has this month's draw already run?
-    const existingDraw = await drawDocRef.get();
-    if (existingDraw.exists) {
-      console.log(`Mythic draw for ${monthKey} already completed. Winner:`, existingDraw.data().winnerUserId);
-      return null;
-    }
-
-    // Query all eligible users (streak.current >= 100)
-    const eligibleSnapshot = await db
-      .collection('users')
-      .where('streak.current', '>=', 100)
-      .get();
-
-    const eligibleUsers = eligibleSnapshot.docs
-      .map((doc) => ({ uid: doc.id, ...doc.data() }))
-      .filter((u) => u.uid && u.uid.length > 0);
-
-    console.log(`Mythic draw ${monthKey}: ${eligibleUsers.length} eligible user(s)`);
-
-    if (eligibleUsers.length === 0) {
-      // No eligible users — mark draw as completed with no winner
-      await drawDocRef.set({
-        monthKey,
-        winnerUserId: null,
-        eligibleUserCount: 0,
-        createdAt: now,
-        notificationSent: true,
-        noWinner: true,
-      });
-      console.log(`Mythic draw ${monthKey}: no eligible users. Draw marked complete.`);
-      return null;
-    }
-
-    // Random winner
-    const winnerIndex = Math.floor(Math.random() * eligibleUsers.length);
-    const winner = eligibleUsers[winnerIndex];
-    const winnerId = winner.uid;
-    const winnerName = winner.displayName || 'A PicFlick creator';
-
-    console.log(`Mythic draw ${monthKey}: winner is ${winnerId} (${winnerName})`);
-
-    // 3-month PRO expiry
-    const threeMonthsMs = 90 * 24 * 60 * 60 * 1000;
-    const expiryDate = now + threeMonthsMs;
-
-    // Update winner subscription tier
-    await db.collection('users').doc(winnerId).update({
-      subscriptionTier: 'PRO',
-      subscriptionActive: true,
-      subscriptionExpiryDate: expiryDate,
-      mythicDrawWonAt: now,
-      mythicDrawWonMonth: monthKey,
-    });
-
-    // Create personal congratulatory notification for the winner
-    const winnerNotifRef = db.collection('notifications').doc();
-    await winnerNotifRef.set({
-      userId: winnerId,
-      senderId: 'system',
-      senderName: 'PicFlick',
-      senderPhotoUrl: '',
-      type: 'SYSTEM',
-      title: '🎉 You Won the Mythic Monthly Draw!',
-      message: `Congratulations ${winnerName}! Your 100-day Mythic streak earned you a 3-month PRO upgrade. Enjoy unlimited uploads, premium features, and priority support. Keep the flame burning!`,
-      targetScreen: 'plan_options',
-      isRead: false,
-      timestamp: now,
-      monthKey,
-      mythicDrawWinner: true,
-    });
-
-    // Also send a direct FCM push to the winner (bypass the type filter)
     try {
-      const winnerUserDoc = await db.collection('users').doc(winnerId).get();
-      const winnerFcmToken = winnerUserDoc.get('fcmToken');
-      if (winnerFcmToken) {
-        await admin.messaging().send({
-          token: winnerFcmToken,
-          notification: {
-            title: '🎉 You Won the Mythic Monthly Draw!',
-            body: 'Your 100-day streak earned you 3 months of PRO. Open PicFlick to claim!',
-          },
-          data: {
-            type: 'SYSTEM',
-            targetScreen: 'plan_options',
-            click_action: 'FLUTTER_NOTIFICATION_CLICK',
-          },
-          android: { priority: 'high', notification: { sound: 'default', clickAction: 'FLUTTER_NOTIFICATION_CLICK' } },
-          apns: { headers: { 'apns-priority': '10' }, payload: { aps: { sound: 'default', badge: 1 } } },
-        });
-        console.log(`FCM push sent to winner ${winnerId}`);
-      }
-    } catch (pushErr) {
-      console.error('Error sending winner FCM push:', pushErr.message);
+      const result = await executeMythicDraw(db, true);
+      return {
+        success: true,
+        ...result,
+        note: result.alreadyRun ? 'This month already had a scheduled draw. Manual draw was skipped.' : undefined,
+      };
+    } catch (error) {
+      console.error('Manual Mythic Draw error:', error);
+      throw new functions.https.HttpsError('internal', error.message);
     }
-
-    // Create dev feedback notification (both devs get notified via existing sendFeedbackPushToDeveloper)
-    const devFeedbackRef = db.collection('feedback').doc();
-    await devFeedbackRef.set({
-      userId: 'system',
-      userName: 'Mythic Draw Bot',
-      userEmail: 'system@picflick.app',
-      subject: `Mythic Draw Winner — ${monthKey}`,
-      message: `Monthly Mythic Draw completed for ${monthKey}.\n\nWinner: ${winnerName} (${winnerId})\nEligible entries: ${eligibleUsers.length}\nPrize: 3-month PRO upgrade (expires ${new Date(expiryDate).toISOString()})`,
-      category: 'GENERAL',
-      timestamp: now,
-      status: 'NEW',
-      assignedToUid: 'LpSqE40IZGeAGMknTAEzysqp5l33',
-      appVersion: 'cloud-function',
-      deviceInfo: `month=${monthKey}|eligible=${eligibleUsers.length}|winner=${winnerId}`,
-    });
-
-    // Mark draw as completed
-    await drawDocRef.set({
-      monthKey,
-      winnerUserId: winnerId,
-      winnerName,
-      eligibleUserCount: eligibleUsers.length,
-      createdAt: now,
-      notificationSent: true,
-      expiryDate,
-    });
-
-    console.log(`Mythic draw ${monthKey} completed. Winner: ${winnerId}, eligible: ${eligibleUsers.length}`);
-    return null;
   });
 
 // deploy-bump 
