@@ -240,9 +240,9 @@ class BillingViewModel : ViewModel() {
     }
 
     /**
-     * Query existing purchases
+     * Query existing purchases. Public so MainActivity can refresh on resume.
      */
-    private fun queryPurchases(emitRestoredEvent: Boolean = false) {
+    fun queryPurchases(emitRestoredEvent: Boolean = false) {
         billingClient?.queryPurchasesAsync(
             QueryPurchasesParams.newBuilder()
                 .setProductType(BillingClient.ProductType.SUBS)

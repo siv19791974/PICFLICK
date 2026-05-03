@@ -700,6 +700,17 @@ fun MainScreen(
         }
     }
 
+    // Re-query purchases whenever app resumes so expired subscriptions are caught immediately
+    DisposableEffect(lifecycleOwner) {
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME && billingViewModel.isConnected.value) {
+                billingViewModel.queryPurchases()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+
     // Bridge validated tier changes from BillingViewModel → AuthViewModel immediately
     // so UploadViewModel and other features see the new tier before Firestore listener fires.
     LaunchedEffect(Unit) {
