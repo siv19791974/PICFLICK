@@ -126,6 +126,7 @@ fun DeveloperScreen(
     var reportLoading by remember { mutableStateOf(false) }
     var reportError by remember { mutableStateOf<String?>(null) }
     var selectedReport by remember { mutableStateOf<Report?>(null) }
+    var fullScreenPhotoUrl by remember { mutableStateOf<String?>(null) }
 
     val devLogs = remember { mutableStateListOf<String>() }
 
@@ -514,19 +515,22 @@ fun DeveloperScreen(
                                         modifier = Modifier.fillMaxWidth(),
                                         horizontalArrangement = Arrangement.spacedBy(12.dp)
                                     ) {
-                                        // Photo thumbnail (80x80)
+                                        // Photo thumbnail (120x120) — clickable to full-screen
                                         if (item.flickImageUrl.isNotBlank()) {
                                             AsyncImage(
                                                 model = item.flickImageUrl,
-                                                contentDescription = "Reported photo",
+                                                contentDescription = "Reported photo — tap to enlarge",
                                                 modifier = Modifier
-                                                    .size(80.dp)
+                                                    .size(120.dp)
                                                     .background(Color(0xFF1A1A1A))
+                                                    .clickable {
+                                                        fullScreenPhotoUrl = item.flickImageUrl
+                                                    }
                                             )
                                         } else {
                                             Box(
                                                 modifier = Modifier
-                                                    .size(80.dp)
+                                                    .size(120.dp)
                                                     .background(Color(0xFF444444)),
                                                 contentAlignment = Alignment.Center
                                             ) {
@@ -900,6 +904,56 @@ fun DeveloperScreen(
             }
 
             Spacer(modifier = Modifier.height(80.dp))
+        }
+    }
+
+    // Full-screen photo preview for moderation decisions
+    fullScreenPhotoUrl?.let { url ->
+        androidx.compose.ui.window.Dialog(
+            onDismissRequest = { fullScreenPhotoUrl = null },
+            properties = androidx.compose.ui.window.DialogProperties(
+                usePlatformDefaultWidth = false,
+                decorFitsSystemWindows = false
+            )
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black),
+                contentAlignment = Alignment.Center
+            ) {
+                AsyncImage(
+                    model = url,
+                    contentDescription = "Full-screen reported photo",
+                    modifier = Modifier.fillMaxSize()
+                )
+                // Back button overlay
+                IconButton(
+                    onClick = { fullScreenPhotoUrl = null },
+                    modifier = Modifier
+                        .align(Alignment.TopStart)
+                        .padding(16.dp)
+                        .size(48.dp)
+                        .background(Color(0xCC000000), shape = androidx.compose.foundation.shape.CircleShape)
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = "Back to moderation",
+                        tint = Color.White
+                    )
+                }
+                // Hint text at bottom
+                Text(
+                    text = "Tap back arrow to return to moderation decision",
+                    color = Color.White,
+                    fontSize = 14.sp,
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(bottom = 32.dp)
+                        .background(Color(0xCC000000), shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp))
+                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                )
+            }
         }
     }
 
