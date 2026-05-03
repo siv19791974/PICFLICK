@@ -212,13 +212,10 @@ fun FullScreenPhotoViewer(
     
     val deletedFlickIds = remember { mutableStateListOf<String>() }
 
-    // Persist reported flick IDs across app restarts so reported photos stay hidden.
-    val prefs = context.getSharedPreferences("picflick_reports", Context.MODE_PRIVATE)
-    val savedReportedIds = prefs.getStringSet("reported_flick_ids", emptySet())?.toList() ?: emptyList()
-    val reportedFlickIds = remember { mutableStateListOf<String>().apply { addAll(savedReportedIds) } }
-    fun saveReportedFlickIds() {
-        prefs.edit().putStringSet("reported_flick_ids", reportedFlickIds.toSet()).apply()
-    }
+    // Session-only reported flick IDs — photos hide for the current session only.
+    // When the app restarts, approved photos naturally reappear. Permanent hiding
+    // is handled server-side via autoHiddenByReports (3+ unique reporters).
+    val reportedFlickIds = remember { mutableStateListOf<String>() }
 
     var currentSwipeTraceStartedAt by remember { mutableLongStateOf(System.currentTimeMillis()) }
     var currentSwipeTracePhotoKey by remember { mutableStateOf("") }
@@ -2067,10 +2064,9 @@ if (canDeleteCurrent) {
                                                         when (result) {
                                                             is com.picflick.app.data.Result.Success -> {
                                                                 showPicFlickToast("Report submitted")
-                                                                // Hide from reporter's feed immediately and persist
+                                                                // Hide from reporter's current session immediately
                                                                 reportedFlickIds.add(currentFlick.id)
                                                                 deletedFlickIds.add(currentFlick.id)
-                                                                saveReportedFlickIds()
                                                             }
                                                             is com.picflick.app.data.Result.Error -> {
                                                                 showPicFlickToast("Failed to submit report")

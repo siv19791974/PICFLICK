@@ -614,6 +614,7 @@ class FlickRepository private constructor() {
 
                 if (snapshot != null) {
                     val flicks = snapshot.toObjects(Flick::class.java)
+                        .filter { !it.autoHiddenByReports }
                     onResult(Result.Success(flicks))
                 }
             }
@@ -639,6 +640,7 @@ class FlickRepository private constructor() {
 
                 if (snapshot != null) {
                     val flicks = snapshot.toObjects(Flick::class.java)
+                        .filter { !it.autoHiddenByReports } // Hide auto-moderated photos
                         .sortedByDescending { it.timestamp } // Sort in memory
                     onResult(Result.Success(flicks))
                 }
