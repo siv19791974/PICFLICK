@@ -158,6 +158,7 @@ fun HomeScreen(
     var groupIconCropSourceUri by remember { mutableStateOf<Uri?>(null) }
     var createDialogIconOverride by remember { mutableStateOf<String?>(null) }
     var editDialogIconOverride by remember { mutableStateOf<String?>(null) }
+    var allFriendsAvatarUrl by remember { mutableStateOf(prefs.getString("all_friends_avatar_url", "") ?: "") }
     var selectedFlick by remember { mutableStateOf<Flick?>(null) }
     var selectedFlickIndex by remember { mutableIntStateOf(0) }
     var lastEdgeLoadMoreAt by remember { mutableLongStateOf(0L) }
@@ -287,12 +288,19 @@ fun HomeScreen(
                 when (val uploadResult = com.picflick.app.repository.FlickRepository.getInstance().uploadFlickImage(userProfile.uid, imageBytes)) {
                     is com.picflick.app.data.Result.Success -> {
                         val imageUrl = uploadResult.data.imageUrl
-                        if (target == "create") {
-                            createDialogIconOverride = imageUrl
-                        } else {
-                            editDialogIconOverride = imageUrl
+                        when (target) {
+                            "create" -> createDialogIconOverride = imageUrl
+                            "edit" -> editDialogIconOverride = imageUrl
+                            "allfriends" -> {
+                                allFriendsAvatarUrl = imageUrl
+                                prefs.edit().putString("all_friends_avatar_url", imageUrl).apply()
+                                Toast.makeText(context, "All Friends avatar updated", Toast.LENGTH_SHORT).show()
+                            }
+                            else -> editDialogIconOverride = imageUrl
                         }
-                        Toast.makeText(context, "Album photo added", Toast.LENGTH_SHORT).show()
+                        if (target != "allfriends") {
+                            Toast.makeText(context, "Album photo added", Toast.LENGTH_SHORT).show()
+                        }
                     }
                     is com.picflick.app.data.Result.Error -> {
                         Toast.makeText(context, "Failed to upload album photo", Toast.LENGTH_SHORT).show()
@@ -633,7 +641,13 @@ fun HomeScreen(
             temporaryExampleGroups = temporaryGroupExamples,
             isDarkMode = isDarkMode,
             currentUserId = userProfile.uid,
+            allFriendsAvatarUrl = allFriendsAvatarUrl,
             onDismiss = { showGroupsManager = false },
+            onChangeAllFriendsAvatar = {
+                pendingGroupIconTarget = "allfriends"
+                selectedGroupIconMediaUris = emptyList()
+                showGroupIconMediaPicker = true
+            },
             onSelectGroup = { filter ->
                 viewModel.setFilter(filter)
                 showGroupsManager = false
@@ -1593,6 +1607,7 @@ private fun GroupManagerSheet(
     temporaryExampleGroups: List<String>,
     isDarkMode: Boolean,
     currentUserId: String,
+    allFriendsAvatarUrl: String = "",
     onDismiss: () -> Unit,
     onSelectGroup: (FeedFilter) -> Unit,
     onCreateGroup: () -> Unit,
@@ -1604,7 +1619,8 @@ private fun GroupManagerSheet(
     onExitGroup: (FriendGroup) -> Unit,
     onDeleteTemporaryGroup: (String) -> Unit,
     onReorderGroups: (List<String>) -> Unit,
-    onOpenGroupChat: (FriendGroup) -> Unit = {}
+    onOpenGroupChat: (FriendGroup) -> Unit = {},
+    onChangeAllFriendsAvatar: () -> Unit = {}
 ) {
     BackHandler(onBack = onDismiss)
 
@@ -1755,15 +1771,35 @@ private fun GroupManagerSheet(
                 if (searchQuery.isBlank() || "all friends".contains(searchQuery.trim().lowercase(Locale.getDefault()))) {
                     item {
                         val isSelected = selectedFilter is FeedFilter.AllFriends
+                        var showAllFriendsMenu by remember { mutableStateOf(false) }
                         GroupRowCard(
                             title = "All friends",
                             subtitle = "$allFriendsCount friends",
-                            icon = "🏠",
+                            icon = allFriendsAvatarUrl.ifBlank { "🏠" },
                             colour = "#4FC3F7",
                             selected = isSelected,
                             onClick = { onSelectGroup(FeedFilter.AllFriends) },
                             textColor = textColor,
-                            trailingContent = {}
+                            trailingContent = {
+                                Box {
+                                    IconButton(onClick = { showAllFriendsMenu = true }) {
+                                        Icon(Icons.Default.MoreVert, contentDescription = "All Friends menu", tint = textColor)
+                                    }
+                                    DropdownMenu(
+                                        expanded = showAllFriendsMenu,
+                                        onDismissRequest = { showAllFriendsMenu = false }
+                                    ) {
+                                        DropdownMenuItem(
+                                            text = { Text("Change Avatar") },
+                                            onClick = {
+                                                showAllFriendsMenu = false
+                                                onChangeAllFriendsAvatar()
+                                            },
+                                            leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null) }
+                                        )
+                                    }
+                                }
+                            }
                         )
                     }
                 }
