@@ -370,8 +370,8 @@ private fun CreateAlbumDialog(
         containerColor = Color(0xFF121212),
             dragHandle = { Surface(modifier = Modifier.padding(top = 8.dp).size(width = 44.dp, height = 5.dp), shape = RoundedCornerShape(50), color = Color.White.copy(alpha = 0.28f)) {} }
     ) {
-        Column(Modifier.fillMaxWidth().padding(horizontal = 24.dp).padding(bottom = 24.dp)) {
-            Text("Create New Album", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 16.dp).align(Alignment.CenterHorizontally))
+        Column(Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 20.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            Text("Create New Album", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 16.dp))
             OutlinedTextField(
                 value = name,
                 onValueChange = { name = it },
@@ -404,6 +404,7 @@ private fun CreateAlbumDialog(
                 ActionSheetRow(icon = Icons.Default.Close, title = "Cancel", accentColor = Color.Gray, onClick = onDismiss)
                 ActionSheetRow(icon = Icons.Default.Create, title = "Create", accentColor = Color(0xFF4CAF50), onClick = { onCreate(name, description) })
             }
+            Spacer(Modifier.height(12.dp))
         }
     }
 }

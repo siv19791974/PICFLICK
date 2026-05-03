@@ -1257,16 +1257,17 @@ Column(modifier = Modifier.fillMaxSize()) {
             containerColor = Color(0xFF121212),
             dragHandle = { Surface(modifier = Modifier.padding(top = 8.dp).size(width = 44.dp, height = 5.dp), shape = RoundedCornerShape(50), color = Color.White.copy(alpha = 0.28f)) {} }
         ) {
-            Column(Modifier.fillMaxWidth().padding(horizontal = 24.dp).padding(bottom = 24.dp)) {
-                Text("Block user?", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 8.dp).align(Alignment.CenterHorizontally))
+            Column(Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 20.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                Text("Block user?", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 20.dp))
                 Text("This will report and block this user instantly, and remove this chat.", color = Color(0xFFB7BDC9), fontSize = 14.sp, modifier = Modifier.padding(bottom = 16.dp))
                 ActionSheetRow(icon = Icons.Default.Close, title = "Cancel", accentColor = Color.Gray, onClick = { showBlockUserConfirm = false })
-                Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(12.dp))
                 ActionSheetRow(icon = Icons.Default.Block, title = "Block & Report", accentColor = Color(0xFFFF4444), onClick = {
                     showBlockUserConfirm = false
                     viewModel.blockAndReportUser(currentUser.uid, otherUserId, chatId)
                     onBack()
                 })
+                Spacer(Modifier.height(12.dp))
             }
         }
     }
