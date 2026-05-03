@@ -212,10 +212,14 @@ fun FullScreenPhotoViewer(
     
     val deletedFlickIds = remember { mutableStateListOf<String>() }
 
-    // Session-only reported flick IDs — photos hide for the current session only.
-    // When the app restarts, approved photos naturally reappear. Permanent hiding
-    // is handled server-side via autoHiddenByReports (3+ unique reporters).
-    val reportedFlickIds = remember { mutableStateListOf<String>() }
+    // Personally-reported flick IDs — persist per-user so the reporter never sees
+    // the photo again, even if a moderator approves it. Other users see it normally.
+    val prefs = context.getSharedPreferences("picflick_reports_${currentUser.uid}", Context.MODE_PRIVATE)
+    val savedReportedIds = prefs.getStringSet("reported_flick_ids", emptySet())?.toList() ?: emptyList()
+    val reportedFlickIds = remember { mutableStateListOf<String>().apply { addAll(savedReportedIds) } }
+    fun saveReportedFlickIds() {
+        prefs.edit().putStringSet("reported_flick_ids", reportedFlickIds.toSet()).apply()
+    }
 
     var currentSwipeTraceStartedAt by remember { mutableLongStateOf(System.currentTimeMillis()) }
     var currentSwipeTracePhotoKey by remember { mutableStateOf("") }
@@ -2064,8 +2068,10 @@ if (canDeleteCurrent) {
                                                         when (result) {
                                                             is com.picflick.app.data.Result.Success -> {
                                                                 showPicFlickToast("Report submitted")
-                                                                // Hide from reporter's current session immediately
+                                                                // Permanently hide from this reporter's view (personal block)
                                                                 reportedFlickIds.add(currentFlick.id)
+                                                                saveReportedFlickIds()
+                                                                // Also hide from current full-screen viewer session
                                                                 deletedFlickIds.add(currentFlick.id)
                                                             }
                                                             is com.picflick.app.data.Result.Error -> {
