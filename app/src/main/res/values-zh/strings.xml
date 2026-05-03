@@ -171,7 +171,7 @@
     <string name="explore_follow_more_friends_subtitle">\u60a8\u5173\u6ce8\u7684\u4eba\u7684\u7167\u7247\u5c06\u663e\u793a\u5728\u8fd9\u91cc</string>
     <string name="explore_from_people_you_follow">\u6765\u81ea\u60a8\u5173\u6ce8\u7684\u4eba</string>
     <string name="explore_reactions_count">%d \u4e2a\u53cd\u5e94</string>
-    <string name="explore_reactions_comments">%d \u4e2a\u53cd\u5e94 \u2022 %d \u6761\u8bc4\u8bba</string>
+    <string name="explore_reactions_comments">%1$d \u4e2a\u53cd\u5e94 \u2022 %2$d \u6761\u8bc4\u8bba</string>
     <string name="explore_trending_badge">\u2794 \u70ed\u95e8</string>
     <string name="explore_new_badge">\u2605 \u65b0</string>
     <string name="explore_no_photos_upload">\u8fd8\u6ca1\u6709\u7167\u7247\u3002\u4e0a\u4f20\u4e00\u5f20\uff01</string>

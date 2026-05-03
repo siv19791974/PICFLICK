@@ -173,7 +173,7 @@
     <string name="explore_follow_more_friends_subtitle">Les photos des personnes que vous suivez appara\u00eetront ici</string>
     <string name="explore_from_people_you_follow">Des personnes que vous suivez</string>
     <string name="explore_reactions_count">%d r\u00e9actions</string>
-    <string name="explore_reactions_comments">%d r\u00e9actions • %d commentaires</string>
+    <string name="explore_reactions_comments">%1$d r\u00e9actions • %2$d commentaires</string>
     <string name="explore_trending_badge">🔥 TENDANCE</string>
     <string name="explore_new_badge">✨ NOUVEAU</string>
     <string name="explore_no_photos_upload">Pas encore de photos. Envoyez-en une !</string>

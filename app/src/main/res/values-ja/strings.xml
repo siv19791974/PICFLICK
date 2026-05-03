@@ -174,7 +174,7 @@
     <string name="explore_follow_more_friends_subtitle">フォロー中のユーザーの写真がここに表示されます</string>
     <string name="explore_from_people_you_follow">フォロー中のユーザーから</string>
     <string name="explore_reactions_count">%d 件のリアクション</string>
-    <string name="explore_reactions_comments">%d 件のリアクション • %d 件のコメント</string>
+    <string name="explore_reactions_comments">%1$d 件のリアクション • %2$d 件のコメント</string>
     <string name="explore_trending_badge">🔥 トレンド</string>
     <string name="explore_new_badge">✨ 新着</string>
     <string name="explore_no_photos_upload">まだ写真がありません。アップロードしましょう！</string>

@@ -169,7 +169,7 @@
     <string name="explore_follow_more_friends_subtitle">As fotos das pessoas que voc\u00ea segue aparecer\u00e3o aqui</string>
     <string name="explore_from_people_you_follow">De pessoas que voc\u00ea segue</string>
     <string name="explore_reactions_count">%d rea\u00e7\u00f5es</string>
-    <string name="explore_reactions_comments">%d rea\u00e7\u00f5es \u2022 %d coment\u00e1rios</string>
+    <string name="explore_reactions_comments">%1$d rea\u00e7\u00f5es \u2022 %2$d coment\u00e1rios</string>
     <string name="explore_trending_badge">🔥 EM ALTA</string>
     <string name="explore_new_badge">✨ NOVO</string>
     <string name="explore_no_photos_upload">Ainda n\u00e3o h\u00e1 fotos. Envie uma!</string>
