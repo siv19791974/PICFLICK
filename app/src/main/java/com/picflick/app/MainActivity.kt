@@ -711,6 +711,18 @@ fun MainScreen(
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
+    // Periodic re-query while app is in foreground — catches subscription expiry
+    // without requiring the user to background/foreground the app.
+    LaunchedEffect(billingViewModel.isConnected.value, lifecycleOwner.lifecycle.currentState) {
+        if (!billingViewModel.isConnected.value) return@LaunchedEffect
+        while (lifecycleOwner.lifecycle.currentState.isAtLeast(androidx.lifecycle.Lifecycle.State.RESUMED)) {
+            kotlinx.coroutines.delay(60_000L) // Check every 60 seconds
+            if (billingViewModel.isConnected.value) {
+                billingViewModel.queryPurchases()
+            }
+        }
+    }
+
     // Bridge validated tier changes from BillingViewModel → AuthViewModel immediately
     // so UploadViewModel and other features see the new tier before Firestore listener fires.
     LaunchedEffect(Unit) {
