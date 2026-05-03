@@ -713,10 +713,13 @@ fun MainScreen(
 
     // Periodic re-query while app is in foreground — catches subscription expiry
     // without requiring the user to background/foreground the app.
-    LaunchedEffect(billingViewModel.isConnected.value, lifecycleOwner.lifecycle.currentState) {
+    // Polls faster (10s) when the user is actively watching Plan Options.
+    LaunchedEffect(billingViewModel.isConnected.value, lifecycleOwner.lifecycle.currentState, currentScreen) {
         if (!billingViewModel.isConnected.value) return@LaunchedEffect
+        val isPlanOptionsVisible = currentScreen is Screen.PlanOptions
+        val pollingInterval = if (isPlanOptionsVisible) 10_000L else 60_000L
         while (lifecycleOwner.lifecycle.currentState.isAtLeast(androidx.lifecycle.Lifecycle.State.RESUMED)) {
-            kotlinx.coroutines.delay(60_000L) // Check every 60 seconds
+            kotlinx.coroutines.delay(pollingInterval)
             if (billingViewModel.isConnected.value) {
                 billingViewModel.queryPurchases()
             }
