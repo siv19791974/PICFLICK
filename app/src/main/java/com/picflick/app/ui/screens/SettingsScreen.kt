@@ -858,10 +858,60 @@ fun SettingsScreen(
             onDismissRequest = { showLanguageDialog = false },
             sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
             containerColor = Color(0xFF121212),
+            contentColor = Color.White,
             dragHandle = { Surface(modifier = Modifier.padding(top = 8.dp).size(width = 44.dp, height = 5.dp), shape = RoundedCornerShape(50), color = Color.White.copy(alpha = 0.28f)) {} }
         ) {
-            Column(Modifier.fillMaxWidth().padding(horizontal = 24.dp).padding(bottom = 24.dp)) {
-                Text("Language", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 16.dp).align(Alignment.CenterHorizontally))
+            Column(Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 20.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                Text("Language", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 20.dp))
+                LanguageOption(flag = "🇬🇧", name = "English", isSelected = currentLanguage.isEmpty(), isDarkMode = true, onClick = {
+                    LocaleHelper.saveLanguage(context, ""); LocaleHelper.setLocale(context, ""); currentLanguage = ""; showLanguageDialog = false; LocaleHelper.restartActivity(context as Activity)
+                })
+                HorizontalDivider(color = Color(0xFF2C2C2E))
+                LanguageOption(flag = "🇸🇦", name = "العربية (Arabic)", isSelected = currentLanguage == "ar", isDarkMode = true, onClick = {
+                    LocaleHelper.saveLanguage(context, "ar"); LocaleHelper.setLocale(context, "ar"); currentLanguage = "ar"; showLanguageDialog = false; LocaleHelper.restartActivity(context as Activity)
+                })
+                HorizontalDivider(color = Color(0xFF2C2C2E))
+                LanguageOption(flag = "🇪🇸", name = "Español (Spanish)", isSelected = currentLanguage == "es", isDarkMode = true, onClick = {
+                    LocaleHelper.saveLanguage(context, "es"); LocaleHelper.setLocale(context, "es"); currentLanguage = "es"; showLanguageDialog = false; LocaleHelper.restartActivity(context as Activity)
+                })
+                HorizontalDivider(color = Color(0xFF2C2C2E))
+                LanguageOption(flag = "🇫🇷", name = "Français (French)", isSelected = currentLanguage == "fr", isDarkMode = true, onClick = {
+                    LocaleHelper.saveLanguage(context, "fr"); LocaleHelper.setLocale(context, "fr"); currentLanguage = "fr"; showLanguageDialog = false; LocaleHelper.restartActivity(context as Activity)
+                })
+                HorizontalDivider(color = Color(0xFF2C2C2E))
+                LanguageOption(flag = "🇩🇪", name = "Deutsch (German)", isSelected = currentLanguage == "de", isDarkMode = true, onClick = {
+                    LocaleHelper.saveLanguage(context, "de"); LocaleHelper.setLocale(context, "de"); currentLanguage = "de"; showLanguageDialog = false; LocaleHelper.restartActivity(context as Activity)
+                })
+                HorizontalDivider(color = Color(0xFF2C2C2E))
+                LanguageOption(flag = "🇨🇳", name = "中文 (Chinese)", isSelected = currentLanguage == "zh", isDarkMode = true, onClick = {
+                    LocaleHelper.saveLanguage(context, "zh"); LocaleHelper.setLocale(context, "zh"); currentLanguage = "zh"; showLanguageDialog = false; LocaleHelper.restartActivity(context as Activity)
+                })
+                HorizontalDivider(color = Color(0xFF2C2C2E))
+                LanguageOption(flag = "🇯🇵", name = "日本語 (Japanese)", isSelected = currentLanguage == "ja", isDarkMode = true, onClick = {
+                    LocaleHelper.saveLanguage(context, "ja"); LocaleHelper.setLocale(context, "ja"); currentLanguage = "ja"; showLanguageDialog = false; LocaleHelper.restartActivity(context as Activity)
+                })
+                HorizontalDivider(color = Color(0xFF2C2C2E))
+                LanguageOption(flag = "🇰🇷", name = "한국어 (Korean)", isSelected = currentLanguage == "ko", isDarkMode = true, onClick = {
+                    LocaleHelper.saveLanguage(context, "ko"); LocaleHelper.setLocale(context, "ko"); currentLanguage = "ko"; showLanguageDialog = false; LocaleHelper.restartActivity(context as Activity)
+                })
+                HorizontalDivider(color = Color(0xFF2C2C2E))
+                LanguageOption(flag = "🇵🇹", name = "Português (Portuguese)", isSelected = currentLanguage == "pt", isDarkMode = true, onClick = {
+                    LocaleHelper.saveLanguage(context, "pt"); LocaleHelper.setLocale(context, "pt"); currentLanguage = "pt"; showLanguageDialog = false; LocaleHelper.restartActivity(context as Activity)
+                })
+                HorizontalDivider(color = Color(0xFF2C2C2E))
+                LanguageOption(flag = "🇦🇱", name = "Shqip (Albanian)", isSelected = currentLanguage == "sq", isDarkMode = true, onClick = {
+                    LocaleHelper.saveLanguage(context, "sq"); LocaleHelper.setLocale(context, "sq"); currentLanguage = "sq"; showLanguageDialog = false; LocaleHelper.restartActivity(context as Activity)
+                })
+                HorizontalDivider(color = Color(0xFF2C2C2E))
+                LanguageOption(flag = "🇮🇳", name = "हिन्दी (Hindi)", isSelected = currentLanguage == "hi", isDarkMode = true, onClick = {
+                    LocaleHelper.saveLanguage(context, "hi"); LocaleHelper.setLocale(context, "hi"); currentLanguage = "hi"; showLanguageDialog = false; LocaleHelper.restartActivity(context as Activity)
+                })
+                HorizontalDivider(color = Color(0xFF2C2C2E))
+                LanguageOption(flag = "🇬🇷", name = "Ελληνικά (Greek)", isSelected = currentLanguage == "el", isDarkMode = true, onClick = {
+                    LocaleHelper.saveLanguage(context, "el"); LocaleHelper.setLocale(context, "el"); currentLanguage = "el"; showLanguageDialog = false; LocaleHelper.restartActivity(context as Activity)
+                })
+                Text(text = "More languages coming soon", fontSize = 12.sp, color = Color.Gray, modifier = Modifier.padding(top = 12.dp))
+                Spacer(Modifier.height(12.dp))
             }
         }
     }

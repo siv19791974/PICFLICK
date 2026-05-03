@@ -375,11 +375,11 @@ fun PrivacyScreen(
             containerColor = Color(0xFF121212),
             dragHandle = { Surface(modifier = Modifier.padding(top = 8.dp).size(width = 44.dp, height = 5.dp), shape = RoundedCornerShape(50), color = Color.White.copy(alpha = 0.28f)) {} }
         ) {
-            Column(Modifier.fillMaxWidth().padding(horizontal = 24.dp).padding(bottom = 24.dp)) {
-                Text("Unmute ${user.displayName}?", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 8.dp).align(Alignment.CenterHorizontally))
+            Column(Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 20.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                Text("Unmute ${user.displayName}?", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 20.dp))
                 Text("Their uploads will appear in your feed again.", color = Color(0xFFB7BDC9), fontSize = 14.sp, modifier = Modifier.padding(bottom = 16.dp))
                 ActionSheetRow(icon = Icons.Default.Close, title = "Keep Muted", accentColor = Color.Gray, onClick = { showUnmuteDialog = null })
-                Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(12.dp))
                 ActionSheetRow(icon = Icons.Default.NotificationsActive, title = "Unmute", accentColor = Color(0xFFFFB347), onClick = {
                     repository.unmuteUser(userProfile.uid, user.uid) { result ->
                         if (result is com.picflick.app.data.Result.Success) {
@@ -388,6 +388,7 @@ fun PrivacyScreen(
                     }
                     showUnmuteDialog = null
                 })
+                Spacer(Modifier.height(12.dp))
             }
         }
     }
@@ -400,11 +401,11 @@ fun PrivacyScreen(
             containerColor = Color(0xFF121212),
             dragHandle = { Surface(modifier = Modifier.padding(top = 8.dp).size(width = 44.dp, height = 5.dp), shape = RoundedCornerShape(50), color = Color.White.copy(alpha = 0.28f)) {} }
         ) {
-            Column(Modifier.fillMaxWidth().padding(horizontal = 24.dp).padding(bottom = 24.dp)) {
-                Text("Unblock ${user.displayName}?", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 8.dp).align(Alignment.CenterHorizontally))
+            Column(Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 20.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                Text("Unblock ${user.displayName}?", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 20.dp))
                 Text("They will be able to see your public content and interact with you again.", color = Color(0xFFB7BDC9), fontSize = 14.sp, modifier = Modifier.padding(bottom = 16.dp))
                 ActionSheetRow(icon = Icons.Default.Close, title = "Keep Blocked", accentColor = Color.Gray, onClick = { showUnblockDialog = null })
-                Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(12.dp))
                 ActionSheetRow(icon = Icons.Default.LockOpen, title = "Unblock", accentColor = Color(0xFF1565C0), onClick = {
                     repository.unblockUser(userProfile.uid, user.uid) { result ->
                         if (result is com.picflick.app.data.Result.Success) {
@@ -413,6 +414,7 @@ fun PrivacyScreen(
                     }
                     showUnblockDialog = null
                 })
+                Spacer(Modifier.height(12.dp))
             }
         }
     }

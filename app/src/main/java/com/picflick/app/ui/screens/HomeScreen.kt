@@ -505,12 +505,12 @@ fun HomeScreen(
             containerColor = Color(0xFF121212),
             dragHandle = { Surface(modifier = Modifier.padding(top = 8.dp).size(width = 44.dp, height = 5.dp), shape = RoundedCornerShape(50), color = Color.White.copy(alpha = 0.28f)) {} }
         ) {
-            Column(Modifier.fillMaxWidth().padding(horizontal = 24.dp).padding(bottom = 24.dp)) {
-                Text("Share to chat", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 16.dp).align(Alignment.CenterHorizontally))
+            Column(Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 20.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                Text("Share to chat", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 20.dp))
                 if (liveFriendProfiles.isEmpty()) {
                     Text("No friends available to share with yet.", color = Color(0xFFB7BDC9), fontSize = 14.sp, modifier = Modifier.padding(bottom = 16.dp))
                 } else {
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         liveFriendProfiles.values.forEach { friend ->
                             ActionSheetRow(
                                 icon = Icons.Default.Send,
@@ -566,7 +566,7 @@ fun HomeScreen(
                             )
                         }
                     }
-                    Spacer(Modifier.height(8.dp))
+                    Spacer(Modifier.height(12.dp))
                 }
                 ActionSheetRow(icon = Icons.Default.Close, title = if (isSharingPhoto) "Sharing..." else "Cancel", accentColor = Color.Gray, onClick = {
                     if (!isSharingPhoto) {
@@ -574,6 +574,7 @@ fun HomeScreen(
                         flickToShare = null
                     }
                 })
+                Spacer(Modifier.height(12.dp))
             }
         }
     }
@@ -2665,8 +2666,8 @@ fun GroupPhotoCropDialog(
         containerColor = Color(0xFF121212),
         dragHandle = { Surface(modifier = Modifier.padding(top = 8.dp).size(width = 44.dp, height = 5.dp), shape = RoundedCornerShape(50), color = Color.White.copy(alpha = 0.28f)) {} }
     ) {
-        Column(Modifier.fillMaxWidth().padding(horizontal = 24.dp).padding(bottom = 24.dp)) {
-            Text("Adjust album photo", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 8.dp).align(Alignment.CenterHorizontally))
+        Column(Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 20.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            Text("Adjust album photo", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 20.dp))
             Text(
                 text = "Pinch to zoom and drag to position",
                 style = MaterialTheme.typography.bodySmall,
@@ -2745,6 +2746,7 @@ fun GroupPhotoCropDialog(
                     }
                 )
             }
+            Spacer(Modifier.height(12.dp))
         }
     }
 }
