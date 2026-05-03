@@ -120,7 +120,11 @@ class BillingViewModel : ViewModel() {
 
         billingClient = BillingClient.newBuilder(context)
             .setListener(purchasesUpdatedListener)
-            .enablePendingPurchases()
+            .enablePendingPurchases(
+                PendingPurchasesParams.newBuilder()
+                    .enableOneTimeProducts()
+                    .build()
+            )
             .build()
 
         connectToGooglePlay()
@@ -686,6 +690,32 @@ class BillingViewModel : ViewModel() {
      */
     fun clearBillingEvent() {
         _billingEvent.value = null
+    }
+
+    /**
+     * Show in-app payment recovery messages from Google Play.
+     * Call this when the app opens (e.g. in MainActivity) so users whose
+     * payment failed can fix it without leaving the app.
+     */
+    fun showInAppMessages(activity: Activity) {
+        val client = billingClient ?: return
+        val params = InAppMessageParams.newBuilder()
+            .addInAppMessageCategoryToShow(InAppMessageParams.InAppMessageCategoryId.TRANSACTIONAL)
+            .build()
+        client.showInAppMessages(activity, params) { result ->
+            when (result.responseCode) {
+                InAppMessageResult.InAppMessageResponseCode.SUBSCRIPTION_STATUS_UPDATED -> {
+                    Log.d("BillingViewModel", "In-app message: subscription status updated — refreshing purchases")
+                    queryPurchases()
+                }
+                InAppMessageResult.InAppMessageResponseCode.NO_ACTION_NEEDED -> {
+                    Log.d("BillingViewModel", "In-app message: no action needed")
+                }
+                else -> {
+                    Log.w("BillingViewModel", "In-app message unexpected response: ${result.responseCode}")
+                }
+            }
+        }
     }
 
     /**
