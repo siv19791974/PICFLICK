@@ -77,6 +77,7 @@ import android.app.Activity
 import android.content.ContentValues
 import android.content.Context
 import android.content.ContextWrapper
+import android.content.SharedPreferences
 import android.content.pm.ActivityInfo
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
@@ -210,7 +211,15 @@ fun FullScreenPhotoViewer(
     var currentPageIndex by remember { mutableIntStateOf(currentIndex) }
     
     val deletedFlickIds = remember { mutableStateListOf<String>() }
-    val reportedFlickIds = remember { mutableStateListOf<String>() }
+
+    // Persist reported flick IDs across app restarts so reported photos stay hidden.
+    val prefs = context.getSharedPreferences("picflick_reports", Context.MODE_PRIVATE)
+    val savedReportedIds = prefs.getStringSet("reported_flick_ids", emptySet())?.toList() ?: emptyList()
+    val reportedFlickIds = remember { mutableStateListOf<String>().apply { addAll(savedReportedIds) } }
+    fun saveReportedFlickIds() {
+        prefs.edit().putStringSet("reported_flick_ids", reportedFlickIds.toSet()).apply()
+    }
+
     var currentSwipeTraceStartedAt by remember { mutableLongStateOf(System.currentTimeMillis()) }
     var currentSwipeTracePhotoKey by remember { mutableStateOf("") }
     var lastLoggedSuccessPhotoKey by remember { mutableStateOf<String?>(null) }
@@ -1932,6 +1941,7 @@ if (canDeleteCurrent) {
                     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
                     val alreadyReported = reportedFlickIds.contains(currentFlick.id)
                     var selectedReason by remember { mutableStateOf("") }
+                    var reportDetails by remember { mutableStateOf("") }
                     val reasons = listOf(
                         Triple("Spam", "Unwanted or repetitive content", Icons.Default.ContentCopy),
                         Triple("Inappropriate content", "Sexual or violent content", Icons.Default.Warning),
@@ -2013,10 +2023,33 @@ if (canDeleteCurrent) {
                                 ) {
                                     Column {
                                         Spacer(modifier = Modifier.height(12.dp))
+
+                                        // Show detail text field for "Other" reason
+                                        if (selectedReason == "Other") {
+                                            androidx.compose.material3.OutlinedTextField(
+                                                value = reportDetails,
+                                                onValueChange = { reportDetails = it },
+                                                label = { Text("Please explain (optional)", color = Color(0xFFB7BDC9)) },
+                                                placeholder = { Text("Describe the issue...", color = Color(0xFFB7BDC9).copy(alpha = 0.5f)) },
+                                                singleLine = false,
+                                                maxLines = 4,
+                                                colors = androidx.compose.material3.OutlinedTextFieldDefaults.colors(
+                                                    focusedBorderColor = Color(0xFFFF6B6B),
+                                                    unfocusedBorderColor = Color(0xFF4B5563),
+                                                    focusedTextColor = Color.White,
+                                                    unfocusedTextColor = Color.White,
+                                                    focusedContainerColor = Color(0xFF1C1F26),
+                                                    unfocusedContainerColor = Color(0xFF1C1F26)
+                                                ),
+                                                modifier = Modifier.fillMaxWidth()
+                                            )
+                                            Spacer(modifier = Modifier.height(12.dp))
+                                        }
+
                                         ActionSheetRow(
                                             icon = Icons.Default.Flag,
                                             title = "Report",
-                                            subtitle = "Submit report to moderators",
+                                            subtitle = if (selectedReason == "Other" && reportDetails.isBlank()) "Add details or submit as-is" else "Submit report to moderators",
                                             accentColor = Color(0xFFFF6B6B),
                                             onClick = {
                                                 if (selectedReason.isNotBlank()) {
@@ -2025,14 +2058,16 @@ if (canDeleteCurrent) {
                                                         val result = repository.reportPhoto(
                                                             currentFlick.id,
                                                             currentUser.uid,
-                                                            selectedReason
+                                                            selectedReason,
+                                                            reportDetails
                                                         )
                                                         when (result) {
                                                             is com.picflick.app.data.Result.Success -> {
                                                                 showPicFlickToast("Report submitted")
-                                                                // Hide from reporter's feed immediately
+                                                                // Hide from reporter's feed immediately and persist
                                                                 reportedFlickIds.add(currentFlick.id)
                                                                 deletedFlickIds.add(currentFlick.id)
+                                                                saveReportedFlickIds()
                                                             }
                                                             is com.picflick.app.data.Result.Error -> {
                                                                 showPicFlickToast("Failed to submit report")
