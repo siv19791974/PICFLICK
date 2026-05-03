@@ -487,6 +487,13 @@ class FlickRepository private constructor() {
             }
             android.util.Log.d("FlickRepository", "After sharedGroupId filter: ${allFlicks.size} photos")
 
+            // Filter out photos auto-hidden by community reporting (3+ unique reporters).
+            // The photo owner can still see their own photo for context/appeal.
+            allFlicks = allFlicks.filter { flick ->
+                !flick.autoHiddenByReports || flick.userId == userId
+            }
+            android.util.Log.d("FlickRepository", "After auto-hidden filter: ${allFlicks.size} photos")
+
             allFlicks = allFlicks.sortedWith(
                 compareByDescending<Flick> { it.timestamp }
                     .thenByDescending { it.id }

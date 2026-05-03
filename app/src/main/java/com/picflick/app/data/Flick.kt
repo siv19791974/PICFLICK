@@ -33,6 +33,7 @@ data class Flick(
     val sharedGroupId: String = "", // Optional: when set, this post is targeted to one shared album
     val taggedFriends: List<String> = emptyList(), // List of tagged friend userIds
     val reportCount: Int = 0, // Number of reports for moderation
+    val autoHiddenByReports: Boolean = false, // Auto-hidden when 3+ unique reporters
     val imageSizeBytes: Long = 0, // Exact uploaded image size in bytes (for storage accounting)
     val clientUploadId: String = "", // Client-side id used to reconcile optimistic -> real upload
     val reactionsCount: Int = 0, // Cached count for fast reads (may differ from reactions.size when migrated)
