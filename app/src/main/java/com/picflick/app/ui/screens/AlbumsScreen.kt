@@ -10,6 +10,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Create
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.pullrefresh.PullRefreshIndicator
 import androidx.compose.material.pullrefresh.pullRefresh
@@ -29,6 +31,7 @@ import coil3.compose.AsyncImage
 import com.picflick.app.data.Album
 import com.picflick.app.data.UserProfile
 import com.picflick.app.repository.PhotoRepository
+import com.picflick.app.ui.components.ActionSheetRow
 import com.picflick.app.ui.components.AlbumCardShimmer
 import com.picflick.app.ui.theme.ThemeManager
 
@@ -348,6 +351,7 @@ private fun AlbumRowItem(
 /**
  * Create Album Dialog
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun CreateAlbumDialog(
     isDarkMode: Boolean,
@@ -360,53 +364,46 @@ private fun CreateAlbumDialog(
     var name by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
 
-    AlertDialog(
+    ModalBottomSheet(
         onDismissRequest = onDismiss,
-        containerColor = backgroundColor,
-        title = {
-            Text(
-                text = "Create New Album",
-                color = textColor,
-                fontWeight = FontWeight.Bold
+        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+        containerColor = Color(0xFF121212),
+            dragHandle = { Surface(modifier = Modifier.padding(top = 8.dp).size(width = 44.dp, height = 5.dp), shape = RoundedCornerShape(50), color = Color.White.copy(alpha = 0.28f)) {} }
+    ) {
+        Column(Modifier.fillMaxWidth().padding(horizontal = 24.dp).padding(bottom = 24.dp)) {
+            Text("Create New Album", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 16.dp).align(Alignment.CenterHorizontally))
+            OutlinedTextField(
+                value = name,
+                onValueChange = { name = it },
+                label = { Text("Album Name", color = Color(0xFFB7BDC9)) },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = Color(0xFF2A4A73), unfocusedBorderColor = Color.Gray.copy(alpha = 0.4f),
+                    focusedTextColor = Color.White, unfocusedTextColor = Color.White,
+                    focusedLabelColor = Color(0xFF2A4A73), unfocusedLabelColor = Color(0xFFB7BDC9),
+                    cursorColor = Color(0xFF2A4A73)
+                )
             )
-        },
-        text = {
-            Column {
-                OutlinedTextField(
-                    value = name,
-                    onValueChange = { name = it },
-                    label = { Text("Album Name") },
-                    singleLine = true,
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = MaterialTheme.colorScheme.primary,
-                        unfocusedBorderColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
-                    )
+            Spacer(modifier = Modifier.height(8.dp))
+            OutlinedTextField(
+                value = description,
+                onValueChange = { description = it },
+                label = { Text("Description (Optional)", color = Color(0xFFB7BDC9)) },
+                maxLines = 3,
+                modifier = Modifier.fillMaxWidth(),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = Color(0xFF2A4A73), unfocusedBorderColor = Color.Gray.copy(alpha = 0.4f),
+                    focusedTextColor = Color.White, unfocusedTextColor = Color.White,
+                    focusedLabelColor = Color(0xFF2A4A73), unfocusedLabelColor = Color(0xFFB7BDC9),
+                    cursorColor = Color(0xFF2A4A73)
                 )
-                Spacer(modifier = Modifier.height(8.dp))
-                OutlinedTextField(
-                    value = description,
-                    onValueChange = { description = it },
-                    label = { Text("Description (Optional)") },
-                    maxLines = 3,
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = MaterialTheme.colorScheme.primary,
-                        unfocusedBorderColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
-                    )
-                )
-            }
-        },
-        confirmButton = {
-            TextButton(
-                onClick = { onCreate(name, description) },
-                enabled = name.isNotBlank()
-            ) {
-                Text("Create", color = if (name.isNotBlank()) MaterialTheme.colorScheme.primary else textColor.copy(alpha = 0.5f))
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancel", color = textColor)
+            )
+            Spacer(Modifier.height(16.dp))
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                ActionSheetRow(icon = Icons.Default.Close, title = "Cancel", accentColor = Color.Gray, onClick = onDismiss)
+                ActionSheetRow(icon = Icons.Default.Create, title = "Create", accentColor = Color(0xFF4CAF50), onClick = { onCreate(name, description) })
             }
         }
-    )
+    }
 }

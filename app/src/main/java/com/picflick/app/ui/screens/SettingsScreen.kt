@@ -56,6 +56,7 @@ import com.picflick.app.data.getLightColor
 import com.picflick.app.repository.FlickRepository
 import com.picflick.app.ui.theme.ThemeManager
 import com.picflick.app.ui.theme.isDarkModeBackground
+import com.picflick.app.ui.components.ActionSheetRow
 import com.picflick.app.ui.components.AddPhotoStyleActionSheet
 import com.picflick.app.ui.components.ActionSheetOption
 import com.picflick.app.data.getStorageLimitBytes
@@ -484,12 +485,12 @@ fun SettingsScreen(
             contentColor = Color.White,
             dragHandle = {
                 Surface(
-                    modifier = Modifier.padding(top = 12.dp, bottom = 8.dp),
-                    color = Color.White.copy(alpha = 0.28f),
-                    shape = RoundedCornerShape(44.dp)
-                ) {
-                    Box(modifier = Modifier.width(44.dp).height(5.dp))
-                }
+                    modifier = Modifier
+                        .padding(top = 8.dp)
+                        .size(width = 44.dp, height = 5.dp),
+                    shape = RoundedCornerShape(50),
+                    color = Color.White.copy(alpha = 0.28f)
+                ) {}
             }
         ) {
             Column(
@@ -853,211 +854,16 @@ fun SettingsScreen(
 
     // Language Settings Dialog
     if (showLanguageDialog) {
-        AlertDialog(
+        ModalBottomSheet(
             onDismissRequest = { showLanguageDialog = false },
-            title = {
-                Text(
-                    "Language",
-                    color = if (isDarkMode) Color.White else Color.Black
-                )
-            },
-            text = {
-                Column {
-                    LanguageOption(
-                        flag = "🇬🇧",
-                        name = "English",
-                        isSelected = currentLanguage.isEmpty(),
-                        isDarkMode = isDarkMode,
-                        onClick = { 
-                            LocaleHelper.saveLanguage(context, "")
-                            LocaleHelper.setLocale(context, "")
-                            currentLanguage = ""
-                            showLanguageDialog = false
-                            LocaleHelper.restartActivity(context as Activity)
-                        }
-                    )
-                    HorizontalDivider(color = if (isDarkMode) Color(0xFF2C2C2E) else Color.LightGray)
-                    
-                    LanguageOption(
-                        flag = "🇸🇦",
-                        name = "العربية (Arabic)",
-                        isSelected = currentLanguage == "ar",
-                        isDarkMode = isDarkMode,
-                        onClick = { 
-                            LocaleHelper.saveLanguage(context, "ar")
-                            LocaleHelper.setLocale(context, "ar")
-                            currentLanguage = "ar"
-                            showLanguageDialog = false
-                            LocaleHelper.restartActivity(context as Activity)
-                        }
-                    )
-                    HorizontalDivider(color = if (isDarkMode) Color(0xFF2C2C2E) else Color.LightGray)
-                    
-                    LanguageOption(
-                        flag = "🇪🇸",
-                        name = "Español (Spanish)",
-                        isSelected = currentLanguage == "es",
-                        isDarkMode = isDarkMode,
-                        onClick = { 
-                            LocaleHelper.saveLanguage(context, "es")
-                            LocaleHelper.setLocale(context, "es")
-                            currentLanguage = "es"
-                            showLanguageDialog = false
-                            LocaleHelper.restartActivity(context as Activity)
-                        }
-                    )
-                    HorizontalDivider(color = if (isDarkMode) Color(0xFF2C2C2E) else Color.LightGray)
-                    
-                    LanguageOption(
-                        flag = "🇫🇷",
-                        name = "Français (French)",
-                        isSelected = currentLanguage == "fr",
-                        isDarkMode = isDarkMode,
-                        onClick = { 
-                            LocaleHelper.saveLanguage(context, "fr")
-                            LocaleHelper.setLocale(context, "fr")
-                            currentLanguage = "fr"
-                            showLanguageDialog = false
-                            LocaleHelper.restartActivity(context as Activity)
-                        }
-                    )
-                    HorizontalDivider(color = if (isDarkMode) Color(0xFF2C2C2E) else Color.LightGray)
-                    
-                    LanguageOption(
-                        flag = "🇩🇪",
-                        name = "Deutsch (German)",
-                        isSelected = currentLanguage == "de",
-                        isDarkMode = isDarkMode,
-                        onClick = { 
-                            LocaleHelper.saveLanguage(context, "de")
-                            LocaleHelper.setLocale(context, "de")
-                            currentLanguage = "de"
-                            showLanguageDialog = false
-                            LocaleHelper.restartActivity(context as Activity)
-                        }
-                    )
-                    HorizontalDivider(color = if (isDarkMode) Color(0xFF2C2C2E) else Color.LightGray)
-                    
-                    LanguageOption(
-                        flag = "🇨🇳",
-                        name = "中文 (Chinese)",
-                        isSelected = currentLanguage == "zh",
-                        isDarkMode = isDarkMode,
-                        onClick = { 
-                            LocaleHelper.saveLanguage(context, "zh")
-                            LocaleHelper.setLocale(context, "zh")
-                            currentLanguage = "zh"
-                            showLanguageDialog = false
-                            LocaleHelper.restartActivity(context as Activity)
-                        }
-                    )
-                    HorizontalDivider(color = if (isDarkMode) Color(0xFF2C2C2E) else Color.LightGray)
-                    
-                    LanguageOption(
-                        flag = "🇯🇵",
-                        name = "日本語 (Japanese)",
-                        isSelected = currentLanguage == "ja",
-                        isDarkMode = isDarkMode,
-                        onClick = { 
-                            LocaleHelper.saveLanguage(context, "ja")
-                            LocaleHelper.setLocale(context, "ja")
-                            currentLanguage = "ja"
-                            showLanguageDialog = false
-                            LocaleHelper.restartActivity(context as Activity)
-                        }
-                    )
-                    HorizontalDivider(color = if (isDarkMode) Color(0xFF2C2C2E) else Color.LightGray)
-                    
-                    LanguageOption(
-                        flag = "🇰🇷",
-                        name = "한국어 (Korean)",
-                        isSelected = currentLanguage == "ko",
-                        isDarkMode = isDarkMode,
-                        onClick = { 
-                            LocaleHelper.saveLanguage(context, "ko")
-                            LocaleHelper.setLocale(context, "ko")
-                            currentLanguage = "ko"
-                            showLanguageDialog = false
-                            LocaleHelper.restartActivity(context as Activity)
-                        }
-                    )
-                    HorizontalDivider(color = if (isDarkMode) Color(0xFF2C2C2E) else Color.LightGray)
-                    
-                    LanguageOption(
-                        flag = "🇵🇹",
-                        name = "Português (Portuguese)",
-                        isSelected = currentLanguage == "pt",
-                        isDarkMode = isDarkMode,
-                        onClick = { 
-                            LocaleHelper.saveLanguage(context, "pt")
-                            LocaleHelper.setLocale(context, "pt")
-                            currentLanguage = "pt"
-                            showLanguageDialog = false
-                            LocaleHelper.restartActivity(context as Activity)
-                        }
-                    )
-                    HorizontalDivider(color = if (isDarkMode) Color(0xFF2C2C2E) else Color.LightGray)
-                    
-                    LanguageOption(
-                        flag = "🇦🇱",
-                        name = "Shqip (Albanian)",
-                        isSelected = currentLanguage == "sq",
-                        isDarkMode = isDarkMode,
-                        onClick = { 
-                            LocaleHelper.saveLanguage(context, "sq")
-                            LocaleHelper.setLocale(context, "sq")
-                            currentLanguage = "sq"
-                            showLanguageDialog = false
-                            LocaleHelper.restartActivity(context as Activity)
-                        }
-                    )
-                    HorizontalDivider(color = if (isDarkMode) Color(0xFF2C2C2E) else Color.LightGray)
-                    
-                    LanguageOption(
-                        flag = "🇮🇳",
-                        name = "हिन्दी (Hindi)",
-                        isSelected = currentLanguage == "hi",
-                        isDarkMode = isDarkMode,
-                        onClick = { 
-                            LocaleHelper.saveLanguage(context, "hi")
-                            LocaleHelper.setLocale(context, "hi")
-                            currentLanguage = "hi"
-                            showLanguageDialog = false
-                            LocaleHelper.restartActivity(context as Activity)
-                        }
-                    )
-                    HorizontalDivider(color = if (isDarkMode) Color(0xFF2C2C2E) else Color.LightGray)
-                    
-                    LanguageOption(
-                        flag = "🇬🇷",
-                        name = "Ελληνικά (Greek)",
-                        isSelected = currentLanguage == "el",
-                        isDarkMode = isDarkMode,
-                        onClick = { 
-                            LocaleHelper.saveLanguage(context, "el")
-                            LocaleHelper.setLocale(context, "el")
-                            currentLanguage = "el"
-                            showLanguageDialog = false
-                            LocaleHelper.restartActivity(context as Activity)
-                        }
-                    )
-                    
-                    Text(
-                        text = "More languages coming soon",
-                        fontSize = 12.sp,
-                        color = if (isDarkMode) Color.Gray else Color.DarkGray,
-                        modifier = Modifier.padding(top = 12.dp)
-                    )
-                }
-            },
-            confirmButton = {},
-            dismissButton = {
-                TextButton(onClick = { showLanguageDialog = false }) {
-                    Text("Cancel", color = if (isDarkMode) Color.White else Color.Black)
-                }
-            },
-            containerColor = if (isDarkMode) Color(0xFF1C1C1E) else Color.White
-        )
+            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+            containerColor = Color(0xFF121212),
+            dragHandle = { Surface(modifier = Modifier.padding(top = 8.dp).size(width = 44.dp, height = 5.dp), shape = RoundedCornerShape(50), color = Color.White.copy(alpha = 0.28f)) {} }
+        ) {
+            Column(Modifier.fillMaxWidth().padding(horizontal = 24.dp).padding(bottom = 24.dp)) {
+                Text("Language", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 16.dp).align(Alignment.CenterHorizontally))
+            }
+        }
     }
 }
 

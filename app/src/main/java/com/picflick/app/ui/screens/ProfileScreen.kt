@@ -5,8 +5,6 @@ import android.graphics.Bitmap
 import android.net.Uri
 import android.os.Build
 import android.provider.MediaStore
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -68,7 +66,9 @@ import com.picflick.app.data.getColor
 import com.picflick.app.data.getDarkColor
 import com.picflick.app.data.getLightColor
 import com.picflick.app.ui.components.ActionSheetOption
+import com.picflick.app.ui.components.ActionSheetRow
 import com.picflick.app.ui.components.AddPhotoStyleActionSheet
+import com.picflick.app.ui.components.SingleSelectMediaPicker
 import com.picflick.app.ui.components.AnimatedReactionPicker
 import com.picflick.app.ui.theme.ThemeManager
 import com.picflick.app.util.withCacheBust
@@ -82,7 +82,7 @@ import kotlin.math.roundToInt
 /**
  * Modern Profile screen with enhanced UI
  */
-@OptIn(ExperimentalFoundationApi::class, ExperimentalMaterialApi::class)
+@OptIn(ExperimentalFoundationApi::class, ExperimentalMaterialApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun ProfileScreen(
     userProfile: UserProfile,
@@ -126,6 +126,7 @@ fun ProfileScreen(
 
     var pendingProfilePhotoUri by remember { mutableStateOf<Uri?>(null) }
     var showCropDialog by remember { mutableStateOf(false) }
+    var showMediaPicker by remember { mutableStateOf(false) }
 
     val selectedPhotoIds = remember { mutableStateListOf<String>() }
     val isSelectionMode = selectedPhotoIds.isNotEmpty()
@@ -137,16 +138,6 @@ fun ProfileScreen(
         selectedPhotoIds.removeAll { it !in existingPhotoIds }
         if (selectedPhotoIds.isEmpty()) {
             showBatchDeleteConfirm = false
-        }
-    }
-
-    // Image picker launcher
-    val imagePicker = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.GetContent()
-    ) { uri: Uri? ->
-        if (uri != null) {
-            pendingProfilePhotoUri = uri
-            showCropDialog = true
         }
     }
 
@@ -182,36 +173,39 @@ fun ProfileScreen(
         }
     }
     if (showBioDialog) {
-        AlertDialog(
+        ModalBottomSheet(
             onDismissRequest = { showBioDialog = false },
-            title = { Text("Edit Bio") },
-            text = {
+            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+            containerColor = Color(0xFF121212),
+            dragHandle = { Surface(modifier = Modifier.padding(top = 8.dp).size(width = 44.dp, height = 5.dp), shape = RoundedCornerShape(50), color = Color.White.copy(alpha = 0.28f)) {} }
+        ) {
+            Column(Modifier.fillMaxWidth().padding(horizontal = 24.dp).padding(bottom = 24.dp)) {
+                Text("Edit Bio", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 16.dp).align(Alignment.CenterHorizontally))
                 OutlinedTextField(
                     value = bioText,
                     onValueChange = { bioText = it },
-                    label = { Text("Bio") },
-                    placeholder = { Text("Tell people about yourself...") },
+                    label = { Text("Bio", color = Color(0xFFB7BDC9)) },
+                    placeholder = { Text("Tell people about yourself...", color = Color(0xFFB7BDC9).copy(alpha = 0.5f)) },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = false,
-                    maxLines = 3
+                    maxLines = 3,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = Color(0xFF2A4A73), unfocusedBorderColor = Color.Gray.copy(alpha = 0.4f),
+                        focusedTextColor = Color.White, unfocusedTextColor = Color.White,
+                        focusedLabelColor = Color(0xFF2A4A73), unfocusedLabelColor = Color(0xFFB7BDC9),
+                        cursorColor = Color(0xFF2A4A73)
+                    )
                 )
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
+                Spacer(Modifier.height(16.dp))
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    ActionSheetRow(icon = Icons.Default.Close, title = "Cancel", accentColor = Color.Gray, onClick = { showBioDialog = false })
+                    ActionSheetRow(icon = Icons.Default.Save, title = "Save", accentColor = Color(0xFF4CAF50), onClick = {
                         onBioUpdated(bioText.trim())
                         showBioDialog = false
-                    }
-                ) {
-                    Text("Save")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showBioDialog = false }) {
-                    Text("Cancel")
+                    })
                 }
             }
-        )
+        }
     }
 
     // Pull-to-refresh state
@@ -271,11 +265,11 @@ fun ProfileScreen(
                         .fillMaxSize()
                         .clip(CircleShape)
                         .background(Color(0xFF2C2C2E))
-                        .clickable { 
+                                                .clickable {
                             if (displayPhotoUrl.isNotEmpty()) {
                                 onProfilePhotoClick()
                             } else {
-                                imagePicker.launch("image/*")
+                                showMediaPicker = true
                             }
                         },
                     contentAlignment = Alignment.Center
@@ -301,7 +295,7 @@ fun ProfileScreen(
                                 .size(44.dp)
                                 .background(MaterialTheme.colorScheme.primary, CircleShape)
                                 .border(3.dp, Color.Black, CircleShape)
-                                .clickable { imagePicker.launch("image/*") },
+                                .clickable { showMediaPicker = true },
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
@@ -597,6 +591,18 @@ fun ProfileScreen(
         )
     }
 
+    if (showMediaPicker) {
+        SingleSelectMediaPicker(
+            isDarkMode = ThemeManager.isDarkMode.value,
+            onBack = { showMediaPicker = false },
+            onPhotoSelected = { uri ->
+                pendingProfilePhotoUri = uri
+                showCropDialog = true
+                showMediaPicker = false
+            }
+        )
+    }
+
     if (showBatchDeleteConfirm) {
         AddPhotoStyleActionSheet(
             title = "Delete selected photos?",
@@ -629,6 +635,7 @@ fun ProfileScreen(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ProfilePhotoCropDialog(
     imageUri: Uri,
@@ -652,95 +659,96 @@ private fun ProfilePhotoCropDialog(
         offset = Offset.Zero
     }
 
-    AlertDialog(
+    ModalBottomSheet(
         onDismissRequest = {
             if (!isSaving) onDismiss()
         },
-        confirmButton = {
-            TextButton(
-                enabled = sourceBitmap != null && !isSaving && viewportSize.width > 0 && viewportSize.height > 0,
-                onClick = {
-                    val bitmap = sourceBitmap ?: return@TextButton
-                    isSaving = true
-                    scope.launch {
-                        val croppedUri = withContext(Dispatchers.IO) {
-                            createCroppedProfileImageUri(
-                                context = context,
-                                sourceBitmap = bitmap,
-                                viewportSize = viewportSize,
-                                zoomScale = scale,
-                                panOffset = offset,
-                                imageQuality = imageQuality
-                            )
-                        }
-                        isSaving = false
-                        onConfirm(croppedUri)
-                    }
-                }
-            ) {
-                Text(if (isSaving) "Saving..." else "Save")
-            }
-        },
-        dismissButton = {
-            TextButton(enabled = !isSaving, onClick = onDismiss) {
-                Text("Cancel")
-            }
-        },
-        title = { Text("Adjust profile photo") },
-        text = {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(
-                    text = "Pinch to zoom and drag to position",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Color.Gray
-                )
-                Spacer(modifier = Modifier.height(12.dp))
+        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+        containerColor = Color(0xFF121212),
+        dragHandle = { Surface(modifier = Modifier.padding(top = 8.dp).size(width = 44.dp, height = 5.dp), shape = RoundedCornerShape(50), color = Color.White.copy(alpha = 0.28f)) {} }
+    ) {
+        Column(Modifier.fillMaxWidth().padding(horizontal = 24.dp).padding(bottom = 24.dp)) {
+            Text("Adjust profile photo", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 8.dp).align(Alignment.CenterHorizontally))
+            Text(
+                text = "Pinch to zoom and drag to position",
+                style = MaterialTheme.typography.bodySmall,
+                color = Color.Gray,
+                modifier = Modifier.align(Alignment.CenterHorizontally)
+            )
+            Spacer(modifier = Modifier.height(12.dp))
 
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .aspectRatio(1f)
-                        .clip(CircleShape)
-                        .background(Color.Black)
-                        .onSizeChanged { viewportSize = it }
-                        .pointerInput(sourceBitmap, viewportSize) {
-                            detectTransformGestures { _, pan, zoom, _ ->
-                                val bitmap = sourceBitmap ?: return@detectTransformGestures
-                                val nextScale = (scale * zoom).coerceIn(1f, 6f)
-                                val clampedOffset = clampPanOffset(
-                                    viewportSize = viewportSize,
-                                    imageWidth = bitmap.width,
-                                    imageHeight = bitmap.height,
-                                    scale = nextScale,
-                                    currentOffset = offset + pan
-                                )
-                                scale = nextScale
-                                offset = clampedOffset
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .aspectRatio(1f)
+                    .clip(CircleShape)
+                    .background(Color.Black)
+                    .onSizeChanged { viewportSize = it }
+                    .pointerInput(sourceBitmap, viewportSize) {
+                        detectTransformGestures { _, pan, zoom, _ ->
+                            val bitmap = sourceBitmap ?: return@detectTransformGestures
+                            val nextScale = (scale * zoom).coerceIn(1f, 6f)
+                            val clampedOffset = clampPanOffset(
+                                viewportSize = viewportSize,
+                                imageWidth = bitmap.width,
+                                imageHeight = bitmap.height,
+                                scale = nextScale,
+                                currentOffset = offset + pan
+                            )
+                            scale = nextScale
+                            offset = clampedOffset
+                        }
+                    },
+                contentAlignment = Alignment.Center
+            ) {
+                if (sourceBitmap == null) {
+                    CircularProgressIndicator()
+                } else {
+                    AsyncImage(
+                        model = sourceBitmap,
+                        contentDescription = "Crop profile photo",
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .graphicsLayer {
+                                scaleX = scale
+                                scaleY = scale
+                                translationX = offset.x
+                                translationY = offset.y
                             }
-                        },
-                    contentAlignment = Alignment.Center
-                ) {
-                    if (sourceBitmap == null) {
-                        CircularProgressIndicator()
-                    } else {
-                        AsyncImage(
-                            model = sourceBitmap,
-                            contentDescription = "Crop profile photo",
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .graphicsLayer {
-                                    scaleX = scale
-                                    scaleY = scale
-                                    translationX = offset.x
-                                    translationY = offset.y
-                                }
-                        )
-                    }
+                    )
                 }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                ActionSheetRow(icon = Icons.Default.Close, title = "Cancel", accentColor = Color.Gray, onClick = { if (!isSaving) onDismiss() })
+                ActionSheetRow(
+                    icon = Icons.Default.Save,
+                    title = if (isSaving) "Saving..." else "Save",
+                    accentColor = if (sourceBitmap != null && !isSaving && viewportSize.width > 0 && viewportSize.height > 0) Color(0xFF4CAF50) else Color.Gray,
+                    onClick = {
+                        val bitmap = sourceBitmap ?: return@ActionSheetRow
+                        isSaving = true
+                        scope.launch {
+                            val croppedUri = withContext(Dispatchers.IO) {
+                                createCroppedProfileImageUri(
+                                    context = context,
+                                    sourceBitmap = bitmap,
+                                    viewportSize = viewportSize,
+                                    zoomScale = scale,
+                                    panOffset = offset,
+                                    imageQuality = imageQuality
+                                )
+                            }
+                            isSaving = false
+                            onConfirm(croppedUri)
+                        }
+                    }
+                )
             }
         }
-    )
+    }
 }
 
 private fun clampPanOffset(
