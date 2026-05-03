@@ -2988,7 +2988,8 @@ class FlickRepository private constructor() {
 
             runCatching { createStreakAchievementNotificationIfNeeded(userId, newStreak) }
             runCatching { maybeCreateEveryTenDayStreakReminder(userId, newStreak) }
-            runCatching { maybeRunMonthlyMythicDraw(newStreak) }
+            // NOTE: Monthly Mythic Draw is now handled by scheduled Cloud Function (1st of each month)
+            // runCatching { maybeRunMonthlyMythicDraw(newStreak) }
 
             Result.Success(Unit)
         } catch (e: Exception) {
