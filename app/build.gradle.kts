@@ -18,12 +18,13 @@ val localProperties = Properties().apply {
 android {
     namespace = "com.picflick.app"
     compileSdk = 35
+    ndkPath = "C:\\Users\\Gaelle\\AppData\\Local\\Android\\Sdk\\ndk\\android-ndk-r26c"
 
     defaultConfig {
         applicationId = "com.picflick.app"
         minSdk = 24
         targetSdk = 35
-        versionCode = 35
+        versionCode = 36
         versionName = "1.2.7"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
