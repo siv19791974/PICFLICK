@@ -60,8 +60,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import java.util.Calendar
 
-// Mid blue used for pills & progress bars in this screen
-private val MidBlue = Color(0xFF5A9FD4)
+// Mid blue — matches FindFriendsScreen pill buttons exactly
+private val MidBlue = Color(0xFF2A4A73)
 
 data class AchievementItem(
     val title: String,
