@@ -4,12 +4,12 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -18,10 +18,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Card
@@ -152,21 +152,16 @@ fun StreakAchievementsScreen(
     ) {
         listOf(
             AchievementCategory(
-                title = "Consistency",
-                achievements = listOf(
-                    AchievementItem("Early Bird", "Upload before 8am for 7 days", 7, earlyBirdDays, "days", "🌅"),
-                    AchievementItem("Night Owl", "Upload after 10pm for 7 days", 7, nightOwlDays, "days", "🌙"),
-                    AchievementItem("Weekend Warrior", "Upload on 4 weekends", 4, weekendDays, "weekends", "🏕️"),
-                    AchievementItem("Always On", "Upload 14 days in a row", 14, currentStreak, "days", "📆")
-                )
-            ),
-            AchievementCategory(
                 title = "Streak",
                 achievements = listOf(
                     AchievementItem("3-Day Spark", "Upload 3 days in a row", 3, currentStreak, "days", "✨"),
                     AchievementItem("7-Day Flame", "Upload 7 days in a row", 7, currentStreak, "days", "🔥"),
                     AchievementItem("30-Day Legend", "Upload 30 days in a row", 30, currentStreak, "days", "🏆"),
-                    AchievementItem("100-Day Mythic", "Upload 100 days in a row. Monthly global draw: 1 winner gets a 3-month Pro upgrade.", 100, currentStreak, "days", "👑")
+                    AchievementItem("100-Day Mythic", "Upload 100 days in a row. Monthly global draw: 1 winner gets a 3-month Pro upgrade.", 100, currentStreak, "days", "👑"),
+                    AchievementItem("Early Bird", "Upload before 8am for 7 days", 7, earlyBirdDays, "days", "🌅"),
+                    AchievementItem("Night Owl", "Upload after 10pm for 7 days", 7, nightOwlDays, "days", "🌙"),
+                    AchievementItem("Weekend Warrior", "Upload on 4 weekends", 4, weekendDays, "weekends", "🏕️"),
+                    AchievementItem("Always On", "Upload 14 days in a row", 14, currentStreak, "days", "📆")
                 )
             ),
             AchievementCategory(
@@ -199,8 +194,7 @@ fun StreakAchievementsScreen(
         )
     }
 
-    // Open directly to the "Streak" tab (index 1)
-    val pagerState = rememberPagerState(initialPage = 1, pageCount = { categories.size })
+    val pagerState = rememberPagerState(initialPage = 0, pageCount = { categories.size })
     val mythicTarget = 100
     val mythicEligible = currentStreak >= mythicTarget
     val mythicDaysRemaining = (mythicTarget - currentStreak).coerceAtLeast(0)
@@ -211,36 +205,38 @@ fun StreakAchievementsScreen(
             .fillMaxSize()
             .background(bgColor)
     ) {
-        // Header — sits directly on background, no separate bar
-        Row(
+        // ─── BLACK HEADER BAR (matches Find Friends) ───
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically
+                .background(Color.Black)
+                .height(48.dp),
+            contentAlignment = Alignment.Center
         ) {
-            IconButton(onClick = onBack, modifier = Modifier.size(48.dp)) {
+            IconButton(
+                onClick = onBack,
+                modifier = Modifier.align(Alignment.CenterStart)
+            ) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                     contentDescription = "Back",
-                    tint = textPrimary
+                    tint = Color.White
                 )
             }
             Text(
                 text = "Streak Achievements",
-                modifier = Modifier.weight(1f),
-                color = textPrimary,
+                color = Color.White,
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Bold,
                 textAlign = TextAlign.Center
             )
-            Spacer(modifier = Modifier.size(48.dp))
         }
 
-        // Mythic Monthly Draw — uses standard surface card with accent border
+        // ─── MYTHIC BANNER ───
         Card(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 24.dp)
+                .padding(horizontal = 24.dp, vertical = 16.dp)
                 .border(
                     1.dp,
                     if (mythicEligible) Color(0xFF4CAF50).copy(alpha = 0.4f) else PicFlickAccent.copy(alpha = 0.25f),
@@ -294,56 +290,48 @@ fun StreakAchievementsScreen(
             }
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // Floating pill tabs — horizontally scrollable so all 5 fit
+        // ─── EQUAL-WIDTH TABS WITH BLUE UNDERLINE ───
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .horizontalScroll(rememberScrollState())
-                .padding(horizontal = 24.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.CenterVertically
+                .background(Color.Black)
+                .height(44.dp)
         ) {
             categories.forEachIndexed { index, category ->
                 val selected = pagerState.currentPage == index
-                val pillBg = when {
-                    selected -> PicFlickAccent
-                    isDarkMode -> PicFlickDarkSurface
-                    else -> Color(0xFFF0F0F0)
-                }
-                val pillText = when {
-                    selected -> Color.Black
-                    else -> textPrimary
-                }
-                Box(
+                Column(
                     modifier = Modifier
-                        .clip(RoundedCornerShape(20.dp))
-                        .background(pillBg)
-                        .border(
-                            1.dp,
-                            if (selected) PicFlickAccent else textSecondary.copy(alpha = 0.3f),
-                            RoundedCornerShape(20.dp)
-                        )
-                        .clickable { scope.launch { pagerState.animateScrollToPage(index) } }
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
-                    contentAlignment = Alignment.Center
+                        .weight(1f)
+                        .fillMaxHeight()
+                        .clickable { scope.launch { pagerState.animateScrollToPage(index) } },
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Bottom
                 ) {
                     Text(
                         text = category.title,
-                        color = pillText,
-                        fontSize = 13.sp,
+                        color = Color.White,
+                        fontSize = 14.sp,
                         fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
-                        textAlign = TextAlign.Center,
                         maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.padding(bottom = 8.dp)
                     )
+                    if (selected) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth(0.5f)
+                                .height(3.dp)
+                                .clip(RoundedCornerShape(2.dp))
+                                .background(PicFlickAccent)
+                        )
+                    } else {
+                        Spacer(modifier = Modifier.height(3.dp))
+                    }
                 }
             }
         }
 
-        Spacer(modifier = Modifier.height(12.dp))
-
+        // ─── PAGER CONTENT ───
         HorizontalPager(
             state = pagerState,
             modifier = Modifier
@@ -356,6 +344,8 @@ fun StreakAchievementsScreen(
                     .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
+                Spacer(modifier = Modifier.height(12.dp))
+
                 categories[page].achievements.forEach { item ->
                     val itemProgress = (item.currentValue.toFloat() / item.requiredValue.toFloat()).coerceIn(0f, 1f)
                     val unlocked = item.unlocked
@@ -371,7 +361,7 @@ fun StreakAchievementsScreen(
                                 .padding(16.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            // Emoji circle — PicFlickAccent gradient
+                            // Emoji circle
                             Box(
                                 modifier = Modifier
                                     .size(52.dp)
@@ -446,7 +436,7 @@ fun StreakAchievementsScreen(
                         }
                     }
                 }
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(24.dp))
             }
         }
     }
