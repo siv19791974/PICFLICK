@@ -51,16 +51,17 @@ import androidx.compose.ui.unit.sp
 import com.google.firebase.firestore.FieldPath
 import com.google.firebase.firestore.FirebaseFirestore
 import com.picflick.app.data.Flick
-import com.picflick.app.ui.theme.PicFlickAccent
 import com.picflick.app.ui.theme.PicFlickDarkSurface
 import com.picflick.app.ui.theme.ThemeManager
 import com.picflick.app.ui.theme.isDarkModeBackground
 import com.picflick.app.ui.theme.isDarkModeOnBackground
 import com.picflick.app.ui.theme.isDarkModeSecondaryText
-import com.picflick.app.ui.theme.isDarkModeSurface
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import java.util.Calendar
+
+// Mid blue used for pills & progress bars in this screen
+private val MidBlue = Color(0xFF5A9FD4)
 
 data class AchievementItem(
     val title: String,
@@ -131,10 +132,9 @@ fun StreakAchievementsScreen(
     val taggedPostsCount = remember(photos) { photos.count { it.taggedFriends.isNotEmpty() } }
     val totalPosts = remember(photos) { photos.size }
 
-    val bgColor = isDarkModeBackground(isDarkMode)
-    val surfaceColor = isDarkModeSurface(isDarkMode)
-    val textPrimary = isDarkModeOnBackground(isDarkMode)
-    val textSecondary = isDarkModeSecondaryText(isDarkMode)
+            val bgColor = isDarkModeBackground(isDarkMode)
+        val textPrimary = isDarkModeOnBackground(isDarkMode)
+        val textSecondary = isDarkModeSecondaryText(isDarkMode)
 
     val categories = remember(
         currentStreak,
@@ -239,16 +239,16 @@ fun StreakAchievementsScreen(
                 .padding(horizontal = 24.dp, vertical = 16.dp)
                 .border(
                     1.dp,
-                    if (mythicEligible) Color(0xFF4CAF50).copy(alpha = 0.4f) else PicFlickAccent.copy(alpha = 0.25f),
+                    if (mythicEligible) Color(0xFF4CAF50).copy(alpha = 0.4f) else MidBlue.copy(alpha = 0.35f),
                     RoundedCornerShape(16.dp)
                 ),
-            colors = CardDefaults.cardColors(containerColor = surfaceColor),
+            colors = CardDefaults.cardColors(containerColor = bgColor),
             shape = RoundedCornerShape(16.dp)
         ) {
             Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp)) {
                 Text(
                     text = "MYTHIC MONTHLY DRAW",
-                    color = if (mythicEligible) Color(0xFF4CAF50) else PicFlickAccent,
+                    color = if (mythicEligible) Color(0xFF4CAF50) else MidBlue,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Black
                 )
@@ -277,7 +277,7 @@ fun StreakAchievementsScreen(
                         .fillMaxWidth()
                         .height(6.dp)
                         .clip(RoundedCornerShape(100)),
-                    color = if (mythicEligible) Color(0xFF4CAF50) else PicFlickAccent,
+                    color = if (mythicEligible) Color(0xFF4CAF50) else MidBlue,
                     trackColor = textSecondary.copy(alpha = 0.2f)
                 )
                 Spacer(modifier = Modifier.height(4.dp))
@@ -290,43 +290,46 @@ fun StreakAchievementsScreen(
             }
         }
 
-        // ─── EQUAL-WIDTH TABS WITH BLUE UNDERLINE ───
+        // ─── FLOATING PILLS ───
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(Color.Black)
-                .height(44.dp)
+                .padding(horizontal = 24.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
             categories.forEachIndexed { index, category ->
                 val selected = pagerState.currentPage == index
-                Column(
+                val pillBg = when {
+                    selected -> MidBlue
+                    isDarkMode -> PicFlickDarkSurface
+                    else -> Color(0xFFE3F0FA)
+                }
+                val pillText = when {
+                    selected -> Color.White
+                    else -> textPrimary
+                }
+                Box(
                     modifier = Modifier
-                        .weight(1f)
-                        .fillMaxHeight()
-                        .clickable { scope.launch { pagerState.animateScrollToPage(index) } },
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Bottom
+                        .clip(RoundedCornerShape(20.dp))
+                        .background(pillBg)
+                        .border(
+                            1.dp,
+                            if (selected) MidBlue else textSecondary.copy(alpha = 0.25f),
+                            RoundedCornerShape(20.dp)
+                        )
+                        .clickable { scope.launch { pagerState.animateScrollToPage(index) } }
+                        .padding(horizontal = 18.dp, vertical = 8.dp),
+                    contentAlignment = Alignment.Center
                 ) {
                     Text(
                         text = category.title,
-                        color = Color.White,
-                        fontSize = 14.sp,
+                        color = pillText,
+                        fontSize = 13.sp,
                         fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
                         maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.padding(bottom = 8.dp)
+                        overflow = TextOverflow.Ellipsis
                     )
-                    if (selected) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth(0.5f)
-                                .height(3.dp)
-                                .clip(RoundedCornerShape(2.dp))
-                                .background(PicFlickAccent)
-                        )
-                    } else {
-                        Spacer(modifier = Modifier.height(3.dp))
-                    }
                 }
             }
         }
@@ -352,7 +355,7 @@ fun StreakAchievementsScreen(
 
                     Card(
                         modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(containerColor = surfaceColor),
+                        colors = CardDefaults.cardColors(containerColor = bgColor),
                         shape = RoundedCornerShape(16.dp)
                     ) {
                         Row(
@@ -361,7 +364,7 @@ fun StreakAchievementsScreen(
                                 .padding(16.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            // Emoji circle
+                            // Emoji circle — MidBlue gradient
                             Box(
                                 modifier = Modifier
                                     .size(52.dp)
@@ -370,13 +373,13 @@ fun StreakAchievementsScreen(
                                         brush = Brush.linearGradient(
                                             if (isDarkMode) {
                                                 listOf(
-                                                    PicFlickAccent.copy(alpha = 0.35f),
-                                                    PicFlickAccent.copy(alpha = 0.12f)
+                                                    MidBlue.copy(alpha = 0.35f),
+                                                    MidBlue.copy(alpha = 0.12f)
                                                 )
                                             } else {
                                                 listOf(
-                                                    PicFlickAccent.copy(alpha = 0.25f),
-                                                    PicFlickAccent.copy(alpha = 0.05f)
+                                                    MidBlue.copy(alpha = 0.25f),
+                                                    MidBlue.copy(alpha = 0.05f)
                                                 )
                                             }
                                         )
@@ -408,7 +411,7 @@ fun StreakAchievementsScreen(
                                         .fillMaxWidth()
                                         .height(5.dp)
                                         .clip(RoundedCornerShape(100)),
-                                    color = if (unlocked) Color(0xFF4CAF50) else PicFlickAccent,
+                                    color = if (unlocked) Color(0xFF4CAF50) else MidBlue,
                                     trackColor = textSecondary.copy(alpha = 0.15f)
                                 )
                             }
