@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
@@ -163,8 +164,9 @@ fun ActionSheetRow(
 }
 
 /**
- * Circular progress ring showing streak progress toward the monthly Mythic target.
- * Replaces the flat stat-circle on Profile and UserProfile screens.
+ * PicFlick-coloured stat circle showing Mythic streak percentage.
+ * Background cycles through the logo rainbow (Blue→Green→Yellow→Orange→Red)
+ * based on progress. Matches the other profile stat circles.
  */
 @Composable
 fun MythicProgressRing(
@@ -177,62 +179,45 @@ fun MythicProgressRing(
     val progress = (streak.toFloat() / threshold).coerceIn(0f, 1f)
     val achieved = streak >= threshold
 
-    val trackColor = if (isDarkMode) Color(0xFF2B3F56) else Color(0xFFB7D8F2)
-    val progressColor = when {
-        achieved -> Color(0xFFFFB300) // gold
-        progress > 0.75f -> Color(0xFFFF8F00) // deep orange
-        progress > 0.5f -> Color(0xFFFFA726) // orange
-        progress > 0.25f -> Color(0xFF66BB6A) // green
-        else -> Color(0xFF42A5F5) // blue
+    // PicFlick logo colour spectrum: P-i-c-F-l-(c/k)
+    val bgColor = if (achieved) {
+        Color(0xFFFFB300) // Gold when 100 % achieved
+    } else {
+        mythicSpectrumColor(progress)
     }
+
     val valueColor = if (isDarkMode) Color.White else Color(0xFF0D2A45)
     val labelColor = if (isDarkMode) Color(0xFFBFD6EA) else Color(0xFF1F4D74)
+    val percentText = "${(progress * 100).toInt()}%"
 
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = modifier.clickable { onClick() }
     ) {
         Box(
-            modifier = Modifier.size(74.dp),
+            modifier = Modifier
+                .size(74.dp)
+                .clip(CircleShape)
+                .border(1.dp, Color.Black, CircleShape)
+                .background(bgColor),
             contentAlignment = Alignment.Center
         ) {
-            // Background track ring
-            androidx.compose.material3.CircularProgressIndicator(
-                progress = { 1f },
-                modifier = Modifier.fillMaxSize(),
-                color = trackColor,
-                strokeWidth = 4.dp,
-                trackColor = trackColor,
-                gapSize = 0.dp
-            )
-            // Foreground progress ring
-            if (!achieved) {
-                androidx.compose.material3.CircularProgressIndicator(
-                    progress = { progress },
-                    modifier = Modifier.fillMaxSize(),
-                    color = progressColor,
-                    strokeWidth = 4.dp,
-                    trackColor = Color.Transparent,
-                    gapSize = 0.dp
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(
+                    text = percentText,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = valueColor,
+                    lineHeight = 18.sp
                 )
-            } else {
-                // Full gold ring when achieved
-                androidx.compose.material3.CircularProgressIndicator(
-                    progress = { 1f },
-                    modifier = Modifier.fillMaxSize(),
-                    color = progressColor,
-                    strokeWidth = 4.dp,
-                    trackColor = Color.Transparent,
-                    gapSize = 0.dp
+                Text(
+                    text = "MYTHIC",
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = valueColor,
+                    lineHeight = 10.sp
                 )
             }
-            // Center value
-            Text(
-                text = streak.toString(),
-                fontSize = 20.sp,
-                fontWeight = FontWeight.ExtraBold,
-                color = valueColor
-            )
         }
         Spacer(modifier = Modifier.height(6.dp))
         Text(
@@ -242,6 +227,22 @@ fun MythicProgressRing(
             fontWeight = FontWeight.SemiBold
         )
     }
+}
+
+/** Interpolates through the PicFlick logo rainbow based on 0..1 progress. */
+private fun mythicSpectrumColor(progress: Float): Color {
+    val colors = listOf(
+        Color(0xFF1565C0), // P  – Dark Blue
+        Color(0xFF42A5F5), // i  – Light Blue
+        Color(0xFF4CAF50), // c  – Green
+        Color(0xFFFFC107), // F  – Yellow
+        Color(0xFFFF9800), // l  – Orange
+        Color(0xFFF44336)  // c/k – Red
+    )
+    val scaled = progress * (colors.size - 1)
+    val index = scaled.toInt().coerceIn(0, colors.size - 2)
+    val fraction = (scaled - index).coerceIn(0f, 1f)
+    return androidx.compose.ui.graphics.lerp(colors[index], colors[index + 1], fraction)
 }
 
 @Preview(name = "MythicProgressRing - Low")
