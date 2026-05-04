@@ -13,6 +13,9 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -49,6 +52,8 @@ import androidx.compose.material.icons.outlined.Menu
 import androidx.compose.material.icons.outlined.PhotoCamera
 import androidx.compose.material.icons.outlined.PhotoLibrary
 import androidx.compose.material.icons.outlined.Notifications
+import coil3.request.ImageRequest
+import coil3.request.crossfade
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Badge
@@ -127,8 +132,10 @@ import com.picflick.app.viewmodel.HomeViewModel
 import com.picflick.app.viewmodel.NotificationViewModel
 import com.picflick.app.viewmodel.ProfileViewModel
 import com.picflick.app.viewmodel.UploadViewModel
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.withContext
 
 /**
  * Main Activity - Entry point for the PicFlick app
@@ -1712,7 +1719,7 @@ private fun InAppMediaPickerScreen(
             return@LaunchedEffect
         }
         isLoadingMedia = true
-        mediaItems = loadDeviceMedia(context)
+        mediaItems = withContext(Dispatchers.IO) { loadDeviceMedia(context) }
         isLoadingMedia = false
     }
 
@@ -1862,63 +1869,56 @@ private fun InAppMediaPickerScreen(
                 else -> {
                     val groupedMedia = remember(mediaItems) { groupMediaByDate(mediaItems) }
 
-                    LazyColumn(
+                    LazyVerticalGrid(
+                        columns = GridCells.Fixed(3),
                         modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp),
-                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                        contentPadding = PaddingValues(8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
-                        items(groupedMedia, key = { it.label }) { section ->
-                            Text(
-                                text = section.label,
-                                color = if (isDarkMode) Color.White else Color(0xFF1F2937),
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 13.sp,
-                                modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
-                            )
+                        groupedMedia.forEach { section ->
+                            item(span = { androidx.compose.foundation.lazy.grid.GridItemSpan(maxLineSpan) }) {
+                                Text(
+                                    text = section.label,
+                                    color = if (isDarkMode) Color.White else Color(0xFF1F2937),
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 13.sp,
+                                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 6.dp)
+                                )
+                            }
+                            items(section.items, key = { it.id }) { item ->
+                                val isSelected = selectedUris.contains(item.uri)
+                                Box(
+                                    modifier = Modifier
+                                        .aspectRatio(1f)
+                                        .clip(RoundedCornerShape(6.dp))
+                                        .clickable { onToggleSelection(item.uri) }
+                                ) {
+                                    AsyncImage(
+                                        model = ImageRequest.Builder(context)
+                                            .data(item.uri)
+                                            .size(300)
+                                            .crossfade(true)
+                                            .build(),
+                                        contentDescription = "Media",
+                                        modifier = Modifier.fillMaxSize(),
+                                        contentScale = ContentScale.Crop
+                                    )
 
-                            val rows = section.items.chunked(3)
-                            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                rows.forEach { rowItems ->
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.spacedBy(4.dp)
-                                    ) {
-                                        rowItems.forEach { item ->
-                                            val isSelected = selectedUris.contains(item.uri)
-                                            Box(
-                                                modifier = Modifier
-                                                    .weight(1f)
-                                                    .aspectRatio(1f)
-                                                    .clip(RoundedCornerShape(6.dp))
-                                                    .clickable { onToggleSelection(item.uri) }
-                                            ) {
-                                                AsyncImage(
-                                                    model = item.uri,
-                                                    contentDescription = "Media",
-                                                    modifier = Modifier.fillMaxSize(),
-                                                    contentScale = ContentScale.Crop
-                                                )
-
-                                                if (isSelected) {
-                                                    Box(
-                                                        modifier = Modifier
-                                                            .fillMaxSize()
-                                                            .background(Color(0x802E86DE))
-                                                    )
-                                                    Icon(
-                                                        imageVector = Icons.Default.CheckCircle,
-                                                        contentDescription = "Selected",
-                                                        tint = Color.White,
-                                                        modifier = Modifier
-                                                            .align(Alignment.TopEnd)
-                                                            .padding(6.dp)
-                                                    )
-                                                }
-                                            }
-                                        }
-                                        repeat(3 - rowItems.size) {
-                                            Spacer(modifier = Modifier.weight(1f))
-                                        }
+                                    if (isSelected) {
+                                        Box(
+                                            modifier = Modifier
+                                                .fillMaxSize()
+                                                .background(Color(0x802E86DE))
+                                        )
+                                        Icon(
+                                            imageVector = Icons.Default.CheckCircle,
+                                            contentDescription = "Selected",
+                                            tint = Color.White,
+                                            modifier = Modifier
+                                                .align(Alignment.TopEnd)
+                                                .padding(6.dp)
+                                        )
                                     }
                                 }
                             }
@@ -1948,14 +1948,15 @@ private fun groupMediaByDate(items: List<MediaPickerItem>): List<MediaPickerSect
     val yesterdayCal = (todayCal.clone() as Calendar).apply { add(Calendar.DAY_OF_YEAR, -1) }
 
     val dateFormat = SimpleDateFormat("EEE, MMM d", Locale.getDefault())
+    val reusableCal = Calendar.getInstance()
 
     fun toDayStart(millis: Long): Long {
-        val cal = Calendar.getInstance().apply { timeInMillis = millis }
-        cal.set(Calendar.HOUR_OF_DAY, 0)
-        cal.set(Calendar.MINUTE, 0)
-        cal.set(Calendar.SECOND, 0)
-        cal.set(Calendar.MILLISECOND, 0)
-        return cal.timeInMillis
+        reusableCal.timeInMillis = millis
+        reusableCal.set(Calendar.HOUR_OF_DAY, 0)
+        reusableCal.set(Calendar.MINUTE, 0)
+        reusableCal.set(Calendar.SECOND, 0)
+        reusableCal.set(Calendar.MILLISECOND, 0)
+        return reusableCal.timeInMillis
     }
 
     val grouped = items.groupBy { toDayStart(it.dateAddedSeconds * 1000L) }
@@ -1971,6 +1972,8 @@ private fun groupMediaByDate(items: List<MediaPickerItem>): List<MediaPickerSect
     }
 }
 
+private const val MAX_MEDIA_ITEMS = 500
+
 private fun loadDeviceMedia(context: android.content.Context): List<MediaPickerItem> {
     val collection = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
         MediaStore.Images.Media.getContentUri(MediaStore.VOLUME_EXTERNAL)
@@ -1982,7 +1985,7 @@ private fun loadDeviceMedia(context: android.content.Context): List<MediaPickerI
         MediaStore.Images.Media._ID,
         MediaStore.Images.Media.DATE_ADDED
     )
-    val sortOrder = "${MediaStore.Images.Media.DATE_ADDED} DESC"
+    val sortOrder = "${MediaStore.Images.Media.DATE_ADDED} DESC LIMIT $MAX_MEDIA_ITEMS"
 
     val result = mutableListOf<MediaPickerItem>()
     context.contentResolver.query(collection, projection, null, null, sortOrder)?.use { cursor ->
