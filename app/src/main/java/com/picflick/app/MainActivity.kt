@@ -2065,7 +2065,7 @@ private fun groupMediaByDate(items: List<MediaPickerItem>): List<MediaPickerSect
         return reusableCal.timeInMillis
     }
 
-    val grouped = items.groupBy { toDayStart(it.dateAddedSeconds * 1000L) }
+    val grouped = items.groupBy { toDayStart(it.dateAddedSeconds) }
         .toSortedMap(compareByDescending { it })
 
     return grouped.map { (dayStartMillis, dayItems) ->
