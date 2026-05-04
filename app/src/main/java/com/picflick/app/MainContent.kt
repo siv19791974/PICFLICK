@@ -306,7 +306,13 @@ fun AuthenticatedContent(
             currentStreak = profileViewModel.currentStreak,
             currentUserId = userProfile.uid,
             userProfile = userProfile,
-            onBack = { onScreenChange(Screen.StreakAchievements) }
+            onBack = { onScreenChange(Screen.StreakAchievements) },
+            onUserProfileClick = { userId ->
+                onScreenChange(
+                    if (userId == userProfile.uid) Screen.Profile
+                    else Screen.UserProfile(userId)
+                )
+            }
         )
 
         is Screen.Filter -> FilterScreenContent(

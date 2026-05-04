@@ -915,7 +915,7 @@ exports.autoHideReportedPhoto = functions
  * - Tiered prizes: 1st (3mo PRO + gold crown), 2nd (1mo PRO + silver crown), 3rd (2wk PRO + bronze crown)
  * - Streak-weighted tickets: 1 ticket per 10 streak days
  * - Winner repeat protection: 3-month cooldown
- * - Storage bonus (+50MB) for all entrants
+ * - Upload boost (+30% daily limit) for all entrants
  * - Contender badge tracking for all entrants
  * - All users notified of ALL winners
  * - Past winners / Hall of Fame tracking
@@ -1260,6 +1260,8 @@ async function executeMythicDraw(db, isManual = false, forcedMonthKey = null) {
     drawCompletedAt: now,
   };
 
+  const entrantIds = eligibleUsers.map((u) => u.uid);
+
   // ─── SAVE DRAW RESULT ───
   await drawDocRef.set({
     monthKey,
@@ -1578,8 +1580,8 @@ exports.triggerMythicDrawAnimation = functions
 exports.testMythicDraw = functions.https.onCall(async (data, context) => {
   const db = admin.firestore();
 
-  // Only allow authenticated admin users (your UID)
-  const ALLOWED_UIDS = ['YOUR_ADMIN_UID_HERE']; // <-- Replace with your UID
+  // Only allow authenticated admin users (dev UIDs)
+  const ALLOWED_UIDS = ['LpSqE40IZGeAGMknTAEzysqp5l33', 'cuj8dU3zNMN9TELEU2qmPR6Np5A2'];
   if (!context.auth || !ALLOWED_UIDS.includes(context.auth.uid)) {
     throw new functions.https.HttpsError('permission-denied', 'Admin only');
   }
@@ -1793,6 +1795,7 @@ exports.checkBrokenStreaks = functions.pubsub
   .schedule('0 23 * * *')
   .timeZone('UTC')
   .onRun(async (context) => {
+    if (await shouldSkipTrigger('checkBrokenStreaks')) return null;
     const db = admin.firestore();
     const now = new Date();
     const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));

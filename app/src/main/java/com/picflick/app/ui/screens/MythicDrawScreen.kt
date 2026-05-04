@@ -75,7 +75,8 @@ fun MythicDrawScreen(
     currentStreak: Int,
     currentUserId: String,
     userProfile: UserProfile,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    onUserProfileClick: (String) -> Unit = {}
 ) {
     val isDarkMode = ThemeManager.isDarkMode.value
     val bgColor = isDarkModeBackground(isDarkMode)
@@ -386,7 +387,8 @@ fun MythicDrawScreen(
                     bgColor = bgColor,
                     textPrimary = textPrimary,
                     textSecondary = textSecondary,
-                    isDarkMode = isDarkMode
+                    isDarkMode = isDarkMode,
+                    onClick = { onUserProfileClick(winner.userId) }
                 )
                 Spacer(modifier = Modifier.height(8.dp))
             }
@@ -540,7 +542,8 @@ fun MythicDrawScreen(
                     entry = entry,
                     isCurrentUser = entry.userId == currentUserId,
                     textPrimary = textPrimary,
-                    textSecondary = textSecondary
+                    textSecondary = textSecondary,
+                    onClick = { onUserProfileClick(entry.userId) }
                 )
                 if (index < leaderboard.size - 1) {
                     HorizontalDivider(
@@ -608,8 +611,9 @@ fun MythicDrawScreen(
                     Spacer(Modifier.height(8.dp))
                     val oddsDenom = stats?.yourOddsDenom ?: 1
                     val userTickets = currentStreak / 10
+                    val safeTickets = userTickets.coerceAtLeast(1)
                     val oddsText = if (oddsDenom > 0 && userTickets > 0) {
-                        "Your ${userTickets.coerceAtLeast(1)} ticket${if (userTickets > 1) "s" else ""} · 1 in ${oddsDenom / userTickets.coerceAtLeast(1)} odds"
+                        "Your ${safeTickets} ticket${if (safeTickets > 1) "s" else ""} · 1 in ${(oddsDenom + safeTickets - 1) / safeTickets} odds"
                     } else if (currentStreak > 0) {
                         "Upload daily to earn tickets"
                     } else {
@@ -660,7 +664,8 @@ fun MythicDrawScreen(
                     entry = entry,
                     isCurrentUser = entry.userId == currentUserId,
                     textPrimary = textPrimary,
-                    textSecondary = textSecondary
+                    textSecondary = textSecondary,
+                    onClick = { onUserProfileClick(entry.userId) }
                 )
                 Spacer(modifier = Modifier.height(6.dp))
             }
@@ -683,7 +688,8 @@ fun MythicDrawScreen(
                     entry = pd,
                     textPrimary = textPrimary,
                     textSecondary = textSecondary,
-                    isDarkMode = isDarkMode
+                    isDarkMode = isDarkMode,
+                    onWinnerClick = { userId -> onUserProfileClick(userId) }
                 )
                 Spacer(modifier = Modifier.height(8.dp))
             }
@@ -729,7 +735,8 @@ private fun WinnerCard(
     bgColor: Color,
     textPrimary: Color,
     textSecondary: Color,
-    isDarkMode: Boolean
+    isDarkMode: Boolean,
+    onClick: () -> Unit = {}
 ) {
     val crownEmoji = when (winner.crown) {
         "gold" -> "👑"
@@ -752,7 +759,8 @@ private fun WinnerCard(
                 1.dp,
                 if (isCurrentUser) crownColor.copy(alpha = 0.5f) else crownColor.copy(alpha = 0.25f),
                 RoundedCornerShape(16.dp)
-            ),
+            )
+            .clickable(onClick = onClick),
         colors = CardDefaults.cardColors(containerColor = bgColor),
         shape = RoundedCornerShape(16.dp)
     ) {
@@ -803,7 +811,8 @@ private fun PastDrawCard(
     entry: PastDrawEntry,
     textPrimary: Color,
     textSecondary: Color,
-    isDarkMode: Boolean
+    isDarkMode: Boolean,
+    onWinnerClick: (String) -> Unit = {}
 ) {
     val bgColor = if (isDarkMode) Color(0xFF1A1A2E) else Color(0xFFF0F0F0)
     Card(
@@ -841,7 +850,8 @@ private fun PastDrawCard(
                     Text(
                         text = "$emoji #${w.place} ${w.userName} (${w.streak}d)",
                         color = textSecondary,
-                        fontSize = 12.sp
+                        fontSize = 12.sp,
+                        modifier = Modifier.clickable { onWinnerClick(w.userId) }
                     )
                 }
             } else {
@@ -867,7 +877,8 @@ private fun LeaderboardRow(
     entry: LeaderboardEntry,
     isCurrentUser: Boolean,
     textPrimary: Color,
-    textSecondary: Color
+    textSecondary: Color,
+    onClick: () -> Unit = {}
 ) {
     val rankColor = when (rank) {
         1 -> GoldColor
@@ -879,7 +890,8 @@ private fun LeaderboardRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 24.dp, vertical = 10.dp),
+            .padding(horizontal = 24.dp, vertical = 10.dp)
+            .clickable(onClick = onClick),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(
@@ -925,7 +937,8 @@ private fun HallOfFameRow(
     entry: HallOfFameEntry,
     isCurrentUser: Boolean,
     textPrimary: Color,
-    textSecondary: Color
+    textSecondary: Color,
+    onClick: () -> Unit = {}
 ) {
     val crownEmoji = when (entry.crown) {
         "gold" -> "👑"
@@ -937,7 +950,8 @@ private fun HallOfFameRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 24.dp, vertical = 8.dp),
+            .padding(horizontal = 24.dp, vertical = 8.dp)
+            .clickable(onClick = onClick),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(text = crownEmoji, fontSize = 20.sp)
