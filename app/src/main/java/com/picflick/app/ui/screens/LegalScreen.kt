@@ -89,7 +89,7 @@ fun LegalScreen(
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = "Last Updated: March 2025",
+                        text = "Last Updated: May 2025",
                         fontSize = 13.sp,
                         color = subtitleColor
                     )
@@ -194,7 +194,7 @@ fun LegalScreen(
                             modifier = Modifier.padding(bottom = 12.dp)
                         )
                         Text(
-                            text = "You keep ownership of your photos. By uploading, you give PicFlick permission to:\n• Store and display your photos to your friends\n• Use them for the app's basic functions (thumbnails, previews)\n\nWe will NEVER:\n• Sell your photos\n• Use them in advertisements without permission\n• Give them to third parties",
+                            text = "You keep ownership of your photos. By uploading, you give PicFlick permission to:\n• Store and display your photos to your friends\n• Use them for the app's basic functions (thumbnails, previews)\n\nWe will NEVER:\n• Sell your photos\n• Use them in advertisements without permission\n• Give them to third parties\n• Use your photos to train AI or machine learning models\n• Generate AI content from your photos",
                             fontSize = 14.sp,
                             color = textColor,
                             lineHeight = 22.sp
