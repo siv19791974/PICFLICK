@@ -309,21 +309,17 @@ fun StreakAchievementsScreen(
                         fontWeight = FontWeight.SemiBold
                     )
                 }
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "CLICK FOR INFO",
+                    color = Color.Black,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth()
+                )
             }
         }
-
-        // CLICK FOR INFO — red underlined text
-        Text(
-            text = "CLICK FOR INFO",
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 24.dp)
-                .clickable { onMythicClick() },
-            color = if (isDarkMode) Color(0xFFFF6B6B) else Color(0xFFD32F2F),
-            fontSize = 12.sp,
-            fontWeight = FontWeight.Bold,
-            textAlign = TextAlign.Center
-        )
         Spacer(modifier = Modifier.height(8.dp))
 
         // ─── FLOATING PILLS ───
