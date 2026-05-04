@@ -1985,7 +1985,7 @@ private fun loadDeviceMedia(context: android.content.Context): List<MediaPickerI
         MediaStore.Images.Media._ID,
         MediaStore.Images.Media.DATE_ADDED
     )
-    val sortOrder = "${MediaStore.Images.Media.DATE_ADDED} DESC LIMIT $MAX_MEDIA_ITEMS"
+    val sortOrder = "${MediaStore.Images.Media.DATE_ADDED} DESC"
 
     val result = mutableListOf<MediaPickerItem>()
     context.contentResolver.query(collection, projection, null, null, sortOrder)?.use { cursor ->
@@ -2006,7 +2006,7 @@ private fun loadDeviceMedia(context: android.content.Context): List<MediaPickerI
         }
     }
 
-    return result
+    return result.take(MAX_MEDIA_ITEMS)
 }
 
 @Composable
