@@ -59,6 +59,10 @@ data class UserProfile(
     // Mythic Champion — permanent badge for ULTRA winners
     val mythicChampion: Boolean = false,
     val mythicChampionMonth: String = "",
+    // Streak Recovery (free, 1 per month)
+    val streakRecoveryAvailable: Boolean = false, // Set by Cloud Function when streak breaks
+    val streakRecoveryValue: Int = 0, // Streak count at time of break
+    val streakRecoveryUsedMonth: String = "", // "2026-05" — tracks monthly limit
 ) {
     /**
      * Check if user has a pending follow request from another user

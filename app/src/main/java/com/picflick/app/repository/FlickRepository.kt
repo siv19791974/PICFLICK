@@ -3847,4 +3847,38 @@ android.util.Log.e("FlickRepository", "Failed to submit feedback", e)
     }
 
     // ==================== END SHARED GROUPS ====================
+
+    /**
+     * Recover a broken streak (free, once per month).
+     * Sets lastUpload to "yesterday" so the streak is active again.
+     */
+    suspend fun recoverStreak(userId: String, recoveryValue: Int): Result<Unit> {
+        return try {
+            val calendar = Calendar.getInstance().apply {
+                add(Calendar.DAY_OF_YEAR, -1)
+                set(Calendar.HOUR_OF_DAY, 23)
+                set(Calendar.MINUTE, 59)
+                set(Calendar.SECOND, 59)
+                set(Calendar.MILLISECOND, 999)
+            }
+            val yesterdayEnd = calendar.timeInMillis
+
+            val currentMonthKey = "${calendar.get(Calendar.YEAR)}-${String.format(Locale.getDefault(), "%02d", calendar.get(Calendar.MONTH) + 1)}"
+
+            db.collection("users").document(userId)
+                .update(
+                    mapOf(
+                        "streak.lastUpload" to yesterdayEnd,
+                        "streak.current" to recoveryValue,
+                        "streakRecoveryAvailable" to false,
+                        "streakRecoveryUsedMonth" to currentMonthKey,
+                    )
+                )
+                .await()
+
+            Result.Success(Unit)
+        } catch (e: Exception) {
+            Result.Error(e, "Failed to recover streak")
+        }
+    }
 }

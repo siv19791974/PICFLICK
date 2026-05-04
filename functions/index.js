@@ -1784,4 +1784,83 @@ exports.testMythicDraw = functions.https.onCall(async (data, context) => {
   };
 });
 
+/**
+ * Cloud Function: Check Broken Streaks — Daily at 23:00 UTC
+ * Finds users who uploaded yesterday but NOT today (streak broken).
+ * Offers one free streak recovery per month.
+ */
+exports.checkBrokenStreaks = functions.pubsub
+  .schedule('0 23 * * *')
+  .timeZone('UTC')
+  .onRun(async (context) => {
+    const db = admin.firestore();
+    const now = new Date();
+    const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+    const yesterday = new Date(today.getTime() - 24 * 60 * 60 * 1000);
+    const currentMonthKey = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}`;
+
+    // Yesterday window: [yesterday midnight, today midnight)
+    const yesterdayStart = admin.firestore.Timestamp.fromDate(yesterday);
+    const yesterdayEnd = admin.firestore.Timestamp.fromDate(today);
+
+    // Find users whose last upload was yesterday (not today, not earlier today)
+    const brokenSnap = await db.collection('users')
+      .where('streak.lastUpload', '>=', yesterdayStart)
+      .where('streak.lastUpload', '<', yesterdayEnd)
+      .where('streak.current', '>', 0)
+      .get();
+
+    console.log(`checkBrokenStreaks: ${brokenSnap.size} users with broken streaks found`);
+
+    let recoveryOffered = 0;
+    let pushSent = 0;
+
+    for (const userDoc of brokenSnap.docs) {
+      const data = userDoc.data();
+      const uid = userDoc.id;
+      const streakData = data.streak || {};
+      const brokenStreakValue = streakData.current || 0;
+
+      // Respect monthly limit
+      const usedMonth = data.streakRecoveryUsedMonth || '';
+      const alreadyAvailable = data.streakRecoveryAvailable === true;
+
+      if (alreadyAvailable) continue;
+      if (usedMonth === currentMonthKey) continue;
+
+      // Offer recovery
+      await db.collection('users').doc(uid).update({
+        streakRecoveryAvailable: true,
+        streakRecoveryValue: brokenStreakValue,
+      });
+      recoveryOffered++;
+
+      // Send push notification
+      const fcmToken = data.fcmToken;
+      if (fcmToken) {
+        try {
+          await admin.messaging().send({
+            token: fcmToken,
+            notification: {
+              title: '🔥 Streak Broken!',
+              body: `Your ${brokenStreakValue}-day streak broke yesterday. Recover it free (once this month).`,
+            },
+            data: {
+              type: 'SYSTEM',
+              targetScreen: 'achievements',
+              streakRecovery: 'true',
+              click_action: 'FLUTTER_NOTIFICATION_CLICK',
+            },
+            android: { priority: 'high', notification: { sound: 'default', clickAction: 'FLUTTER_NOTIFICATION_CLICK' } },
+            apns: { headers: { 'apns-priority': '10' }, payload: { aps: { sound: 'default', badge: 1 } } },
+          });
+          pushSent++;
+        } catch (_err) { /* ignore token failures */ }
+      }
+    }
+
+    console.log(`checkBrokenStreaks: offered=${recoveryOffered}, pushes=${pushSent}`);
+    return { offered: recoveryOffered, pushes: pushSent };
+  });
+
 // deploy-bump 
