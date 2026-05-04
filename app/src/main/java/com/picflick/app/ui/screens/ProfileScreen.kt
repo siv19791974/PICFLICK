@@ -70,9 +70,12 @@ import com.picflick.app.ui.components.ActionSheetRow
 import com.picflick.app.ui.components.AddPhotoStyleActionSheet
 import com.picflick.app.ui.components.SingleSelectMediaPicker
 import com.picflick.app.ui.components.AnimatedReactionPicker
+import com.picflick.app.ui.components.MythicProgressRing
 import com.picflick.app.ui.theme.ThemeManager
 import com.picflick.app.util.withCacheBust
 import com.picflick.app.ui.theme.isDarkModeBackground
+import com.google.firebase.firestore.FirebaseFirestore
+import kotlinx.coroutines.tasks.await
 import java.io.File
 import java.io.FileOutputStream
 import kotlin.math.max
@@ -119,6 +122,19 @@ fun ProfileScreen(
         if (userProfile.photoUrl.isNotEmpty()) {
             cachedPhotoUrl = userProfile.photoUrl
         }
+    }
+
+    // Mythic monthly threshold (starts low, ramps to 100)
+    var mythicThreshold by remember { mutableIntStateOf(100) }
+    LaunchedEffect(Unit) {
+        try {
+            val snap = FirebaseFirestore.getInstance()
+                .collection("appConfig")
+                .document("mythicDraw")
+                .get()
+                .await()
+            mythicThreshold = (snap.getLong("currentThreshold") ?: 100L).toInt()
+        } catch (_: Exception) { }
     }
     
     // Use cached photo URL for display (falls back to userProfile.photoUrl if empty)
@@ -446,9 +462,9 @@ fun ProfileScreen(
                 isDarkMode = isDarkMode,
                 onClick = onFriendsClick
             )
-            ModernStatItem(
-                value = currentStreak.toString(),
-                label = "ACHEIVEMENTS",
+            MythicProgressRing(
+                streak = currentStreak,
+                threshold = mythicThreshold,
                 isDarkMode = isDarkMode,
                 onClick = onStreakClick
             )
