@@ -1541,4 +1541,100 @@ exports.triggerMythicDrawAnimation = functions
     return { success: true, monthKey, pushCount };
   });
 
+/**
+ * DEV-ONLY: HTTP callable to manually trigger a Mythic Draw for testing.
+ * REMOVE OR DISABLE before production.
+ */
+exports.testMythicDraw = functions.https.onCall(async (data, context) => {
+  // Only allow authenticated admin users (your UID)
+  const ALLOWED_UIDS = ['YOUR_ADMIN_UID_HERE']; // <-- Replace with your UID
+  if (!context.auth || !ALLOWED_UIDS.includes(context.auth.uid)) {
+    throw new functions.https.HttpsError('permission-denied', 'Admin only');
+  }
+
+  // Override month for testing
+  const testMonthKey = data.monthKey || getMonthKey();
+  const testThreshold = data.threshold || null; // override threshold
+  const testMonthNumber = data.monthNumber || getMonthNumber();
+
+  // Log test start
+  console.log(`[TEST MYTHIC DRAW] Starting manual test draw for ${testMonthKey}`);
+
+  const drawDocRef = db.collection('system').doc(`mythic_draw_${testMonthKey}`);
+
+  // Check if already completed
+  const existing = await drawDocRef.get();
+  if (existing.exists && existing.data().status === 'completed') {
+    console.log('[TEST] Draw already completed. Re-running...');
+    // Optionally clear for re-test
+    if (data.force === true) {
+      await drawDocRef.update({ status: 'testing_rerun' });
+    } else {
+      return { status: 'already_completed', draw: existing.data() };
+    }
+  }
+
+  // Build entrant list with mock data support
+  const usersSnapshot = await db.collection('users').get();
+  const eligibleUsers = [];
+  usersSnapshot.forEach(doc => {
+    const d = doc.data();
+    const streak = d.streak || 0;
+    const tickets = Math.floor(streak / 10);
+    if (tickets >= 1) {
+      eligibleUsers.push({
+        uid: doc.id,
+        streak: streak,
+        tickets: tickets,
+        displayName: d.displayName || 'User',
+        fcmToken: d.fcmToken || null
+      });
+    }
+  });
+
+  // Draw logic (same as executeMythicDraw)
+  const threshold = testThreshold || getThreshold(testMonthNumber);
+  const winners = [];
+  const used = new Set();
+
+  for (let place = 1; place <= 3; place++) {
+    const pool = eligibleUsers.filter(u => !used.has(u.uid));
+    if (pool.length === 0) break;
+    const totalTickets = pool.reduce((s, u) => s + u.tickets, 0);
+    let pick = Math.random() * totalTickets;
+    let winner = null;
+    for (const u of pool) {
+      pick -= u.tickets;
+      if (pick <= 0) { winner = u; break; }
+    }
+    if (winner) {
+      used.add(winner.uid);
+      winners.push({ uid: winner.uid, place, streak: winner.streak, userName: winner.displayName });
+    }
+  }
+
+  // Save result
+  await drawDocRef.set({
+    monthKey: testMonthKey,
+    monthNumber: testMonthNumber,
+    status: 'completed',
+    winners,
+    totalEntrants: eligibleUsers.length,
+    threshold,
+    isTest: true,
+    ranAt: admin.firestore.FieldValue.serverTimestamp()
+  }, { merge: true });
+
+  console.log(`[TEST MYTHIC DRAW] Completed. ${winners.length} winner(s).`);
+
+  return {
+    status: 'completed',
+    monthKey: testMonthKey,
+    threshold,
+    totalEntrants: eligibleUsers.length,
+    winners,
+    message: 'Test draw complete. Check Firestore console for details.'
+  };
+});
+
 // deploy-bump 
