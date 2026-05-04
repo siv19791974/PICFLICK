@@ -86,6 +86,7 @@ fun UserProfileScreen(
     onMuteUser: () -> Unit = {},
     onBlockUser: () -> Unit = {},
     onUnfriend: () -> Unit = {}, // NEW: Delete friend/unfriend
+    restrictActions: Boolean = false, // When true, only Add Friend is shown (e.g. from Mythic leaderboard)
     onRefresh: () -> Unit = {},
     onFriendsClick: () -> Unit = {},
     onAchievementsClick: (() -> Unit)? = null,
@@ -502,57 +503,63 @@ fun UserProfileScreen(
                         .padding(horizontal = sidePadding)
                 )
             } else {
-                // Add friend button
+                // Add friend button — navy blue (same as Find Friends / Message)
                 Button(
                     onClick = onAddFriend,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = sidePadding)
+                        .padding(horizontal = sidePadding),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFF2A4A73),
+                        contentColor = Color.White
+                    )
                 ) {
                     Text("Add Friend")
                 }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            if (!restrictActions) {
+                Spacer(modifier = Modifier.height(16.dp))
 
-            // Mute user button (same boxed style)
-            OutlinedButton(
-                onClick = onMuteUser,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 32.dp),
-                colors = ButtonDefaults.outlinedButtonColors(
-                    contentColor = Color(0xFF2A4A73)
-                )
-            ) {
-                Icon(
-                    imageVector = Icons.Default.NotificationsOff,
-                    contentDescription = null,
-                    modifier = Modifier.size(16.dp)
-                )
-                Spacer(modifier = Modifier.width(6.dp))
-                Text("Mute User")
-            }
+                // Mute user button (same boxed style)
+                OutlinedButton(
+                    onClick = onMuteUser,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 32.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        contentColor = Color(0xFF2A4A73)
+                    )
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.NotificationsOff,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("Mute User")
+                }
 
-            Spacer(modifier = Modifier.height(10.dp))
+                Spacer(modifier = Modifier.height(10.dp))
 
-            // Block user button (same boxed style)
-            OutlinedButton(
-                onClick = onBlockUser,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 32.dp),
-                colors = ButtonDefaults.outlinedButtonColors(
-                    contentColor = Color.Red.copy(alpha = 0.85f)
-                )
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Block,
-                    contentDescription = null,
-                    modifier = Modifier.size(16.dp)
-                )
-                Spacer(modifier = Modifier.width(6.dp))
-                Text("Block User")
+                // Block user button (same boxed style)
+                OutlinedButton(
+                    onClick = onBlockUser,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 32.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        contentColor = Color.Red.copy(alpha = 0.85f)
+                    )
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Block,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("Block User")
+                }
             }
 
             Spacer(modifier = Modifier.height(32.dp))

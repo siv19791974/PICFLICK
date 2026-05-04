@@ -54,7 +54,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import com.google.firebase.firestore.FirebaseFirestore
+import com.picflick.app.data.SubscriptionTier
 import com.picflick.app.data.UserProfile
+import com.picflick.app.data.getColor
+import com.picflick.app.data.getDarkColor
+import com.picflick.app.data.getLightColor
 import com.picflick.app.ui.theme.ThemeManager
 import com.picflick.app.ui.theme.isDarkModeBackground
 import com.picflick.app.ui.theme.isDarkModeOnBackground
@@ -906,11 +910,32 @@ private fun LeaderboardRow(
             )
         }
 
-        AsyncImage(
-            model = entry.photoUrl,
-            contentDescription = null,
-            modifier = Modifier.size(36.dp).clip(CircleShape),
-        )
+        // Avatar with tier ring (matches app-wide style)
+        val tier = SubscriptionTier.fromString(entry.tier)
+        val tierColor = tier.getColor()
+        Box(
+            modifier = Modifier
+                .size(40.dp)
+                .clip(CircleShape)
+                .background(
+                    brush = Brush.sweepGradient(
+                        listOf(
+                            tierColor,
+                            tier.getDarkColor(),
+                            tier.getLightColor(),
+                            tierColor
+                        )
+                    )
+                )
+                .padding(3.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            AsyncImage(
+                model = entry.photoUrl,
+                contentDescription = null,
+                modifier = Modifier.fillMaxSize().clip(CircleShape),
+            )
+        }
 
         Spacer(modifier = Modifier.width(12.dp))
 
@@ -1094,7 +1119,8 @@ data class LeaderboardEntry(
     val userId: String,
     val userName: String,
     val streak: Int,
-    val photoUrl: String
+    val photoUrl: String,
+    val tier: String = "FREE"
 )
 
 // ─── STAT BOX ───
