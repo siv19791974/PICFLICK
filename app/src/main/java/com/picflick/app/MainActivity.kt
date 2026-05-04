@@ -1710,13 +1710,17 @@ private fun InAppMediaPickerScreen(
     }
 
     var mediaItems by remember { mutableStateOf<List<MediaPickerItem>>(emptyList()) }
+    var isLoadingMedia by remember { mutableStateOf(true) }
 
     LaunchedEffect(hasMediaPermission) {
         if (!hasMediaPermission) {
+            isLoadingMedia = false
             mediaItems = emptyList()
             return@LaunchedEffect
         }
+        isLoadingMedia = true
         mediaItems = withContext(Dispatchers.IO) { loadDeviceMedia(context) }
+        isLoadingMedia = false
     }
 
     LaunchedEffect(Unit) {
@@ -1847,7 +1851,7 @@ private fun InAppMediaPickerScreen(
                     }
                 }
 
-                mediaItems.isEmpty() -> {
+                !isLoadingMedia && mediaItems.isEmpty() -> {
                     Text(
                         text = "No photos found on device",
                         color = if (isDarkMode) Color.White.copy(alpha = 0.8f) else Color(0xFF374151),
