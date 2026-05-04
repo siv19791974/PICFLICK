@@ -134,6 +134,8 @@ fun StreakAchievementsScreen(
     val taggedPostsCount = remember(photos) { photos.count { it.taggedFriends.isNotEmpty() } }
     val totalPosts = remember(photos) { photos.size }
 
+    val streakThreshold = 10 // Month 1 threshold — fetched from appConfig/mythicDraw in MythicDrawScreen
+
             val bgColor = isDarkModeBackground(isDarkMode)
         val textPrimary = isDarkModeOnBackground(isDarkMode)
         val textSecondary = isDarkModeSecondaryText(isDarkMode)
@@ -159,7 +161,7 @@ fun StreakAchievementsScreen(
                     AchievementItem("3-Day Spark", "Upload 3 days in a row", 3, currentStreak, "days", "✨"),
                     AchievementItem("7-Day Flame", "Upload 7 days in a row", 7, currentStreak, "days", "🔥"),
                     AchievementItem("30-Day Legend", "Upload 30 days in a row", 30, currentStreak, "days", "🏆"),
-                    AchievementItem("100-Day Mythic", "Upload 100 days in a row. Monthly global draw: 1 winner gets a 3-month Pro upgrade.", 100, currentStreak, "days", "👑"),
+                    AchievementItem("Mythic Qualifier", "Hit the monthly streak threshold to enter the Mythic Draw. 3 winners, tiered prizes, streak-weighted tickets.", streakThreshold, currentStreak, "days", "👑"),
                     AchievementItem("Early Bird", "Upload before 8am for 7 days", 7, earlyBirdDays, "days", "🌅"),
                     AchievementItem("Night Owl", "Upload after 10pm for 7 days", 7, nightOwlDays, "days", "🌙"),
                     AchievementItem("Weekend Warrior", "Upload on 4 weekends", 4, weekendDays, "weekends", "🏕️"),
@@ -197,10 +199,26 @@ fun StreakAchievementsScreen(
     }
 
     val pagerState = rememberPagerState(initialPage = 0, pageCount = { categories.size })
-    val mythicTarget = 100
-    val mythicEligible = currentStreak >= mythicTarget
-    val mythicDaysRemaining = (mythicTarget - currentStreak).coerceAtLeast(0)
-    val mythicProgress = (currentStreak.toFloat() / mythicTarget.toFloat()).coerceIn(0f, 1f)
+
+    // Next Mythic Draw date calculation
+    val nextDrawDate = remember {
+        val cal = java.util.Calendar.getInstance()
+        cal.add(java.util.Calendar.MONTH, 1)
+        cal.set(java.util.Calendar.DAY_OF_MONTH, 1)
+        cal.set(java.util.Calendar.HOUR_OF_DAY, 0)
+        cal.set(java.util.Calendar.MINUTE, 0)
+        cal.set(java.util.Calendar.SECOND, 0)
+        cal.time
+    }
+    val nextDrawMonth = remember(nextDrawDate) {
+        val fmt = java.text.SimpleDateFormat("MMMM yyyy", java.util.Locale.getDefault())
+        fmt.format(nextDrawDate)
+    }
+    val daysUntilDraw = remember {
+        val now = java.util.Calendar.getInstance().timeInMillis
+        val diff = nextDrawDate.time - now
+        kotlin.math.max(0, (diff / (1000 * 60 * 60 * 24)).toInt())
+    }
 
     Column(
         modifier = Modifier
@@ -234,64 +252,79 @@ fun StreakAchievementsScreen(
             )
         }
 
-        // ─── MYTHIC BANNER (clickable → Mythic Draw page) ───
+        // ─── NEXT MYTHIC DRAW (clickable → Mythic Draw page) ───
         Card(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 24.dp, vertical = 16.dp)
                 .clickable { onMythicClick() }
                 .border(
-                    1.dp,
-                    if (mythicEligible) Color(0xFF4CAF50).copy(alpha = 0.4f) else MidBlue.copy(alpha = 0.35f),
+                    1.5.dp,
+                    MidBlue.copy(alpha = 0.5f),
                     RoundedCornerShape(16.dp)
                 ),
             colors = CardDefaults.cardColors(containerColor = bgColor),
             shape = RoundedCornerShape(16.dp)
         ) {
-            Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp)) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp, vertical = 18.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
                 Text(
-                    text = "MYTHIC MONTHLY DRAW",
-                    color = if (mythicEligible) Color(0xFF4CAF50) else MidBlue,
+                    text = "🎲 NEXT MYTHIC DRAW",
+                    color = MidBlue,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Black
                 )
-                Spacer(modifier = Modifier.height(4.dp))
+                Spacer(modifier = Modifier.height(6.dp))
                 Text(
-                    text = "👑 1 GLOBAL WINNER EACH MONTH \u00B7 3-MONTH PRO UPGRADE",
+                    text = "1st $nextDrawMonth",
                     color = textPrimary,
-                    fontSize = 12.sp,
+                    fontSize = 22.sp,
                     fontWeight = FontWeight.Bold
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = if (mythicEligible) {
-                        "STATUS: ELIGIBLE \u2713 You are in this month's draw."
-                    } else {
-                        "STATUS: $mythicDaysRemaining DAYS TO GO"
-                    },
-                    color = if (mythicEligible) Color(0xFF4CAF50) else textPrimary,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Bold
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                LinearProgressIndicator(
-                    progress = { mythicProgress },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(6.dp)
-                        .clip(RoundedCornerShape(100)),
-                    color = if (mythicEligible) Color(0xFF4CAF50) else MidBlue,
-                    trackColor = textSecondary.copy(alpha = 0.2f)
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = "$currentStreak / $mythicTarget days",
+                    text = "$daysUntilDraw days to go — keep your streak alive!",
                     color = textSecondary,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.SemiBold
+                    fontSize = 13.sp,
+                    textAlign = TextAlign.Center
                 )
+                if (currentStreak < streakThreshold) {
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text(
+                        text = "You need ${streakThreshold - currentStreak} more daily uploads to qualify",
+                        color = if (isDarkMode) Color(0xFFFF6B6B) else Color(0xFFD32F2F),
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                } else {
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text(
+                        text = "✓ You're eligible! ${(currentStreak / 10).coerceAtLeast(1)} lottery ticket${if ((currentStreak / 10).coerceAtLeast(1) > 1) "s" else ""}",
+                        color = Color(0xFF4CAF50),
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
             }
         }
+
+        // CLICK FOR INFO — red underlined text
+        Text(
+            text = "CLICK FOR INFO",
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp)
+                .clickable { onMythicClick() },
+            color = if (isDarkMode) Color(0xFFFF6B6B) else Color(0xFFD32F2F),
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Bold,
+            textAlign = TextAlign.Center
+        )
+        Spacer(modifier = Modifier.height(8.dp))
 
         // ─── FLOATING PILLS ───
         Row(
