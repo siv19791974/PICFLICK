@@ -40,7 +40,17 @@ android {
     }
 
     buildTypes {
-        release {
+        create("staging") {
+            applicationIdSuffix = ".staging"
+            resValue("string", "app_name", "PicFlick Staging")
+            isDebuggable = true
+            signingConfig = signingConfigs.getByName("release")
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
+        }
+        getByName("release") {
             isMinifyEnabled = true
             isShrinkResources = true
             signingConfig = signingConfigs.getByName("release")

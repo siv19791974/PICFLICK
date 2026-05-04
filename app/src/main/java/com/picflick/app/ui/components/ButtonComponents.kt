@@ -32,6 +32,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.picflick.app.R
@@ -241,4 +242,22 @@ fun MythicProgressRing(
             fontWeight = FontWeight.SemiBold
         )
     }
+}
+
+@Preview(name = "MythicProgressRing - Low")
+@Composable
+fun MythicProgressRingLowPreview() {
+    MythicProgressRing(streak = 12, threshold = 100, isDarkMode = true)
+}
+
+@Preview(name = "MythicProgressRing - Mid")
+@Composable
+fun MythicProgressRingMidPreview() {
+    MythicProgressRing(streak = 53, threshold = 100, isDarkMode = true)
+}
+
+@Preview(name = "MythicProgressRing - Achieved")
+@Composable
+fun MythicProgressRingAchievedPreview() {
+    MythicProgressRing(streak = 100, threshold = 100, isDarkMode = true)
 }

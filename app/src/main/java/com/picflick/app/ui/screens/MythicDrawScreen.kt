@@ -49,6 +49,7 @@ import androidx.compose.animation.core.RepeatMode
 import androidx.compose.foundation.Canvas
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
@@ -1044,4 +1045,46 @@ private fun MythicDrawAnimation(
         kotlinx.coroutines.delay(5000L)
         onComplete()
     }
+}
+
+// ─── PREVIEWS ───
+
+@Preview(name = "MythicDraw - Upcoming", showBackground = true, backgroundColor = 0xFF0D1F33)
+@Composable
+fun MythicDrawUpcomingPreview() {
+    MythicDrawScreen(
+        currentStreak = 47,
+        currentUserId = "preview_user",
+        userProfile = UserProfile(
+            uid = "preview_user",
+            displayName = "Preview User",
+            mythicTier = "bronze",
+            mythicContenderCount = 2,
+            mythicStorageBonusTotal = 100
+        ),
+        onBack = {}
+    )
+}
+
+@Preview(name = "MythicDraw - Completed", showBackground = true, backgroundColor = 0xFF0D1F33)
+@Composable
+fun MythicDrawCompletedPreview() {
+    MythicDrawScreen(
+        currentStreak = 120,
+        currentUserId = "preview_user",
+        userProfile = UserProfile(
+            uid = "preview_user",
+            displayName = "Preview User",
+            mythicTier = "silver",
+            mythicContenderCount = 5,
+            mythicStorageBonusTotal = 250
+        ),
+        onBack = {}
+    )
+}
+
+@Preview(name = "MythicDraw - Live Animation", showBackground = true, backgroundColor = 0xFF0D1F33)
+@Composable
+fun MythicDrawLivePreview() {
+    MythicDrawAnimation(isDarkMode = true, onComplete = {})
 }
