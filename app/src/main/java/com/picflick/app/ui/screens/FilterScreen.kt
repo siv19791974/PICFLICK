@@ -221,7 +221,8 @@ fun FilterScreen(
         PhotoFilter.NOIR,
         PhotoFilter.FADE,
         PhotoFilter.VIVID,
-        PhotoFilter.COLOR_INVERT
+        PhotoFilter.COLOR_INVERT,
+        PhotoFilter.SKETCH
     )
     
     // Animation state for countdown - now triggered immediately on upload click
@@ -1458,320 +1459,76 @@ private fun FilteredImage(
  * Apply filter to bitmap
  */
 private fun applyFilterToBitmap(bitmap: Bitmap, filter: PhotoFilter, thumbnailSize: Int = 0): Bitmap {
+    // Sketch / Colored Pencil — pixel-level edge detection (not a ColorMatrix)
+    if (filter == PhotoFilter.SKETCH) {
+        return applySketchFilter(bitmap, thumbnailSize)
+    }
+
     val matrix = when (filter) {
         PhotoFilter.ORIGINAL -> ColorMatrix()
-        PhotoFilter.BLACK_AND_WHITE -> ColorMatrix().apply {
-            setSaturation(0f)
-        }
+        PhotoFilter.BLACK_AND_WHITE -> ColorMatrix().apply { setSaturation(0f) }
         PhotoFilter.SEPIA -> ColorMatrix().apply {
-            set(
-                floatArrayOf(
-                    0.393f, 0.769f, 0.189f, 0f, 0f,
-                    0.349f, 0.686f, 0.168f, 0f, 0f,
-                    0.272f, 0.534f, 0.131f, 0f, 0f,
-                    0f, 0f, 0f, 1f, 0f
-                )
-            )
+            set(floatArrayOf(0.393f, 0.769f, 0.189f, 0f, 0f, 0.349f, 0.686f, 0.168f, 0f, 0f, 0.272f, 0.534f, 0.131f, 0f, 0f, 0f, 0f, 0f, 1f, 0f))
         }
         PhotoFilter.NEGATIVE -> ColorMatrix().apply {
-            // Invert/negative effect
-            set(
-                floatArrayOf(
-                    -1f, 0f, 0f, 0f, 255f,
-                    0f, -1f, 0f, 0f, 255f,
-                    0f, 0f, -1f, 0f, 255f,
-                    0f, 0f, 0f, 1f, 0f
-                )
-            )
+            set(floatArrayOf(-1f, 0f, 0f, 0f, 255f, 0f, -1f, 0f, 0f, 255f, 0f, 0f, -1f, 0f, 255f, 0f, 0f, 0f, 1f, 0f))
         }
         PhotoFilter.HIGH_CONTRAST -> ColorMatrix().apply {
-            set(
-                floatArrayOf(
-                    2f, 0f, 0f, 0f, -50f,
-                    0f, 2f, 0f, 0f, -50f,
-                    0f, 0f, 2f, 0f, -50f,
-                    0f, 0f, 0f, 1f, 0f
-                )
-            )
+            set(floatArrayOf(2f, 0f, 0f, 0f, -50f, 0f, 2f, 0f, 0f, -50f, 0f, 0f, 2f, 0f, -50f, 0f, 0f, 0f, 1f, 0f))
         }
         PhotoFilter.WARM -> ColorMatrix().apply {
-            // Advanced warm filter with golden hour feel
-            val warmth = 1.3f
-            val redShift = 30f
-            val greenShift = 15f
-            val blueShift = -20f
-            set(
-                floatArrayOf(
-                    warmth, 0.1f, 0f, 0f, redShift,
-                    0.1f, 1.05f, 0.05f, 0f, greenShift,
-                    0f, 0.1f, 0.85f, 0f, blueShift,
-                    0f, 0f, 0f, 1f, 0f
-                )
-            )
-            // Add slight contrast boost
-            postConcat(ColorMatrix().apply {
-                set(
-                    floatArrayOf(
-                        1.1f, 0f, 0f, 0f, -5f,
-                        0f, 1.1f, 0f, 0f, -5f,
-                        0f, 0f, 1.1f, 0f, -5f,
-                        0f, 0f, 0f, 1f, 0f
-                    )
-                )
-            })
+            set(floatArrayOf(1.3f, 0.1f, 0f, 0f, 30f, 0.1f, 1.05f, 0.05f, 0f, 15f, 0f, 0.1f, 0.85f, 0f, -20f, 0f, 0f, 0f, 1f, 0f))
+            postConcat(ColorMatrix().apply { set(floatArrayOf(1.1f, 0f, 0f, 0f, -5f, 0f, 1.1f, 0f, 0f, -5f, 0f, 0f, 1.1f, 0f, -5f, 0f, 0f, 0f, 1f, 0f)) })
         }
         PhotoFilter.COOL -> ColorMatrix().apply {
-            // Advanced cool filter with icy blue tones
-            val cool = 0.75f
-            val redShift = -15f
-            val greenShift = 5f
-            val blueShift = 35f
-            set(
-                floatArrayOf(
-                    cool, 0.05f, 0.1f, 0f, redShift,
-                    0.1f, 1.0f, 0.1f, 0f, greenShift,
-                    0.05f, 0.15f, 1.15f, 0f, blueShift,
-                    0f, 0f, 0f, 1f, 0f
-                )
-            )
-            // Slight contrast adjustment
-            postConcat(ColorMatrix().apply {
-                set(
-                    floatArrayOf(
-                        1.05f, 0f, 0f, 0f, -3f,
-                        0f, 1.05f, 0f, 0f, -3f,
-                        0f, 0f, 1.05f, 0f, -3f,
-                        0f, 0f, 0f, 1f, 0f
-                    )
-                )
-            })
+            set(floatArrayOf(0.75f, 0.05f, 0.1f, 0f, -15f, 0.1f, 1.0f, 0.1f, 0f, 5f, 0.05f, 0.15f, 1.15f, 0f, 35f, 0f, 0f, 0f, 1f, 0f))
+            postConcat(ColorMatrix().apply { set(floatArrayOf(1.05f, 0f, 0f, 0f, -3f, 0f, 1.05f, 0f, 0f, -3f, 0f, 0f, 1.05f, 0f, -3f, 0f, 0f, 0f, 1f, 0f)) })
         }
         PhotoFilter.VINTAGE -> ColorMatrix().apply {
-            // Advanced vintage with film-like characteristics
-            // Cross-processing effect
-            set(
-                floatArrayOf(
-                    1.1f, 0.15f, -0.05f, 0f, 10f,
-                    0.05f, 1.0f, 0.05f, 0f, 5f,
-                    0.05f, -0.05f, 0.9f, 0f, 10f,
-                    0f, 0f, 0f, 0.95f, 0f
-                )
-            )
-            // Reduce saturation
+            set(floatArrayOf(1.1f, 0.15f, -0.05f, 0f, 10f, 0.05f, 1.0f, 0.05f, 0f, 5f, 0.05f, -0.05f, 0.9f, 0f, 10f, 0f, 0f, 0f, 0.95f, 0f))
             postConcat(ColorMatrix().apply { setSaturation(0.65f) })
-            // Add warm tone overlay
-            postConcat(ColorMatrix().apply {
-                set(
-                    floatArrayOf(
-                        1.05f, 0f, 0f, 0f, 8f,
-                        0f, 1.02f, 0f, 0f, 4f,
-                        0f, 0f, 0.95f, 0f, -2f,
-                        0f, 0f, 0f, 1f, 0f
-                    )
-                )
-            })
-            // Slight fade (lift blacks)
-            postConcat(ColorMatrix().apply {
-                set(
-                    floatArrayOf(
-                        0.9f, 0f, 0f, 0f, 25f,
-                        0f, 0.9f, 0f, 0f, 25f,
-                        0f, 0f, 0.9f, 0f, 25f,
-                        0f, 0f, 0f, 1f, 0f
-                    )
-                )
-            })
+            postConcat(ColorMatrix().apply { set(floatArrayOf(1.05f, 0f, 0f, 0f, 8f, 0f, 1.02f, 0f, 0f, 4f, 0f, 0f, 0.95f, 0f, -2f, 0f, 0f, 0f, 1f, 0f)) })
+            postConcat(ColorMatrix().apply { set(floatArrayOf(0.9f, 0f, 0f, 0f, 25f, 0f, 0.9f, 0f, 0f, 25f, 0f, 0f, 0.9f, 0f, 25f, 0f, 0f, 0f, 1f, 0f)) })
         }
         PhotoFilter.POLAROID -> ColorMatrix().apply {
-            // Polaroid effect - bright, slightly washed out, warm
-            set(
-                floatArrayOf(
-                    1.2f, 0.1f, 0f, 0f, 20f,
-                    0.05f, 1.15f, 0.05f, 0f, 10f,
-                    0f, 0.1f, 1.1f, 0f, 5f,
-                    0f, 0f, 0f, 1f, 0f
-                )
-            )
-            // Reduce saturation slightly
+            set(floatArrayOf(1.2f, 0.1f, 0f, 0f, 20f, 0.05f, 1.15f, 0.05f, 0f, 10f, 0f, 0.1f, 1.1f, 0f, 5f, 0f, 0f, 0f, 1f, 0f))
             postConcat(ColorMatrix().apply { setSaturation(0.85f) })
-            // Slight contrast reduction
-            postConcat(ColorMatrix().apply {
-                set(
-                    floatArrayOf(
-                        0.9f, 0f, 0f, 0f, 15f,
-                        0f, 0.9f, 0f, 0f, 15f,
-                        0f, 0f, 0.9f, 0f, 15f,
-                        0f, 0f, 0f, 1f, 0f
-                    )
-                )
-            })
+            postConcat(ColorMatrix().apply { set(floatArrayOf(0.9f, 0f, 0f, 0f, 15f, 0f, 0.9f, 0f, 0f, 15f, 0f, 0f, 0.9f, 0f, 15f, 0f, 0f, 0f, 1f, 0f)) })
         }
         PhotoFilter.LOMO -> ColorMatrix().apply {
-            // LOMO filter - high contrast, saturated, dark vignette effect
             setSaturation(1.3f)
-            postConcat(ColorMatrix().apply {
-                set(
-                    floatArrayOf(
-                        1.2f, 0f, 0f, 0f, -20f,
-                        0f, 1.2f, 0f, 0f, -20f,
-                        0f, 0f, 1.2f, 0f, -20f,
-                        0f, 0f, 0f, 1f, 0f
-                    )
-                )
-            })
+            postConcat(ColorMatrix().apply { set(floatArrayOf(1.2f, 0f, 0f, 0f, -20f, 0f, 1.2f, 0f, 0f, -20f, 0f, 0f, 1.2f, 0f, -20f, 0f, 0f, 0f, 1f, 0f)) })
         }
         PhotoFilter._1977 -> ColorMatrix().apply {
-            // 1977 filter - vintage pink tint, desaturated, warm
             setSaturation(0.7f)
-            postConcat(ColorMatrix().apply {
-                set(
-                    floatArrayOf(
-                        1.1f, 0.05f, 0.05f, 0f, 15f,
-                        0.05f, 1.0f, 0.05f, 0f, 10f,
-                        0.05f, 0.05f, 0.9f, 0f, 5f,
-                        0f, 0f, 0f, 1f, 0f
-                    )
-                )
-            })
-            postConcat(ColorMatrix().apply {
-                set(
-                    floatArrayOf(
-                        0.9f, 0f, 0f, 0f, 20f,
-                        0f, 0.85f, 0f, 0f, 15f,
-                        0f, 0f, 0.8f, 0f, 10f,
-                        0f, 0f, 0f, 1f, 0f
-                    )
-                )
-            })
+            postConcat(ColorMatrix().apply { set(floatArrayOf(1.1f, 0.05f, 0.05f, 0f, 15f, 0.05f, 1.0f, 0.05f, 0f, 10f, 0.05f, 0.05f, 0.9f, 0f, 5f, 0f, 0f, 0f, 1f, 0f)) })
+            postConcat(ColorMatrix().apply { set(floatArrayOf(0.9f, 0f, 0f, 0f, 20f, 0f, 0.85f, 0f, 0f, 15f, 0f, 0f, 0.8f, 0f, 10f, 0f, 0f, 0f, 1f, 0f)) })
         }
-        // NEW FILTERS
         PhotoFilter.RETRO -> ColorMatrix().apply {
-            // 70s retro look with orange/teal shift
-            set(
-                floatArrayOf(
-                    1.15f, 0.1f, -0.05f, 0f, 15f,
-                    0.05f, 1.05f, 0.05f, 0f, 10f,
-                    -0.05f, 0.1f, 1.1f, 0f, 20f,
-                    0f, 0f, 0f, 1f, 0f
-                )
-            )
-            // Boost contrast
-            postConcat(ColorMatrix().apply {
-                set(
-                    floatArrayOf(
-                        1.2f, 0f, 0f, 0f, -15f,
-                        0f, 1.2f, 0f, 0f, -15f,
-                        0f, 0f, 1.2f, 0f, -15f,
-                        0f, 0f, 0f, 1f, 0f
-                    )
-                )
-            })
-            // Slight saturation boost
+            set(floatArrayOf(1.15f, 0.1f, -0.05f, 0f, 15f, 0.05f, 1.05f, 0.05f, 0f, 10f, -0.05f, 0.1f, 1.1f, 0f, 20f, 0f, 0f, 0f, 1f, 0f))
+            postConcat(ColorMatrix().apply { set(floatArrayOf(1.2f, 0f, 0f, 0f, -15f, 0f, 1.2f, 0f, 0f, -15f, 0f, 0f, 1.2f, 0f, -15f, 0f, 0f, 0f, 1f, 0f)) })
             postConcat(ColorMatrix().apply { setSaturation(1.3f) })
         }
         PhotoFilter.NOIR -> ColorMatrix().apply {
-            // Film noir - dramatic B&W with high contrast
-            setSaturation(0f) // B&W
-            // High contrast with crushed blacks
-            postConcat(ColorMatrix().apply {
-                set(
-                    floatArrayOf(
-                        1.5f, 0f, 0f, 0f, -40f,
-                        0f, 1.5f, 0f, 0f, -40f,
-                        0f, 0f, 1.5f, 0f, -40f,
-                        0f, 0f, 0f, 1f, 0f
-                    )
-                )
-            })
-            // Slight blue tint for noir feel
-            postConcat(ColorMatrix().apply {
-                set(
-                    floatArrayOf(
-                        0.9f, 0f, 0f, 0f, 5f,
-                        0f, 0.9f, 0f, 0f, 8f,
-                        0f, 0f, 1.05f, 0f, 15f,
-                        0f, 0f, 0f, 1f, 0f
-                    )
-                )
-            })
+            setSaturation(0f)
+            postConcat(ColorMatrix().apply { set(floatArrayOf(1.5f, 0f, 0f, 0f, -40f, 0f, 1.5f, 0f, 0f, -40f, 0f, 0f, 1.5f, 0f, -40f, 0f, 0f, 0f, 1f, 0f)) })
+            postConcat(ColorMatrix().apply { set(floatArrayOf(0.9f, 0f, 0f, 0f, 5f, 0f, 0.9f, 0f, 0f, 8f, 0f, 0f, 1.05f, 0f, 15f, 0f, 0f, 0f, 1f, 0f)) })
         }
         PhotoFilter.FADE -> ColorMatrix().apply {
-            // Instagram-like fade with lifted blacks and muted colors
-            // Desaturate slightly
             postConcat(ColorMatrix().apply { setSaturation(0.75f) })
-            // Lift blacks (fade)
-            postConcat(ColorMatrix().apply {
-                set(
-                    floatArrayOf(
-                        0.85f, 0f, 0f, 0f, 40f,
-                        0f, 0.85f, 0f, 0f, 40f,
-                        0f, 0f, 0.85f, 0f, 40f,
-                        0f, 0f, 0f, 1f, 0f
-                    )
-                )
-            })
-            // Mute colors slightly
-            postConcat(ColorMatrix().apply {
-                set(
-                    floatArrayOf(
-                        0.95f, 0.05f, 0f, 0f, 0f,
-                        0.05f, 0.95f, 0f, 0f, 0f,
-                        0f, 0.05f, 0.95f, 0f, 0f,
-                        0f, 0f, 0f, 1f, 0f
-                    )
-                )
-            })
-            // Warm tint
-            postConcat(ColorMatrix().apply {
-                set(
-                    floatArrayOf(
-                        1.03f, 0f, 0f, 0f, 10f,
-                        0f, 1.01f, 0f, 0f, 5f,
-                        0f, 0f, 0.98f, 0f, -5f,
-                        0f, 0f, 0f, 1f, 0f
-                    )
-                )
-            })
+            postConcat(ColorMatrix().apply { set(floatArrayOf(0.85f, 0f, 0f, 0f, 40f, 0f, 0.85f, 0f, 0f, 40f, 0f, 0f, 0.85f, 0f, 40f, 0f, 0f, 0f, 1f, 0f)) })
+            postConcat(ColorMatrix().apply { set(floatArrayOf(0.95f, 0.05f, 0f, 0f, 0f, 0.05f, 0.95f, 0f, 0f, 0f, 0f, 0.05f, 0.95f, 0f, 0f, 0f, 0f, 0f, 1f, 0f)) })
+            postConcat(ColorMatrix().apply { set(floatArrayOf(1.03f, 0f, 0f, 0f, 10f, 0f, 1.01f, 0f, 0f, 5f, 0f, 0f, 0.98f, 0f, -5f, 0f, 0f, 0f, 1f, 0f)) })
         }
         PhotoFilter.VIVID -> ColorMatrix().apply {
-            // Vibrant colors with enhanced saturation and contrast
-            // High saturation
             postConcat(ColorMatrix().apply { setSaturation(1.6f) })
-            // Boost contrast
-            postConcat(ColorMatrix().apply {
-                set(
-                    floatArrayOf(
-                        1.25f, 0f, 0f, 0f, -20f,
-                        0f, 1.25f, 0f, 0f, -20f,
-                        0f, 0f, 1.25f, 0f, -20f,
-                        0f, 0f, 0f, 1f, 0f
-                    )
-                )
-            })
-            // Vibrance boost (enhance less saturated colors more)
-            postConcat(ColorMatrix().apply {
-                set(
-                    floatArrayOf(
-                        1.15f, -0.05f, -0.05f, 0f, 5f,
-                        -0.05f, 1.15f, -0.05f, 0f, 5f,
-                        -0.05f, -0.05f, 1.15f, 0f, 5f,
-                        0f, 0f, 0f, 1f, 0f
-                    )
-                )
-            })
+            postConcat(ColorMatrix().apply { set(floatArrayOf(1.25f, 0f, 0f, 0f, -20f, 0f, 1.25f, 0f, 0f, -20f, 0f, 0f, 1.25f, 0f, -20f, 0f, 0f, 0f, 1f, 0f)) })
+            postConcat(ColorMatrix().apply { set(floatArrayOf(1.15f, -0.05f, -0.05f, 0f, 5f, -0.05f, 1.15f, -0.05f, 0f, 5f, -0.05f, -0.05f, 1.15f, 0f, 5f, 0f, 0f, 0f, 1f, 0f)) })
         }
-        // New filter - Color Invert (swaps RGB values)
         PhotoFilter.COLOR_INVERT -> ColorMatrix().apply {
-            // Swap RGB values - different from NEGATIVE
-            set(
-                floatArrayOf(
-                    0f, 0f, 1f, 0f, 0f,
-                    0f, 1f, 0f, 0f, 0f,
-                    1f, 0f, 0f, 0f, 0f,
-                    0f, 0f, 0f, 1f, 0f
-                )
-            )
+            set(floatArrayOf(0f, 0f, 1f, 0f, 0f, 0f, 1f, 0f, 0f, 0f, 1f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 1f, 0f))
         }
+        PhotoFilter.SKETCH -> ColorMatrix() // unreachable — handled above
     }
 
     // Resize if thumbnail (use high quality filtering)
@@ -1829,6 +1586,104 @@ private suspend fun saveBitmapToTempUri(
         }
         Uri.fromFile(tempFile)
     }
+}
+
+/**
+ * Apply a colored pencil sketch filter.
+ * Detects edges and blends them with slightly posterized original colors
+ * to create a hand-drawn colored pencil look.
+ */
+internal fun applySketchFilter(source: Bitmap, thumbnailSize: Int): Bitmap {
+    val bitmap = if (thumbnailSize > 0) {
+        val scale = thumbnailSize.toFloat() / maxOf(source.width, source.height)
+        val newWidth = (source.width * scale).toInt()
+        val newHeight = (source.height * scale).toInt()
+        Bitmap.createScaledBitmap(source, newWidth, newHeight, true)
+    } else source
+
+    val width = bitmap.width
+    val height = bitmap.height
+
+    val pixels = IntArray(width * height)
+    bitmap.getPixels(pixels, 0, width, 0, 0, width, height)
+
+    val gray = IntArray(width * height)
+    for (i in pixels.indices) {
+        val p = pixels[i]
+        val r = (p shr 16) and 0xFF
+        val g = (p shr 8) and 0xFF
+        val b = p and 0xFF
+        gray[i] = (0.299 * r + 0.587 * g + 0.114 * b).toInt()
+    }
+
+    val edge = IntArray(width * height) { 255 }
+    for (y in 1 until height - 1) {
+        for (x in 1 until width - 1) {
+            val idx = y * width + x
+
+            val gx = (
+                -1 * gray[idx - width - 1] + 1 * gray[idx - width + 1] +
+                -2 * gray[idx - 1]     + 2 * gray[idx + 1] +
+                -1 * gray[idx + width - 1] + 1 * gray[idx + width + 1]
+            )
+
+            val gy = (
+                -1 * gray[idx - width - 1] - 2 * gray[idx - width] - 1 * gray[idx - width + 1] +
+                 1 * gray[idx + width - 1] + 2 * gray[idx + width] + 1 * gray[idx + width + 1]
+            )
+
+            // Boost edge sensitivity by 2x so even faint outlines show
+            var magnitude = (kotlin.math.sqrt((gx * gx + gy * gy).toFloat()) * 2.5f).toInt()
+            if (magnitude > 255) magnitude = 255
+            if (magnitude < 0) magnitude = 0
+            edge[idx] = 255 - magnitude // invert: edges become dark
+        }
+    }
+
+    val out = IntArray(width * height)
+    val noiseSeed = 12345
+    for (i in pixels.indices) {
+        val p = pixels[i]
+        var r = (p shr 16) and 0xFF
+        var g = (p shr 8) and 0xFF
+        var b = p and 0xFF
+
+        // Stronger color boost for bold colored-pencil vibrancy
+        r = (r * 1.15f).toInt().coerceIn(0, 255)
+        g = (g * 1.15f).toInt().coerceIn(0, 255)
+        b = (b * 1.15f).toInt().coerceIn(0, 255)
+
+        // Heavier posterize (fewer levels) = more flat, hand-drawn color blocks
+        val levels = 6
+        r = ((r / levels) * levels + levels / 2).coerceIn(0, 255)
+        g = ((g / levels) * levels + levels / 2).coerceIn(0, 255)
+        b = ((b / levels) * levels + levels / 2).coerceIn(0, 255)
+
+        // Stronger paper-grain / pencil texture noise
+        val noise = ((i * 31 + noiseSeed) % 25) - 12
+        r = (r + noise).coerceIn(0, 255)
+        g = (g + noise).coerceIn(0, 255)
+        b = (b + noise).coerceIn(0, 255)
+
+        // Edge blending: edges push toward dark charcoal (pencil strokes)
+        // instead of just dimming the colour proportionally
+        val e = edge[i]
+        val edgeDarkness = 1f - (e / 255f) // 0 = no edge, 1 = strong edge
+        val blend = edgeDarkness * 0.92f // up to 92% dark on strong edges
+        r = (r * (1f - blend) + 18 * blend).toInt().coerceIn(0, 255)
+        g = (g * (1f - blend) + 18 * blend).toInt().coerceIn(0, 255)
+        b = (b * (1f - blend) + 18 * blend).toInt().coerceIn(0, 255)
+
+        out[i] = (0xFF shl 24) or (r shl 16) or (g shl 8) or b
+    }
+
+    val result = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+    result.setPixels(out, 0, width, 0, 0, width, height)
+
+    if (bitmap !== source && !bitmap.isRecycled) {
+        bitmap.recycle()
+    }
+    return result
 }
 
 private suspend fun applyFilterAndSave(

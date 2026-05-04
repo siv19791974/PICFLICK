@@ -186,8 +186,8 @@ withContext(Dispatchers.Main) {
         }
     }
 
-    // Local filters list - all 16 filters (removed non-working blur filters)
-val localFilters = listOf(
+    // Local filters list - all 17 filters (removed non-working blur filters)
+    val localFilters = listOf(
         PhotoFilter.ORIGINAL,
         PhotoFilter.BLACK_AND_WHITE,
         PhotoFilter.SEPIA,
@@ -203,7 +203,8 @@ val localFilters = listOf(
         PhotoFilter.NOIR,
         PhotoFilter.FADE,
         PhotoFilter.VIVID,
-        PhotoFilter.COLOR_INVERT
+        PhotoFilter.COLOR_INVERT,
+        PhotoFilter.SKETCH
     )
     
     // Save function
@@ -811,6 +812,11 @@ filter: PhotoFilter,
  * Apply filter to bitmap - same implementation as FilterScreen
  */
 private fun applyFilterToBitmap(bitmap: Bitmap, filter: PhotoFilter, thumbnailSize: Int = 0): Bitmap {
+    // Sketch / Colored Pencil — pixel-level edge detection (not a ColorMatrix)
+    if (filter == PhotoFilter.SKETCH) {
+        return applySketchFilter(bitmap, thumbnailSize)
+    }
+
     val matrix = when (filter) {
         PhotoFilter.ORIGINAL -> ColorMatrix()
         PhotoFilter.BLACK_AND_WHITE -> ColorMatrix().apply { setSaturation(0f) }
@@ -1091,6 +1097,7 @@ private fun applyFilterToBitmap(bitmap: Bitmap, filter: PhotoFilter, thumbnailSi
                 )
             )
         }
+        PhotoFilter.SKETCH -> ColorMatrix() // unreachable — handled above
     }
 
     val targetBitmap = if (thumbnailSize > 0) {
