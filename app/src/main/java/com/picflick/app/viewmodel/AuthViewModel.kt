@@ -166,6 +166,13 @@ class AuthViewModel : ViewModel() {
     }
 
     /**
+     * Public helper to reload the current user profile from Firestore.
+     */
+    fun refreshUserProfile() {
+        currentUser?.uid?.let { loadUserProfile(it) }
+    }
+
+    /**
      * Phone number is user-provided only (policy-safe).
      */
     private fun getDevicePhoneNumber(@Suppress("UNUSED_PARAMETER") context: Context): String {

@@ -36,6 +36,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -52,10 +54,13 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Badge
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -69,6 +74,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -102,6 +108,7 @@ import com.picflick.app.repository.FlickRepository
 import com.picflick.app.data.Flick
 import com.picflick.app.data.getDailyUploadLimit
 import com.picflick.app.ui.components.ActionSheetOption
+import com.picflick.app.ui.components.ActionSheetRow
 import com.picflick.app.ui.components.AddPhotoStyleActionSheet
 import com.picflick.app.ui.components.BottomNavBar
 import com.picflick.app.ui.components.LogoImage
@@ -120,6 +127,7 @@ import com.picflick.app.viewmodel.HomeViewModel
 import com.picflick.app.viewmodel.NotificationViewModel
 import com.picflick.app.viewmodel.ProfileViewModel
 import com.picflick.app.viewmodel.UploadViewModel
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 
 /**
@@ -384,6 +392,7 @@ fun AppContent() {
 /**
  * Main screen with navigation and authentication state
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen(
     authViewModel: AuthViewModel = viewModel(),
@@ -475,6 +484,9 @@ fun MainScreen(
     // Trigger for showing developer password dialog from push notification
     var devPasswordTrigger by remember { mutableIntStateOf(0) }
 
+    // Streak recovery state
+    var showStreakRecovery by remember { mutableStateOf(false) }
+
     // Shared upload/dialog states (declared early because they're used by effects below)
     var selectedPhotoUri by remember { mutableStateOf<Uri?>(null) }
     var selectedMediaUris by remember { mutableStateOf<List<Uri>>(emptyList()) }
@@ -482,6 +494,13 @@ fun MainScreen(
     var showPrivateShareTargetDialog by remember { mutableStateOf(false) }
     var privateShareMode by remember { mutableStateOf(PrivateShareMode.GROUP_MESSAGE) }
     var pendingSharedImportUris by remember { mutableStateOf<List<Uri>>(emptyList()) }
+
+    // Auto-show streak recovery when available
+    LaunchedEffect(userProfile?.streakRecoveryAvailable) {
+        if (userProfile?.streakRecoveryAvailable == true) {
+            showStreakRecovery = true
+        }
+    }
 
     // On app foreground, default back to Home + reset feed top unless a push route is pending.
     DisposableEffect(lifecycleOwner, currentUser) {
@@ -1243,6 +1262,75 @@ fun MainScreen(
                     CircularProgressIndicator(
                         color = MaterialTheme.colorScheme.primary
                     )
+                }
+            }
+
+            // ─── STREAK RECOVERY BOTTOM SHEET ───
+            if (showStreakRecovery && userProfile != null) {
+                val recoveryValue = userProfile.streakRecoveryValue
+                ModalBottomSheet(
+                    onDismissRequest = { showStreakRecovery = false },
+                    sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+                    containerColor = Color(0xFF25282B),
+                    dragHandle = {
+                        Surface(
+                            modifier = Modifier.padding(top = 8.dp).size(width = 44.dp, height = 5.dp),
+                            shape = RoundedCornerShape(50),
+                            color = Color.White.copy(alpha = 0.28f)
+                        ) {}
+                    }
+                ) {
+                    Column(
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 24.dp, vertical = 20.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(
+                            "🔥 Streak Broken!",
+                            color = Color.White,
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(bottom = 8.dp)
+                        )
+                        Text(
+                            "Your $recoveryValue-day streak broke yesterday. Recover it for free (once this month).",
+                            color = Color.White.copy(alpha = 0.7f),
+                            fontSize = 14.sp,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.padding(bottom = 20.dp)
+                        )
+                        val scope = rememberCoroutineScope()
+                        ActionSheetRow(
+                            icon = Icons.Default.Refresh,
+                            title = "Recover Streak",
+                            accentColor = Color(0xFF10B981),
+                            onClick = {
+                                scope.launch {
+                                    userProfile?.let { profile ->
+                                        val repo = FlickRepository.getInstance()
+                                        when (val result = repo.recoverStreak(profile.uid, profile.streakRecoveryValue)) {
+                                            is com.picflick.app.data.Result.Success -> {
+                                                showStreakRecovery = false
+                                                authViewModel.refreshUserProfile()
+                                            }
+                                            else -> {
+                                                showStreakRecovery = false
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                        ActionSheetRow(
+                            icon = Icons.Default.Close,
+                            title = "Skip",
+                            accentColor = Color.White.copy(alpha = 0.6f),
+                            onClick = { showStreakRecovery = false }
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                    }
                 }
             }
 
