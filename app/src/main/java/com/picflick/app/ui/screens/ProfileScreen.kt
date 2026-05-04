@@ -291,6 +291,22 @@ fun ProfileScreen(
                         contentScale = ContentScale.Crop
                     )
 
+                    // Mythic Crown overlay
+                    val crownExpiry = (userProfile.mythicCrownExpiry as? Number)?.toLong() ?: 0L
+                    if (userProfile.mythicCrown.isNotBlank() && crownExpiry > System.currentTimeMillis()) {
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.TopEnd)
+                                .offset((-4).dp, (-4).dp)
+                                .size(36.dp)
+                                .clip(CircleShape)
+                                .background(Color(0xFFFFD700)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text("👑", fontSize = 18.sp)
+                        }
+                    }
+
                     // Edit icon overlay
                     if (displayPhotoUrl.isNotEmpty()) {
                         Box(
@@ -324,6 +340,47 @@ fun ProfileScreen(
             fontWeight = FontWeight.Bold,
             color = if (isDarkMode) Color.White else Color.Black
         )
+
+        // Mythic Tier Badge
+        if (userProfile.mythicTier.isNotBlank()) {
+            Spacer(modifier = Modifier.height(6.dp))
+            val tierEmoji = when (userProfile.mythicTier) {
+                "diamond" -> "💎"
+                "gold" -> "🥇"
+                "silver" -> "🥈"
+                else -> "🥉"
+            }
+            val tierColor = when (userProfile.mythicTier) {
+                "diamond" -> Color(0xFFB9F2FF)
+                "gold" -> Color(0xFFFFD700)
+                "silver" -> Color(0xFFC0C0C0)
+                else -> Color(0xFFCD7F32)
+            }
+            val tierLabel = when (userProfile.mythicTier) {
+                "diamond" -> "Diamond Mythic"
+                "gold" -> "Gold Mythic"
+                "silver" -> "Silver Mythic"
+                else -> "Bronze Mythic"
+            }
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(tierColor.copy(alpha = 0.12f))
+                    .border(1.dp, tierColor.copy(alpha = 0.4f), RoundedCornerShape(20.dp))
+                    .padding(horizontal = 14.dp, vertical = 6.dp)
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(text = tierEmoji, fontSize = 14.sp)
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = tierLabel.uppercase(),
+                        color = tierColor,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Black
+                    )
+                }
+            }
+        }
 
         // Bio - clickable to edit
         if (displayBio.isNotEmpty()) {

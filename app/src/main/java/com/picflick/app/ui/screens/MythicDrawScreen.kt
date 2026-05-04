@@ -39,6 +39,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.foundation.Canvas
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -140,6 +148,31 @@ fun MythicDrawScreen(
                         crown = m["crown"] as? String ?: "",
                     )
                 } ?: emptyList()
+
+                val statsMap = drawSnap.get("stats") as? Map<String, Any>
+                val stats = statsMap?.let { s ->
+                    DrawStats(
+                        totalEntrants = (s["totalEntrants"] as? Number)?.toInt() ?: 0,
+                        totalUsers = (s["totalUsers"] as? Number)?.toInt() ?: 0,
+                        yourOddsDenom = (s["yourOddsDenom"] as? Number)?.toInt() ?: 0,
+                        ticketPoolSize = (s["ticketPoolSize"] as? Number)?.toInt() ?: 0,
+                        averageStreak = (s["averageStreak"] as? Number)?.toInt() ?: 0,
+                        highestStreak = (s["highestStreak"] as? Number)?.toInt() ?: 0,
+                        drawStatus = s["drawStatus"] as? String ?: "complete",
+                        drawCompletedAt = (s["drawCompletedAt"] as? Number)?.toLong() ?: 0L,
+                    )
+                }
+
+                val animMap = drawSnap.get("drawAnimation") as? Map<String, Any>
+                val anim = animMap?.let { a ->
+                    DrawAnimation(
+                        isLive = a["isLive"] as? Boolean ?: false,
+                        startedAt = (a["startedAt"] as? Number)?.toLong(),
+                        completedAt = (a["completedAt"] as? Number)?.toLong(),
+                        winnerRevealed = a["winnerRevealed"] as? Boolean ?: false,
+                    )
+                }
+
                 MythicDrawData(
                     monthKey = drawSnap.getString("monthKey") ?: monthKey,
                     monthNumber = (drawSnap.get("monthNumber") as? Long)?.toInt() ?: 0,
@@ -148,6 +181,8 @@ fun MythicDrawScreen(
                     eligibleUserCount = (drawSnap.get("eligibleUserCount") as? Long)?.toInt() ?: 0,
                     totalUserCount = (drawSnap.get("totalUserCount") as? Long)?.toInt() ?: 0,
                     noWinner = drawSnap.getBoolean("noWinner") ?: false,
+                    stats = stats,
+                    drawAnimation = anim,
                 )
             } else {
                 // No draw yet this month — show upcoming info
@@ -343,6 +378,8 @@ fun MythicDrawScreen(
             val storageBonus = userProfile.mythicStorageBonusTotal
             val crown = userProfile.mythicCrown
             val hasBanner = userProfile.mythicWinnerBanner.isNotBlank()
+            val tier = userProfile.mythicTier
+            val consecutiveMonths = userProfile.mythicConsecutiveMonths
 
             Card(
                 modifier = Modifier
@@ -367,6 +404,54 @@ fun MythicDrawScreen(
                         }
                     )
                     if (hasBanner) StatRow(label = "Banner", value = "Active", icon = "🖼️")
+
+                    // ─── TIER BADGE ───
+                    if (tier.isNotBlank() && consecutiveMonths > 0) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        val tierEmoji = when (tier) {
+                            "diamond" -> "💎"
+                            "gold" -> "🥇"
+                            "silver" -> "🥈"
+                            else -> "🥉"
+                        }
+                        val tierColor = when (tier) {
+                            "diamond" -> Color(0xFFB9F2FF)
+                            "gold" -> GoldColor
+                            "silver" -> SilverColor
+                            else -> BronzeColor
+                        }
+                        val tierLabel = when (tier) {
+                            "diamond" -> "Diamond Mythic"
+                            "gold" -> "Gold Mythic"
+                            "silver" -> "Silver Mythic"
+                            else -> "Bronze Mythic"
+                        }
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(tierColor.copy(alpha = 0.12f))
+                                .border(1.dp, tierColor.copy(alpha = 0.4f), RoundedCornerShape(12.dp))
+                                .padding(horizontal = 12.dp, vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(text = tierEmoji, fontSize = 24.sp)
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = tierLabel.uppercase(),
+                                    color = tierColor,
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Black
+                                )
+                                Text(
+                                    text = "$consecutiveMonths consecutive month${if (consecutiveMonths > 1) "s" else ""} entered",
+                                    color = textSecondary,
+                                    fontSize = 11.sp
+                                )
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -399,6 +484,97 @@ fun MythicDrawScreen(
                     )
                 }
             }
+        }
+
+        // ─── GLOBAL STATS WIDGET ───
+        if (!dd.isUpcoming) {
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(
+                text = "DRAW STATS",
+                modifier = Modifier.padding(horizontal = 24.dp),
+                color = textPrimary,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Black
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+
+            val stats = dd.stats
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp)
+                    .border(1.dp, MidBlue.copy(alpha = 0.25f), RoundedCornerShape(16.dp)),
+                colors = CardDefaults.cardColors(containerColor = bgColor),
+                shape = RoundedCornerShape(16.dp)
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(Modifier.fillMaxWidth()) {
+                        StatBox(
+                            label = "Entrants",
+                            value = "${stats?.totalEntrants ?: 0}",
+                            icon = "🎫",
+                            modifier = Modifier.weight(1f)
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        StatBox(
+                            label = "Total Users",
+                            value = "${stats?.totalUsers ?: 0}",
+                            icon = "👥",
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                    Spacer(Modifier.height(8.dp))
+                    Row(Modifier.fillMaxWidth()) {
+                        StatBox(
+                            label = "Avg Streak",
+                            value = "${stats?.averageStreak ?: 0}d",
+                            icon = "📊",
+                            modifier = Modifier.weight(1f)
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        StatBox(
+                            label = "Top Streak",
+                            value = "${stats?.highestStreak ?: 0}d",
+                            icon = "🔝",
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                    Spacer(Modifier.height(8.dp))
+                    val oddsDenom = stats?.yourOddsDenom ?: 1
+                    val userTickets = currentStreak / 10
+                    val oddsText = if (oddsDenom > 0 && userTickets > 0) {
+                        "Your ${userTickets.coerceAtLeast(1)} ticket${if (userTickets > 1) "s" else ""} · 1 in ${oddsDenom / userTickets.coerceAtLeast(1)} odds"
+                    } else if (currentStreak > 0) {
+                        "Upload daily to earn tickets"
+                    } else {
+                        "Start your streak to enter"
+                    }
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(MidBlue.copy(alpha = 0.1f))
+                            .padding(10.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = oddsText,
+                            color = MidBlue,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                }
+            }
+        }
+
+        // ─── LIVE DRAW ANIMATION ───
+        if (dd.drawAnimation?.isLive == true && !dd.isUpcoming) {
+            Spacer(modifier = Modifier.height(16.dp))
+            MythicDrawAnimation(
+                isDarkMode = isDarkMode,
+                onComplete = { /* animation completes */ }
+            )
         }
 
         // ─── HALL OF FAME ───
@@ -698,7 +874,27 @@ data class MythicDrawData(
     val eligibleUserCount: Int,
     val totalUserCount: Int,
     val noWinner: Boolean,
-    val isUpcoming: Boolean = false
+    val isUpcoming: Boolean = false,
+    val stats: DrawStats? = null,
+    val drawAnimation: DrawAnimation? = null
+)
+
+data class DrawStats(
+    val totalEntrants: Int,
+    val totalUsers: Int,
+    val yourOddsDenom: Int,
+    val ticketPoolSize: Int,
+    val averageStreak: Int,
+    val highestStreak: Int,
+    val drawStatus: String,
+    val drawCompletedAt: Long
+)
+
+data class DrawAnimation(
+    val isLive: Boolean,
+    val startedAt: Long?,
+    val completedAt: Long?,
+    val winnerRevealed: Boolean
 )
 
 data class WinnerEntry(
@@ -725,3 +921,127 @@ data class LeaderboardEntry(
     val streak: Int,
     val photoUrl: String
 )
+
+// ─── STAT BOX ───
+
+@Composable
+private fun StatBox(
+    label: String,
+    value: String,
+    icon: String,
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(12.dp))
+            .background(Color(0xFF1C1C2E))
+            .padding(12.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(text = icon, fontSize = 20.sp)
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = value,
+                color = Color.White,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold
+            )
+            Text(
+                text = label,
+                color = Color(0xFFB7BDC9),
+                fontSize = 11.sp
+            )
+        }
+    }
+}
+
+// ─── LIVE DRAW ANIMATION ───
+
+@Composable
+private fun MythicDrawAnimation(
+    isDarkMode: Boolean,
+    onComplete: () -> Unit
+) {
+    val infiniteTransition = androidx.compose.animation.core.rememberInfiniteTransition(label = "spin")
+    val rotation by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 360f,
+        animationSpec = androidx.compose.animation.core.infiniteRepeatable(
+            animation = androidx.compose.animation.core.tween(2000, easing = androidx.compose.animation.core.LinearEasing),
+            repeatMode = androidx.compose.animation.core.RepeatMode.Restart
+        ),
+        label = "rotation"
+    )
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 24.dp)
+            .height(200.dp),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFF1A1A2E)),
+        shape = RoundedCornerShape(16.dp),
+        border = androidx.compose.foundation.BorderStroke(2.dp, GoldColor.copy(alpha = 0.5f))
+    ) {
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            // Spinning wheel
+            Box(
+                modifier = Modifier
+                    .size(120.dp)
+                    .graphicsLayer { rotationZ = rotation }
+            ) {
+                androidx.compose.foundation.Canvas(modifier = Modifier.fillMaxSize()) {
+                    val colors = listOf(
+                        GoldColor,
+                        SilverColor,
+                        BronzeColor,
+                        MidBlue,
+                        GoldColor.copy(alpha = 0.7f),
+                        SilverColor.copy(alpha = 0.7f),
+                        BronzeColor.copy(alpha = 0.7f),
+                        MidBlue.copy(alpha = 0.7f),
+                    )
+                    val center = this.center
+                    val radius = size.minDimension / 2
+                    val segmentAngle = 360f / colors.size
+                    colors.forEachIndexed { index, color ->
+                        drawArc(
+                            color = color,
+                            startAngle = index * segmentAngle,
+                            sweepAngle = segmentAngle - 2f,
+                            useCenter = true,
+                        )
+                    }
+                    drawCircle(
+                        color = Color(0xFF1A1A2E),
+                        radius = radius * 0.25f,
+                        center = center
+                    )
+                }
+            }
+
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(
+                    text = "🎡 LIVE DRAW",
+                    color = GoldColor,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Black
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "Spinning the wheel...",
+                    color = Color(0xFFB7BDC9),
+                    fontSize = 12.sp
+                )
+            }
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        kotlinx.coroutines.delay(5000L)
+        onComplete()
+    }
+}
