@@ -1331,6 +1331,7 @@ function buildLeaderboard(allUsers, limit = 10) {
       streak: u.streak?.current || 0,
       photoUrl: u.photoUrl || '',
       tier: u.subscriptionTier || 'FREE',
+      countryCode: u.countryCode || '',
     }))
     .sort((a, b) => b.streak - a.streak)
     .slice(0, limit);
@@ -1670,6 +1671,81 @@ exports.checkBrokenStreaks = functions.pubsub
 
     console.log(`checkBrokenStreaks: offered=${recoveryOffered}, pushes=${pushSent}`);
     return { offered: recoveryOffered, pushes: pushSent };
+  });
+
+/**
+ * Cloud Function: Streak Danger Push — Hourly at :30 past the hour
+ * Sends a "your streak ends soon" push to users where it is 20:30 local time
+ * and they have an active streak but haven't uploaded today.
+ *
+ * Firestore composite index REQUIRED:
+ *   Collection: users
+ *   Fields: timezoneOffset (Ascending), streak.current (Descending)
+ *   Query scope: Collection
+ */
+exports.streakDangerPush = functions.pubsub
+  .schedule('30 * * * *')
+  .timeZone('UTC')
+  .onRun(async (context) => {
+    if (await shouldSkipTrigger('streakDangerPush')) return null;
+    const db = admin.firestore();
+    const now = new Date();
+    const currentUTCHour = now.getUTCHours();
+    // targetOffset = 20 - currentUTCHour  → users where local time = 20:30
+    const targetOffset = 20 - currentUTCHour;
+
+    console.log(`streakDangerPush: UTC hour=${currentUTCHour}, targeting timezoneOffset=${targetOffset}`);
+
+    // Query users in this timezone with an active streak
+    const snap = await db.collection('users')
+      .where('timezoneOffset', '==', targetOffset)
+      .where('streak.current', '>', 0)
+      .get();
+
+    if (snap.empty) {
+      console.log(`streakDangerPush: no users with timezoneOffset=${targetOffset} and active streak`);
+      return { targeted: 0, pushed: 0 };
+    }
+
+    const todayStr = now.toISOString().split('T')[0]; // "2026-05-04"
+    let targeted = 0;
+    let pushed = 0;
+
+    for (const doc of snap.docs) {
+      const data = doc.data();
+      const streakCurrent = data.streak?.current || 0;
+      const lastUploadDate = data.lastUploadDate || '';
+
+      // Skip if already uploaded today
+      if (lastUploadDate === todayStr) continue;
+      // Skip if no streak
+      if (streakCurrent <= 0) continue;
+
+      targeted++;
+      const fcmToken = data.fcmToken;
+      if (!fcmToken) continue;
+
+      try {
+        await admin.messaging().send({
+          token: fcmToken,
+          notification: {
+            title: '🔥 Streak in Danger!',
+            body: `Your ${streakCurrent}-day streak ends in 3 hours! Upload a photo now to stay in the Mythic Draw.`,
+          },
+          data: {
+            type: 'SYSTEM',
+            targetScreen: 'achievements',
+            click_action: 'FLUTTER_NOTIFICATION_CLICK',
+          },
+          android: { priority: 'high', notification: { sound: 'default', clickAction: 'FLUTTER_NOTIFICATION_CLICK' } },
+          apns: { headers: { 'apns-priority': '10' }, payload: { aps: { sound: 'default', badge: 1 } } },
+        });
+        pushed++;
+      } catch (_err) { /* ignore token failures */ }
+    }
+
+    console.log(`streakDangerPush: targeted=${targeted}, pushed=${pushed}`);
+    return { targeted, pushed };
   });
 
 // deploy-bump 
