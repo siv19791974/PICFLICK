@@ -9,7 +9,10 @@ import com.picflick.app.data.Flick
 sealed class Screen {
     data object Home : Screen()
     data object Profile : Screen()
-    data class UserProfile(val userId: String) : Screen() // View another user's profile
+    data class UserProfile(
+        val userId: String,
+        val restrictActions: Boolean = false // When true (e.g. from Mythic leaderboard), only Add Friend is shown
+    ) : Screen() // View another user's profile
     data object MyPhotos : Screen()
     data object Friends : Screen()
     data object UserFriends : Screen() // View another user's friends list (not main Friends tab)

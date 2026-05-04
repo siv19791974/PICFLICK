@@ -1323,6 +1323,7 @@ function buildLeaderboard(allUsers, limit = 10) {
       userName: u.displayName || 'Unknown',
       streak: u.streak?.current || 0,
       photoUrl: u.photoUrl || '',
+      tier: u.subscriptionTier || 'FREE',
     }))
     .sort((a, b) => b.streak - a.streak)
     .slice(0, limit);

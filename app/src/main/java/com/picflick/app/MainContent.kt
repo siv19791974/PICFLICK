@@ -310,7 +310,7 @@ fun AuthenticatedContent(
             onUserProfileClick = { userId ->
                 onScreenChange(
                     if (userId == userProfile.uid) Screen.Profile
-                    else Screen.UserProfile(userId)
+                    else Screen.UserProfile(userId, restrictActions = true)
                 )
             }
         )
@@ -1620,6 +1620,7 @@ private fun UserProfileScreenContent(
     var targetUserStreak by remember { mutableIntStateOf(0) }
 
     val targetUserId = (currentScreen as Screen.UserProfile).userId
+    val restrictActions = (currentScreen as Screen.UserProfile).restrictActions
     val isCurrentUser = targetUserId == userProfile.uid
     val isFriend = userProfile.following.contains(targetUserId) &&
             targetUser?.followers?.contains(userProfile.uid) == true
@@ -1677,6 +1678,7 @@ private fun UserProfileScreenContent(
             hasSentRequest = hasSentRequest,
             hasReceivedRequest = hasReceivedRequest,
             isLoading = isLoading,
+            restrictActions = restrictActions,
             onBack = { onScreenChange(Screen.Home) },
             onRefresh = {
                 isLoading = true
