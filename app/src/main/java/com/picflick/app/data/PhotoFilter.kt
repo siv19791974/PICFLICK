@@ -19,6 +19,7 @@ enum class PhotoFilter(val displayName: String, val icon: String) {
     NOIR("Noir", "🎬"),
     FADE("Fade", "🌫️"),
     VIVID("Vivid", "🌈"),
-    COLOR_INVERT("Color Invert", "🎨")
+    COLOR_INVERT("Color Invert", "🎨"),
+    SKETCH("Sketch", "✏️")
 }
 
