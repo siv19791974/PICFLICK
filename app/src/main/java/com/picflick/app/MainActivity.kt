@@ -793,13 +793,21 @@ fun MainScreen(
     }
 
     // Save timezone offset and country code to Firestore for localized push + leaderboard flags
+    // Country is detected from SIM card (most accurate) with fallback to device locale
     LaunchedEffect(currentUser?.uid) {
         val uid = currentUser?.uid ?: return@LaunchedEffect
         try {
             val tz = java.util.TimeZone.getDefault()
             val offsetMillis = tz.rawOffset
             val offsetHours = offsetMillis / (1000 * 60 * 60)
-            val country = java.util.Locale.getDefault().country ?: ""
+
+            // Detect country from SIM card (e.g., "fr" for French SIM, "gb" for UK SIM)
+            // Falls back to device locale if SIM info unavailable
+            val telephonyManager = appContext.getSystemService(android.content.Context.TELEPHONY_SERVICE)
+                as? android.telephony.TelephonyManager
+            val simCountry = telephonyManager?.simCountryIso?.uppercase() ?: ""
+            val country = simCountry.ifBlank { java.util.Locale.getDefault().country ?: "" }
+
             com.google.firebase.firestore.FirebaseFirestore.getInstance()
                 .collection("users")
                 .document(uid)
