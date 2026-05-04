@@ -125,7 +125,7 @@ fun ProfileScreen(
     }
 
     // Mythic monthly threshold (starts low, ramps to 100)
-    var mythicThreshold by remember { mutableIntStateOf(100) }
+    var mythicThreshold by remember { mutableIntStateOf(10) } // Month 1 default = 10 days
     LaunchedEffect(Unit) {
         try {
             val snap = FirebaseFirestore.getInstance()
@@ -133,7 +133,7 @@ fun ProfileScreen(
                 .document("mythicDraw")
                 .get()
                 .await()
-            mythicThreshold = (snap.getLong("currentThreshold") ?: 100L).toInt()
+            mythicThreshold = (snap.getLong("currentThreshold") ?: 10L).toInt()
         } catch (_: Exception) { }
     }
     

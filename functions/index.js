@@ -943,6 +943,13 @@ async function executeMythicDraw(db, isManual = false, forcedMonthKey = null) {
   const streakThreshold = monthNumber >= 5 ? 100 : (progressiveThresholds[monthNumber] || 100);
   console.log(`Mythic draw ${monthKey} (month #${monthNumber}): threshold = ${streakThreshold} days`);
 
+  // Persist threshold so the app can display correct progress all month
+  await db.collection('appConfig').doc('mythicDraw').set({
+    currentMonthNumber: monthNumber,
+    currentThreshold: streakThreshold,
+    lastUpdated: now,
+  }, { merge: true });
+
   // ─── QUERY ALL USERS (we need everyone for notifications & leaderboard) ───
   const allUsersSnapshot = await db.collection('users').get();
   const allUsers = allUsersSnapshot.docs
@@ -1454,14 +1461,13 @@ exports.mythicMondayPush = functions
     if (await shouldSkipTrigger('mythicMondayPush')) return null;
     const db = admin.firestore();
 
-    // Get current month draw info for threshold
     const date = new Date();
     const monthKey = `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}`;
-    const drawDoc = await db.collection('system').doc(`mythic_draw_${monthKey}`).get();
-    const drawData = drawDoc.exists ? drawDoc.data() : null;
-    const monthNumber = drawData?.monthNumber || 1;
-    const thresholds = { 1: 10, 2: 30, 3: 50, 4: 70 };
-    const streakThreshold = monthNumber >= 5 ? 100 : (thresholds[monthNumber] || 100);
+
+    // Get current threshold from appConfig (persisted by executeMythicDraw)
+    const appConfigDoc = await db.collection('appConfig').doc('mythicDraw').get();
+    const appConfigData = appConfigDoc.exists ? appConfigDoc.data() : null;
+    const streakThreshold = appConfigData?.currentThreshold || 10; // Month 1 default = 10
 
     // Get next draw date (1st of next month)
     const nextMonth = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 1));

@@ -139,7 +139,7 @@ fun DeveloperScreen(
     var fullScreenPhotoUrl by remember { mutableStateOf<String?>(null) }
 
     // Mythic Draw state
-    var mythicThreshold by remember { mutableIntStateOf(100) }
+    var mythicThreshold by remember { mutableIntStateOf(10) } // Month 1 default = 10 days
     var mythicLastDraw by remember { mutableStateOf<Map<String, Any>?>(null) }
     var mythicDrawLoading by remember { mutableStateOf(false) }
 
@@ -389,7 +389,7 @@ fun DeveloperScreen(
                 val doc = withContext(Dispatchers.IO) {
                     db.collection("appConfig").document("mythicDraw").get().await()
                 }
-                mythicThreshold = if (doc.exists()) (doc.getLong("streakThreshold") ?: 100).toInt() else 100
+                mythicThreshold = if (doc.exists()) (doc.getLong("currentThreshold") ?: 10).toInt() else 10
                 devLogs.add(0, "Mythic threshold loaded: $mythicThreshold")
             } catch (e: Exception) {
                 devLogs.add(0, "Mythic threshold load failed: ${e.message}")
