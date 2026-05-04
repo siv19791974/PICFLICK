@@ -301,7 +301,7 @@ fun HomeScreen(
                         viewModel.loadFlicks(userProfile.uid)
                     }
                 )
-                viewModel.flicks.isEmpty() -> EmptyState()
+                !viewModel.isLoading && viewModel.flicks.isEmpty() -> EmptyState()
                 else -> FlickGrid(
                     flicks = viewModel.flicks,
                     userProfile = userProfile,
