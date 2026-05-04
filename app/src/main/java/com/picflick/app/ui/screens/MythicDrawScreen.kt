@@ -303,77 +303,6 @@ fun MythicDrawScreen(
 
         val dd = drawData ?: return@Column
 
-        // ─── CURRENT DRAW STATUS ───
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 24.dp, vertical = 16.dp)
-                .border(
-                    1.dp,
-                    if (currentStreak >= dd.streakThreshold) GoldColor.copy(alpha = 0.4f)
-                    else MidBlue.copy(alpha = 0.35f),
-                    RoundedCornerShape(16.dp)
-                ),
-            colors = CardDefaults.cardColors(containerColor = bgColor),
-            shape = RoundedCornerShape(16.dp)
-        ) {
-            Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp)) {
-                Text(
-                    text = if (dd.isUpcoming) "UPCOMING DRAW" else "${dd.monthKey} DRAW RESULTS",
-                    color = if (currentStreak >= dd.streakThreshold) GoldColor else MidBlue,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Black
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = "Month #${dd.monthNumber} · Threshold: ${dd.streakThreshold} days",
-                    color = textPrimary,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Bold
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-
-                if (dd.isUpcoming) {
-                    val daysToGo = (dd.streakThreshold - currentStreak).coerceAtLeast(0)
-                    val progress = (currentStreak.toFloat() / dd.streakThreshold.toFloat()).coerceIn(0f, 1f)
-                    Text(
-                        text = if (currentStreak >= dd.streakThreshold)
-                            "STATUS: ELIGIBLE ✓ You're in the draw!"
-                        else
-                            "STATUS: $daysToGo more days to qualify",
-                        color = if (currentStreak >= dd.streakThreshold) Color(0xFF4CAF50) else textPrimary,
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    LinearProgressIndicator(
-                        progress = { progress },
-                        modifier = Modifier.fillMaxWidth().height(6.dp).clip(RoundedCornerShape(100)),
-                        color = if (currentStreak >= dd.streakThreshold) Color(0xFF4CAF50) else MidBlue,
-                        trackColor = textSecondary.copy(alpha = 0.2f)
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = "$currentStreak / ${dd.streakThreshold} days",
-                        color = textSecondary,
-                        fontSize = 11.sp
-                    )
-                } else if (dd.noWinner) {
-                    Text(
-                        text = "No eligible entrants this month. Keep uploading!",
-                        color = textSecondary,
-                        fontSize = 13.sp
-                    )
-                } else if (dd.winners.isNotEmpty()) {
-                    Text(
-                        text = "${dd.eligibleUserCount} entrants · ${dd.winners.size} winner${if (dd.winners.size > 1) "s" else ""}",
-                        color = textSecondary,
-                        fontSize = 12.sp
-                    )
-                }
-            }
-        }
-
         // ─── NEXT DRAW COUNTDOWN ───
         // If no completed draw yet (first month), show a big countdown card
         val nextDrawDate = remember {
@@ -386,7 +315,7 @@ fun MythicDrawScreen(
             cal.time
         }
         val nextDrawMonth = remember(nextDrawDate) {
-            val fmt = java.text.SimpleDateFormat("d MMMM yyyy", java.util.Locale.getDefault())
+            val fmt = java.text.SimpleDateFormat("MMMM yyyy", java.util.Locale.getDefault())
             fmt.format(nextDrawDate)
         }
         val daysUntilDraw = remember {
@@ -403,7 +332,7 @@ fun MythicDrawScreen(
                     .padding(horizontal = 24.dp)
                     .border(
                         1.5.dp,
-                        Brush.horizontalGradient(listOf(GoldColor.copy(alpha = 0.6f), GoldColor.copy(alpha = 0.2f))),
+                        MidBlue.copy(alpha = 0.5f),
                         RoundedCornerShape(16.dp)
                     ),
                 colors = CardDefaults.cardColors(containerColor = bgColor),
@@ -417,7 +346,7 @@ fun MythicDrawScreen(
                 ) {
                     Text(
                         text = "🎲 NEXT MYTHIC DRAW",
-                        color = GoldColor,
+                        color = MidBlue,
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Black
                     )
@@ -438,7 +367,7 @@ fun MythicDrawScreen(
                     if (currentStreak < dd.streakThreshold) {
                         Spacer(modifier = Modifier.height(6.dp))
                         Text(
-                            text = "You need ${dd.streakThreshold - currentStreak} more days to qualify",
+                            text = "You need ${dd.streakThreshold - currentStreak} more daily uploads to qualify",
                             color = if (isDarkMode) Color(0xFFFF6B6B) else Color(0xFFD32F2F),
                             fontSize = 12.sp,
                             fontWeight = FontWeight.SemiBold
@@ -483,15 +412,7 @@ fun MythicDrawScreen(
 
         // ─── USER'S MYTHIC STATS ───
         if (currentUserId.isNotBlank()) {
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = "YOUR MYTHIC STATS",
-                modifier = Modifier.padding(horizontal = 24.dp),
-                color = textPrimary,
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Black
-            )
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
             val contenderCount = userProfile.mythicContenderCount
             val boostAmount = userProfile.mythicUploadBoostAmount
@@ -502,109 +423,133 @@ fun MythicDrawScreen(
             val consecutiveMonths = userProfile.mythicConsecutiveMonths
             val isChampion = userProfile.mythicChampion
 
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 24.dp)
-                    .border(1.dp, MidBlue.copy(alpha = 0.25f), RoundedCornerShape(16.dp)),
-                colors = CardDefaults.cardColors(containerColor = bgColor),
-                shape = RoundedCornerShape(16.dp)
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    StatRow(label = "Current Streak", value = "$currentStreak days", icon = "🔥")
-                    if (contenderCount > 0) StatRow(label = "Draw Entries", value = "$contenderCount months", icon = "🎫")
-                    if (hasActiveBoost) StatRow(
-                        label = "Upload Boost",
-                        value = "+$boostAmount/day",
-                        icon = "🚀"
-                    )
-                    if (crown.isNotBlank()) StatRow(
-                        label = "Current Crown",
-                        value = crown.replaceFirstChar { it.uppercase() },
-                        icon = when (crown) {
-                            "gold" -> "👑"
-                            "silver" -> "🥈"
-                            "bronze" -> "🥉"
-                            else -> "🏆"
-                        }
-                    )
-                    if (hasBanner) StatRow(label = "Banner", value = "Active", icon = "🖼️")
+            // Streak progress bar — fatter, color-matched to achievement ring
+            val progress = (currentStreak.toFloat() / dd.streakThreshold.toFloat()).coerceIn(0f, 1f)
+            val progressColor = when {
+                progress >= 1f -> GoldColor
+                progress >= 0.8f -> Color(0xFFFF5722)
+                progress >= 0.6f -> Color(0xFFFF9800)
+                progress >= 0.3f -> Color(0xFF4CAF50)
+                else -> Color(0xFF2196F3)
+            }
 
-                    // ─── MYTHIC CHAMPION BADGE (permanent, ULTRA winners only) ───
-                    if (isChampion) {
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(12.dp))
-                                .background(Color(0xFFFFD700).copy(alpha = 0.12f))
-                                .border(1.dp, GoldColor.copy(alpha = 0.5f), RoundedCornerShape(12.dp))
-                                .padding(horizontal = 12.dp, vertical = 10.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(text = "🏆", fontSize = 24.sp)
-                            Spacer(modifier = Modifier.width(10.dp))
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = "MYTHIC CHAMPION",
-                                    color = GoldColor,
-                                    fontSize = 13.sp,
-                                    fontWeight = FontWeight.Black
-                                )
-                                Text(
-                                    text = "Permanent badge — ${userProfile.mythicChampionMonth}",
-                                    color = textSecondary,
-                                    fontSize = 11.sp
-                                )
-                            }
+            Column(modifier = Modifier.padding(horizontal = 24.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(text = "🔥", fontSize = 18.sp)
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Text(text = "Current Streak", color = textSecondary, fontSize = 13.sp)
+                    Spacer(modifier = Modifier.weight(1f))
+                    Text(
+                        text = "$currentStreak / ${dd.streakThreshold} days",
+                        color = textPrimary,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+                LinearProgressIndicator(
+                    progress = { progress },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(14.dp)
+                        .clip(RoundedCornerShape(100)),
+                    color = progressColor,
+                    trackColor = textSecondary.copy(alpha = 0.15f)
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+
+                if (contenderCount > 0) StatRow(label = "Draw Entries", value = "$contenderCount months", icon = "🎫")
+                if (hasActiveBoost) StatRow(
+                    label = "Upload Boost",
+                    value = "+$boostAmount/day",
+                    icon = "🚀"
+                )
+                if (crown.isNotBlank()) StatRow(
+                    label = "Current Crown",
+                    value = crown.replaceFirstChar { it.uppercase() },
+                    icon = when (crown) {
+                        "gold" -> "👑"
+                        "silver" -> "🥈"
+                        "bronze" -> "🥉"
+                        else -> "🏆"
+                    }
+                )
+                if (hasBanner) StatRow(label = "Banner", value = "Active", icon = "🖼️")
+
+                // ─── MYTHIC CHAMPION BADGE (permanent, ULTRA winners only) ───
+                if (isChampion) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(Color(0xFFFFD700).copy(alpha = 0.12f))
+                            .border(1.dp, GoldColor.copy(alpha = 0.5f), RoundedCornerShape(12.dp))
+                            .padding(horizontal = 12.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(text = "🏆", fontSize = 24.sp)
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "MYTHIC CHAMPION",
+                                color = GoldColor,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Black
+                            )
+                            Text(
+                                text = "Permanent badge — ${userProfile.mythicChampionMonth}",
+                                color = textSecondary,
+                                fontSize = 11.sp
+                            )
                         }
                     }
+                }
 
-                    // ─── TIER BADGE ───
-                    if (tier.isNotBlank() && consecutiveMonths > 0) {
-                        Spacer(modifier = Modifier.height(8.dp))
-                        val tierEmoji = when (tier) {
-                            "diamond" -> "💎"
-                            "gold" -> "🥇"
-                            "silver" -> "🥈"
-                            else -> "🥉"
-                        }
-                        val tierColor = when (tier) {
-                            "diamond" -> Color(0xFFB9F2FF)
-                            "gold" -> GoldColor
-                            "silver" -> SilverColor
-                            else -> BronzeColor
-                        }
-                        val tierLabel = when (tier) {
-                            "diamond" -> "Diamond Mythic"
-                            "gold" -> "Gold Mythic"
-                            "silver" -> "Silver Mythic"
-                            else -> "Bronze Mythic"
-                        }
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(12.dp))
-                                .background(tierColor.copy(alpha = 0.12f))
-                                .border(1.dp, tierColor.copy(alpha = 0.4f), RoundedCornerShape(12.dp))
-                                .padding(horizontal = 12.dp, vertical = 10.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(text = tierEmoji, fontSize = 24.sp)
-                            Spacer(modifier = Modifier.width(10.dp))
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = tierLabel.uppercase(),
-                                    color = tierColor,
-                                    fontSize = 13.sp,
-                                    fontWeight = FontWeight.Black
-                                )
-                                Text(
-                                    text = "$consecutiveMonths consecutive month${if (consecutiveMonths > 1) "s" else ""} entered",
-                                    color = textSecondary,
-                                    fontSize = 11.sp
-                                )
-                            }
+                // ─── TIER BADGE ───
+                if (tier.isNotBlank() && consecutiveMonths > 0) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    val tierEmoji = when (tier) {
+                        "diamond" -> "💎"
+                        "gold" -> "🥇"
+                        "silver" -> "🥈"
+                        else -> "🥉"
+                    }
+                    val tierColor = when (tier) {
+                        "diamond" -> Color(0xFFB9F2FF)
+                        "gold" -> GoldColor
+                        "silver" -> SilverColor
+                        else -> BronzeColor
+                    }
+                    val tierLabel = when (tier) {
+                        "diamond" -> "Diamond Mythic"
+                        "gold" -> "Gold Mythic"
+                        "silver" -> "Silver Mythic"
+                        else -> "Bronze Mythic"
+                    }
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(tierColor.copy(alpha = 0.12f))
+                            .border(1.dp, tierColor.copy(alpha = 0.4f), RoundedCornerShape(12.dp))
+                            .padding(horizontal = 12.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(text = tierEmoji, fontSize = 24.sp)
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = tierLabel.uppercase(),
+                                color = tierColor,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Black
+                            )
+                            Text(
+                                text = "$consecutiveMonths consecutive month${if (consecutiveMonths > 1) "s" else ""} entered",
+                                color = textSecondary,
+                                fontSize = 11.sp
+                            )
                         }
                     }
                 }
@@ -615,7 +560,7 @@ fun MythicDrawScreen(
         if (leaderboard.isNotEmpty()) {
             Spacer(modifier = Modifier.height(16.dp))
             Text(
-                text = "STREAK LEADERBOARD",
+                text = "WORLDWIDE STREAK LEADERBOARD",
                 modifier = Modifier.padding(horizontal = 24.dp),
                 color = textPrimary,
                 fontSize = 14.sp,
@@ -783,6 +728,31 @@ fun MythicDrawScreen(
             }
         }
 
+        // ─── PRIZES ───
+        Spacer(modifier = Modifier.height(16.dp))
+        Text(
+            text = "PRIZES",
+            modifier = Modifier.padding(horizontal = 24.dp),
+            color = textPrimary,
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Black
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Column(modifier = Modifier.padding(horizontal = 24.dp)) {
+            PrizeRow(place = "1st", prize = "3 months PRO + Gold Crown + Profile Banner", color = GoldColor, textPrimary = textPrimary)
+            PrizeRow(place = "2nd", prize = "1 month PRO + Silver Crown + Profile Banner", color = SilverColor, textPrimary = textPrimary)
+            PrizeRow(place = "3rd", prize = "2 weeks PRO + Bronze Crown + Profile Banner", color = BronzeColor, textPrimary = textPrimary)
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = "🏆 PRO winners receive ULTRA if already PRO. ULTRA winners get extended + Champion badge.",
+                color = textSecondary,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.SemiBold,
+                lineHeight = 18.sp
+            )
+        }
+
         // ─── HOW IT WORKS ───
         Spacer(modifier = Modifier.height(16.dp))
         Text(
@@ -794,22 +764,13 @@ fun MythicDrawScreen(
         )
         Spacer(modifier = Modifier.height(8.dp))
 
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 24.dp)
-                .border(1.dp, MidBlue.copy(alpha = 0.25f), RoundedCornerShape(16.dp)),
-            colors = CardDefaults.cardColors(containerColor = bgColor),
-            shape = RoundedCornerShape(16.dp)
-        ) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                HowItWorksRow(step = "1", text = "Upload daily to build your streak")
-                HowItWorksRow(step = "2", text = "Hit the monthly threshold to enter")
-                HowItWorksRow(step = "3", text = "Longer streak = more lottery tickets")
-                HowItWorksRow(step = "4", text = "3 winners picked randomly each month")
-                HowItWorksRow(step = "5", text = "Winners get PRO + crown + profile banner")
-                HowItWorksRow(step = "6", text = "All entrants get +30% upload boost for 30 days")
-            }
+        Column(modifier = Modifier.padding(horizontal = 24.dp)) {
+            HowItWorksRow(step = "1", text = "Upload daily to build your streak", textPrimary = textPrimary)
+            HowItWorksRow(step = "2", text = "Hit the monthly threshold to enter", textPrimary = textPrimary)
+            HowItWorksRow(step = "3", text = "Longer streak = more lottery tickets", textPrimary = textPrimary)
+            HowItWorksRow(step = "4", text = "3 winners picked randomly each month", textPrimary = textPrimary)
+            HowItWorksRow(step = "5", text = "Winners get PRO + crown + profile banner", textPrimary = textPrimary)
+            HowItWorksRow(step = "6", text = "All entrants get +30% upload boost for 30 days", textPrimary = textPrimary)
         }
 
         Spacer(modifier = Modifier.height(24.dp))
@@ -983,65 +944,56 @@ private fun LeaderboardRow(
         else -> textSecondary
     }
 
-    Card(
+    Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 24.dp, vertical = 4.dp)
+            .padding(horizontal = 24.dp, vertical = 6.dp)
             .clickable(onClick = onClick),
-        colors = CardDefaults.cardColors(
-            containerColor = if (isDarkMode) Color(0xFF1A1A2E) else Color(0xFFF8F8F8)
-        ),
-        shape = RoundedCornerShape(12.dp)
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 14.dp, vertical = 10.dp),
-            verticalAlignment = Alignment.CenterVertically
+        // Rank number or medal
+        Box(
+            modifier = Modifier.width(36.dp),
+            contentAlignment = Alignment.Center
         ) {
-            // Rank number or medal
-            Box(
-                modifier = Modifier.width(36.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                if (medalEmoji != null) {
-                    Text(text = medalEmoji, fontSize = 20.sp)
-                } else {
-                    Text(
-                        text = "$rank",
-                        color = rankColor,
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-            }
-
-            // Avatar with tier ring (matches app-wide style)
-            val tier = SubscriptionTier.fromString(entry.tier)
-            val tierColor = tier.getColor()
-            Box(
-                modifier = Modifier
-                    .size(48.dp)
-                    .clip(CircleShape)
-                    .background(
-                        brush = Brush.sweepGradient(
-                            listOf(
-                                tierColor,
-                                tier.getDarkColor(),
-                                tier.getLightColor(),
-                                tierColor
-                            )
-                        )
-                    )
-                    .padding(3.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                AsyncImage(
-                    model = entry.photoUrl,
-                    contentDescription = null,
-                    modifier = Modifier.fillMaxSize().clip(CircleShape),
+            if (medalEmoji != null) {
+                Text(text = medalEmoji, fontSize = 20.sp)
+            } else {
+                Text(
+                    text = "$rank",
+                    color = rankColor,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold
                 )
             }
+        }
+
+        // Avatar with tier ring (matches app-wide style)
+        val tier = SubscriptionTier.fromString(entry.tier)
+        val tierColor = tier.getColor()
+        Box(
+            modifier = Modifier
+                .size(56.dp)
+                .clip(CircleShape)
+                .background(
+                    brush = Brush.sweepGradient(
+                        listOf(
+                            tierColor,
+                            tier.getDarkColor(),
+                            tier.getLightColor(),
+                            tierColor
+                        )
+                    )
+                )
+                .padding(3.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            AsyncImage(
+                model = entry.photoUrl,
+                contentDescription = null,
+                modifier = Modifier.fillMaxSize().clip(CircleShape),
+            )
+        }
 
             Spacer(modifier = Modifier.width(12.dp))
 
@@ -1077,7 +1029,6 @@ private fun LeaderboardRow(
             }
         }
     }
-}
 
 @Composable
 private fun HallOfFameRow(
@@ -1141,7 +1092,7 @@ private fun StatRow(label: String, value: String, icon: String) {
 }
 
 @Composable
-private fun HowItWorksRow(step: String, text: String) {
+private fun HowItWorksRow(step: String, text: String, textPrimary: Color = Color(0xFFB7BDC9)) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -1160,9 +1111,35 @@ private fun HowItWorksRow(step: String, text: String) {
         Spacer(modifier = Modifier.width(12.dp))
         Text(
             text = text,
-            color = Color(0xFFB7BDC9),
+            color = textPrimary,
             fontSize = 13.sp,
+            fontWeight = FontWeight.SemiBold,
             modifier = Modifier.padding(top = 2.dp)
+        )
+    }
+}
+
+@Composable
+private fun PrizeRow(place: String, prize: String, color: Color, textPrimary: Color = Color.White) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = place,
+            color = color,
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Black,
+            modifier = Modifier.width(32.dp)
+        )
+        Text(
+            text = prize,
+            color = textPrimary,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.SemiBold,
+            lineHeight = 18.sp
         )
     }
 }
