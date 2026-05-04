@@ -20,6 +20,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForwardIos
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -538,6 +539,12 @@ fun MythicDrawScreen(
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Black
             )
+            Text(
+                text = "Tap any user to view their profile",
+                modifier = Modifier.padding(horizontal = 24.dp),
+                color = textSecondary.copy(alpha = 0.6f),
+                fontSize = 12.sp
+            )
             Spacer(modifier = Modifier.height(8.dp))
 
             leaderboard.forEachIndexed { index, entry ->
@@ -547,15 +554,10 @@ fun MythicDrawScreen(
                     isCurrentUser = entry.userId == currentUserId,
                     textPrimary = textPrimary,
                     textSecondary = textSecondary,
+                    bgColor = bgColor,
+                    isDarkMode = isDarkMode,
                     onClick = { onUserProfileClick(entry.userId) }
                 )
-                if (index < leaderboard.size - 1) {
-                    HorizontalDivider(
-                        modifier = Modifier.padding(horizontal = 32.dp),
-                        thickness = 0.5.dp,
-                        color = textSecondary.copy(alpha = 0.12f)
-                    )
-                }
             }
         }
 
@@ -724,7 +726,7 @@ fun MythicDrawScreen(
                 HowItWorksRow(step = "3", text = "Longer streak = more lottery tickets")
                 HowItWorksRow(step = "4", text = "3 winners picked randomly each month")
                 HowItWorksRow(step = "5", text = "Winners get PRO + crown + profile banner")
-                HowItWorksRow(step = "6", text = "All entrants get +50MB storage bonus")
+                HowItWorksRow(step = "6", text = "All entrants get +30% upload boost for 30 days")
             }
         }
 
@@ -882,8 +884,16 @@ private fun LeaderboardRow(
     isCurrentUser: Boolean,
     textPrimary: Color,
     textSecondary: Color,
+    bgColor: Color,
+    isDarkMode: Boolean,
     onClick: () -> Unit = {}
 ) {
+    val medalEmoji = when (rank) {
+        1 -> "🥇"
+        2 -> "🥈"
+        3 -> "🥉"
+        else -> null
+    }
     val rankColor = when (rank) {
         1 -> GoldColor
         2 -> SilverColor
@@ -891,69 +901,99 @@ private fun LeaderboardRow(
         else -> textSecondary
     }
 
-    Row(
+    Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 24.dp, vertical = 10.dp)
+            .padding(horizontal = 24.dp, vertical = 4.dp)
             .clickable(onClick = onClick),
-        verticalAlignment = Alignment.CenterVertically
+        colors = CardDefaults.cardColors(
+            containerColor = if (isDarkMode) Color(0xFF1A1A2E) else Color(0xFFF8F8F8)
+        ),
+        shape = RoundedCornerShape(12.dp)
     ) {
-        Box(
-            modifier = Modifier.width(32.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                text = "$rank",
-                color = rankColor,
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Bold
-            )
-        }
-
-        // Avatar with tier ring (matches app-wide style)
-        val tier = SubscriptionTier.fromString(entry.tier)
-        val tierColor = tier.getColor()
-        Box(
+        Row(
             modifier = Modifier
-                .size(40.dp)
-                .clip(CircleShape)
-                .background(
-                    brush = Brush.sweepGradient(
-                        listOf(
-                            tierColor,
-                            tier.getDarkColor(),
-                            tier.getLightColor(),
-                            tierColor
+                .fillMaxWidth()
+                .padding(horizontal = 14.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Rank number or medal
+            Box(
+                modifier = Modifier.width(36.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                if (medalEmoji != null) {
+                    Text(text = medalEmoji, fontSize = 20.sp)
+                } else {
+                    Text(
+                        text = "$rank",
+                        color = rankColor,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+
+            // Avatar with tier ring (matches app-wide style)
+            val tier = SubscriptionTier.fromString(entry.tier)
+            val tierColor = tier.getColor()
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .clip(CircleShape)
+                    .background(
+                        brush = Brush.sweepGradient(
+                            listOf(
+                                tierColor,
+                                tier.getDarkColor(),
+                                tier.getLightColor(),
+                                tierColor
+                            )
                         )
                     )
+                    .padding(3.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                AsyncImage(
+                    model = entry.photoUrl,
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxSize().clip(CircleShape),
                 )
-                .padding(3.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            AsyncImage(
-                model = entry.photoUrl,
-                contentDescription = null,
-                modifier = Modifier.fillMaxSize().clip(CircleShape),
-            )
+            }
+
+            Spacer(modifier = Modifier.width(12.dp))
+
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = entry.userName + if (isCurrentUser) " (You)" else "",
+                    color = textPrimary,
+                    fontSize = 15.sp,
+                    fontWeight = if (isCurrentUser) FontWeight.Bold else FontWeight.Normal
+                )
+                Text(
+                    text = "${entry.streak}-day streak",
+                    color = textSecondary.copy(alpha = 0.7f),
+                    fontSize = 12.sp
+                )
+            }
+
+            // Chevron + streak
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = "${entry.streak}d",
+                    color = rankColor,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.SemiBold
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
+                    contentDescription = null,
+                    tint = textSecondary.copy(alpha = 0.4f),
+                    modifier = Modifier.size(14.dp)
+                )
+            }
         }
-
-        Spacer(modifier = Modifier.width(12.dp))
-
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = entry.userName + if (isCurrentUser) " (You)" else "",
-                color = textPrimary,
-                fontSize = 14.sp,
-                fontWeight = if (isCurrentUser) FontWeight.Bold else FontWeight.Normal
-            )
-        }
-
-        Text(
-            text = "${entry.streak}d",
-            color = textSecondary,
-            fontSize = 14.sp,
-            fontWeight = FontWeight.SemiBold
-        )
     }
 }
 
