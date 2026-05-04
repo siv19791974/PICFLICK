@@ -251,7 +251,7 @@ fun SingleSelectMediaPicker(
     }
 }
 
-private const val MAX_MEDIA_ITEMS = 500
+private const val MAX_MEDIA_ITEMS = 2000
 
 @Composable
 private fun LimitedAccessBanner(
@@ -298,20 +298,20 @@ private fun loadSingleSelectDeviceMedia(context: android.content.Context): List<
 
     val projection = arrayOf(
         MediaStore.Images.Media._ID,
-        MediaStore.Images.Media.DATE_ADDED
+        MediaStore.Images.Media.DATE_TAKEN
     )
-    val sortOrder = "${MediaStore.Images.Media.DATE_ADDED} DESC"
+    val sortOrder = "${MediaStore.Images.Media.DATE_TAKEN} DESC"
 
     val result = mutableListOf<SingleSelectMediaItem>()
     context.contentResolver.query(collection, projection, null, null, sortOrder)?.use { cursor ->
         val idColumn = cursor.getColumnIndexOrThrow(MediaStore.Images.Media._ID)
-        val dateAddedColumn = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.DATE_ADDED)
+        val dateTakenColumn = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.DATE_TAKEN)
 
         while (cursor.moveToNext()) {
             val id = cursor.getLong(idColumn)
-            val dateAdded = cursor.getLong(dateAddedColumn)
+            val dateTaken = cursor.getLong(dateTakenColumn)
             val contentUri = ContentUris.withAppendedId(collection, id)
-            result.add(SingleSelectMediaItem(uri = contentUri, id = id, dateAddedSeconds = dateAdded))
+            result.add(SingleSelectMediaItem(uri = contentUri, id = id, dateAddedSeconds = dateTaken))
         }
     }
 

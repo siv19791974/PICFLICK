@@ -2089,24 +2089,24 @@ private fun loadDeviceMedia(context: android.content.Context): List<MediaPickerI
 
     val projection = arrayOf(
         MediaStore.Images.Media._ID,
-        MediaStore.Images.Media.DATE_ADDED
+        MediaStore.Images.Media.DATE_TAKEN
     )
-    val sortOrder = "${MediaStore.Images.Media.DATE_ADDED} DESC"
+    val sortOrder = "${MediaStore.Images.Media.DATE_TAKEN} DESC"
 
     val result = mutableListOf<MediaPickerItem>()
     context.contentResolver.query(collection, projection, null, null, sortOrder)?.use { cursor ->
         val idColumn = cursor.getColumnIndexOrThrow(MediaStore.Images.Media._ID)
-        val dateAddedColumn = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.DATE_ADDED)
+        val dateTakenColumn = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.DATE_TAKEN)
 
         while (cursor.moveToNext()) {
             val id = cursor.getLong(idColumn)
-            val dateAdded = cursor.getLong(dateAddedColumn)
+            val dateTaken = cursor.getLong(dateTakenColumn)
             val contentUri = ContentUris.withAppendedId(collection, id)
             result.add(
                 MediaPickerItem(
                     uri = contentUri,
                     id = id,
-                    dateAddedSeconds = dateAdded
+                    dateAddedSeconds = dateTaken
                 )
             )
         }
