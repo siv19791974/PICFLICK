@@ -1733,6 +1733,10 @@ private fun UserProfileScreenContent(
                 friendsViewModel.acceptFollowRequest(userProfile.uid, userProfile.displayName, target)
                 authViewModel.reloadUserProfile()
             },
+            onCancelRequest = {
+                friendsViewModel.cancelFollowRequest(userProfile.uid, target.uid)
+                authViewModel.reloadUserProfile()
+            },
             onMessageClick = {
                 if (isFriend) {
                     scope.launch {

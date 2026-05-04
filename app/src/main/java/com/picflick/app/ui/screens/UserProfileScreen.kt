@@ -82,6 +82,7 @@ fun UserProfileScreen(
     onProfilePhotoClick: () -> Unit = {},
     onAddFriend: () -> Unit = {},
     onAcceptRequest: () -> Unit = {}, // Accept friend request from this user
+    onCancelRequest: () -> Unit = {}, // Cancel a sent friend request
     onMessageClick: () -> Unit = {},
     onMuteUser: () -> Unit = {},
     onBlockUser: () -> Unit = {},
@@ -112,6 +113,7 @@ fun UserProfileScreen(
     var showReactionPicker by remember { mutableStateOf(false) }
     var flickForReaction by remember { mutableStateOf<Flick?>(null) }
     var showUnfriendConfirm by remember { mutableStateOf(false) }
+    var showCancelRequestConfirm by remember { mutableStateOf(false) }
 
     LaunchedEffect(isFriend) {
         if (!isFriend) {
@@ -494,14 +496,37 @@ fun UserProfileScreen(
                     Text("Accept Friend Request")
                 }
             } else if (hasSentRequest) {
-                // Request pending
-                Text(
-                    text = "Friend request sent",
-                    fontSize = 16.sp,
-                    color = secondaryTextColor,
-                    modifier = Modifier
-                        .padding(horizontal = sidePadding)
-                )
+                // Request pending — navy pill button, tap to cancel
+                if (showCancelRequestConfirm) {
+                    Button(
+                        onClick = {
+                            onCancelRequest()
+                            showCancelRequestConfirm = false
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = sidePadding),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFFC62828),
+                            contentColor = Color.White
+                        )
+                    ) {
+                        Text("Confirm Cancel Request")
+                    }
+                } else {
+                    Button(
+                        onClick = { showCancelRequestConfirm = true },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = sidePadding),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFF2A4A73),
+                            contentColor = Color.White
+                        )
+                    ) {
+                        Text("Friend Request Sent — Tap to Cancel")
+                    }
+                }
             } else {
                 // Add friend button — navy blue (same as Find Friends / Message)
                 Button(
