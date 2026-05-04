@@ -310,7 +310,7 @@ fun AuthenticatedContent(
             onUserProfileClick = { userId ->
                 onScreenChange(
                     if (userId == userProfile.uid) Screen.Profile
-                    else Screen.UserProfile(userId, restrictActions = true)
+                    else Screen.UserProfile(userId, restrictActions = true, returnTo = Screen.MythicDraw)
                 )
             }
         )
@@ -1679,7 +1679,7 @@ private fun UserProfileScreenContent(
             hasReceivedRequest = hasReceivedRequest,
             isLoading = isLoading,
             restrictActions = restrictActions,
-            onBack = { onScreenChange(Screen.Home) },
+            onBack = { onScreenChange((currentScreen as Screen.UserProfile).returnTo) },
             onRefresh = {
                 isLoading = true
                 repository.getUserProfile(target.uid) { result ->

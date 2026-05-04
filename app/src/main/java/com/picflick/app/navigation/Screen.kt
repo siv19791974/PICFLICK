@@ -11,7 +11,8 @@ sealed class Screen {
     data object Profile : Screen()
     data class UserProfile(
         val userId: String,
-        val restrictActions: Boolean = false // When true (e.g. from Mythic leaderboard), only Add Friend is shown
+        val restrictActions: Boolean = false, // When true (e.g. from Mythic leaderboard), only Add Friend is shown
+        val returnTo: Screen = Home // Screen to return to when tapping back
     ) : Screen() // View another user's profile
     data object MyPhotos : Screen()
     data object Friends : Screen()
