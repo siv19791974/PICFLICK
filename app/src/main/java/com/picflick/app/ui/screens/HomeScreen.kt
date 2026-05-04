@@ -8,8 +8,6 @@ import android.net.Uri
 import android.os.Build
 import android.provider.MediaStore
 import android.widget.Toast
-import com.google.firebase.firestore.FirebaseFirestore
-import kotlinx.coroutines.tasks.await
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -271,33 +269,6 @@ fun HomeScreen(
     val isDarkMode = ThemeManager.isDarkMode.value
     var isFeedAtTop by remember { mutableStateOf(true) }
 
-    // ─── FEATURED MYTHIC WINNER BANNER ───
-    var featuredWinner by remember { mutableStateOf<FeaturedWinnerInfo?>(null) }
-    LaunchedEffect(Unit) {
-        try {
-            val db = com.google.firebase.firestore.FirebaseFirestore.getInstance()
-            val cal = java.util.Calendar.getInstance()
-            val monthKey = "${cal.get(java.util.Calendar.YEAR)}-${String.format("%02d", cal.get(java.util.Calendar.MONTH) + 1)}"
-            val drawDoc = db.collection("system").document("mythic_draw_$monthKey").get().await()
-            if (drawDoc.exists()) {
-                val fw = drawDoc.get("featuredWinner") as? Map<String, Any>
-                if (fw != null) {
-                    val expiresAt = (fw["expiresAt"] as? Number)?.toLong() ?: 0L
-                    if (expiresAt > System.currentTimeMillis()) {
-                        featuredWinner = FeaturedWinnerInfo(
-                            userId = fw["userId"] as? String ?: "",
-                            userName = fw["userName"] as? String ?: "",
-                            streak = (fw["streak"] as? Number)?.toInt() ?: 0,
-                            photoUrl = fw["photoUrl"] as? String ?: "",
-                            monthKey = fw["monthKey"] as? String ?: "",
-                            monthNumber = (fw["monthNumber"] as? Number)?.toInt() ?: 0,
-                        )
-                    }
-                }
-            }
-        } catch (_: Exception) { /* ignore */ }
-    }
-
     // Column WITHOUT verticalScroll (because LazyVerticalGrid has its own scroll)
     // NO BANNER HERE - banner is now in MainActivity's Scaffold topBar!
     Column(
@@ -306,15 +277,6 @@ fun HomeScreen(
             .background(isDarkModeBackground(isDarkMode)),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // Featured Mythic Winner Banner
-        featuredWinner?.let { fw ->
-            FeaturedWinnerBanner(
-                winner = fw,
-                isDarkMode = isDarkMode,
-                onClick = { onUserProfileClick(fw.userId) }
-            )
-        }
-
         // Modern PullRefresh content
         val pullRefreshState = rememberPullRefreshState(
             refreshing = viewModel.isLoading,
@@ -3468,94 +3430,4 @@ private fun FlyingReactionAnimation(
     }
 }
 
-// ─── MYTHIC FEATURED WINNER ───
 
-data class FeaturedWinnerInfo(
-    val userId: String,
-    val userName: String,
-    val streak: Int,
-    val photoUrl: String,
-    val monthKey: String,
-    val monthNumber: Int
-)
-
-@Composable
-private fun FeaturedWinnerBanner(
-    winner: FeaturedWinnerInfo,
-    isDarkMode: Boolean,
-    onClick: () -> Unit
-) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp)
-            .clickable { onClick() },
-        colors = androidx.compose.material3.CardDefaults.cardColors(
-            containerColor = Color(0xFF1A1A2E)
-        ),
-        shape = RoundedCornerShape(16.dp),
-        border = androidx.compose.foundation.BorderStroke(
-            1.dp,
-            Color(0xFFFFD700).copy(alpha = 0.35f)
-        )
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Box(
-                modifier = Modifier.size(48.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                coil3.compose.AsyncImage(
-                    model = winner.photoUrl,
-                    contentDescription = null,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .clip(CircleShape),
-                    contentScale = androidx.compose.ui.layout.ContentScale.Crop
-                )
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .size(20.dp)
-                        .clip(CircleShape)
-                        .background(Color(0xFFFFD700)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text("👑", fontSize = 12.sp)
-                }
-            }
-
-            Spacer(modifier = Modifier.width(12.dp))
-
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = "🏆 Mythic Winner — ${winner.monthKey}",
-                    color = Color(0xFFFFD700),
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Bold
-                )
-                Spacer(modifier = Modifier.height(2.dp))
-                Text(
-                    text = winner.userName,
-                    color = Color.White,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.SemiBold
-                )
-                Text(
-                    text = "${winner.streak}-day streak · Tap to view profile",
-                    color = Color(0xFFB7BDC9),
-                    fontSize = 11.sp
-                )
-            }
-
-            Text(
-                text = "👑",
-                fontSize = 28.sp
-            )
-        }
-    }
-}
