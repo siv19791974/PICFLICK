@@ -6,6 +6,7 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.MediaStore
+import android.provider.Settings
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
@@ -1733,7 +1734,20 @@ private fun InAppMediaPickerScreen(
         return hasBase || hasSelected
     }
 
+    fun isFullMediaAccess(): Boolean {
+        return androidx.core.content.ContextCompat.checkSelfPermission(
+            context,
+            mediaPermission
+        ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+    }
+
     var hasMediaPermission by remember { mutableStateOf(hasAnyMediaPermission()) }
+    var isLimitedAccess by remember { mutableStateOf(false) }
+
+    fun checkAccessState() {
+        hasMediaPermission = hasAnyMediaPermission()
+        isLimitedAccess = hasMediaPermission && !isFullMediaAccess()
+    }
 
     val mediaPermissionsToRequest = remember(mediaPermission, visualUserSelectedPermission) {
         buildList {
@@ -1744,8 +1758,8 @@ private fun InAppMediaPickerScreen(
 
     val mediaPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestMultiplePermissions()
-    ) { grantedMap ->
-        hasMediaPermission = hasAnyMediaPermission() || grantedMap.values.any { it }
+    ) { _ ->
+        checkAccessState()
     }
 
     fun requestMediaPermissions() {
@@ -1767,7 +1781,7 @@ private fun InAppMediaPickerScreen(
     }
 
     LaunchedEffect(Unit) {
-        hasMediaPermission = hasAnyMediaPermission()
+        checkAccessState()
         if (!hasMediaPermission) {
             requestMediaPermissions()
         }
@@ -1860,6 +1874,18 @@ private fun InAppMediaPickerScreen(
                     )
                 }
             }
+        }
+
+        if (isLimitedAccess) {
+            InAppLimitedAccessBanner(
+                isDarkMode = isDarkMode,
+                onGrantFullAccess = {
+                    val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                        data = Uri.fromParts("package", context.packageName, null)
+                    }
+                    context.startActivity(intent)
+                }
+            )
         }
 
         Box(modifier = Modifier.weight(1f)) {
@@ -1972,6 +1998,42 @@ private fun InAppMediaPickerScreen(
             }
         }
 
+    }
+}
+
+@Composable
+private fun InAppLimitedAccessBanner(
+    isDarkMode: Boolean,
+    onGrantFullAccess: () -> Unit
+) {
+    val bgColor = if (isDarkMode) Color(0xFF3D3400) else Color(0xFFFFF3CD)
+    val textColor = if (isDarkMode) Color(0xFFFFE082) else Color(0xFF856404)
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(bgColor)
+            .padding(horizontal = 12.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Text(
+            text = "Limited gallery access. Only selected photos shown.",
+            color = textColor,
+            fontSize = 12.sp,
+            modifier = Modifier.weight(1f)
+        )
+        TextButton(
+            onClick = onGrantFullAccess,
+            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
+        ) {
+            Text(
+                text = "Grant Full Access",
+                color = textColor,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold
+            )
+        }
     }
 }
 
