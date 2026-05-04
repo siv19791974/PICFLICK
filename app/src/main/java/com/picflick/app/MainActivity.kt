@@ -1710,17 +1710,13 @@ private fun InAppMediaPickerScreen(
     }
 
     var mediaItems by remember { mutableStateOf<List<MediaPickerItem>>(emptyList()) }
-    var isLoadingMedia by remember { mutableStateOf(true) }
 
     LaunchedEffect(hasMediaPermission) {
         if (!hasMediaPermission) {
-            isLoadingMedia = false
             mediaItems = emptyList()
             return@LaunchedEffect
         }
-        isLoadingMedia = true
         mediaItems = withContext(Dispatchers.IO) { loadDeviceMedia(context) }
-        isLoadingMedia = false
     }
 
     LaunchedEffect(Unit) {
@@ -1821,13 +1817,6 @@ private fun InAppMediaPickerScreen(
 
         Box(modifier = Modifier.weight(1f)) {
             when {
-                isLoadingMedia -> {
-                    CircularProgressIndicator(
-                        modifier = Modifier.align(Alignment.Center),
-                        color = if (isDarkMode) Color.White else Color(0xFF1565C0)
-                    )
-                }
-
                 !hasMediaPermission -> {
                     Column(
                         modifier = Modifier
