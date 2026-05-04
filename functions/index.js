@@ -1055,16 +1055,33 @@ async function executeMythicDraw(db, isManual = false, forcedMonthKey = null) {
   // ─── AWARD PRIZES, CROWNS, BANNERS TO WINNERS ───
   const winnerBannerText = `Mythic Draw Winner — ${monthKey}`;
   for (const w of winners) {
-    const proMs = w.proMonths * 30 * 24 * 60 * 60 * 1000;
-    const expiryDate = now + proMs;
-
-    // Update user doc with prize, crown, banner, history
     const userRef = db.collection('users').doc(w.userId);
     const userDoc = await userRef.get();
+    const currentTier = userDoc.data()?.subscriptionTier || 'FREE';
+    const existingExpiry = userDoc.data()?.subscriptionExpiryDate || now;
     const existingHistory = userDoc.get('mythicDrawHistory') || [];
 
-    await userRef.update({
-      subscriptionTier: 'PRO',
+    // Tier-scaled prize: PRO → ULTRA, ULTRA → extend, below PRO → PRO
+    let prizeTier = 'PRO';
+    let prizeDurationMs = w.proMonths * 30 * 24 * 60 * 60 * 1000;
+    let prizeLabelText = w.proMonths >= 1 ? `${w.proMonths} month PRO` : '2 week PRO';
+
+    if (currentTier === 'PRO') {
+      prizeTier = 'ULTRA';
+      prizeLabelText = w.proMonths >= 1 ? `${w.proMonths} month ULTRA` : '2 week ULTRA';
+    } else if (currentTier === 'ULTRA') {
+      prizeTier = 'ULTRA';
+      // ULTRA winners always get 3 months extension regardless of place
+      prizeDurationMs = 3 * 30 * 24 * 60 * 60 * 1000;
+      prizeLabelText = '3 month ULTRA extension';
+    }
+
+    const expiryDate = (currentTier === 'ULTRA')
+      ? (existingExpiry + prizeDurationMs)
+      : (now + prizeDurationMs);
+
+    const winnerUpdate = {
+      subscriptionTier: prizeTier,
       subscriptionActive: true,
       subscriptionExpiryDate: expiryDate,
       mythicDrawWonAt: now,
@@ -1082,7 +1099,15 @@ async function executeMythicDraw(db, isManual = false, forcedMonthKey = null) {
         streak: w.streak,
         wonAt: now,
       }),
-    });
+    };
+
+    // ULTRA winners get the permanent Mythic Champion badge
+    if (currentTier === 'ULTRA') {
+      winnerUpdate.mythicChampion = true;
+      winnerUpdate.mythicChampionMonth = monthKey;
+    }
+
+    await userRef.update(winnerUpdate);
 
     // Send personal FCM push to winner
     try {
@@ -1092,7 +1117,7 @@ async function executeMythicDraw(db, isManual = false, forcedMonthKey = null) {
           token: winnerFcmToken,
           notification: {
             title: `${w.messagePrefix}!`,
-            body: `You placed ${w.prizeLabel} in the Mythic Monthly Draw with a ${w.streak}-day streak! ${w.proMonths >= 1 ? w.proMonths + ' month' : '2 week'} PRO upgrade awarded.`,
+            body: `You placed ${w.prizeLabel} in the Mythic Monthly Draw with a ${w.streak}-day streak! ${prizeLabelText} awarded.`,
           },
           data: {
             type: 'SYSTEM',
@@ -1102,24 +1127,29 @@ async function executeMythicDraw(db, isManual = false, forcedMonthKey = null) {
           android: { priority: 'high', notification: { sound: 'default', clickAction: 'FLUTTER_NOTIFICATION_CLICK' } },
           apns: { headers: { 'apns-priority': '10' }, payload: { aps: { sound: 'default', badge: 1 } } },
         });
-        console.log(`FCM push sent to ${w.prizeLabel} winner ${w.userId}`);
+        console.log(`FCM push sent to ${w.prizeLabel} winner ${w.userId} (${currentTier} → ${prizeTier})`);
       }
     } catch (pushErr) {
       console.error(`Error sending FCM push to ${w.prizeLabel} winner:`, pushErr.message);
     }
   }
 
-  // ─── STORAGE BONUS + CONTENDER BADGE FOR ALL ENTRANTS ───
-  const entrantIds = eligibleUsers.map((u) => u.uid);
-  const STORAGE_BONUS_MB = 50;
+  // ─── UPLOAD BOOST + CONTENDER BADGE FOR ALL ENTRANTS (including winners) ───
+  const tierBaseLimits = { FREE: 10, STANDARD: 25, PLUS: 50, PRO: 100, ULTRA: 9999 };
   for (const entrant of eligibleUsers) {
     const entrantRef = db.collection('users').doc(entrant.uid);
+    const userDoc = await entrantRef.get();
+    const currentTier = userDoc.data()?.subscriptionTier || 'FREE';
+    const base = tierBaseLimits[currentTier] || 10;
+    const boost = (currentTier === 'ULTRA') ? 0 : Math.ceil(base * 0.3);
+
     await entrantRef.update({
       mythicContenderCount: admin.firestore.FieldValue.increment(1),
-      mythicStorageBonusTotal: admin.firestore.FieldValue.increment(STORAGE_BONUS_MB),
+      mythicUploadBoostAmount: boost,
+      mythicUploadBoostExpiry: now + (30 * 24 * 60 * 60 * 1000), // 30 days
     });
   }
-  console.log(`Storage bonus (+${STORAGE_BONUS_MB}MB) and contender badge awarded to ${eligibleUsers.length} entrants`);
+  console.log(`Upload boost (+30%) and contender badge awarded to ${eligibleUsers.length} entrants`);
 
   // ─── NOTIFY ALL USERS (including winners get a separate announcement too) ───
   const winnerNamesList = winners.map((w) => `${w.crownEmoji} ${w.userName} (${w.prizeLabel}, ${w.streak}d)`).join(', ');
@@ -1656,7 +1686,77 @@ exports.testMythicDraw = functions.https.onCall(async (data, context) => {
     }
   }
 
-  // Save result
+  // ─── AWARD PRIZES + UPLOAD BOOST (mirrors executeMythicDraw logic) ───
+  const winnerBannerText = `Mythic Draw Winner — ${testMonthKey}`;
+  const tierBaseLimits = { FREE: 10, STANDARD: 25, PLUS: 50, PRO: 100, ULTRA: 9999 };
+
+  for (const w of winners) {
+    const userRef = db.collection('users').doc(w.userId);
+    const userDoc = await userRef.get();
+    const currentTier = userDoc.data()?.subscriptionTier || 'FREE';
+    const existingExpiry = userDoc.data()?.subscriptionExpiryDate || Date.now();
+    const existingHistory = userDoc.get('mythicDrawHistory') || [];
+
+    const prizeDurations = { 1: 3, 2: 1, 3: 0.5 };
+    const prizeDurationMs = (prizeDurations[w.place] || 1) * 30 * 24 * 60 * 60 * 1000;
+
+    let prizeTier = 'PRO';
+    let expiryDate;
+
+    if (currentTier === 'PRO') {
+      prizeTier = 'ULTRA';
+      expiryDate = Date.now() + prizeDurationMs;
+    } else if (currentTier === 'ULTRA') {
+      prizeTier = 'ULTRA';
+      // ULTRA winners get 3 months extension regardless of place in test mode too
+      expiryDate = existingExpiry + (3 * 30 * 24 * 60 * 60 * 1000);
+    } else {
+      expiryDate = Date.now() + prizeDurationMs;
+    }
+
+    const winnerUpdate = {
+      subscriptionTier: prizeTier,
+      subscriptionActive: true,
+      subscriptionExpiryDate: expiryDate,
+      mythicDrawWonAt: Date.now(),
+      mythicDrawWonMonth: testMonthKey,
+      mythicCrown: w.crown,
+      mythicCrownExpiry: Date.now() + (30 * 24 * 60 * 60 * 1000),
+      mythicWinnerBanner: winnerBannerText,
+      mythicWinnerBannerExpiry: Date.now() + (30 * 24 * 60 * 60 * 1000),
+      mythicLastWonMonthKey: testMonthKey,
+      mythicDrawHistory: admin.firestore.FieldValue.arrayUnion({
+        monthKey: testMonthKey,
+        monthNumber: testMonthNumber,
+        place: w.place,
+        prizeLabel: w.prizeLabel,
+        streak: w.streak,
+        wonAt: Date.now(),
+      }),
+    };
+    if (currentTier === 'ULTRA') {
+      winnerUpdate.mythicChampion = true;
+      winnerUpdate.mythicChampionMonth = testMonthKey;
+    }
+    await userRef.update(winnerUpdate);
+    console.log(`[TEST] Winner ${w.userId}: ${currentTier} → ${prizeTier}`);
+  }
+
+  // Upload boost for all entrants (including winners)
+  for (const entrant of eligibleUsers) {
+    const entrantRef = db.collection('users').doc(entrant.uid);
+    const userDoc = await entrantRef.get();
+    const currentTier = userDoc.data()?.subscriptionTier || 'FREE';
+    const base = tierBaseLimits[currentTier] || 10;
+    const boost = (currentTier === 'ULTRA') ? 0 : Math.ceil(base * 0.3);
+    await entrantRef.update({
+      mythicContenderCount: admin.firestore.FieldValue.increment(1),
+      mythicUploadBoostAmount: boost,
+      mythicUploadBoostExpiry: Date.now() + (30 * 24 * 60 * 60 * 1000),
+    });
+  }
+
+  // Save draw result
   await drawDocRef.set({
     monthKey: testMonthKey,
     monthNumber: testMonthNumber,

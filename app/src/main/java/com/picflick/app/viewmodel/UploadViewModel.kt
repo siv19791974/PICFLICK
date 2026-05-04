@@ -163,8 +163,8 @@ class UploadViewModel : ViewModel() {
         viewModelScope.launch {
             var optimisticFlickId: String? = null
             try {
-                // Check daily limit based on subscription tier
-                val dailyLimit = userProfile.getEffectiveTier().getDailyUploadLimit()
+                // Check daily limit including Mythic upload boost
+                val dailyLimit = userProfile.getEffectiveDailyUploadLimit()
                 if (dailyUploadCount >= dailyLimit) {
                     uploadError = "Daily upload limit reached (${dailyUploadCount}/${dailyLimit}). Try again tomorrow!"
                     return@launch
@@ -295,7 +295,7 @@ class UploadViewModel : ViewModel() {
             if (photoUris.isEmpty()) return@launch
 
             val tier = userProfile.getEffectiveTier()
-            val dailyLimit = tier.getDailyUploadLimit()
+            val dailyLimit = userProfile.getEffectiveDailyUploadLimit()
             val remainingDaily = if (dailyLimit == Int.MAX_VALUE) Int.MAX_VALUE else (dailyLimit - dailyUploadCount).coerceAtLeast(0)
             val perBatchCap = if (tier == com.picflick.app.data.SubscriptionTier.ULTRA) 100 else remainingDaily
             val allowedCount = photoUris.size.coerceAtMost(perBatchCap)

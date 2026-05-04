@@ -398,6 +398,29 @@ fun ProfileScreen(
             }
         }
 
+        // Mythic Champion Badge (permanent, ULTRA winners only)
+        if (userProfile.mythicChampion) {
+            Spacer(modifier = Modifier.height(6.dp))
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(Color(0xFFFFD700).copy(alpha = 0.12f))
+                    .border(1.dp, Color(0xFFFFD700).copy(alpha = 0.5f), RoundedCornerShape(20.dp))
+                    .padding(horizontal = 14.dp, vertical = 6.dp)
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(text = "🏆", fontSize = 14.sp)
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = "MYTHIC CHAMPION",
+                        color = Color(0xFFFFD700),
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Black
+                    )
+                }
+            }
+        }
+
         // Bio - clickable to edit
         if (displayBio.isNotEmpty()) {
             Spacer(modifier = Modifier.height(12.dp))

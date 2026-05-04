@@ -48,12 +48,17 @@ data class UserProfile(
     val mythicWinnerBanner: String = "", // e.g. "Mythic Draw Winner — 2026-05"
     val mythicWinnerBannerExpiry: Any? = 0L, // Epoch millis when banner expires
     val mythicContenderCount: Int = 0, // How many draws entered
-    val mythicStorageBonusTotal: Int = 0, // Total MB bonus earned
     val mythicLastWonMonthKey: String = "", // Last month they won (for repeat protection display)
     // Mythic tier badge fields
     val mythicConsecutiveMonths: Int = 0, // Consecutive months entered into draw
     val mythicTier: String = "", // "bronze", "silver", "gold", "diamond", or ""
     val mythicTierUpdatedAt: Any? = 0L, // When tier was last updated
+    // Mythic upload boost (replaces storage bonus)
+    val mythicUploadBoostAmount: Int = 0, // Extra daily uploads granted
+    val mythicUploadBoostExpiry: Any? = 0L, // Epoch millis when boost expires
+    // Mythic Champion — permanent badge for ULTRA winners
+    val mythicChampion: Boolean = false,
+    val mythicChampionMonth: String = "",
 ) {
     /**
      * Check if user has a pending follow request from another user
@@ -103,6 +108,47 @@ data class UserProfile(
         }
     }
     
+    /**
+     * Get effective daily upload limit including Mythic boost
+     */
+    fun getEffectiveDailyUploadLimit(): Int {
+        val base = getEffectiveTier().getDailyUploadLimit()
+        if (base == Int.MAX_VALUE) return Int.MAX_VALUE // ULTRA
+
+        val boost = mythicUploadBoostAmount
+        if (boost <= 0) return base
+
+        val expiryMillis = when (val expiry = mythicUploadBoostExpiry) {
+            null -> 0L
+            is Long -> expiry
+            is Int -> expiry.toLong()
+            is Double -> expiry.toLong()
+            is Timestamp -> expiry.toDate().time
+            is String -> expiry.toLongOrNull() ?: 0L
+            else -> 0L
+        }
+
+        return if (expiryMillis > System.currentTimeMillis()) base + boost else base
+    }
+
+    /**
+     * Check if user has active Mythic upload boost
+     */
+    fun hasActiveUploadBoost(): Boolean {
+        val boost = mythicUploadBoostAmount
+        if (boost <= 0) return false
+        val expiryMillis = when (val expiry = mythicUploadBoostExpiry) {
+            null -> 0L
+            is Long -> expiry
+            is Int -> expiry.toLong()
+            is Double -> expiry.toLong()
+            is Timestamp -> expiry.toDate().time
+            is String -> expiry.toLongOrNull() ?: 0L
+            else -> 0L
+        }
+        return expiryMillis > System.currentTimeMillis()
+    }
+
     /**
      * Calculate storage used in GB
      */
