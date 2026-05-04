@@ -495,6 +495,9 @@ fun MainScreen(
     // Streak recovery state
     var showStreakRecovery by remember { mutableStateOf(false) }
 
+    // Snackbar state for error feedback and push notification toasts
+    val snackbarHostState = remember { SnackbarHostState() }
+
     // Shared upload/dialog states (declared early because they're used by effects below)
     var selectedPhotoUri by remember { mutableStateOf<Uri?>(null) }
     var selectedMediaUris by remember { mutableStateOf<List<Uri>>(emptyList()) }
@@ -689,6 +692,18 @@ fun MainScreen(
                 }
                 "achievements" -> {
                     currentScreen = Screen.MythicDraw
+                    val isStreakRecovery = pushData.getString("streakRecovery") == "true"
+                    val pushTitle = pushData.getString("title") ?: ""
+                    val snackMessage = when {
+                        isStreakRecovery -> "🔥 Streak broken! Tap Recover on your profile to restore it."
+                        pushTitle.contains("Mythic Monday", ignoreCase = true) -> "👑 Mythic Monday — Check your streak progress in the draw!"
+                        pushTitle.isNotBlank() -> pushTitle
+                        else -> "👑 Mythic Draw — Check your streak status!"
+                    }
+                    snackbarHostState.showSnackbar(
+                        message = snackMessage,
+                        duration = SnackbarDuration.Long
+                    )
                 }
                 "photo" -> {
                     val flickId = pushData.getString("flickId")
@@ -995,9 +1010,6 @@ fun MainScreen(
             uploadViewModel.resetUploadState()
         }
     }
-
-    // Snackbar state for error feedback
-    val snackbarHostState = remember { SnackbarHostState() }
 
     // Track screen views for analytics
     LaunchedEffect(currentScreen) {
