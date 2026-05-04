@@ -10,5 +10,27 @@
       "source": "functions",
       "codebase": "default"
     }
-  ]
+  ],
+  "hosting": {
+    "public": "public",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "rewrites": [
+      {
+        "source": "/privacy",
+        "destination": "/privacy-policy.html"
+      },
+      {
+        "source": "/terms",
+        "destination": "/terms.html"
+      },
+      {
+        "source": "/delete-account",
+        "destination": "/account-deletion.html"
+      }
+    ]
+  }
 }
