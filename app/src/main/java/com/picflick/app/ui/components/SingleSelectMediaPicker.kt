@@ -86,13 +86,17 @@ fun SingleSelectMediaPicker(
     }
 
     var mediaItems by remember { mutableStateOf<List<SingleSelectMediaItem>>(emptyList()) }
+    var isLoadingMedia by remember { mutableStateOf(true) }
 
     LaunchedEffect(hasMediaPermission) {
         if (!hasMediaPermission) {
+            isLoadingMedia = false
             mediaItems = emptyList()
             return@LaunchedEffect
         }
+        isLoadingMedia = true
         mediaItems = withContext(Dispatchers.IO) { loadSingleSelectDeviceMedia(context) }
+        isLoadingMedia = false
     }
 
     LaunchedEffect(Unit) {
@@ -162,7 +166,7 @@ fun SingleSelectMediaPicker(
                     }
                 }
 
-                mediaItems.isEmpty() -> {
+                !isLoadingMedia && mediaItems.isEmpty() -> {
                     Text(
                         text = "No photos found on device",
                         color = if (isDarkMode) Color.White.copy(alpha = 0.8f) else Color(0xFF374151),
