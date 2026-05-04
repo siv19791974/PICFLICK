@@ -421,7 +421,10 @@ fun ProfileScreen(
             }
         }
 
-        // Bio - clickable to edit
+        // Country flag from SIM / locale
+        val countryFlag = countryCodeToFlag(userProfile.countryCode)
+
+        // Bio - clickable to edit. Shows country flag when empty (user can edit/remove it)
         if (displayBio.isNotEmpty()) {
             Spacer(modifier = Modifier.height(12.dp))
             Text(
@@ -435,25 +438,24 @@ fun ProfileScreen(
                         showBioDialog = true
                     }
             )
+        } else {
+            Spacer(modifier = Modifier.height(12.dp))
+            Text(
+                text = "$countryFlag ${if (countryFlag.isNotEmpty()) "Add a bio..." else "✏️ Add a bio to tell people about yourself"}",
+                fontSize = 14.sp,
+                color = if (isDarkMode) Color(0xFF87CEEB) else Color.DarkGray,
+                modifier = Modifier
+                    .padding(horizontal = 32.dp)
+                    .clickable {
+                        bioText = countryFlag
+                        showBioDialog = true
+                    }
+            )
         }
 
         Spacer(modifier = Modifier.height(32.dp))
 
         // Quick Actions Chips - Visual flair without duplication
-        if (displayBio.isEmpty()) {
-            Text(
-                text = "✏️ Add a bio to tell people about yourself",
-                color = if (isDarkMode) Color(0xFF87CEEB) else Color.DarkGray,
-                fontSize = 14.sp,
-                modifier = Modifier
-                    .clickable {
-                        bioText = ""
-                        showBioDialog = true
-                    }
-                    .padding(horizontal = 24.dp)
-            )
-            Spacer(modifier = Modifier.height(16.dp))
-        }
 
         // Analytics row (4 items)
         val tierName = when (userProfile.getEffectiveTier()) {
@@ -1533,4 +1535,16 @@ private fun MyPhotoCard(
 
         }
     }
+}
+
+/**
+ * Convert ISO country code (e.g., "GB", "GR") to flag emoji (e.g., "🇬🇧", "🇬🇷").
+ * Uses Unicode regional indicator symbols.
+ */
+private fun countryCodeToFlag(code: String): String {
+    if (code.length != 2) return ""
+    val upper = code.uppercase()
+    val first = upper[0].code - 'A'.code + 0x1F1E6
+    val second = upper[1].code - 'A'.code + 0x1F1E6
+    return String(Character.toChars(first)) + String(Character.toChars(second))
 }
