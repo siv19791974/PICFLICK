@@ -2,11 +2,13 @@ package com.picflick.app.ui.screens
 
 import android.content.ContentUris
 import android.content.Context
+import android.content.Intent
 import android.content.res.Configuration
 import android.graphics.Bitmap
 import android.net.Uri
 import android.os.Build
 import android.provider.MediaStore
+import android.provider.Settings
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -2794,7 +2796,21 @@ private fun GroupIconMediaPickerScreen(
         return hasBase || hasSelected
     }
 
+    fun isFullMediaAccess(): Boolean {
+        return androidx.core.content.ContextCompat.checkSelfPermission(
+            context,
+            mediaPermission
+        ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+    }
+
     var hasMediaPermission by remember { mutableStateOf(hasAnyMediaPermission()) }
+    var isLimitedAccess by remember { mutableStateOf(false) }
+
+    fun checkAccessState() {
+        hasMediaPermission = hasAnyMediaPermission()
+        isLimitedAccess = hasMediaPermission && !isFullMediaAccess()
+    }
+
     val mediaPermissionsToRequest = remember(mediaPermission, visualUserSelectedPermission) {
         buildList {
             add(mediaPermission)
@@ -2804,8 +2820,8 @@ private fun GroupIconMediaPickerScreen(
 
     val mediaPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestMultiplePermissions()
-    ) { grantedMap ->
-        hasMediaPermission = hasAnyMediaPermission() || grantedMap.values.any { it }
+    ) { _ ->
+        checkAccessState()
     }
 
     var mediaItems by remember { mutableStateOf<List<GroupIconMediaPickerItem>>(emptyList()) }
@@ -2824,7 +2840,7 @@ private fun GroupIconMediaPickerScreen(
     }
 
     LaunchedEffect(Unit) {
-        hasMediaPermission = hasAnyMediaPermission()
+        checkAccessState()
         if (!hasMediaPermission) {
             mediaPermissionLauncher.launch(mediaPermissionsToRequest.toTypedArray())
         }
@@ -2888,6 +2904,18 @@ private fun GroupIconMediaPickerScreen(
                     )
                 }
             }
+        }
+
+        if (isLimitedAccess) {
+            GroupLimitedAccessBanner(
+                isDarkMode = isDarkMode,
+                onGrantFullAccess = {
+                    val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                        data = Uri.fromParts("package", context.packageName, null)
+                    }
+                    context.startActivity(intent)
+                }
+            )
         }
 
         Box(modifier = Modifier.weight(1f)) {
@@ -2975,6 +3003,42 @@ private fun GroupIconMediaPickerScreen(
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun GroupLimitedAccessBanner(
+    isDarkMode: Boolean,
+    onGrantFullAccess: () -> Unit
+) {
+    val bgColor = if (isDarkMode) Color(0xFF3D3400) else Color(0xFFFFF3CD)
+    val textColor = if (isDarkMode) Color(0xFFFFE082) else Color(0xFF856404)
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(bgColor)
+            .padding(horizontal = 12.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Text(
+            text = "Limited gallery access. Only selected photos shown.",
+            color = textColor,
+            fontSize = 12.sp,
+            modifier = Modifier.weight(1f)
+        )
+        TextButton(
+            onClick = onGrantFullAccess,
+            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
+        ) {
+            Text(
+                text = "Grant Full Access",
+                color = textColor,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold
+            )
         }
     }
 }

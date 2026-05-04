@@ -34,7 +34,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import android.content.ContentUris
-import androidx.compose.ui.platform.LocalContext
+import android.content.Intent
+import android.provider.Settings
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.crossfade
@@ -79,7 +80,21 @@ fun SingleSelectMediaPicker(
         return hasBase || hasSelected
     }
 
+    fun isFullMediaAccess(): Boolean {
+        return androidx.core.content.ContextCompat.checkSelfPermission(
+            context,
+            mediaPermission
+        ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+    }
+
     var hasMediaPermission by remember { mutableStateOf(hasAnyMediaPermission()) }
+    var isLimitedAccess by remember { mutableStateOf(false) }
+
+    fun checkAccessState() {
+        hasMediaPermission = hasAnyMediaPermission()
+        isLimitedAccess = hasMediaPermission && !isFullMediaAccess()
+    }
+
     val mediaPermissionsToRequest = remember(mediaPermission, visualUserSelectedPermission) {
         buildList {
             add(mediaPermission)
@@ -90,7 +105,7 @@ fun SingleSelectMediaPicker(
     val mediaPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestMultiplePermissions()
     ) { grantedMap ->
-        hasMediaPermission = hasAnyMediaPermission() || grantedMap.values.any { it }
+        checkAccessState()
     }
 
     var mediaItems by remember { mutableStateOf<List<SingleSelectMediaItem>>(emptyList()) }
@@ -108,7 +123,7 @@ fun SingleSelectMediaPicker(
     }
 
     LaunchedEffect(Unit) {
-        hasMediaPermission = hasAnyMediaPermission()
+        checkAccessState()
         if (!hasMediaPermission) {
             mediaPermissionLauncher.launch(mediaPermissionsToRequest.toTypedArray())
         }
@@ -144,6 +159,18 @@ fun SingleSelectMediaPicker(
                 fontSize = 15.sp,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.align(Alignment.Center)
+            )
+        }
+
+        if (isLimitedAccess) {
+            LimitedAccessBanner(
+                isDarkMode = isDarkMode,
+                onGrantFullAccess = {
+                    val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                        data = Uri.fromParts("package", context.packageName, null)
+                    }
+                    context.startActivity(intent)
+                }
             )
         }
 
@@ -225,6 +252,42 @@ fun SingleSelectMediaPicker(
 }
 
 private const val MAX_MEDIA_ITEMS = 500
+
+@Composable
+private fun LimitedAccessBanner(
+    isDarkMode: Boolean,
+    onGrantFullAccess: () -> Unit
+) {
+    val bgColor = if (isDarkMode) Color(0xFF3D3400) else Color(0xFFFFF3CD)
+    val textColor = if (isDarkMode) Color(0xFFFFE082) else Color(0xFF856404)
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(bgColor)
+            .padding(horizontal = 12.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Text(
+            text = "Limited gallery access. Only selected photos shown.",
+            color = textColor,
+            fontSize = 12.sp,
+            modifier = Modifier.weight(1f)
+        )
+        TextButton(
+            onClick = onGrantFullAccess,
+            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
+        ) {
+            Text(
+                text = "Grant Full Access",
+                color = textColor,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold
+            )
+        }
+    }
+}
 
 private fun loadSingleSelectDeviceMedia(context: android.content.Context): List<SingleSelectMediaItem> {
     val collection = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
