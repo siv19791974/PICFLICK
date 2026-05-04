@@ -423,15 +423,9 @@ fun MythicDrawScreen(
             val consecutiveMonths = userProfile.mythicConsecutiveMonths
             val isChampion = userProfile.mythicChampion
 
-            // Streak progress bar — fatter, color-matched to achievement ring
+            // Streak progress bar — PicFlick rainbow spectrum matching achievement ring
             val progress = (currentStreak.toFloat() / dd.streakThreshold.toFloat()).coerceIn(0f, 1f)
-            val progressColor = when {
-                progress >= 1f -> GoldColor
-                progress >= 0.8f -> Color(0xFFFF5722)
-                progress >= 0.6f -> Color(0xFFFF9800)
-                progress >= 0.3f -> Color(0xFF4CAF50)
-                else -> Color(0xFF2196F3)
-            }
+            val progressColor = mythicSpectrumColor(progress)
 
             Column(modifier = Modifier.padding(horizontal = 24.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -1399,6 +1393,22 @@ private fun MythicDrawAnimation(
         kotlinx.coroutines.delay(5000L)
         onComplete()
     }
+}
+
+/** PicFlick logo rainbow spectrum: interpolates Blue→Green→Yellow→Orange→Red based on 0..1 progress. */
+private fun mythicSpectrumColor(progress: Float): Color {
+    val colors = listOf(
+        Color(0xFF1565C0), // P  – Dark Blue
+        Color(0xFF42A5F5), // i  – Light Blue
+        Color(0xFF4CAF50), // c  – Green
+        Color(0xFFFFC107), // F  – Yellow
+        Color(0xFFFF9800), // l  – Orange
+        Color(0xFFF44336)  // c/k – Red
+    )
+    val scaled = progress * (colors.size - 1)
+    val index = scaled.toInt().coerceIn(0, colors.size - 2)
+    val fraction = (scaled - index).coerceIn(0f, 1f)
+    return androidx.compose.ui.graphics.lerp(colors[index], colors[index + 1], fraction)
 }
 
 // ─── PREVIEWS ───
