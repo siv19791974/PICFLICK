@@ -42,6 +42,8 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
+import com.google.firebase.firestore.FirebaseFirestore
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -55,6 +57,7 @@ import com.picflick.app.data.ReactionType
 import com.picflick.app.data.UserProfile
 import com.picflick.app.data.toEmoji
 import com.picflick.app.ui.components.AnimatedReactionPicker
+import com.picflick.app.ui.components.MythicProgressRing
 import com.picflick.app.ui.theme.isDarkModeBackground
 import com.picflick.app.data.getColor
 import com.picflick.app.util.withCacheBust
@@ -112,6 +115,19 @@ fun UserProfileScreen(
         if (!isFriend) {
             showUnfriendConfirm = false
         }
+    }
+
+    // Mythic monthly threshold (starts low, ramps to 100)
+    var mythicThreshold by remember { mutableIntStateOf(100) }
+    LaunchedEffect(Unit) {
+        try {
+            val snap = FirebaseFirestore.getInstance()
+                .collection("appConfig")
+                .document("mythicDraw")
+                .get()
+                .await()
+            mythicThreshold = (snap.getLong("currentThreshold") ?: 100L).toInt()
+        } catch (_: Exception) { }
     }
 
     // Dark mode state
@@ -357,11 +373,11 @@ fun UserProfileScreen(
                     isDarkMode = isDarkMode,
                     onClick = onFriendsClick
                 )
-                UserProfileStatItem(
-                    value = achievementsValue.toString(),
-                    label = "ACHEIVEMENTS",
+                MythicProgressRing(
+                    streak = achievementsValue,
+                    threshold = mythicThreshold,
                     isDarkMode = isDarkMode,
-                    onClick = onAchievementsClick
+                    onClick = onAchievementsClick ?: {}
                 )
                 UserProfileStatItem(
                     value = planValue,
