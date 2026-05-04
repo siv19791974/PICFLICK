@@ -3052,24 +3052,27 @@ private fun loadGroupIconDeviceMedia(context: android.content.Context): List<Gro
 
     val projection = arrayOf(
         MediaStore.Images.Media._ID,
-        MediaStore.Images.Media.DATE_TAKEN
+        MediaStore.Images.Media.DATE_TAKEN,
+        MediaStore.Images.Media.DATE_ADDED
     )
-    val sortOrder = "${MediaStore.Images.Media.DATE_TAKEN} DESC"
 
     val result = mutableListOf<GroupIconMediaPickerItem>()
-    context.contentResolver.query(collection, projection, null, null, sortOrder)?.use { cursor ->
+    context.contentResolver.query(collection, projection, null, null, null)?.use { cursor ->
         val idColumn = cursor.getColumnIndexOrThrow(MediaStore.Images.Media._ID)
         val dateTakenColumn = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.DATE_TAKEN)
+        val dateAddedColumn = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.DATE_ADDED)
 
         while (cursor.moveToNext()) {
             val id = cursor.getLong(idColumn)
             val dateTaken = cursor.getLong(dateTakenColumn)
+            val dateAdded = cursor.getLong(dateAddedColumn)
+            val effectiveDate = if (dateTaken > 0) dateTaken else dateAdded * 1000L
             val contentUri = ContentUris.withAppendedId(collection, id)
-            result.add(GroupIconMediaPickerItem(uri = contentUri, id = id, dateAddedSeconds = dateTaken))
+            result.add(GroupIconMediaPickerItem(uri = contentUri, id = id, dateAddedSeconds = effectiveDate))
         }
     }
 
-    return result
+    return result.sortedByDescending { it.dateAddedSeconds }
 }
 
 private fun clampPanOffsetForGroup(
