@@ -1201,7 +1201,7 @@ private fun LeaderboardRow(
 
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = countryCodeToFlag(entry.countryCode) + " " + entry.userName + if (isCurrentUser) " (You)" else "",
+                    text = entry.userName + if (isCurrentUser) " (You)" else "",
                     color = textPrimary,
                     fontSize = 15.sp,
                     fontWeight = if (isCurrentUser) FontWeight.Bold else FontWeight.Normal
@@ -1214,8 +1214,16 @@ private fun LeaderboardRow(
                 )
             }
 
-            // Chevron + streak
+            // Flag + streak + chevron
             Row(verticalAlignment = Alignment.CenterVertically) {
+                val flag = countryCodeToFlag(entry.countryCode)
+                if (flag.isNotBlank()) {
+                    Text(
+                        text = flag,
+                        fontSize = 14.sp
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                }
                 Text(
                     text = "${entry.streak}d",
                     color = rankColor,
@@ -1298,7 +1306,7 @@ private fun YourRankRow(
 
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = countryCodeToFlag(countryCode) + " " + userName + " (You)",
+                text = userName + " (You)",
                 color = textPrimary,
                 fontSize = 15.sp,
                 fontWeight = FontWeight.Bold
@@ -1310,13 +1318,23 @@ private fun YourRankRow(
             )
         }
 
-        // Chevron
-        Icon(
-            imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
-            contentDescription = null,
-            tint = textSecondary.copy(alpha = 0.4f),
-            modifier = Modifier.size(14.dp)
-        )
+        // Flag + chevron
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            val flag = countryCodeToFlag(countryCode)
+            if (flag.isNotBlank()) {
+                Text(
+                    text = flag,
+                    fontSize = 14.sp
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+            }
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
+                contentDescription = null,
+                tint = textSecondary.copy(alpha = 0.4f),
+                modifier = Modifier.size(14.dp)
+            )
+        }
     }
 }
 
