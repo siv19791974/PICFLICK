@@ -377,7 +377,36 @@ fun LegalScreen(
                 }
             }
 
-            // Bottom spacing removed
+            // Contact Us
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = accentColor.copy(alpha = 0.1f)
+                    ),
+                    shape = RoundedCornerShape(16.dp)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(20.dp)
+                    ) {
+                        Text(
+                            text = "Contact Us",
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = accentColor,
+                            modifier = Modifier.padding(bottom = 12.dp)
+                        )
+                        Text(
+                            text = "If you have any questions about these terms, contact us at:\n\nsiv19791974@gmail.com",
+                            fontSize = 14.sp,
+                            color = textColor,
+                            lineHeight = 22.sp
+                        )
+                    }
+                }
+            }
+
+            // Bottom spacing
             item {
                 Spacer(modifier = Modifier.height(80.dp))
             }

@@ -211,6 +211,18 @@ Continued use of PicFlick after changes constitutes acceptance of the revised po
             }
 
 
+            // Contact Us
+            item {
+                PolicySection(
+                    title = "Contact Us",
+                    content = """If you have any questions about this Privacy Policy, contact us at:
+
+• Email: siv19791974@gmail.com
+• App: PicFlick - com.picflick.app""",
+                    isDarkMode = isDarkMode
+                )
+            }
+
             // Bottom spacing for nav-bar-safe scroll reach
             item {
                 Spacer(modifier = Modifier.height(80.dp))
