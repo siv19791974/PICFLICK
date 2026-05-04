@@ -775,12 +775,12 @@ fun MythicDrawScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(10.dp))
-                        .background(MidBlue.copy(alpha = 0.1f))
-                        .padding(10.dp)
+                        .background(MidBlue)
+                        .padding(12.dp)
                 ) {
                     Text(
                         text = "🎁 ALL ENTRANTS (runners up): +30% upload boost for 30 days + tier badge progression towards Bronze/Silver/Gold/Diamond Mythic.",
-                        color = MidBlue,
+                        color = Color.White,
                         fontSize = 12.sp,
                         fontWeight = FontWeight.SemiBold,
                         lineHeight = 18.sp
