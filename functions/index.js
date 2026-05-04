@@ -1447,7 +1447,7 @@ exports.mythicMondayPush = functions
       const streak = userData.streak?.current || 0;
       const displayName = userData.displayName || 'PicFlick creator';
       const isEligible = streak >= streakThreshold;
-      const daysToGo = (streakThreshold - streak).coerceAtLeast(0);
+      const daysToGo = Math.max(0, streakThreshold - streak);
 
       let title, body;
       if (isEligible) {
@@ -1546,42 +1546,49 @@ exports.triggerMythicDrawAnimation = functions
  * REMOVE OR DISABLE before production.
  */
 exports.testMythicDraw = functions.https.onCall(async (data, context) => {
+  const db = admin.firestore();
+
   // Only allow authenticated admin users (your UID)
   const ALLOWED_UIDS = ['YOUR_ADMIN_UID_HERE']; // <-- Replace with your UID
   if (!context.auth || !ALLOWED_UIDS.includes(context.auth.uid)) {
     throw new functions.https.HttpsError('permission-denied', 'Admin only');
   }
 
-  // Override month for testing
-  const testMonthKey = data.monthKey || getMonthKey();
-  const testThreshold = data.threshold || null; // override threshold
-  const testMonthNumber = data.monthNumber || getMonthNumber();
+  // Compute month key/number inline (same logic as executeMythicDraw)
+  const now = new Date();
+  const defaultMonthKey = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}`;
+  const testMonthKey = data.monthKey || defaultMonthKey;
+
+  const allSystemDocs = await db.collection('system').listDocuments();
+  const previousDraws = allSystemDocs.filter((d) => d.id.startsWith('mythic_draw_') && d.id !== `mythic_draw_${testMonthKey}`);
+  const testMonthNumber = data.monthNumber || (previousDraws.length + 1);
+
+  const progressiveThresholds = { 1: 10, 2: 30, 3: 50, 4: 70 };
+  const defaultThreshold = testMonthNumber >= 5 ? 100 : (progressiveThresholds[testMonthNumber] || 100);
+  const testThreshold = data.threshold || defaultThreshold;
 
   // Log test start
-  console.log(`[TEST MYTHIC DRAW] Starting manual test draw for ${testMonthKey}`);
+  console.log(`[TEST MYTHIC DRAW] Starting manual test draw for ${testMonthKey} (month #${testMonthNumber}, threshold=${testThreshold})`);
 
   const drawDocRef = db.collection('system').doc(`mythic_draw_${testMonthKey}`);
 
   // Check if already completed
   const existing = await drawDocRef.get();
-  if (existing.exists && existing.data().status === 'completed') {
-    console.log('[TEST] Draw already completed. Re-running...');
-    // Optionally clear for re-test
-    if (data.force === true) {
-      await drawDocRef.update({ status: 'testing_rerun' });
-    } else {
-      return { status: 'already_completed', draw: existing.data() };
-    }
+  if (existing.exists && existing.data().status === 'completed' && data.force !== true) {
+    return { status: 'already_completed', draw: existing.data() };
+  }
+  if (data.force === true && existing.exists) {
+    await drawDocRef.update({ status: 'testing_rerun' });
   }
 
-  // Build entrant list with mock data support
+  // Build entrant list (read streak.current like the main function does)
   const usersSnapshot = await db.collection('users').get();
   const eligibleUsers = [];
   usersSnapshot.forEach(doc => {
     const d = doc.data();
-    const streak = d.streak || 0;
-    const tickets = Math.floor(streak / 10);
-    if (tickets >= 1) {
+    const streak = d.streak?.current || 0;
+    const tickets = Math.max(1, Math.floor(streak / 10));
+    if (streak >= testThreshold) {
       eligibleUsers.push({
         uid: doc.id,
         streak: streak,
@@ -1592,24 +1599,60 @@ exports.testMythicDraw = functions.https.onCall(async (data, context) => {
     }
   });
 
-  // Draw logic (same as executeMythicDraw)
-  const threshold = testThreshold || getThreshold(testMonthNumber);
-  const winners = [];
-  const used = new Set();
-
-  for (let place = 1; place <= 3; place++) {
-    const pool = eligibleUsers.filter(u => !used.has(u.uid));
-    if (pool.length === 0) break;
-    const totalTickets = pool.reduce((s, u) => s + u.tickets, 0);
-    let pick = Math.random() * totalTickets;
-    let winner = null;
-    for (const u of pool) {
-      pick -= u.tickets;
-      if (pick <= 0) { winner = u; break; }
+  // Winner repeat protection (last 3 months)
+  const recentWinnerIds = new Set();
+  const [yearStr, monthStr] = testMonthKey.split('-');
+  let y = parseInt(yearStr, 10);
+  let m = parseInt(monthStr, 10);
+  for (let i = 0; i < 3; i++) {
+    m--;
+    if (m <= 0) { m = 12; y--; }
+    const mk = `${y}-${String(m).padStart(2, '0')}`;
+    const pastDraw = await db.collection('system').doc(`mythic_draw_${mk}`).get();
+    if (pastDraw.exists) {
+      (pastDraw.data().winners || []).forEach((w) => { if (w.userId) recentWinnerIds.add(w.userId); });
     }
-    if (winner) {
-      used.add(winner.uid);
-      winners.push({ uid: winner.uid, place, streak: winner.streak, userName: winner.displayName });
+  }
+
+  // Build weighted ticket pool
+  const ticketPool = [];
+  eligibleUsers.forEach((u) => {
+    if (!recentWinnerIds.has(u.uid)) {
+      for (let i = 0; i < u.tickets; i++) ticketPool.push(u);
+    }
+  });
+
+  // Pick 3 unique winners
+  const prizes = [
+    { place: 1, label: '1st', crown: 'gold' },
+    { place: 2, label: '2nd', crown: 'silver' },
+    { place: 3, label: '3rd', crown: 'bronze' },
+  ];
+  const winners = [];
+  const pickedIds = new Set();
+  const usedPool = [...ticketPool];
+
+  for (const prize of prizes) {
+    if (usedPool.length === 0) break;
+    const idx = Math.floor(Math.random() * usedPool.length);
+    const winner = usedPool[idx];
+    if (pickedIds.has(winner.uid)) {
+      for (let i = usedPool.length - 1; i >= 0; i--) {
+        if (usedPool[i].uid === winner.uid) usedPool.splice(i, 1);
+      }
+      continue;
+    }
+    pickedIds.add(winner.uid);
+    winners.push({
+      place: prize.place,
+      userId: winner.uid,
+      userName: winner.displayName,
+      streak: winner.streak,
+      crown: prize.crown,
+      prizeLabel: prize.label,
+    });
+    for (let i = usedPool.length - 1; i >= 0; i--) {
+      if (usedPool[i].uid === winner.uid) usedPool.splice(i, 1);
     }
   }
 
@@ -1620,9 +1663,11 @@ exports.testMythicDraw = functions.https.onCall(async (data, context) => {
     status: 'completed',
     winners,
     totalEntrants: eligibleUsers.length,
-    threshold,
+    threshold: testThreshold,
     isTest: true,
-    ranAt: admin.firestore.FieldValue.serverTimestamp()
+    ranAt: admin.firestore.FieldValue.serverTimestamp(),
+    ticketPoolSize: ticketPool.length,
+    recentWinnersExcluded: Array.from(recentWinnerIds),
   }, { merge: true });
 
   console.log(`[TEST MYTHIC DRAW] Completed. ${winners.length} winner(s).`);
@@ -1630,8 +1675,10 @@ exports.testMythicDraw = functions.https.onCall(async (data, context) => {
   return {
     status: 'completed',
     monthKey: testMonthKey,
-    threshold,
+    monthNumber: testMonthNumber,
+    threshold: testThreshold,
     totalEntrants: eligibleUsers.length,
+    ticketPoolSize: ticketPool.length,
     winners,
     message: 'Test draw complete. Check Firestore console for details.'
   };
