@@ -26,8 +26,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import android.content.ContentUris
+import androidx.compose.ui.platform.LocalContext
 import coil3.compose.AsyncImage
+import coil3.request.ImageRequest
+import coil3.request.crossfade
 import com.picflick.app.ui.theme.isDarkModeBackground
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 data class SingleSelectMediaItem(
     val uri: Uri,
@@ -90,7 +95,7 @@ fun SingleSelectMediaPicker(
             return@LaunchedEffect
         }
         isLoadingMedia = true
-        mediaItems = loadSingleSelectDeviceMedia(context)
+        mediaItems = withContext(Dispatchers.IO) { loadSingleSelectDeviceMedia(context) }
         isLoadingMedia = false
     }
 
@@ -192,7 +197,11 @@ fun SingleSelectMediaPicker(
                                     .clickable { onPhotoSelected(item.uri) }
                             ) {
                                 AsyncImage(
-                                    model = item.uri,
+                                    model = ImageRequest.Builder(LocalContext.current)
+                                        .data(item.uri)
+                                        .size(300)
+                                        .crossfade(true)
+                                        .build(),
                                     contentDescription = "Media",
                                     modifier = Modifier.fillMaxSize(),
                                     contentScale = ContentScale.Crop
@@ -206,6 +215,8 @@ fun SingleSelectMediaPicker(
     }
 }
 
+private const val MAX_MEDIA_ITEMS = 500
+
 private fun loadSingleSelectDeviceMedia(context: android.content.Context): List<SingleSelectMediaItem> {
     val collection = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
         MediaStore.Images.Media.getContentUri(MediaStore.VOLUME_EXTERNAL)
@@ -217,7 +228,7 @@ private fun loadSingleSelectDeviceMedia(context: android.content.Context): List<
         MediaStore.Images.Media._ID,
         MediaStore.Images.Media.DATE_ADDED
     )
-    val sortOrder = "${MediaStore.Images.Media.DATE_ADDED} DESC"
+    val sortOrder = "${MediaStore.Images.Media.DATE_ADDED} DESC LIMIT $MAX_MEDIA_ITEMS"
 
     val result = mutableListOf<SingleSelectMediaItem>()
     context.contentResolver.query(collection, projection, null, null, sortOrder)?.use { cursor ->
