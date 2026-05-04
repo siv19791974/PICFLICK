@@ -2078,7 +2078,7 @@ private fun groupMediaByDate(items: List<MediaPickerItem>): List<MediaPickerSect
     }
 }
 
-private const val MAX_MEDIA_ITEMS = 500
+private const val MAX_MEDIA_ITEMS = 2000
 
 private fun loadDeviceMedia(context: android.content.Context): List<MediaPickerItem> {
     val collection = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
@@ -2089,30 +2089,33 @@ private fun loadDeviceMedia(context: android.content.Context): List<MediaPickerI
 
     val projection = arrayOf(
         MediaStore.Images.Media._ID,
-        MediaStore.Images.Media.DATE_TAKEN
+        MediaStore.Images.Media.DATE_TAKEN,
+        MediaStore.Images.Media.DATE_ADDED
     )
-    val sortOrder = "${MediaStore.Images.Media.DATE_TAKEN} DESC"
 
     val result = mutableListOf<MediaPickerItem>()
-    context.contentResolver.query(collection, projection, null, null, sortOrder)?.use { cursor ->
+    context.contentResolver.query(collection, projection, null, null, null)?.use { cursor ->
         val idColumn = cursor.getColumnIndexOrThrow(MediaStore.Images.Media._ID)
         val dateTakenColumn = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.DATE_TAKEN)
+        val dateAddedColumn = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.DATE_ADDED)
 
         while (cursor.moveToNext()) {
             val id = cursor.getLong(idColumn)
             val dateTaken = cursor.getLong(dateTakenColumn)
+            val dateAdded = cursor.getLong(dateAddedColumn)
+            val effectiveDate = if (dateTaken > 0) dateTaken else dateAdded * 1000L
             val contentUri = ContentUris.withAppendedId(collection, id)
             result.add(
                 MediaPickerItem(
                     uri = contentUri,
                     id = id,
-                    dateAddedSeconds = dateTaken
+                    dateAddedSeconds = effectiveDate
                 )
             )
         }
     }
 
-    return result.take(MAX_MEDIA_ITEMS)
+    return result.sortedByDescending { it.dateAddedSeconds }.take(MAX_MEDIA_ITEMS)
 }
 
 @Composable

@@ -298,24 +298,29 @@ private fun loadSingleSelectDeviceMedia(context: android.content.Context): List<
 
     val projection = arrayOf(
         MediaStore.Images.Media._ID,
-        MediaStore.Images.Media.DATE_TAKEN
+        MediaStore.Images.Media.DATE_TAKEN,
+        MediaStore.Images.Media.DATE_ADDED
     )
-    val sortOrder = "${MediaStore.Images.Media.DATE_TAKEN} DESC"
 
     val result = mutableListOf<SingleSelectMediaItem>()
-    context.contentResolver.query(collection, projection, null, null, sortOrder)?.use { cursor ->
+    context.contentResolver.query(collection, projection, null, null, null)?.use { cursor ->
         val idColumn = cursor.getColumnIndexOrThrow(MediaStore.Images.Media._ID)
         val dateTakenColumn = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.DATE_TAKEN)
+        val dateAddedColumn = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.DATE_ADDED)
 
         while (cursor.moveToNext()) {
             val id = cursor.getLong(idColumn)
             val dateTaken = cursor.getLong(dateTakenColumn)
+            val dateAdded = cursor.getLong(dateAddedColumn)
+            // DATE_TAKEN is millis; DATE_ADDED is seconds. Fallback when DATE_TAKEN missing (0).
+            val effectiveDate = if (dateTaken > 0) dateTaken else dateAdded * 1000L
             val contentUri = ContentUris.withAppendedId(collection, id)
-            result.add(SingleSelectMediaItem(uri = contentUri, id = id, dateAddedSeconds = dateTaken))
+            result.add(SingleSelectMediaItem(uri = contentUri, id = id, dateAddedSeconds = effectiveDate))
         }
     }
 
-    return result.take(MAX_MEDIA_ITEMS)
+    // Sort by effective date descending (newest first)
+    return result.sortedByDescending { it.dateAddedSeconds }.take(MAX_MEDIA_ITEMS)
 }
 
 /**
