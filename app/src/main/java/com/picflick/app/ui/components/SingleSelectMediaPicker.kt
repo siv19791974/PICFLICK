@@ -5,6 +5,12 @@ import android.os.Build
 import android.provider.MediaStore
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -19,6 +25,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -166,6 +174,14 @@ fun SingleSelectMediaPicker(
                     }
                 }
 
+                isLoadingMedia && mediaItems.isEmpty() -> {
+                    GridShimmer(
+                        modifier = Modifier.fillMaxSize(),
+                        itemCount = 18,
+                        columns = 3
+                    )
+                }
+
                 !isLoadingMedia && mediaItems.isEmpty() -> {
                     Text(
                         text = "No photos found on device",
@@ -237,4 +253,53 @@ private fun loadSingleSelectDeviceMedia(context: android.content.Context): List<
     }
 
     return result.take(MAX_MEDIA_ITEMS)
+}
+
+/**
+ * Skeleton shimmer grid shown while device photos are loading.
+ * Matches the 3-column grid layout so photos appear to "replace" the placeholders.
+ */
+@Composable
+fun GridShimmer(
+    modifier: Modifier = Modifier,
+    itemCount: Int = 18,
+    columns: Int = 3
+) {
+    val shimmerColors = listOf(
+        Color.LightGray.copy(alpha = 0.3f),
+        Color.LightGray.copy(alpha = 0.1f),
+        Color.LightGray.copy(alpha = 0.3f)
+    )
+    val transition = rememberInfiniteTransition(label = "picker_shimmer")
+    val translateAnim = transition.animateFloat(
+        initialValue = 0f,
+        targetValue = 1000f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1200, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "picker_shimmer_translate"
+    )
+    val brush = Brush.linearGradient(
+        colors = shimmerColors,
+        start = Offset.Zero,
+        end = Offset(x = translateAnim.value, y = translateAnim.value)
+    )
+
+    LazyVerticalGrid(
+        columns = GridCells.Fixed(columns),
+        modifier = modifier.fillMaxSize(),
+        contentPadding = PaddingValues(8.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        items(itemCount) {
+            Box(
+                modifier = Modifier
+                    .aspectRatio(1f)
+                    .clip(RoundedCornerShape(6.dp))
+                    .background(brush)
+            )
+        }
+    }
 }

@@ -116,6 +116,7 @@ import com.picflick.app.ui.components.ActionSheetOption
 import com.picflick.app.ui.components.ActionSheetRow
 import com.picflick.app.ui.components.AddPhotoStyleActionSheet
 import com.picflick.app.ui.components.BottomNavBar
+import com.picflick.app.ui.components.GridShimmer
 import com.picflick.app.ui.components.LogoImage
 import com.picflick.app.ui.screens.LoginScreen
 import com.picflick.app.ui.screens.SplashScreen
@@ -1849,6 +1850,14 @@ private fun InAppMediaPickerScreen(
                             Text("Grant permission")
                         }
                     }
+                }
+
+                isLoadingMedia && mediaItems.isEmpty() -> {
+                    GridShimmer(
+                        modifier = Modifier.fillMaxSize(),
+                        itemCount = 18,
+                        columns = 3
+                    )
                 }
 
                 !isLoadingMedia && mediaItems.isEmpty() -> {
