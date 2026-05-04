@@ -41,6 +41,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
@@ -53,6 +54,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import android.content.Intent
 import coil3.compose.AsyncImage
 import com.google.firebase.firestore.FirebaseFirestore
 import com.picflick.app.data.SubscriptionTier
@@ -104,22 +106,6 @@ fun MythicDrawScreen(
             val cal = Calendar.getInstance(TimeZone.getTimeZone("UTC"))
             val monthKey = "${cal.get(Calendar.YEAR)}-${String.format("%02d", cal.get(Calendar.MONTH) + 1)}"
             val drawSnap = db.collection("system").document("mythic_draw_$monthKey").get().await()
-
-            // Get hall of fame
-            val hallSnap = db.collection("system").document("mythic_hall_of_fame").get().await()
-            val hallList = if (hallSnap.exists()) {
-                (hallSnap.get("winners") as? List<Map<String, Any>>)?.map { m ->
-                    HallOfFameEntry(
-                        monthKey = m["monthKey"] as? String ?: "",
-                        monthNumber = (m["monthNumber"] as? Long)?.toInt() ?: 0,
-                        place = (m["place"] as? Long)?.toInt() ?: 0,
-                        userId = m["userId"] as? String ?: "",
-                        userName = m["userName"] as? String ?: "Unknown",
-                        streak = (m["streak"] as? Long)?.toInt() ?: 0,
-                        crown = m["crown"] as? String ?: "",
-                    )
-                }?.reversed() ?: emptyList()
-            } else emptyList()
 
             // Get worldwide leaderboard (all users, ordered by streak) for accurate ranks
             val allUsersSnap = db.collection("users")
@@ -205,7 +191,6 @@ fun MythicDrawScreen(
                 )
             }
 
-            hallOfFame = hallList
             leaderboard = lb
 
             // ─── FRIENDS LEADERBOARD ───
@@ -246,7 +231,51 @@ fun MythicDrawScreen(
                 .sortedByDescending { it.streak }
                 .take(10)
 
-            // Fetch past draws (all mythic_draw_* docs except current month)
+        } catch (_: Exception) {
+            // Fallback
+            drawData = MythicDrawData(
+                monthKey = "",
+                monthNumber = 1,
+                streakThreshold = 10,
+                winners = emptyList(),
+                eligibleUserCount = 0,
+                totalUserCount = 0,
+                noWinner = false,
+                isUpcoming = true,
+            )
+        } finally {
+            isLoading = false
+        }
+    }
+
+    // ─── LAZY-LOADED: Hall of Fame + Past Draws (deferred, non-blocking) ───
+    var isLoadingHistory by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        kotlinx.coroutines.delay(300) // Let primary content render first
+        isLoadingHistory = true
+        try {
+            val db = FirebaseFirestore.getInstance()
+            val cal = Calendar.getInstance(TimeZone.getTimeZone("UTC"))
+            val monthKey = "${cal.get(Calendar.YEAR)}-${String.format("%02d", cal.get(Calendar.MONTH) + 1)}"
+
+            // Hall of Fame
+            val hallSnap = db.collection("system").document("mythic_hall_of_fame").get().await()
+            val hallList = if (hallSnap.exists()) {
+                (hallSnap.get("winners") as? List<Map<String, Any>>)?.map { m ->
+                    HallOfFameEntry(
+                        monthKey = m["monthKey"] as? String ?: "",
+                        monthNumber = (m["monthNumber"] as? Long)?.toInt() ?: 0,
+                        place = (m["place"] as? Long)?.toInt() ?: 0,
+                        userId = m["userId"] as? String ?: "",
+                        userName = m["userName"] as? String ?: "Unknown",
+                        streak = (m["streak"] as? Long)?.toInt() ?: 0,
+                        crown = m["crown"] as? String ?: "",
+                    )
+                }?.reversed() ?: emptyList()
+            } else emptyList()
+            hallOfFame = hallList
+
+            // Past Draws
             val allSystemDocs = db.collection("system").get().await()
             val pastList = allSystemDocs.documents
                 .filter { it.id.startsWith("mythic_draw_") && it.id != "mythic_draw_$monthKey" && it.exists() }
@@ -274,28 +303,24 @@ fun MythicDrawScreen(
                 }
             pastDraws = pastList
         } catch (_: Exception) {
-            // Fallback
-            drawData = MythicDrawData(
-                monthKey = "",
-                monthNumber = 1,
-                streakThreshold = 10,
-                winners = emptyList(),
-                eligibleUserCount = 0,
-                totalUserCount = 0,
-                noWinner = false,
-                isUpcoming = true,
-            )
+            // Silently fail — history is non-critical
         } finally {
-            isLoading = false
+            isLoadingHistory = false
         }
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(bgColor)
-            .verticalScroll(rememberScrollState())
-    ) {
+    // Detect if current user is a winner this month
+    val currentUserWinner = drawData?.winners?.find { it.userId == currentUserId }
+    var showCelebration by remember { mutableStateOf(currentUserWinner != null) }
+    val context = LocalContext.current
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(bgColor)
+                .verticalScroll(rememberScrollState())
+        ) {
         // Header
         Box(
             modifier = Modifier
@@ -621,6 +646,28 @@ fun MythicDrawScreen(
                             onClick = { onUserProfileClick(entry.userId) }
                         )
                     }
+
+                    // ─── YOUR RANK (if outside top 10) ───
+                    val userWorldRank = worldwideRankMap[currentUserId]
+                    val isInTop10 = leaderboard.any { it.userId == currentUserId }
+                    if (!isInTop10 && userWorldRank != null) {
+                        HorizontalDivider(
+                            modifier = Modifier.padding(vertical = 8.dp, horizontal = 12.dp),
+                            thickness = 1.dp,
+                            color = MidBlue.copy(alpha = 0.3f)
+                        )
+                        YourRankRow(
+                            rank = userWorldRank,
+                            userName = userProfile.displayName.ifBlank { "You" },
+                            streak = currentStreak,
+                            photoUrl = userProfile.photoUrl,
+                            tier = userProfile.subscriptionTier.name,
+                            textPrimary = textPrimary,
+                            textSecondary = textSecondary,
+                            isDarkMode = isDarkMode,
+                            onClick = { onUserProfileClick(currentUserId) }
+                        )
+                    }
                 }
             }
         }
@@ -900,6 +947,29 @@ fun MythicDrawScreen(
 
         Spacer(modifier = Modifier.height(32.dp))
     }
+
+        // ─── WINNER CELEBRATION OVERLAY ───
+        if (showCelebration && currentUserWinner != null) {
+            MythicWinnerCelebration(
+                winner = currentUserWinner,
+                onDismiss = { showCelebration = false },
+                onShare = { place, streak ->
+                    val shareText = when (place) {
+                        1 -> "🏆 I WON 1st PLACE in the PicFlick Mythic Monthly Draw with a ${streak}-day streak! 3 months PRO + Gold Crown! 🎉"
+                        2 -> "🥈 I won 2nd place in the PicFlick Mythic Monthly Draw with a ${streak}-day streak! 1 month PRO + Silver Crown! 🎉"
+                        3 -> "🥉 I won 3rd place in the PicFlick Mythic Monthly Draw with a ${streak}-day streak! 2 weeks PRO + Bronze Crown! 🎉"
+                        else -> "🏆 I won the PicFlick Mythic Monthly Draw with a ${streak}-day streak! 🎉"
+                    }
+                    val intent = Intent(Intent.ACTION_SEND).apply {
+                        type = "text/plain"
+                        putExtra(Intent.EXTRA_TEXT, shareText)
+                    }
+                    val chooser = Intent.createChooser(intent, "Share your win")
+                    context.startActivity(chooser)
+                }
+            )
+        }
+    } // end Box
 }
 
 @Composable
@@ -1158,6 +1228,92 @@ private fun LeaderboardRow(
     }
 
 @Composable
+private fun YourRankRow(
+    rank: Int,
+    userName: String,
+    streak: Int,
+    photoUrl: String,
+    tier: String,
+    textPrimary: Color,
+    textSecondary: Color,
+    isDarkMode: Boolean,
+    onClick: () -> Unit = {}
+) {
+    val tierEnum = SubscriptionTier.fromString(tier)
+    val tierColor = tierEnum.getColor()
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 24.dp, vertical = 6.dp)
+            .clickable(onClick = onClick),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        // Rank badge
+        Box(
+            modifier = Modifier.width(36.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = "#${java.text.NumberFormat.getInstance().format(rank)}",
+                color = MidBlue,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Bold
+            )
+        }
+
+        // Avatar with tier ring
+        Box(
+            modifier = Modifier
+                .size(56.dp)
+                .clip(CircleShape)
+                .background(
+                    brush = Brush.sweepGradient(
+                        listOf(
+                            tierColor,
+                            tierEnum.getDarkColor(),
+                            tierEnum.getLightColor(),
+                            tierColor
+                        )
+                    )
+                )
+                .padding(3.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            AsyncImage(
+                model = photoUrl,
+                contentDescription = null,
+                modifier = Modifier.fillMaxSize().clip(CircleShape),
+            )
+        }
+
+        Spacer(modifier = Modifier.width(12.dp))
+
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = "$userName (You)",
+                color = textPrimary,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Bold
+            )
+            Text(
+                text = "${streak}-day streak · Your worldwide rank",
+                color = textSecondary.copy(alpha = 0.7f),
+                fontSize = 12.sp
+            )
+        }
+
+        // Chevron
+        Icon(
+            imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
+            contentDescription = null,
+            tint = textSecondary.copy(alpha = 0.4f),
+            modifier = Modifier.size(14.dp)
+        )
+    }
+}
+
+@Composable
 private fun HallOfFameRow(
     entry: HallOfFameEntry,
     isCurrentUser: Boolean,
@@ -1278,6 +1434,133 @@ private fun getOrdinalSuffix(n: Int): String {
         n % 10 == 2 -> "nd"
         n % 10 == 3 -> "rd"
         else -> "th"
+    }
+}
+
+@Composable
+private fun MythicWinnerCelebration(
+    winner: WinnerEntry,
+    onDismiss: () -> Unit,
+    onShare: (place: Int, streak: Int) -> Unit
+) {
+    val crownEmoji = when (winner.crown) {
+        "gold" -> "👑"
+        "silver" -> "🥈"
+        "bronze" -> "🥉"
+        else -> "🏆"
+    }
+    val crownColor = when (winner.crown) {
+        "gold" -> GoldColor
+        "silver" -> SilverColor
+        "bronze" -> BronzeColor
+        else -> MidBlue
+    }
+
+    val scaleAnim = rememberInfiniteTransition(label = "celebration")
+    val scale by scaleAnim.animateFloat(
+        initialValue = 0.95f,
+        targetValue = 1.05f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(800, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "scale"
+    )
+
+    val alphaAnim = rememberInfiniteTransition(label = "pulse")
+    val glowAlpha by alphaAnim.animateFloat(
+        initialValue = 0.3f,
+        targetValue = 0.7f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1200, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "glow"
+    )
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black.copy(alpha = 0.85f))
+            .clickable(onClick = onDismiss),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            modifier = Modifier
+                .padding(24.dp)
+                .graphicsLayer(scaleX = scale, scaleY = scale)
+                .background(Color(0xFF1A1A2E), RoundedCornerShape(24.dp))
+                .border(2.dp, crownColor.copy(alpha = glowAlpha), RoundedCornerShape(24.dp))
+                .padding(32.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                text = "🎉 CONGRATULATIONS! 🎉",
+                color = crownColor,
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Black,
+                textAlign = TextAlign.Center
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(
+                text = crownEmoji,
+                fontSize = 64.sp,
+                textAlign = TextAlign.Center
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = "${getOrdinalSuffix(winner.place).uppercase()} PLACE",
+                color = crownColor,
+                fontSize = 24.sp,
+                fontWeight = FontWeight.Black,
+                textAlign = TextAlign.Center
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = "${winner.streak}-day streak",
+                color = Color.White.copy(alpha = 0.8f),
+                fontSize = 16.sp,
+                fontWeight = FontWeight.SemiBold,
+                textAlign = TextAlign.Center
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(
+                text = when (winner.place) {
+                    1 -> "3 months PRO + Gold Crown + Profile Banner"
+                    2 -> "1 month PRO + Silver Crown + Profile Banner"
+                    3 -> "2 weeks PRO + Bronze Crown + Profile Banner"
+                    else -> "PRO Upgrade + Crown + Profile Banner"
+                },
+                color = Color.White,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Medium,
+                textAlign = TextAlign.Center
+            )
+            Spacer(modifier = Modifier.height(24.dp))
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(crownColor)
+                    .clickable { onShare(winner.place, winner.streak) }
+                    .padding(vertical = 14.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "Share Your Win",
+                    color = Color.White,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Black
+                )
+            }
+            Spacer(modifier = Modifier.height(12.dp))
+            Text(
+                text = "Tap anywhere to dismiss",
+                color = Color.White.copy(alpha = 0.5f),
+                fontSize = 12.sp,
+                textAlign = TextAlign.Center
+            )
+        }
     }
 }
 
