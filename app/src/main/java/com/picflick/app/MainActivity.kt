@@ -425,7 +425,7 @@ fun MainScreen(
         is Screen.SubscriptionStatus,
         is Screen.PlanOptions,
         is Screen.MythicDraw -> Screen.StreakAchievements
-        is Screen.StreakAchievements,
+        is Screen.StreakAchievements -> Screen.Profile
         is Screen.PrivacyPolicy,
         is Screen.Philosophy,
         is Screen.Legal,
@@ -659,6 +659,9 @@ fun MainScreen(
                 }
                 "find_friends" -> {
                     currentScreen = Screen.FindFriends(priorityRequesterId = senderId?.takeIf { it.isNotBlank() })
+                }
+                "achievements" -> {
+                    currentScreen = Screen.MythicDraw
                 }
                 "photo" -> {
                     val flickId = pushData.getString("flickId")
