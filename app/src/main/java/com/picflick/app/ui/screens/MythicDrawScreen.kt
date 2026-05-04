@@ -325,7 +325,7 @@ fun MythicDrawScreen(
         }
 
         if (dd.isUpcoming || pastDraws.isEmpty()) {
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(24.dp))
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -412,7 +412,7 @@ fun MythicDrawScreen(
 
         // ─── USER'S MYTHIC STATS ───
         if (currentUserId.isNotBlank()) {
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(24.dp))
 
             val contenderCount = userProfile.mythicContenderCount
             val boostAmount = userProfile.mythicUploadBoostAmount
@@ -558,7 +558,7 @@ fun MythicDrawScreen(
 
         // ─── LEADERBOARD ───
         if (leaderboard.isNotEmpty()) {
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(24.dp))
             Text(
                 text = "WORLDWIDE STREAK LEADERBOARD",
                 modifier = Modifier.padding(horizontal = 24.dp),
@@ -572,25 +572,36 @@ fun MythicDrawScreen(
                 color = textSecondary.copy(alpha = 0.6f),
                 fontSize = 12.sp
             )
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(12.dp))
 
-            leaderboard.forEachIndexed { index, entry ->
-                LeaderboardRow(
-                    rank = index + 1,
-                    entry = entry,
-                    isCurrentUser = entry.userId == currentUserId,
-                    textPrimary = textPrimary,
-                    textSecondary = textSecondary,
-                    bgColor = bgColor,
-                    isDarkMode = isDarkMode,
-                    onClick = { onUserProfileClick(entry.userId) }
-                )
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp)
+                    .border(1.5.dp, MidBlue.copy(alpha = 0.4f), RoundedCornerShape(16.dp)),
+                colors = CardDefaults.cardColors(containerColor = bgColor),
+                shape = RoundedCornerShape(16.dp)
+            ) {
+                Column(modifier = Modifier.padding(vertical = 12.dp)) {
+                    leaderboard.forEachIndexed { index, entry ->
+                        LeaderboardRow(
+                            rank = index + 1,
+                            entry = entry,
+                            isCurrentUser = entry.userId == currentUserId,
+                            textPrimary = textPrimary,
+                            textSecondary = textSecondary,
+                            bgColor = bgColor,
+                            isDarkMode = isDarkMode,
+                            onClick = { onUserProfileClick(entry.userId) }
+                        )
+                    }
+                }
             }
         }
 
         // ─── GLOBAL STATS WIDGET ───
         if (!dd.isUpcoming) {
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(24.dp))
             Text(
                 text = "DRAW STATS",
                 modifier = Modifier.padding(horizontal = 24.dp),
@@ -673,7 +684,7 @@ fun MythicDrawScreen(
 
         // ─── LIVE DRAW ANIMATION ───
         if (dd.drawAnimation?.isLive == true && !dd.isUpcoming) {
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(24.dp))
             MythicDrawAnimation(
                 isDarkMode = isDarkMode,
                 onComplete = { /* animation completes */ }
@@ -682,7 +693,7 @@ fun MythicDrawScreen(
 
         // ─── HALL OF FAME ───
         if (hallOfFame.isNotEmpty()) {
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(24.dp))
             Text(
                 text = "HALL OF FAME",
                 modifier = Modifier.padding(horizontal = 24.dp),
@@ -706,7 +717,7 @@ fun MythicDrawScreen(
 
         // ─── PAST DRAWS ───
         if (pastDraws.isNotEmpty()) {
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(24.dp))
             Text(
                 text = "PAST DRAWS",
                 modifier = Modifier.padding(horizontal = 24.dp),
@@ -729,7 +740,7 @@ fun MythicDrawScreen(
         }
 
         // ─── PRIZES ───
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(24.dp))
         Text(
             text = "PRIZES",
             modifier = Modifier.padding(horizontal = 24.dp),
@@ -737,24 +748,49 @@ fun MythicDrawScreen(
             fontSize = 14.sp,
             fontWeight = FontWeight.Black
         )
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(12.dp))
 
-        Column(modifier = Modifier.padding(horizontal = 24.dp)) {
-            PrizeRow(place = "1st", prize = "3 months PRO + Gold Crown + Profile Banner", color = GoldColor, textPrimary = textPrimary)
-            PrizeRow(place = "2nd", prize = "1 month PRO + Silver Crown + Profile Banner", color = SilverColor, textPrimary = textPrimary)
-            PrizeRow(place = "3rd", prize = "2 weeks PRO + Bronze Crown + Profile Banner", color = BronzeColor, textPrimary = textPrimary)
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = "🏆 PRO winners receive ULTRA if already PRO. ULTRA winners get extended + Champion badge.",
-                color = textSecondary,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.SemiBold,
-                lineHeight = 18.sp
-            )
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp)
+                .border(1.5.dp, MidBlue.copy(alpha = 0.4f), RoundedCornerShape(16.dp)),
+            colors = CardDefaults.cardColors(containerColor = bgColor),
+            shape = RoundedCornerShape(16.dp)
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                PrizeRow(place = "1st", prize = "3 months PRO + Gold Crown + Profile Banner", color = GoldColor, textPrimary = textPrimary)
+                PrizeRow(place = "2nd", prize = "1 month PRO + Silver Crown + Profile Banner", color = SilverColor, textPrimary = textPrimary)
+                PrizeRow(place = "3rd", prize = "2 weeks PRO + Bronze Crown + Profile Banner", color = BronzeColor, textPrimary = textPrimary)
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "🏆 PRO winners receive ULTRA if already PRO. ULTRA winners get extended + Champion badge.",
+                    color = textSecondary,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    lineHeight = 18.sp
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(MidBlue.copy(alpha = 0.1f))
+                        .padding(10.dp)
+                ) {
+                    Text(
+                        text = "🎁 ALL ENTRANTS (runners up): +30% upload boost for 30 days + tier badge progression towards Bronze/Silver/Gold/Diamond Mythic.",
+                        color = MidBlue,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        lineHeight = 18.sp
+                    )
+                }
+            }
         }
 
         // ─── HOW IT WORKS ───
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(24.dp))
         Text(
             text = "HOW IT WORKS",
             modifier = Modifier.padding(horizontal = 24.dp),
@@ -762,18 +798,27 @@ fun MythicDrawScreen(
             fontSize = 14.sp,
             fontWeight = FontWeight.Black
         )
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(12.dp))
 
-        Column(modifier = Modifier.padding(horizontal = 24.dp)) {
-            HowItWorksRow(step = "1", text = "Upload daily to build your streak", textPrimary = textPrimary)
-            HowItWorksRow(step = "2", text = "Hit the monthly threshold to enter", textPrimary = textPrimary)
-            HowItWorksRow(step = "3", text = "Longer streak = more lottery tickets", textPrimary = textPrimary)
-            HowItWorksRow(step = "4", text = "3 winners picked randomly each month", textPrimary = textPrimary)
-            HowItWorksRow(step = "5", text = "Winners get PRO + crown + profile banner", textPrimary = textPrimary)
-            HowItWorksRow(step = "6", text = "All entrants get +30% upload boost for 30 days", textPrimary = textPrimary)
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp)
+                .border(1.5.dp, MidBlue.copy(alpha = 0.4f), RoundedCornerShape(16.dp)),
+            colors = CardDefaults.cardColors(containerColor = bgColor),
+            shape = RoundedCornerShape(16.dp)
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                HowItWorksRow(step = "1", text = "Upload daily to build your streak", textPrimary = textPrimary)
+                HowItWorksRow(step = "2", text = "Hit the monthly threshold to enter", textPrimary = textPrimary)
+                HowItWorksRow(step = "3", text = "Longer streak = more lottery tickets", textPrimary = textPrimary)
+                HowItWorksRow(step = "4", text = "3 winners picked randomly each month", textPrimary = textPrimary)
+                HowItWorksRow(step = "5", text = "Winners get PRO + crown + profile banner", textPrimary = textPrimary)
+                HowItWorksRow(step = "6", text = "All entrants get +30% upload boost for 30 days", textPrimary = textPrimary)
+            }
         }
 
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(32.dp))
     }
 }
 
