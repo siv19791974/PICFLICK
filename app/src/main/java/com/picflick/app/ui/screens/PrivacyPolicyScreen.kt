@@ -81,7 +81,7 @@ fun PrivacyPolicyScreen(
             // Last Updated
             item {
                 Text(
-                    text = "Last Updated: March 2025",
+                    text = "Last Updated: May 2025",
                     color = subtitleColor,
                     fontSize = 13.sp,
                     fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
@@ -110,6 +110,7 @@ By using PicFlick, you agree to the collection and use of information in accorda
 • Social Data: Friend connections, followers, blocked users list
 • Device Information: Device ID for push notifications, app usage statistics
 • Contact Information: Only if you choose to sync contacts for friend discovery
+• Mythic Draw Data: Your upload streak count, consecutive months entered, and tier badge status (used for the free monthly loyalty draw)
 
 We do NOT collect:
 • Your precise location
@@ -128,6 +129,7 @@ We do NOT collect:
 • Provide and maintain PicFlick services
 • Display your photos to your friends (according to your privacy settings)
 • Send push notifications for likes, comments, and new followers
+• Track your last upload date to maintain your streak and offer free streak recovery if you miss a day
 • Suggest friends based on your contacts (if you opt-in)
 • Improve our app and user experience
 • Prevent fraud and abuse
