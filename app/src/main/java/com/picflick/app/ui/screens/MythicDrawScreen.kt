@@ -753,39 +753,49 @@ fun MythicDrawScreen(
         Card(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 24.dp)
-                .border(1.5.dp, MidBlue.copy(alpha = 0.4f), RoundedCornerShape(16.dp)),
-            colors = CardDefaults.cardColors(containerColor = bgColor),
+                .padding(horizontal = 24.dp),
+            colors = CardDefaults.cardColors(containerColor = MidBlue),
             shape = RoundedCornerShape(16.dp)
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
-                PrizeRow(place = "1st", prize = "3 months PRO + Gold Crown + Profile Banner", color = GoldColor, textPrimary = textPrimary)
-                PrizeRow(place = "2nd", prize = "1 month PRO + Silver Crown + Profile Banner", color = SilverColor, textPrimary = textPrimary)
-                PrizeRow(place = "3rd", prize = "2 weeks PRO + Bronze Crown + Profile Banner", color = BronzeColor, textPrimary = textPrimary)
-                Spacer(modifier = Modifier.height(8.dp))
+                // ALL ENTRANTS — top of prizes card
                 Text(
-                    text = "🏆 PRO winners receive ULTRA if already PRO. ULTRA winners get extended + Champion badge.",
-                    color = textSecondary,
+                    text = "🎁 ALL ENTRANTS",
+                    color = Color.White,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Black
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "+30% upload boost for 30 days + tier badge progression towards Bronze / Silver / Gold / Diamond Mythic.",
+                    color = Color.White.copy(alpha = 0.85f),
                     fontSize = 12.sp,
                     fontWeight = FontWeight.SemiBold,
                     lineHeight = 18.sp
                 )
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // Divider
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(10.dp))
-                        .background(MidBlue)
-                        .padding(12.dp)
-                ) {
-                    Text(
-                        text = "🎁 ALL ENTRANTS (runners up): +30% upload boost for 30 days + tier badge progression towards Bronze/Silver/Gold/Diamond Mythic.",
-                        color = Color.White,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        lineHeight = 18.sp
-                    )
-                }
+                        .height(1.dp)
+                        .background(Color.White.copy(alpha = 0.2f))
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // Winner prizes — grouped together
+                PrizeRow(place = "1st", prize = "3 months PRO + Gold Crown + Profile Banner", color = GoldColor)
+                PrizeRow(place = "2nd", prize = "1 month PRO + Silver Crown + Profile Banner", color = SilverColor)
+                PrizeRow(place = "3rd", prize = "2 weeks PRO + Bronze Crown + Profile Banner", color = BronzeColor)
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "🏆 PRO winners receive ULTRA if already PRO. ULTRA winners get extended + Champion badge.",
+                    color = Color.White.copy(alpha = 0.7f),
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    lineHeight = 16.sp
+                )
             }
         }
 
@@ -1165,7 +1175,7 @@ private fun HowItWorksRow(step: String, text: String, textPrimary: Color = Color
 }
 
 @Composable
-private fun PrizeRow(place: String, prize: String, color: Color, textPrimary: Color = Color.White) {
+private fun PrizeRow(place: String, prize: String, color: Color) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -1177,11 +1187,11 @@ private fun PrizeRow(place: String, prize: String, color: Color, textPrimary: Co
             color = color,
             fontSize = 14.sp,
             fontWeight = FontWeight.Black,
-            modifier = Modifier.width(32.dp)
+            modifier = Modifier.width(40.dp)
         )
         Text(
             text = prize,
-            color = textPrimary,
+            color = Color.White,
             fontSize = 13.sp,
             fontWeight = FontWeight.SemiBold,
             lineHeight = 18.sp
