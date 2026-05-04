@@ -374,6 +374,88 @@ fun MythicDrawScreen(
             }
         }
 
+        // ─── NEXT DRAW COUNTDOWN ───
+        // If no completed draw yet (first month), show a big countdown card
+        val nextDrawDate = remember {
+            val cal = java.util.Calendar.getInstance()
+            cal.add(java.util.Calendar.MONTH, 1)
+            cal.set(java.util.Calendar.DAY_OF_MONTH, 1)
+            cal.set(java.util.Calendar.HOUR_OF_DAY, 0)
+            cal.set(java.util.Calendar.MINUTE, 0)
+            cal.set(java.util.Calendar.SECOND, 0)
+            cal.time
+        }
+        val nextDrawMonth = remember(nextDrawDate) {
+            val fmt = java.text.SimpleDateFormat("d MMMM yyyy", java.util.Locale.getDefault())
+            fmt.format(nextDrawDate)
+        }
+        val daysUntilDraw = remember {
+            val now = java.util.Calendar.getInstance().timeInMillis
+            val diff = nextDrawDate.time - now
+            kotlin.math.max(0, (diff / (1000 * 60 * 60 * 24)).toInt())
+        }
+
+        if (dd.isUpcoming || pastDraws.isEmpty()) {
+            Spacer(modifier = Modifier.height(16.dp))
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp)
+                    .border(
+                        1.5.dp,
+                        Brush.horizontalGradient(listOf(GoldColor.copy(alpha = 0.6f), GoldColor.copy(alpha = 0.2f))),
+                        RoundedCornerShape(16.dp)
+                    ),
+                colors = CardDefaults.cardColors(containerColor = bgColor),
+                shape = RoundedCornerShape(16.dp)
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp, vertical = 18.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        text = "🎲 NEXT MYTHIC DRAW",
+                        color = GoldColor,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Black
+                    )
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text(
+                        text = "1st $nextDrawMonth",
+                        color = textPrimary,
+                        fontSize = 22.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "$daysUntilDraw days to go — keep your streak alive!",
+                        color = textSecondary,
+                        fontSize = 13.sp,
+                        textAlign = TextAlign.Center
+                    )
+                    if (currentStreak < dd.streakThreshold) {
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(
+                            text = "You need ${dd.streakThreshold - currentStreak} more days to qualify",
+                            color = if (isDarkMode) Color(0xFFFF6B6B) else Color(0xFFD32F2F),
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    } else {
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(
+                            text = "✓ You're eligible! ${(currentStreak / 10).coerceAtLeast(1)} lottery ticket${if ((currentStreak / 10).coerceAtLeast(1) > 1) "s" else ""}",
+                            color = Color(0xFF4CAF50),
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                }
+            }
+        }
+
         // ─── WINNERS SECTION ───
         if (!dd.isUpcoming && dd.winners.isNotEmpty()) {
             Text(
