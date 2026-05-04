@@ -85,6 +85,7 @@ fun MythicDrawScreen(
     var drawData by remember { mutableStateOf<MythicDrawData?>(null) }
     var hallOfFame by remember { mutableStateOf<List<HallOfFameEntry>>(emptyList()) }
     var leaderboard by remember { mutableStateOf<List<LeaderboardEntry>>(emptyList()) }
+    var pastDraws by remember { mutableStateOf<List<PastDrawEntry>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
 
     LaunchedEffect(Unit) {
@@ -206,6 +207,34 @@ fun MythicDrawScreen(
 
             hallOfFame = hallList
             leaderboard = lb
+
+            // Fetch past draws (all mythic_draw_* docs except current month)
+            val allSystemDocs = db.collection("system").get().await()
+            val pastList = allSystemDocs.documents
+                .filter { it.id.startsWith("mythic_draw_") && it.id != "mythic_draw_$monthKey" && it.exists() }
+                .sortedByDescending { it.id }
+                .take(12)
+                .mapNotNull { doc ->
+                    val mk = doc.getString("monthKey") ?: return@mapNotNull null
+                    val winnersList = (doc.get("winners") as? List<Map<String, Any>>)?.map { w ->
+                        WinnerEntry(
+                            place = (w["place"] as? Long)?.toInt() ?: 0,
+                            userId = w["userId"] as? String ?: "",
+                            userName = w["userName"] as? String ?: "Unknown",
+                            streak = (w["streak"] as? Long)?.toInt() ?: 0,
+                            crown = w["crown"] as? String ?: "",
+                        )
+                    } ?: emptyList()
+                    PastDrawEntry(
+                        monthKey = mk,
+                        monthNumber = (doc.get("monthNumber") as? Long)?.toInt() ?: 0,
+                        status = doc.getString("status") ?: "completed",
+                        winners = winnersList,
+                        eligibleUserCount = (doc.get("eligibleUserCount") as? Long)?.toInt() ?: 0,
+                        totalUserCount = (doc.get("totalUserCount") as? Long)?.toInt() ?: 0,
+                    )
+                }
+            pastDraws = pastList
         } catch (_: Exception) {
             // Fallback
             drawData = MythicDrawData(
@@ -376,11 +405,13 @@ fun MythicDrawScreen(
             Spacer(modifier = Modifier.height(8.dp))
 
             val contenderCount = userProfile.mythicContenderCount
-            val storageBonus = userProfile.mythicStorageBonusTotal
+            val boostAmount = userProfile.mythicUploadBoostAmount
+            val hasActiveBoost = userProfile.hasActiveUploadBoost()
             val crown = userProfile.mythicCrown
             val hasBanner = userProfile.mythicWinnerBanner.isNotBlank()
             val tier = userProfile.mythicTier
             val consecutiveMonths = userProfile.mythicConsecutiveMonths
+            val isChampion = userProfile.mythicChampion
 
             Card(
                 modifier = Modifier
@@ -393,7 +424,11 @@ fun MythicDrawScreen(
                 Column(modifier = Modifier.padding(16.dp)) {
                     StatRow(label = "Current Streak", value = "$currentStreak days", icon = "🔥")
                     if (contenderCount > 0) StatRow(label = "Draw Entries", value = "$contenderCount months", icon = "🎫")
-                    if (storageBonus > 0) StatRow(label = "Storage Bonus", value = "+$storageBonus MB", icon = "💾")
+                    if (hasActiveBoost) StatRow(
+                        label = "Upload Boost",
+                        value = "+$boostAmount/day",
+                        icon = "🚀"
+                    )
                     if (crown.isNotBlank()) StatRow(
                         label = "Current Crown",
                         value = crown.replaceFirstChar { it.uppercase() },
@@ -405,6 +440,36 @@ fun MythicDrawScreen(
                         }
                     )
                     if (hasBanner) StatRow(label = "Banner", value = "Active", icon = "🖼️")
+
+                    // ─── MYTHIC CHAMPION BADGE (permanent, ULTRA winners only) ───
+                    if (isChampion) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(Color(0xFFFFD700).copy(alpha = 0.12f))
+                                .border(1.dp, GoldColor.copy(alpha = 0.5f), RoundedCornerShape(12.dp))
+                                .padding(horizontal = 12.dp, vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(text = "🏆", fontSize = 24.sp)
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = "MYTHIC CHAMPION",
+                                    color = GoldColor,
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Black
+                                )
+                                Text(
+                                    text = "Permanent badge — ${userProfile.mythicChampionMonth}",
+                                    color = textSecondary,
+                                    fontSize = 11.sp
+                                )
+                            }
+                        }
+                    }
 
                     // ─── TIER BADGE ───
                     if (tier.isNotBlank() && consecutiveMonths > 0) {
@@ -601,6 +666,29 @@ fun MythicDrawScreen(
             }
         }
 
+        // ─── PAST DRAWS ───
+        if (pastDraws.isNotEmpty()) {
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(
+                text = "PAST DRAWS",
+                modifier = Modifier.padding(horizontal = 24.dp),
+                color = textPrimary,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Black
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+
+            pastDraws.forEach { pd ->
+                PastDrawCard(
+                    entry = pd,
+                    textPrimary = textPrimary,
+                    textSecondary = textSecondary,
+                    isDarkMode = isDarkMode
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+        }
+
         // ─── HOW IT WORKS ───
         Spacer(modifier = Modifier.height(16.dp))
         Text(
@@ -706,6 +794,69 @@ private fun WinnerCard(
                     fontSize = 12.sp
                 )
             }
+        }
+    }
+}
+
+@Composable
+private fun PastDrawCard(
+    entry: PastDrawEntry,
+    textPrimary: Color,
+    textSecondary: Color,
+    isDarkMode: Boolean
+) {
+    val bgColor = if (isDarkMode) Color(0xFF1A1A2E) else Color(0xFFF0F0F0)
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 24.dp)
+            .border(1.dp, MidBlue.copy(alpha = 0.25f), RoundedCornerShape(12.dp)),
+        colors = CardDefaults.cardColors(containerColor = bgColor),
+        shape = RoundedCornerShape(12.dp)
+    ) {
+        Column(modifier = Modifier.padding(14.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = entry.monthKey,
+                    color = textPrimary,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.weight(1f)
+                )
+                Text(
+                    text = "Month #${entry.monthNumber}",
+                    color = textSecondary,
+                    fontSize = 12.sp
+                )
+            }
+            if (entry.winners.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(6.dp))
+                entry.winners.forEach { w ->
+                    val emoji = when (w.crown) {
+                        "gold" -> "👑"
+                        "silver" -> "🥈"
+                        "bronze" -> "🥉"
+                        else -> "🏆"
+                    }
+                    Text(
+                        text = "$emoji #${w.place} ${w.userName} (${w.streak}d)",
+                        color = textSecondary,
+                        fontSize = 12.sp
+                    )
+                }
+            } else {
+                Text(
+                    text = "No eligible entrants",
+                    color = textSecondary,
+                    fontSize = 12.sp
+                )
+            }
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = "${entry.eligibleUserCount} entrants · ${entry.totalUserCount} total users",
+                color = textSecondary.copy(alpha = 0.7f),
+                fontSize = 11.sp
+            )
         }
     }
 }
@@ -898,6 +1049,15 @@ data class DrawAnimation(
     val winnerRevealed: Boolean
 )
 
+data class PastDrawEntry(
+    val monthKey: String,
+    val monthNumber: Int,
+    val status: String,
+    val winners: List<WinnerEntry>,
+    val eligibleUserCount: Int,
+    val totalUserCount: Int
+)
+
 data class WinnerEntry(
     val place: Int,
     val userId: String,
@@ -1055,13 +1215,14 @@ fun MythicDrawUpcomingPreview() {
     MythicDrawScreen(
         currentStreak = 47,
         currentUserId = "preview_user",
-        userProfile = UserProfile(
-            uid = "preview_user",
-            displayName = "Preview User",
-            mythicTier = "bronze",
-            mythicContenderCount = 2,
-            mythicStorageBonusTotal = 100
-        ),
+                    userProfile = UserProfile(
+                uid = "preview_user",
+                displayName = "Preview User",
+                mythicTier = "bronze",
+                mythicContenderCount = 2,
+                mythicUploadBoostAmount = 3,
+                mythicUploadBoostExpiry = System.currentTimeMillis() + (30 * 24 * 60 * 60 * 1000L)
+            ),
         onBack = {}
     )
 }
@@ -1072,13 +1233,14 @@ fun MythicDrawCompletedPreview() {
     MythicDrawScreen(
         currentStreak = 120,
         currentUserId = "preview_user",
-        userProfile = UserProfile(
-            uid = "preview_user",
-            displayName = "Preview User",
-            mythicTier = "silver",
-            mythicContenderCount = 5,
-            mythicStorageBonusTotal = 250
-        ),
+                    userProfile = UserProfile(
+                uid = "preview_user",
+                displayName = "Preview User",
+                mythicTier = "silver",
+                mythicContenderCount = 5,
+                mythicUploadBoostAmount = 30,
+                mythicUploadBoostExpiry = System.currentTimeMillis() + (30 * 24 * 60 * 60 * 1000L)
+            ),
         onBack = {}
     )
 }

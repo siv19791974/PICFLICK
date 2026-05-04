@@ -522,7 +522,7 @@ fun MainScreen(
         if (sharedUris.isEmpty()) return@LaunchedEffect
 
         val tier = profile.getEffectiveTier()
-        val dailyLimit = tier.getDailyUploadLimit()
+        val dailyLimit = profile.getEffectiveDailyUploadLimit()
         val remainingDaily = if (dailyLimit == Int.MAX_VALUE) Int.MAX_VALUE else (dailyLimit - uploadViewModel.dailyUploadCount).coerceAtLeast(0)
         val allowedCount = if (tier == SubscriptionTier.ULTRA) minOf(100, remainingDaily) else remainingDaily
 
@@ -1275,7 +1275,7 @@ fun MainScreen(
                         } else {
                             val profile = userProfile
                             val tier = profile.getEffectiveTier()
-                            val dailyLimit = tier.getDailyUploadLimit()
+                            val dailyLimit = profile.getEffectiveDailyUploadLimit()
                             val remainingDaily = if (dailyLimit == Int.MAX_VALUE) Int.MAX_VALUE else (dailyLimit - uploadViewModel.dailyUploadCount).coerceAtLeast(0)
                             val batchCap = if (tier == SubscriptionTier.ULTRA) 100 else remainingDaily
 
