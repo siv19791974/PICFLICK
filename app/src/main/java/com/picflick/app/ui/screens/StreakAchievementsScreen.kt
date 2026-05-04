@@ -162,6 +162,7 @@ fun StreakAchievementsScreen(
                     AchievementItem("7-Day Flame", "Upload 7 days in a row", 7, currentStreak, "days", "🔥"),
                     AchievementItem("30-Day Legend", "Upload 30 days in a row", 30, currentStreak, "days", "🏆"),
                     AchievementItem("Mythic Qualifier", "Hit the monthly streak threshold to enter the Mythic Draw. 3 winners, tiered prizes, streak-weighted tickets.", streakThreshold, currentStreak, "days", "👑"),
+                    AchievementItem("Streak Saver", "Missed a day? One free streak recovery per month keeps your Mythic entry alive!", 1, 1, "info", "🛡️"),
                     AchievementItem("Early Bird", "Upload before 8am for 7 days", 7, earlyBirdDays, "days", "🌅"),
                     AchievementItem("Night Owl", "Upload after 10pm for 7 days", 7, nightOwlDays, "days", "🌙"),
                     AchievementItem("Weekend Warrior", "Upload on 4 weekends", 4, weekendDays, "weekends", "🏕️"),

@@ -1455,7 +1455,7 @@ exports.runMythicDrawManual = functions
 exports.mythicMondayPush = functions
   .runWith({ memory: '256MB', timeoutSeconds: 60 })
   .pubsub
-  .schedule('0 9 * * 1')
+  .schedule('0 12 * * 1')
   .timeZone('UTC')
   .onRun(async (context) => {
     if (await shouldSkipTrigger('mythicMondayPush')) return null;

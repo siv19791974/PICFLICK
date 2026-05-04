@@ -91,6 +91,7 @@ fun MythicDrawScreen(
     var drawData by remember { mutableStateOf<MythicDrawData?>(null) }
     var hallOfFame by remember { mutableStateOf<List<HallOfFameEntry>>(emptyList()) }
     var leaderboard by remember { mutableStateOf<List<LeaderboardEntry>>(emptyList()) }
+    var friendsLeaderboard by remember { mutableStateOf<List<LeaderboardEntry>>(emptyList()) }
     var pastDraws by remember { mutableStateOf<List<PastDrawEntry>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
 
@@ -213,6 +214,44 @@ fun MythicDrawScreen(
 
             hallOfFame = hallList
             leaderboard = lb
+
+            // ─── FRIENDS LEADERBOARD ───
+            // Load mutual friends + current user, sorted by streak
+            val mutualFriendIds = userProfile.following.filter { userProfile.followers.contains(it) }
+            val friendEntries = mutableListOf<LeaderboardEntry>()
+            // Add current user
+            friendEntries.add(
+                LeaderboardEntry(
+                    userId = currentUserId,
+                    userName = userProfile.displayName.ifBlank { "You" },
+                    streak = currentStreak,
+                    photoUrl = userProfile.photoUrl,
+                    tier = userProfile.subscriptionTier.name
+                )
+            )
+            // Batch fetch friend profiles (up to 10 at a time)
+            mutualFriendIds.take(9).chunked(10).forEach { chunk ->
+                val friendsSnap = db.collection("users")
+                    .whereIn(com.google.firebase.firestore.FieldPath.documentId(), chunk)
+                    .get()
+                    .await()
+                friendsSnap.documents.forEach { doc ->
+                    val fStreak = ((doc.get("streak") as? Map<*, *>)?.get("current") as? Long)?.toInt() ?: 0
+                    val fTier = (doc.get("subscriptionTier") as? String) ?: "FREE"
+                    friendEntries.add(
+                        LeaderboardEntry(
+                            userId = doc.id,
+                            userName = doc.getString("displayName") ?: "Unknown",
+                            streak = fStreak,
+                            photoUrl = doc.getString("photoUrl") ?: "",
+                            tier = fTier
+                        )
+                    )
+                }
+            }
+            friendsLeaderboard = friendEntries
+                .sortedByDescending { it.streak }
+                .take(10)
 
             // Fetch past draws (all mythic_draw_* docs except current month)
             val allSystemDocs = db.collection("system").get().await()
@@ -593,6 +632,49 @@ fun MythicDrawScreen(
             }
         }
 
+        // ─── FRIENDS LEADERBOARD ───
+        if (friendsLeaderboard.isNotEmpty()) {
+            Spacer(modifier = Modifier.height(24.dp))
+            Text(
+                text = "FRIENDS LEADERBOARD",
+                modifier = Modifier.padding(horizontal = 24.dp),
+                color = textPrimary,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Black
+            )
+            Text(
+                text = "You + your highest-streak friends",
+                modifier = Modifier.padding(horizontal = 24.dp),
+                color = textSecondary.copy(alpha = 0.6f),
+                fontSize = 12.sp
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp)
+                    .border(1.5.dp, MidBlue.copy(alpha = 0.4f), RoundedCornerShape(16.dp)),
+                colors = CardDefaults.cardColors(containerColor = bgColor),
+                shape = RoundedCornerShape(16.dp)
+            ) {
+                Column(modifier = Modifier.padding(vertical = 12.dp)) {
+                    friendsLeaderboard.forEachIndexed { index, entry ->
+                        LeaderboardRow(
+                            rank = index + 1,
+                            entry = entry,
+                            isCurrentUser = entry.userId == currentUserId,
+                            textPrimary = textPrimary,
+                            textSecondary = textSecondary,
+                            bgColor = bgColor,
+                            isDarkMode = isDarkMode,
+                            onClick = { onUserProfileClick(entry.userId) }
+                        )
+                    }
+                }
+            }
+        }
+
         // ─── GLOBAL STATS WIDGET ───
         if (!dd.isUpcoming) {
             Spacer(modifier = Modifier.height(24.dp))
@@ -816,7 +898,7 @@ fun MythicDrawScreen(
                 HowItWorksRow(step = "1", text = "Upload daily to build your streak", textPrimary = textPrimary)
                 HowItWorksRow(step = "2", text = "Hit the monthly threshold to enter", textPrimary = textPrimary)
                 HowItWorksRow(step = "3", text = "Longer streak = more lottery tickets", textPrimary = textPrimary)
-                HowItWorksRow(step = "4", text = "3 winners picked randomly each month", textPrimary = textPrimary)
+                HowItWorksRow(step = "4", text = "3 winners picked by streak-weighted lottery (more streak days = more tickets)", textPrimary = textPrimary)
                 HowItWorksRow(step = "5", text = "Winners get PRO + crown + profile banner", textPrimary = textPrimary)
                 HowItWorksRow(step = "6", text = "All entrants get +30% upload boost for 30 days", textPrimary = textPrimary)
             }
