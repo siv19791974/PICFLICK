@@ -92,6 +92,7 @@ fun MythicDrawScreen(
     var hallOfFame by remember { mutableStateOf<List<HallOfFameEntry>>(emptyList()) }
     var leaderboard by remember { mutableStateOf<List<LeaderboardEntry>>(emptyList()) }
     var friendsLeaderboard by remember { mutableStateOf<List<LeaderboardEntry>>(emptyList()) }
+    var worldwideRankMap by remember { mutableStateOf<Map<String, Int>>(emptyMap()) }
     var pastDraws by remember { mutableStateOf<List<PastDrawEntry>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
 
@@ -120,32 +121,24 @@ fun MythicDrawScreen(
                 }?.reversed() ?: emptyList()
             } else emptyList()
 
-            // Get leaderboard from current draw or query users
-            val lb = if (drawSnap.exists()) {
-                (drawSnap.get("leaderboard") as? List<Map<String, Any>>)?.map { m ->
-                    LeaderboardEntry(
-                        userId = m["userId"] as? String ?: "",
-                        userName = m["userName"] as? String ?: "Unknown",
-                        streak = (m["streak"] as? Long)?.toInt() ?: 0,
-                        photoUrl = m["photoUrl"] as? String ?: "",
-                    )
-                } ?: emptyList()
-            } else {
-                // Fallback: query top 10 streaks from users
-                val usersSnap = db.collection("users")
-                    .orderBy("streak.current", com.google.firebase.firestore.Query.Direction.DESCENDING)
-                    .limit(10)
-                    .get()
-                    .await()
-                usersSnap.documents.map { doc ->
-                    LeaderboardEntry(
-                        userId = doc.id,
-                        userName = doc.getString("displayName") ?: "Unknown",
-                        streak = ((doc.get("streak") as? Map<*, *>)?.get("current") as? Long)?.toInt() ?: 0,
-                        photoUrl = doc.getString("photoUrl") ?: "",
-                    )
-                }
+            // Get worldwide leaderboard (all users, ordered by streak) for accurate ranks
+            val allUsersSnap = db.collection("users")
+                .orderBy("streak.current", com.google.firebase.firestore.Query.Direction.DESCENDING)
+                .get()
+                .await()
+            val allUserEntries = allUsersSnap.documents.mapIndexed { index, doc ->
+                val streak = ((doc.get("streak") as? Map<*, *>)?.get("current") as? Long)?.toInt() ?: 0
+                val tier = (doc.get("subscriptionTier") as? String) ?: "FREE"
+                LeaderboardEntry(
+                    userId = doc.id,
+                    userName = doc.getString("displayName") ?: "Unknown",
+                    streak = streak,
+                    photoUrl = doc.getString("photoUrl") ?: "",
+                    tier = tier,
+                ) to (index + 1)
             }
+            worldwideRankMap = allUserEntries.associate { it.first.userId to it.second }
+            val lb = allUserEntries.map { it.first }.take(10)
 
             drawData = if (drawSnap.exists()) {
                 val winners = (drawSnap.get("winners") as? List<Map<String, Any>>)?.map { m ->
@@ -668,7 +661,8 @@ fun MythicDrawScreen(
                             textSecondary = textSecondary,
                             bgColor = bgColor,
                             isDarkMode = isDarkMode,
-                            onClick = { onUserProfileClick(entry.userId) }
+                            onClick = { onUserProfileClick(entry.userId) },
+                            worldwideRank = worldwideRankMap[entry.userId]
                         )
                     }
                 }
@@ -1060,7 +1054,8 @@ private fun LeaderboardRow(
     textSecondary: Color,
     bgColor: Color,
     isDarkMode: Boolean,
-    onClick: () -> Unit = {}
+    onClick: () -> Unit = {},
+    worldwideRank: Int? = null
 ) {
     val medalEmoji = when (rank) {
         1 -> "🥇"
@@ -1136,7 +1131,8 @@ private fun LeaderboardRow(
                     fontWeight = if (isCurrentUser) FontWeight.Bold else FontWeight.Normal
                 )
                 Text(
-                    text = "${entry.streak}-day streak",
+                    text = "${entry.streak}-day streak" +
+                        if (worldwideRank != null) "  ·  #${java.text.NumberFormat.getInstance().format(worldwideRank)} worldwide" else "",
                     color = textSecondary.copy(alpha = 0.7f),
                     fontSize = 12.sp
                 )

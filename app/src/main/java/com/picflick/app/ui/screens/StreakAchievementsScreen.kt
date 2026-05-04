@@ -24,17 +24,24 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
@@ -52,6 +59,8 @@ import androidx.compose.ui.unit.sp
 import com.google.firebase.firestore.FieldPath
 import com.google.firebase.firestore.FirebaseFirestore
 import com.picflick.app.data.Flick
+import com.picflick.app.repository.FlickRepository
+import com.picflick.app.ui.components.ActionSheetRow
 import com.picflick.app.ui.theme.PicFlickDarkSurface
 import com.picflick.app.ui.theme.ThemeManager
 import com.picflick.app.ui.theme.isDarkModeBackground
@@ -80,7 +89,7 @@ data class AchievementCategory(
     val achievements: List<AchievementItem>
 )
 
-@OptIn(ExperimentalFoundationApi::class)
+@OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun StreakAchievementsScreen(
     currentStreak: Int,
@@ -135,6 +144,25 @@ fun StreakAchievementsScreen(
     val totalPosts = remember(photos) { photos.size }
 
     val streakThreshold = 10 // Month 1 threshold — fetched from appConfig/mythicDraw in MythicDrawScreen
+
+    // Streak recovery state
+    var streakRecoveryAvailable by remember { mutableStateOf(false) }
+    var streakRecoveryValue by remember { mutableIntStateOf(0) }
+    var showRecoverySheet by remember { mutableStateOf(false) }
+    var isRecovering by remember { mutableStateOf(false) }
+
+    LaunchedEffect(currentUserId) {
+        if (currentUserId.isBlank()) return@LaunchedEffect
+        try {
+            val db = FirebaseFirestore.getInstance()
+            val doc = db.collection("users").document(currentUserId).get().await()
+            streakRecoveryAvailable = doc.getBoolean("streakRecoveryAvailable") ?: false
+            streakRecoveryValue = (doc.getLong("streakRecoveryValue") ?: 0L).toInt()
+        } catch (_: Exception) {
+            streakRecoveryAvailable = false
+            streakRecoveryValue = 0
+        }
+    }
 
             val bgColor = isDarkModeBackground(isDarkMode)
         val textPrimary = isDarkModeOnBackground(isDarkMode)
@@ -386,9 +414,16 @@ fun StreakAchievementsScreen(
                     val itemProgress = (item.currentValue.toFloat() / item.requiredValue.toFloat()).coerceIn(0f, 1f)
                     val unlocked = item.unlocked
 
+                    val isStreakSaver = item.title == "Streak Saver"
                     Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(containerColor = bgColor),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .then(
+                                if (isStreakSaver) Modifier.clickable { showRecoverySheet = true } else Modifier
+                            ),
+                        colors = CardDefaults.cardColors(
+                            containerColor = if (isStreakSaver && streakRecoveryAvailable) MidBlue.copy(alpha = 0.15f) else bgColor
+                        ),
                         shape = RoundedCornerShape(16.dp)
                     ) {
                         Row(
@@ -451,23 +486,38 @@ fun StreakAchievementsScreen(
 
                             Spacer(modifier = Modifier.width(12.dp))
 
-                            // Progress text
+                            // Progress text or tap cue
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Text(
-                                    text = when {
-                                        item.title == "100-Day Mythic" && unlocked -> "MYTHIC"
-                                        unlocked -> "\u2713"
-                                        else -> "${item.currentValue}/${item.requiredValue}"
-                                    },
-                                    color = if (unlocked) Color(0xFF4CAF50) else textSecondary,
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.Bold
-                                )
-                                Text(
-                                    text = item.unitLabel,
-                                    color = textSecondary,
-                                    fontSize = 10.sp
-                                )
+                                if (isStreakSaver && streakRecoveryAvailable) {
+                                    Text(
+                                        text = "TAP",
+                                        color = MidBlue,
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                    Text(
+                                        text = "RECOVER",
+                                        color = MidBlue.copy(alpha = 0.7f),
+                                        fontSize = 9.sp,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                } else {
+                                    Text(
+                                        text = when {
+                                            item.title == "100-Day Mythic" && unlocked -> "MYTHIC"
+                                            unlocked -> "\u2713"
+                                            else -> "${item.currentValue}/${item.requiredValue}"
+                                        },
+                                        color = if (unlocked) Color(0xFF4CAF50) else textSecondary,
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                    Text(
+                                        text = item.unitLabel,
+                                        color = textSecondary,
+                                        fontSize = 10.sp
+                                    )
+                                }
                             }
                         }
                     }
@@ -481,6 +531,98 @@ fun StreakAchievementsScreen(
                     }
                 }
                 Spacer(modifier = Modifier.height(24.dp))
+            }
+        }
+
+        // ─── STREAK RECOVERY BOTTOM SHEET ───
+        if (showRecoverySheet) {
+            val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+            ModalBottomSheet(
+                onDismissRequest = { showRecoverySheet = false },
+                sheetState = sheetState,
+                containerColor = if (isDarkMode) Color(0xFF0D0D1E) else Color(0xFFFFFFFF),
+                dragHandle = {
+                    Surface(
+                        modifier = Modifier.padding(top = 8.dp).size(width = 44.dp, height = 5.dp),
+                        shape = RoundedCornerShape(50),
+                        color = Color.White.copy(alpha = 0.28f)
+                    ) {}
+                }
+            ) {
+                Column(
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 24.dp, vertical = 20.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    if (streakRecoveryAvailable) {
+                        Text(
+                            text = "🔥 Streak Broken!",
+                            color = textPrimary,
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(bottom = 20.dp)
+                        )
+                        Text(
+                            text = "Your streak broke yesterday. You can recover your $streakRecoveryValue-day streak once this month for free.",
+                            color = textSecondary,
+                            fontSize = 14.sp,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.padding(bottom = 16.dp)
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Row(
+                            Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            ActionSheetRow(
+                                icon = Icons.Default.Close,
+                                title = "Skip",
+                                accentColor = textSecondary,
+                                onClick = { showRecoverySheet = false }
+                            )
+                            ActionSheetRow(
+                                icon = Icons.Default.Check,
+                                title = if (isRecovering) "Recovering..." else "Recover Streak",
+                                accentColor = Color(0xFF4CAF50),
+                                onClick = {
+                                    if (currentUserId.isBlank() || isRecovering) return@ActionSheetRow
+                                    isRecovering = true
+                                    scope.launch {
+                                        val result = FlickRepository.getInstance().recoverStreak(currentUserId, streakRecoveryValue)
+                                        if (result is com.picflick.app.data.Result.Success) {
+                                            streakRecoveryAvailable = false
+                                            showRecoverySheet = false
+                                        }
+                                        isRecovering = false
+                                    }
+                                }
+                            )
+                        }
+                    } else {
+                        Text(
+                            text = "🛡️ Streak Saver",
+                            color = textPrimary,
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(bottom = 20.dp)
+                        )
+                        Text(
+                            text = if (streakRecoveryValue > 0) "You already used your free streak recovery this month." else "Your streak is active — no recovery needed right now!",
+                            color = textSecondary,
+                            fontSize = 14.sp,
+                            textAlign = TextAlign.Center
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        ActionSheetRow(
+                            icon = Icons.Default.Close,
+                            title = "Close",
+                            accentColor = textSecondary,
+                            onClick = { showRecoverySheet = false }
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(12.dp))
+                }
             }
         }
     }
