@@ -792,6 +792,28 @@ fun MainScreen(
         authViewModel.restoreCachedProfile()
     }
 
+    // Save timezone offset and country code to Firestore for localized push + leaderboard flags
+    LaunchedEffect(currentUser?.uid) {
+        val uid = currentUser?.uid ?: return@LaunchedEffect
+        try {
+            val tz = java.util.TimeZone.getDefault()
+            val offsetMillis = tz.rawOffset
+            val offsetHours = offsetMillis / (1000 * 60 * 60)
+            val country = java.util.Locale.getDefault().country ?: ""
+            com.google.firebase.firestore.FirebaseFirestore.getInstance()
+                .collection("users")
+                .document(uid)
+                .update(
+                    mapOf(
+                        "timezoneOffset" to offsetHours,
+                        "countryCode" to country
+                    )
+                )
+        } catch (_: Exception) {
+            // Silently fail — non-critical
+        }
+    }
+
     // Track screen views for analytics
     LaunchedEffect(currentScreen) {
         val screenName = when (currentScreen) {

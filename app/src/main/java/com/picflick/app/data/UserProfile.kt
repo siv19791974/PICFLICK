@@ -63,6 +63,9 @@ data class UserProfile(
     val streakRecoveryAvailable: Boolean = false, // Set by Cloud Function when streak breaks
     val streakRecoveryValue: Int = 0, // Streak count at time of break
     val streakRecoveryUsedMonth: String = "", // "2026-05" — tracks monthly limit
+    // Timezone and country for localized push + leaderboard flags
+    val timezoneOffset: Int = 0, // UTC offset in hours (e.g., 0, +1, -5, +8)
+    val countryCode: String = "", // ISO country code (e.g., "GB", "US", "FR") for flag emoji
 ) {
     /**
      * Check if user has a pending follow request from another user

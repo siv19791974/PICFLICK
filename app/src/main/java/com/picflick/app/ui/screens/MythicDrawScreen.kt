@@ -115,10 +115,12 @@ fun MythicDrawScreen(
             val allUserEntries = allUsersSnap.documents.mapIndexed { index, doc ->
                 val streak = ((doc.get("streak") as? Map<*, *>)?.get("current") as? Long)?.toInt() ?: 0
                 val tier = (doc.get("subscriptionTier") as? String) ?: "FREE"
+                val country = (doc.get("countryCode") as? String) ?: ""
                 LeaderboardEntry(
                     userId = doc.id,
                     userName = doc.getString("displayName") ?: "Unknown",
                     streak = streak,
+                    countryCode = country,
                     photoUrl = doc.getString("photoUrl") ?: "",
                     tier = tier,
                 ) to (index + 1)
@@ -204,7 +206,8 @@ fun MythicDrawScreen(
                     userName = userProfile.displayName.ifBlank { "You" },
                     streak = currentStreak,
                     photoUrl = userProfile.photoUrl,
-                    tier = userProfile.subscriptionTier.name
+                    tier = userProfile.subscriptionTier.name,
+                    countryCode = userProfile.countryCode
                 )
             )
             // Batch fetch friend profiles (up to 10 at a time)
@@ -216,13 +219,15 @@ fun MythicDrawScreen(
                 friendsSnap.documents.forEach { doc ->
                     val fStreak = ((doc.get("streak") as? Map<*, *>)?.get("current") as? Long)?.toInt() ?: 0
                     val fTier = (doc.get("subscriptionTier") as? String) ?: "FREE"
+                    val fCountry = (doc.get("countryCode") as? String) ?: ""
                     friendEntries.add(
                         LeaderboardEntry(
                             userId = doc.id,
                             userName = doc.getString("displayName") ?: "Unknown",
                             streak = fStreak,
                             photoUrl = doc.getString("photoUrl") ?: "",
-                            tier = fTier
+                            tier = fTier,
+                            countryCode = fCountry
                         )
                     )
                 }
@@ -662,6 +667,7 @@ fun MythicDrawScreen(
                             streak = currentStreak,
                             photoUrl = userProfile.photoUrl,
                             tier = userProfile.subscriptionTier.name,
+                            countryCode = userProfile.countryCode,
                             textPrimary = textPrimary,
                             textSecondary = textSecondary,
                             isDarkMode = isDarkMode,
@@ -1195,7 +1201,7 @@ private fun LeaderboardRow(
 
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = entry.userName + if (isCurrentUser) " (You)" else "",
+                    text = countryCodeToFlag(entry.countryCode) + " " + entry.userName + if (isCurrentUser) " (You)" else "",
                     color = textPrimary,
                     fontSize = 15.sp,
                     fontWeight = if (isCurrentUser) FontWeight.Bold else FontWeight.Normal
@@ -1234,6 +1240,7 @@ private fun YourRankRow(
     streak: Int,
     photoUrl: String,
     tier: String,
+    countryCode: String = "",
     textPrimary: Color,
     textSecondary: Color,
     isDarkMode: Boolean,
@@ -1291,7 +1298,7 @@ private fun YourRankRow(
 
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = "$userName (You)",
+                text = countryCodeToFlag(countryCode) + " " + userName + " (You)",
                 color = textPrimary,
                 fontSize = 15.sp,
                 fontWeight = FontWeight.Bold
@@ -1425,6 +1432,20 @@ private fun PrizeRow(place: String, prize: String, color: Color) {
             lineHeight = 18.sp
         )
     }
+}
+
+/**
+ * Convert ISO country code (e.g., "GB", "US") to flag emoji (e.g., "🇬🇧", "🇺🇸").
+ * Maps A-Z to Unicode regional indicator symbols.
+ */
+private fun countryCodeToFlag(code: String): String {
+    if (code.length != 2) return ""
+    val upper = code.uppercase()
+    val first = upper[0]
+    val second = upper[1]
+    if (first !in 'A'..'Z' || second !in 'A'..'Z') return ""
+    val offset = 0x1F1E6 - 'A'.code
+    return String(Character.toChars(first.code + offset)) + String(Character.toChars(second.code + offset))
 }
 
 private fun getOrdinalSuffix(n: Int): String {
@@ -1629,7 +1650,8 @@ data class LeaderboardEntry(
     val userName: String,
     val streak: Int,
     val photoUrl: String,
-    val tier: String = "FREE"
+    val tier: String = "FREE",
+    val countryCode: String = ""
 )
 
 // ─── STAT BOX ───
