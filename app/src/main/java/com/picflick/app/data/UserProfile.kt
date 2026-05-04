@@ -50,6 +50,10 @@ data class UserProfile(
     val mythicContenderCount: Int = 0, // How many draws entered
     val mythicStorageBonusTotal: Int = 0, // Total MB bonus earned
     val mythicLastWonMonthKey: String = "", // Last month they won (for repeat protection display)
+    // Mythic tier badge fields
+    val mythicConsecutiveMonths: Int = 0, // Consecutive months entered into draw
+    val mythicTier: String = "", // "bronze", "silver", "gold", "diamond", or ""
+    val mythicTierUpdatedAt: Any? = 0L, // When tier was last updated
 ) {
     /**
      * Check if user has a pending follow request from another user

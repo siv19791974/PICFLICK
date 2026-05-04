@@ -1169,6 +1169,67 @@ async function executeMythicDraw(db, isManual = false, forcedMonthKey = null) {
   // ─── LEADERBOARD (top 10 streaks) ───
   const leaderboard = buildLeaderboard(allUsers, 10);
 
+  // ─── TIER BADGES — Track consecutive months entered ───
+  const allMonthKeys = await db.collection('system')
+    .listDocuments()
+    .then((docs) => docs.filter((d) => d.id.startsWith('mythic_draw_') && d.id !== `mythic_draw_${monthKey}`).map((d) => d.id.replace('mythic_draw_', '')).sort());
+  for (const entrant of eligibleUsers) {
+    const entrantRef = db.collection('users').doc(entrant.uid);
+    // Count how many of the past draws this user was in
+    let consecutiveMonths = 1; // This month counts
+    for (let i = allMonthKeys.length - 1; i >= 0; i--) {
+      const pastKey = allMonthKeys[i];
+      const pastDraw = await db.collection('system').doc(`mythic_draw_${pastKey}`).get();
+      const pastEntrants = pastDraw.exists ? (pastDraw.data().allEntrantIds || []) : [];
+      if (pastEntrants.includes(entrant.uid)) {
+        consecutiveMonths++;
+      } else {
+        break;
+      }
+    }
+    const tier = consecutiveMonths >= 12 ? 'diamond' : consecutiveMonths >= 6 ? 'gold' : consecutiveMonths >= 3 ? 'silver' : 'bronze';
+    await entrantRef.update({
+      mythicConsecutiveMonths: consecutiveMonths,
+      mythicTier: tier,
+      mythicTierUpdatedAt: now,
+    });
+  }
+  console.log(`Tier badges awarded to ${eligibleUsers.length} entrants`);
+
+  // ─── FEATURED WINNER — Store 1st place winner for Home screen banner ───
+  const firstPlaceWinner = winners.find((w) => w.place === 1);
+  let featuredWinner = null;
+  if (firstPlaceWinner) {
+    const winnerDoc = allUsers.find((u) => u.uid === firstPlaceWinner.userId);
+    featuredWinner = {
+      userId: firstPlaceWinner.userId,
+      userName: firstPlaceWinner.userName,
+      streak: firstPlaceWinner.streak,
+      photoUrl: winnerDoc?.photoUrl || '',
+      crown: firstPlaceWinner.crown,
+      monthKey,
+      monthNumber,
+      featuredAt: now,
+      expiresAt: now + (7 * 24 * 60 * 60 * 1000), // Featured for 7 days
+    };
+  }
+
+  // ─── GLOBAL STATS ───
+  const stats = {
+    totalEntrants: eligibleUsers.length,
+    totalUsers: allUsers.length,
+    yourOddsDenom: ticketPool.length,
+    ticketPoolSize: ticketPool.length,
+    averageStreak: eligibleUsers.length > 0
+      ? Math.round(eligibleUsers.reduce((sum, u) => sum + (u.streak?.current || 0), 0) / eligibleUsers.length)
+      : 0,
+    highestStreak: eligibleUsers.length > 0
+      ? Math.max(...eligibleUsers.map((u) => u.streak?.current || 0))
+      : 0,
+    drawStatus: 'complete',
+    drawCompletedAt: now,
+  };
+
   // ─── SAVE DRAW RESULT ───
   await drawDocRef.set({
     monthKey,
@@ -1190,6 +1251,14 @@ async function executeMythicDraw(db, isManual = false, forcedMonthKey = null) {
     leaderboard,
     ticketPoolSize: ticketPool.length,
     recentWinnersExcluded: Array.from(recentWinnerIds),
+    featuredWinner,
+    stats,
+    drawAnimation: {
+      isLive: false,
+      startedAt: null,
+      completedAt: now,
+      winnerRevealed: winners.length > 0,
+    },
   });
 
   // ─── DEV FEEDBACK ───
@@ -1337,6 +1406,139 @@ exports.runMythicDrawManual = functions
       console.error('Manual Mythic Draw error:', error);
       throw new functions.https.HttpsError('internal', error.message);
     }
+  });
+
+/**
+ * Cloud Function: Mythic Monday Weekly Push — Every Monday at 9:00 UTC
+ * Sends a personalized streak reminder to all users with active streaks
+ */
+exports.mythicMondayPush = functions
+  .runWith({ memory: '256MB', timeoutSeconds: 60 })
+  .pubsub
+  .schedule('0 9 * * 1')
+  .timeZone('UTC')
+  .onRun(async (context) => {
+    if (await shouldSkipTrigger('mythicMondayPush')) return null;
+    const db = admin.firestore();
+
+    // Get current month draw info for threshold
+    const date = new Date();
+    const monthKey = `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}`;
+    const drawDoc = await db.collection('system').doc(`mythic_draw_${monthKey}`).get();
+    const drawData = drawDoc.exists ? drawDoc.data() : null;
+    const monthNumber = drawData?.monthNumber || 1;
+    const thresholds = { 1: 10, 2: 30, 3: 50, 4: 70 };
+    const streakThreshold = monthNumber >= 5 ? 100 : (thresholds[monthNumber] || 100);
+
+    // Get next draw date (1st of next month)
+    const nextMonth = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 1));
+    const daysUntilDraw = Math.ceil((nextMonth.getTime() - date.getTime()) / (24 * 60 * 60 * 1000));
+
+    const usersSnap = await db.collection('users').get();
+    let pushCount = 0;
+    let failCount = 0;
+
+    for (const userDoc of usersSnap.docs) {
+      const userData = userDoc.data();
+      const uid = userDoc.id;
+      const fcmToken = userData.fcmToken;
+      if (!fcmToken) continue;
+
+      const streak = userData.streak?.current || 0;
+      const displayName = userData.displayName || 'PicFlick creator';
+      const isEligible = streak >= streakThreshold;
+      const daysToGo = (streakThreshold - streak).coerceAtLeast(0);
+
+      let title, body;
+      if (isEligible) {
+        title = '👑 Mythic Monday — You are IN!';
+        body = `Hi ${displayName}, your ${streak}-day streak qualifies you for the ${monthKey} Mythic Draw. ${daysUntilDraw} days until the draw! Keep the flame alive!`;
+      } else if (streak > 0) {
+        title = '🔥 Mythic Monday — Keep Going!';
+        body = `Hi ${displayName}, your streak is ${streak} days. ${daysToGo} more days to enter the ${monthKey} Mythic Draw. Don't break it!`;
+      } else {
+        title = '📸 Mythic Monday — Start Your Streak!';
+        body = `Hi ${displayName}, upload a photo today to start your streak. ${streakThreshold} days gets you into the Mythic Draw!`;
+      }
+
+      try {
+        await admin.messaging().send({
+          token: fcmToken,
+          notification: { title, body },
+          data: {
+            type: 'SYSTEM',
+            targetScreen: 'achievements',
+            click_action: 'FLUTTER_NOTIFICATION_CLICK',
+          },
+          android: { priority: 'high', notification: { sound: 'default', clickAction: 'FLUTTER_NOTIFICATION_CLICK' } },
+          apns: { headers: { 'apns-priority': '10' }, payload: { aps: { sound: 'default', badge: 1 } } },
+        });
+        pushCount++;
+      } catch (err) {
+        failCount++;
+        console.warn(`Mythic Monday push failed for ${uid}:`, err.message);
+      }
+    }
+
+    console.log(`Mythic Monday push complete: ${pushCount} sent, ${failCount} failed`);
+    return { sent: pushCount, failed: failCount };
+  });
+
+/**
+ * Cloud Function: Trigger Live Draw Animation (Callable — dev only)
+ * Sets drawAnimation.isLive = true so the app can show the spinning wheel
+ */
+exports.triggerMythicDrawAnimation = functions
+  .runWith({ memory: '256MB', timeoutSeconds: 60 })
+  .https
+  .onCall(async (data, context) => {
+    const callerUid = context.auth?.uid;
+    if (!callerUid) {
+      throw new functions.https.HttpsError('unauthenticated', 'You must be signed in.');
+    }
+    const devUids = ['LpSqE40IZGeAGMknTAEzysqp5l33', 'cuj8dU3zNMN9TELEU2qmPR6Np5A2'];
+    if (!devUids.includes(callerUid)) {
+      throw new functions.https.HttpsError('permission-denied', 'Only developers can trigger the animation.');
+    }
+
+    const db = admin.firestore();
+    const date = new Date();
+    const monthKey = `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}`;
+    const drawDocRef = db.collection('system').doc(`mythic_draw_${monthKey}`);
+
+    await drawDocRef.update({
+      'drawAnimation.isLive': true,
+      'drawAnimation.startedAt': Date.now(),
+      'drawAnimation.winnerRevealed': false,
+    });
+
+    // Send push to all users: "Live draw starting!"
+    const usersSnap = await db.collection('users').get();
+    let pushCount = 0;
+    for (const userDoc of usersSnap.docs) {
+      const fcmToken = userDoc.data().fcmToken;
+      if (!fcmToken) continue;
+      try {
+        await admin.messaging().send({
+          token: fcmToken,
+          notification: {
+            title: '🎡 Mythic Draw is LIVE!',
+            body: 'The monthly Mythic Draw is spinning now! Open PicFlick to watch.',
+          },
+          data: {
+            type: 'SYSTEM',
+            targetScreen: 'achievements',
+            mythicDrawLive: 'true',
+            click_action: 'FLUTTER_NOTIFICATION_CLICK',
+          },
+          android: { priority: 'high', notification: { sound: 'default', clickAction: 'FLUTTER_NOTIFICATION_CLICK' } },
+          apns: { headers: { 'apns-priority': '10' }, payload: { aps: { sound: 'default', badge: 1 } } },
+        });
+        pushCount++;
+      } catch (_err) { /* ignore */ }
+    }
+
+    return { success: true, monthKey, pushCount };
   });
 
 // deploy-bump 
