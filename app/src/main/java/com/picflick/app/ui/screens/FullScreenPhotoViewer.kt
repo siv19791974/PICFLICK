@@ -708,7 +708,7 @@ val canDeleteCurrent = currentFlick.userId == currentUser.uid
                     modifier = Modifier
                         .fillMaxSize()
                         .clipToBounds()
-                        .pointerInput(validPhotos.size) {
+                        .pointerInput(Unit) {
 // SWIPE detection only - pinch handled by Zoomable library
                             detectDragGestures(
                                 onDragStart = {
