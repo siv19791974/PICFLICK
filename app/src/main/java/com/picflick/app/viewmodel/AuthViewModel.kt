@@ -45,6 +45,7 @@ class AuthViewModel : ViewModel() {
         private set
 
     private var profileListener: ListenerRegistration? = null
+    private var authStateListener: FirebaseAuth.AuthStateListener? = null
 
     /**
      * Optimistically update the local userProfile subscription tier immediately.
@@ -68,17 +69,18 @@ class AuthViewModel : ViewModel() {
 
     init {
         // Listen for auth state changes
-        auth.addAuthStateListener { firebaseAuth ->
+        authStateListener = FirebaseAuth.AuthStateListener { firebaseAuth ->
             currentUser = firebaseAuth.currentUser
 
-            if (currentUser == null) {
+            val user = currentUser
+            if (user == null) {
                 profileListener?.remove()
                 profileListener = null
                 userProfile = null
-                return@addAuthStateListener
+                return@AuthStateListener
             }
 
-            val uid = currentUser!!.uid
+            val uid = user.uid
             if (profileListener == null || userProfile?.uid != uid) {
                 startProfileListener(uid)
             }
@@ -88,6 +90,7 @@ class AuthViewModel : ViewModel() {
                 loadUserProfile(uid)
             }
         }
+        auth.addAuthStateListener(authStateListener!!)
     }
 
     private fun startProfileListener(uid: String) {
@@ -98,7 +101,13 @@ class AuthViewModel : ViewModel() {
                     val profile = enforceDeveloperDisplayName(result.data)
                     userProfile = profile
                     if (profile.displayName != result.data.displayName) {
-                        repository.saveUserProfile(uid, profile) { }
+                        repository.patchUserProfile(
+                            uid,
+                            mapOf(
+                                "displayName" to profile.displayName,
+                                "displayNameLower" to profile.displayName.trim().lowercase()
+                            )
+                        ) { }
                     }
                     isLoading = false
                     errorMessage = null
@@ -119,8 +128,9 @@ class AuthViewModel : ViewModel() {
      */
     fun restoreCachedProfile() {
         // If we have a user but no profile, reload it
-        if (currentUser != null && userProfile == null) {
-            val uid = currentUser!!.uid
+        val user = currentUser
+        if (user != null && userProfile == null) {
+            val uid = user.uid
             if (profileListener == null) {
                 startProfileListener(uid)
             }
@@ -149,7 +159,13 @@ class AuthViewModel : ViewModel() {
                     val profile = enforceDeveloperDisplayName(result.data)
                     userProfile = profile
                     if (profile.displayName != result.data.displayName) {
-                        repository.saveUserProfile(uid, profile) { }
+                        repository.patchUserProfile(
+                            uid,
+                            mapOf(
+                                "displayName" to profile.displayName,
+                                "displayNameLower" to profile.displayName.trim().lowercase()
+                            )
+                        ) { }
                     }
                     isLoading = false
                     errorMessage = null
@@ -211,13 +227,20 @@ class AuthViewModel : ViewModel() {
                             existingProfile.photoUrl.isBlank() && user.photoUrl != null
 
                         if (needsDisplayNameUpdate || shouldSeedPhoto) {
-                            val updatedProfile = existingProfile.copy(
-                                displayName = user.displayName ?: existingProfile.displayName,
-                                photoUrl = if (shouldSeedPhoto) user.photoUrl.toString() else existingProfile.photoUrl
-                            )
-                            repository.saveUserProfile(user.uid, updatedProfile) { result ->
+                            val patch = mutableMapOf<String, Any?>()
+                            if (needsDisplayNameUpdate) {
+                                patch["displayName"] = user.displayName
+                                patch["displayNameLower"] = user.displayName!!.trim().lowercase()
+                            }
+                            if (shouldSeedPhoto) {
+                                patch["photoUrl"] = user.photoUrl.toString()
+                            }
+                            repository.patchUserProfile(user.uid, patch) { result ->
                                 if (result is Result.Success) {
-                                    userProfile = updatedProfile
+                                    userProfile = existingProfile.copy(
+                                        displayName = user.displayName ?: existingProfile.displayName,
+                                        photoUrl = if (shouldSeedPhoto) user.photoUrl.toString() else existingProfile.photoUrl
+                                    )
                                 } else {
                                     userProfile = existingProfile
                                 }
@@ -274,11 +297,13 @@ class AuthViewModel : ViewModel() {
     fun updateProfilePhoto(photoUrl: String) {
         viewModelScope.launch {
             userProfile?.let { profile ->
-                val updatedProfile = profile.copy(photoUrl = photoUrl)
-                repository.saveUserProfile(profile.uid, updatedProfile) { result ->
+                repository.patchUserProfile(
+                    profile.uid,
+                    mapOf("photoUrl" to photoUrl)
+                ) { result ->
                     when (result) {
                         is Result.Success -> {
-                            userProfile = updatedProfile
+                            userProfile = profile.copy(photoUrl = photoUrl)
                         }
                         is Result.Error -> {
                             errorMessage = result.message
@@ -296,11 +321,13 @@ class AuthViewModel : ViewModel() {
     fun updateBio(newBio: String) {
         viewModelScope.launch {
             userProfile?.let { profile ->
-                val updatedProfile = profile.copy(bio = newBio)
-                repository.saveUserProfile(profile.uid, updatedProfile) { result ->
+                repository.patchUserProfile(
+                    profile.uid,
+                    mapOf("bio" to newBio)
+                ) { result ->
                     when (result) {
                         is Result.Success -> {
-                            userProfile = updatedProfile
+                            userProfile = profile.copy(bio = newBio)
                         }
                         is Result.Error -> {
                             errorMessage = result.message
@@ -498,6 +525,8 @@ class AuthViewModel : ViewModel() {
     override fun onCleared() {
         profileListener?.remove()
         profileListener = null
+        authStateListener?.let { auth.removeAuthStateListener(it) }
+        authStateListener = null
         super.onCleared()
     }
 

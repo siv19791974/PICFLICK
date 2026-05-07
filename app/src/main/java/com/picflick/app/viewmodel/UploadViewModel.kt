@@ -25,6 +25,7 @@ import java.util.UUID
 import com.picflick.app.data.getDailyUploadLimit
 import com.picflick.app.data.getStorageLimitBytes
 import com.picflick.app.utils.Analytics
+import com.google.firebase.crashlytics.FirebaseCrashlytics
 import com.picflick.app.util.ImageResizer
 
 /**
@@ -85,8 +86,9 @@ class UploadViewModel : ViewModel() {
                     dailyUploadCount = userProfile.dailyUploadsToday
                 }
                 
-            } catch (_: Exception) {
+            } catch (e: Exception) {
                 // If error, use the profile value or assume 0
+                FirebaseCrashlytics.getInstance().recordException(e)
                 dailyUploadCount = userProfile.dailyUploadsToday
             } finally {
                 isLoadingUploadCount = false
@@ -249,6 +251,7 @@ class UploadViewModel : ViewModel() {
             } catch (e: Exception) {
                 optimisticFlickId?.let { onOptimisticRemove?.invoke(it, false) }
                 uploadError = e.message ?: "Upload failed"
+                FirebaseCrashlytics.getInstance().recordException(e)
                 Analytics.trackError("upload_single_failed")
             } finally {
                 isUploading = false
@@ -277,7 +280,8 @@ class UploadViewModel : ViewModel() {
                 val len = afd.length
                 if (len > 0L) len else 0L
             } ?: 0L
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            FirebaseCrashlytics.getInstance().recordException(e)
             0L
         }
     }

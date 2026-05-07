@@ -1,5 +1,6 @@
 package com.picflick.app.viewmodel
 
+import com.google.firebase.firestore.ListenerRegistration
 import com.picflick.app.data.Flick
 import com.picflick.app.data.Result
 import com.picflick.app.repository.FlickRepository
@@ -102,6 +103,7 @@ class ProfileViewModelTest {
         val callbackSlot = slot<(Result<List<Flick>>) -> Unit>()
         every { mockRepository.getUserFlicks(userId, capture(callbackSlot)) } answers {
             // Don't call callback yet
+            mockk<ListenerRegistration>()
         }
 
         // When
@@ -118,6 +120,7 @@ class ProfileViewModelTest {
         val callbackSlot = slot<(Result<List<Flick>>) -> Unit>()
         every { mockRepository.getUserFlicks(userId, capture(callbackSlot)) } answers {
             callbackSlot.captured(Result.Success(testPhotos))
+            mockk<ListenerRegistration>()
         }
 
         // When
@@ -140,6 +143,7 @@ class ProfileViewModelTest {
         val callbackSlot = slot<(Result<List<Flick>>) -> Unit>()
         every { mockRepository.getUserFlicks(userId, capture(callbackSlot)) } answers {
             callbackSlot.captured(Result.Success(testPhotos))
+            mockk<ListenerRegistration>()
         }
 
         // When
@@ -157,6 +161,7 @@ class ProfileViewModelTest {
         val callbackSlot = slot<(Result<List<Flick>>) -> Unit>()
         every { mockRepository.getUserFlicks(userId, capture(callbackSlot)) } answers {
             callbackSlot.captured(Result.Error(Exception(errorMessage), errorMessage))
+            mockk<ListenerRegistration>()
         }
 
         // When
@@ -176,6 +181,7 @@ class ProfileViewModelTest {
         val callbackSlot = slot<(Result<List<Flick>>) -> Unit>()
         every { mockRepository.getUserFlicks(userId, capture(callbackSlot)) } answers {
             callbackSlot.captured(Result.Success(emptyList()))
+            mockk<ListenerRegistration>()
         }
 
         // When
@@ -195,6 +201,7 @@ class ProfileViewModelTest {
         val callbackSlot = slot<(Result<List<Flick>>) -> Unit>()
         every { mockRepository.getUserFlicks(userId, capture(callbackSlot)) } answers {
             callbackSlot.captured(Result.Error(Exception("Error"), "Error"))
+            mockk<ListenerRegistration>()
         }
         viewModel.loadUserPhotos(userId)
         assertNotNull(viewModel.errorMessage)
@@ -213,6 +220,7 @@ class ProfileViewModelTest {
         val callbackSlot = slot<(Result<List<Flick>>) -> Unit>()
         every { mockRepository.getUserFlicks(userId, capture(callbackSlot)) } answers {
             callbackSlot.captured(Result.Success(emptyList()))
+            mockk<ListenerRegistration>()
         }
 
         // When

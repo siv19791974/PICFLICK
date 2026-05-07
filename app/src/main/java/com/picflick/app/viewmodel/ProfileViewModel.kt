@@ -7,6 +7,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.google.firebase.firestore.ListenerRegistration
 import com.picflick.app.data.Flick
 import com.picflick.app.data.ReactionType
 import com.picflick.app.data.Result
@@ -20,6 +21,8 @@ class ProfileViewModel : ViewModel() {
 
     private val repository = FlickRepository.getInstance()
 
+    private var photosListener: ListenerRegistration? = null
+
     var photos = mutableStateListOf<Flick>()
         private set
 
@@ -31,10 +34,10 @@ class ProfileViewModel : ViewModel() {
 
     var photoCount by mutableIntStateOf(0)
         private set
-    
+
     var totalReactions by mutableIntStateOf(0)
         private set
-    
+
     var currentStreak by mutableIntStateOf(0)
         private set
 
@@ -44,9 +47,12 @@ class ProfileViewModel : ViewModel() {
     fun loadUserPhotos(userId: String) {
         isLoading = true
         errorMessage = null
-        
+
+        // Remove previous listener to avoid duplicate registrations
+        photosListener?.remove()
+
         // Load photos
-        repository.getUserFlicks(userId) { result ->
+        photosListener = repository.getUserFlicks(userId) { result ->
             when (result) {
                 is Result.Success -> {
                     photos.clear()
@@ -63,9 +69,15 @@ class ProfileViewModel : ViewModel() {
                 is Result.Loading -> { /* Do nothing */ }
             }
         }
-        
+
         // Load streak separately
         loadUserStreak(userId)
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        photosListener?.remove()
+        photosListener = null
     }
     
     /**

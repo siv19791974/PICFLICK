@@ -116,7 +116,8 @@ class HomeViewModelTest {
                 lastTimestamp = null,
                 lastFlickId = null,
                 pageSize = any(),
-                excludeIds = any()
+                excludeIds = any(),
+                recentDays = any()
             )
         } returns Result.Success(testFlicks)
 
@@ -143,7 +144,8 @@ class HomeViewModelTest {
                 lastTimestamp = null,
                 lastFlickId = null,
                 pageSize = any(),
-                excludeIds = any()
+                excludeIds = any(),
+                recentDays = any()
             )
         } returns Result.Error(Exception(errorMessage), errorMessage)
 

@@ -124,6 +124,7 @@ import com.picflick.app.ui.screens.SplashScreen
 import com.picflick.app.ui.theme.PicFlickTheme
 import com.picflick.app.ui.theme.ThemeManager
 import com.picflick.app.ui.theme.isDarkModeBackground
+import com.picflick.app.util.CostControlManager
 import com.picflick.app.utils.Analytics
 import com.picflick.app.utils.LocaleHelper
 import com.picflick.app.viewmodel.AuthViewModel
@@ -186,6 +187,8 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         WindowInsetsControllerCompat(window, window.decorView).show(WindowInsetsCompat.Type.statusBars())
+        // Restart cost-control flag polling when app returns to foreground
+        CostControlManager.startRefresh()
         // Restart unread count observer if it stopped while backgrounded
         if (::chatViewModelRef.isInitialized) {
             chatViewModelRef.restartUnreadCountIfNeeded()
@@ -194,6 +197,8 @@ class MainActivity : ComponentActivity() {
 
     override fun onStop() {
         super.onStop()
+        // Pause feature-flag polling while backgrounded to save battery
+        CostControlManager.stopRefresh()
         // Close chat listeners when app backgrounds to reduce Firestore costs.
         // They will re-open automatically when the user returns to Chats.
         if (::chatViewModelRef.isInitialized) {

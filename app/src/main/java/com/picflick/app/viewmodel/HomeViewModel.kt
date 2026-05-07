@@ -14,6 +14,7 @@ import com.picflick.app.data.FriendGroup
 import com.picflick.app.data.ReactionType
 import com.picflick.app.data.Result
 import com.picflick.app.repository.FlickRepository
+import com.google.firebase.crashlytics.FirebaseCrashlytics
 import com.picflick.app.utils.Analytics
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -912,15 +913,22 @@ class HomeViewModel : ViewModel() {
                     }
                     is Result.Loading -> { }
                 }
-            } catch (_: IOException) {
+            } catch (e: IOException) {
+                FirebaseCrashlytics.getInstance().recordException(e)
                 errorMessage = "Upload failed: network error. Please retry."
                 isLoading = false
                 onComplete(false)
             } catch (e: Exception) {
+                FirebaseCrashlytics.getInstance().recordException(e)
                 errorMessage = "Upload failed: ${e.message}"
                 isLoading = false
                 onComplete(false)
             }
         }
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        debouncedFeedRefreshJob?.cancel()
     }
 }

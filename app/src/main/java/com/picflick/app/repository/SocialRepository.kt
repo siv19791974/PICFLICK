@@ -1,6 +1,7 @@
 package com.picflick.app.repository
 
 import com.picflick.app.data.*
+import com.google.firebase.crashlytics.FirebaseCrashlytics
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.tasks.await
@@ -313,7 +314,8 @@ class SocialRepository private constructor() {
                 val accepterDoc = currentUserRef.get().await()
                 accepterDoc.getString("displayName")?.takeIf { it.isNotBlank() }
                     ?: currentUserName.ifBlank { "Someone" }
-            } catch (_: Exception) {
+            } catch (e: Exception) {
+                FirebaseCrashlytics.getInstance().recordException(e)
                 currentUserName.ifBlank { "Someone" }
             }
 

@@ -216,7 +216,21 @@ class FlickRepository private constructor() {
     }
     
     // Coroutine scope for repository operations (replaces GlobalScope)
-    private val repositoryScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private var supervisorJob = SupervisorJob()
+    private var repositoryScope = CoroutineScope(supervisorJob + Dispatchers.IO)
+
+    /** Cancel all running coroutines in this repository. Call when app backgrounds. */
+    fun shutdown() {
+        supervisorJob.cancel()
+    }
+
+    /** Restart the internal coroutine scope after shutdown. Call when app foregrounds. */
+    fun restart() {
+        if (!supervisorJob.isActive) {
+            supervisorJob = SupervisorJob()
+            repositoryScope = CoroutineScope(supervisorJob + Dispatchers.IO)
+        }
+    }
 
     // Cache for user profile
     private val _currentUserProfile = MutableStateFlow<UserProfile?>(null)
@@ -577,15 +591,15 @@ class FlickRepository private constructor() {
     }
 
     /**
-     * Get flicks for a specific user
+     * Get flicks for a specific user. Returns the ListenerRegistration so callers can clean up.
      */
-    fun getUserFlicks(userId: String, onResult: (Result<List<Flick>>) -> Unit) {
+    fun getUserFlicks(userId: String, onResult: (Result<List<Flick>>) -> Unit): ListenerRegistration {
         if (CostControlManager.isEnabled(Constants.FeatureFlags.KILL_SNAPSHOT_LISTENERS)) {
             android.util.Log.w("FlickRepository", "getUserFlicks snapshot listener blocked by cost kill-switch")
             onResult(Result.Success(emptyList()))
-            return
+            return ListenerRegistration { }
         }
-        db.collection(Constants.FirebaseCollections.FLICKS)
+        return db.collection(Constants.FirebaseCollections.FLICKS)
             .whereEqualTo("userId", userId)
             .limit(CostControlManager.getEffectivePageSize(Constants.Pagination.FLICKS_PER_PAGE).toLong())
             .addSnapshotListener { snapshot, error ->
@@ -902,15 +916,26 @@ class FlickRepository private constructor() {
     }
 
     /**
-     * Save user profile
+     * Save user profile. Uses merge to avoid overwriting fields not present in the object.
      */
     fun saveUserProfile(userId: String, profile: UserProfile, onResult: (Result<Unit>) -> Unit) {
         val normalizedProfile = profile.copy(
             displayNameLower = profile.displayName.trim().lowercase(Locale.getDefault())
         )
-        db.collection("users").document(userId).set(normalizedProfile)
+        db.collection("users").document(userId).set(normalizedProfile, com.google.firebase.firestore.SetOptions.merge())
             .addOnSuccessListener { onResult(Result.Success(Unit)) }
             .addOnFailureListener { e -> onResult(Result.Error(e, "Failed to save profile")) }
+    }
+
+    /**
+     * Patch specific fields on a user profile without touching other fields.
+     * Use this for bio updates, photo URL updates, etc. to prevent overwriting
+     * server-managed fields like mythic counters.
+     */
+    fun patchUserProfile(userId: String, fields: Map<String, Any?>, onResult: (Result<Unit>) -> Unit) {
+        db.collection("users").document(userId).update(fields)
+            .addOnSuccessListener { onResult(Result.Success(Unit)) }
+            .addOnFailureListener { e -> onResult(Result.Error(e, "Failed to update profile")) }
     }
 
     /**

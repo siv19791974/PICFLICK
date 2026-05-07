@@ -15,5 +15,8 @@
 .externalNativeBuild
 .cxx
 local.properties
-deploy_debug*.txt  
-cloud_build_error_links.txt  
+deploy_debug*.txt
+cloud_build_error_links.txt
+app/keystore.jks
+app/google-services.json
+

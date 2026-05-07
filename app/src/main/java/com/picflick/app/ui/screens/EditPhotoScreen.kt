@@ -51,6 +51,7 @@ import com.canhub.cropper.CropImageOptions
 import com.canhub.cropper.CropImageView
 import com.picflick.app.data.Flick
 import com.picflick.app.data.PhotoFilter
+import com.google.firebase.crashlytics.FirebaseCrashlytics
 import com.google.firebase.firestore.FirebaseFirestore
 import com.picflick.app.data.UserProfile
 import com.picflick.app.data.getImageQuality
@@ -72,7 +73,6 @@ import kotlinx.coroutines.withContext
 fun EditPhotoScreen(
     flick: Flick,
     _currentUser: UserProfile,
-    _cloudName: String = "",
     onBack: () -> Unit,
     onSave: suspend (Flick, String, String, List<String>, Bitmap) -> Boolean
 ) {
@@ -102,8 +102,9 @@ fun EditPhotoScreen(
                     bitmap = loadedBitmap
                     isLoading = false
                 }
-            } catch (_: Exception) {
-withContext(Dispatchers.Main) {
+            } catch (e: Exception) {
+                FirebaseCrashlytics.getInstance().recordException(e)
+                withContext(Dispatchers.Main) {
                     isLoading = false
                 }
             }

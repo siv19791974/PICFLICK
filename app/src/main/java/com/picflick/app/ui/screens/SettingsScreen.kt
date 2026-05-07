@@ -30,6 +30,7 @@ import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.Smartphone
 import androidx.compose.material.icons.filled.WbSunny
 import androidx.compose.material.icons.filled.DeveloperMode
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Upgrade
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.outlined.Add
@@ -129,23 +130,17 @@ fun SettingsScreen(
     val contactRepository = remember { FlickRepository.getInstance() }
     val settingsScope = rememberCoroutineScope()
     var showLanguageDialog by remember { mutableStateOf(false) }
-    var showDeveloperPasswordDialog by remember { mutableStateOf(false) }
-    var developerPasswordInput by remember { mutableStateOf("") }
-    var developerPasswordError by remember { mutableStateOf<String?>(null) }
 
-    // Show developer password dialog when triggered from push notification
+    // Open developer screen directly when triggered from push notification
     LaunchedEffect(triggerDevPassword) {
         if (triggerDevPassword > 0) {
-            developerPasswordInput = ""
-            developerPasswordError = null
-            showDeveloperPasswordDialog = true
+            onDeveloper()
         }
     }
 
     // Use ThemeManager for theme state (persists across sessions)
     val isDarkMode by ThemeManager.isDarkMode
-    val developerAccessPassword = Constants.DEVELOPER_ACCESS_PASSWORD
-    
+
     // Calculate actual cache size
     fun calculateDirSize(dir: java.io.File): Long {
         if (!dir.exists()) return 0
@@ -326,6 +321,16 @@ fun SettingsScreen(
                     onClick = onPrivacySettings
                 )
                 SettingsItem(
+                    icon = Icons.Default.Star,
+                    title = "Rate PicFlick",
+                    subtitle = "Love the app? Leave a review",
+                    onClick = {
+                        (context as? Activity)?.let { activity ->
+                            com.picflick.app.util.AppReviewHelper.requestReview(activity)
+                        }
+                    }
+                )
+                SettingsItem(
                     icon = Icons.Default.Info,
                     title = "Version",
                     subtitle = appVersionName,
@@ -340,11 +345,9 @@ fun SettingsScreen(
                     SettingsItem(
                         icon = Icons.Default.DeveloperMode,
                         title = "Developer Tools",
-                        subtitle = "Password protected access",
+                        subtitle = "UID-whitelisted access",
                         onClick = {
-                            developerPasswordInput = ""
-                            developerPasswordError = null
-                            showDeveloperPasswordDialog = true
+                            onDeveloper()
                         }
                     )
                 }
@@ -471,149 +474,6 @@ fun SettingsScreen(
             cancelTitle = "Cancel",
             cancelSubtitle = "Keep cache"
         )
-    }
-
-    if (showDeveloperPasswordDialog) {
-        ModalBottomSheet(
-            onDismissRequest = {
-                showDeveloperPasswordDialog = false
-                developerPasswordInput = ""
-                developerPasswordError = null
-            },
-            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-            containerColor = Color(0xFF121212),
-            contentColor = Color.White,
-            dragHandle = {
-                Surface(
-                    modifier = Modifier
-                        .padding(top = 8.dp)
-                        .size(width = 44.dp, height = 5.dp),
-                    shape = RoundedCornerShape(50),
-                    color = Color.White.copy(alpha = 0.28f)
-                ) {}
-            }
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 24.dp, vertical = 20.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Text(
-                    text = "Developer Access",
-                    color = Color.White,
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(bottom = 20.dp)
-                )
-                Text(
-                    text = "Enter developer password",
-                    color = Color(0xFFB7BDC9),
-                    fontSize = 14.sp,
-                    modifier = Modifier.padding(bottom = 16.dp)
-                )
-                OutlinedTextField(
-                    value = developerPasswordInput,
-                    onValueChange = {
-                        developerPasswordInput = it
-                        developerPasswordError = null
-                    },
-                    singleLine = true,
-                    label = { Text("Password", color = Color(0xFFB7BDC9)) },
-                    visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation(),
-                    modifier = Modifier.fillMaxWidth(),
-                    isError = developerPasswordError != null,
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = Color(0xFF34C759),
-                        unfocusedBorderColor = Color(0xFF2C2C2E),
-                        focusedLabelColor = Color(0xFF34C759),
-                        unfocusedLabelColor = Color(0xFFB7BDC9),
-                        focusedTextColor = Color.White,
-                        unfocusedTextColor = Color.White,
-                        cursorColor = Color(0xFF34C759),
-                        errorBorderColor = Color.Red,
-                        errorLabelColor = Color.Red
-                    )
-                )
-                developerPasswordError?.let { err ->
-                    Spacer(modifier = Modifier.height(6.dp))
-                    Text(
-                        text = err,
-                        color = Color.Red,
-                        fontSize = 12.sp,
-                        modifier = Modifier.align(Alignment.Start)
-                    )
-                }
-                Spacer(modifier = Modifier.height(24.dp))
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Surface(
-                        shape = RoundedCornerShape(16.dp),
-                        color = Color(0xFF1C1F26),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF34C759).copy(alpha = 0.38f)),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable {
-                                    if (developerPasswordInput == developerAccessPassword) {
-                                        showDeveloperPasswordDialog = false
-                                        developerPasswordInput = ""
-                                        developerPasswordError = null
-                                        onDeveloper()
-                                    } else {
-                                        developerPasswordError = "Incorrect password"
-                                    }
-                                }
-                                .padding(horizontal = 16.dp, vertical = 14.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            androidx.compose.material3.Icon(
-                                imageVector = Icons.Default.Lock,
-                                contentDescription = null,
-                                tint = Color(0xFF34C759),
-                                modifier = Modifier.size(28.dp)
-                            )
-                            Spacer(modifier = Modifier.width(12.dp))
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text("Unlock", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
-                                Text("Access developer tools", color = Color(0xFFB7BDC9), fontSize = 14.sp)
-                            }
-                        }
-                    }
-                    Surface(
-                        shape = RoundedCornerShape(16.dp),
-                        color = Color(0xFF1C1F26),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF8E8E93).copy(alpha = 0.38f)),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable {
-                                    showDeveloperPasswordDialog = false
-                                    developerPasswordInput = ""
-                                    developerPasswordError = null
-                                }
-                                .padding(horizontal = 16.dp, vertical = 14.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            androidx.compose.material3.Icon(
-                                imageVector = Icons.Default.Close,
-                                contentDescription = null,
-                                tint = Color(0xFF8E8E93),
-                                modifier = Modifier.size(28.dp)
-                            )
-                            Spacer(modifier = Modifier.width(12.dp))
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text("Cancel", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
-                                Text("Keep using app", color = Color(0xFFB7BDC9), fontSize = 14.sp)
-                            }
-                        }
-                    }
-                }
-            }
-        }
     }
 
     if (showContactPopup) {

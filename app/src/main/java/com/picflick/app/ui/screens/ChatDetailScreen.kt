@@ -803,7 +803,11 @@ Column(modifier = Modifier.fillMaxSize()) {
                             cursorColor = Color.White
                         ),
                         shape = RoundedCornerShape(24.dp),
-                        maxLines = 5
+                        singleLine = false,
+                        maxLines = 5,
+                        keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                            imeAction = androidx.compose.ui.text.input.ImeAction.Default
+                        )
                     )
 
                     if (replyToMessage != null || editingMessageId != null) {

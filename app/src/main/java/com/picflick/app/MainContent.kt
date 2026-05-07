@@ -153,7 +153,8 @@ fun AuthenticatedContent(
                 onSetSelectedChat = onSetSelectedChat,
                 homeResetVersion = homeResetVersion,
                 openGroupsManager = openGroupsManager,
-                onOpenGroupsManagerConsumed = onOpenGroupsManagerConsumed
+                onOpenGroupsManagerConsumed = onOpenGroupsManagerConsumed,
+                onOpenUploadSourceDialog = onOpenUploadSourceDialog
             )
         }
 
@@ -434,7 +435,6 @@ fun AuthenticatedContent(
             EditPhotoScreen(
                 flick = currentScreen.flick,
                 _currentUser = userProfile,
-                _cloudName = "", // TODO: Get from BuildConfig or settings
                 onBack = { onScreenChange(returnScreen) },
                 onSave = { flick, filterType, description, taggedFriends, filteredBitmap ->
                 val stream = java.io.ByteArrayOutputStream()
@@ -552,7 +552,8 @@ private fun HomeScreenContent(
     onSetSelectedChat: (ChatSession, String) -> Unit,
     homeResetVersion: Int = 0,
     openGroupsManager: Boolean = false,
-    onOpenGroupsManagerConsumed: () -> Unit = {}
+    onOpenGroupsManagerConsumed: () -> Unit = {},
+    onOpenUploadSourceDialog: () -> Unit = {}
 ) {
     LaunchedEffect(userProfile.uid, userProfile.following) {
         if (userProfile.following.isNotEmpty()) {
@@ -567,18 +568,22 @@ private fun HomeScreenContent(
         viewModel = homeViewModel,
         resetToTopVersion = homeResetVersion,
         onNavigate = { route ->
-            val targetScreen = when (route) {
-                "profile" -> Screen.Profile
-                "my_photos" -> Screen.MyPhotos
-                "friends" -> Screen.Friends
-                "chats" -> Screen.Chats
-                "find_friends" -> Screen.FindFriends()
-                "about" -> Screen.About
-                "contact" -> Screen.Contact
-                "notifications" -> Screen.Notifications
-                else -> Screen.Home
+            if (route == "upload") {
+                onOpenUploadSourceDialog()
+            } else {
+                val targetScreen = when (route) {
+                    "profile" -> Screen.Profile
+                    "my_photos" -> Screen.MyPhotos
+                    "friends" -> Screen.Friends
+                    "chats" -> Screen.Chats
+                    "find_friends" -> Screen.FindFriends()
+                    "about" -> Screen.About
+                    "contact" -> Screen.Contact
+                    "notifications" -> Screen.Notifications
+                    else -> Screen.Home
+                }
+                onScreenChange(targetScreen)
             }
-            onScreenChange(targetScreen)
         },
         onSignOut = onSignOut,
         onUserProfileClick = { userId ->

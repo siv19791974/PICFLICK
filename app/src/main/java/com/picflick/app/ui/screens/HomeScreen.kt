@@ -64,6 +64,7 @@ import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -303,7 +304,9 @@ fun HomeScreen(
                         viewModel.loadFlicks(userProfile.uid)
                     }
                 )
-                !viewModel.isLoading && viewModel.flicks.isEmpty() -> EmptyState()
+                !viewModel.isLoading && viewModel.flicks.isEmpty() -> EmptyState(
+                    onNavigate = onNavigate
+                )
                 else -> FlickGrid(
                     flicks = viewModel.flicks,
                     userProfile = userProfile,
@@ -3422,30 +3425,102 @@ private fun FlickGrid(
 }
 
 @Composable
-private fun EmptyState() {
+private fun EmptyState(onNavigate: (String) -> Unit = {}) {
+    val accentColor = Color(0xFF1565C0)
     Column(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(horizontal = 32.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        Icon(
-            imageVector = Icons.Default.PhotoLibrary,
-            contentDescription = null,
-            modifier = Modifier.size(64.dp),
-            tint = Color.Gray
-        )
-        Spacer(modifier = Modifier.height(16.dp))
+        // Large illustrated icon surface
+        Surface(
+            shape = RoundedCornerShape(24.dp),
+            color = accentColor.copy(alpha = 0.12f),
+            modifier = Modifier.size(120.dp)
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                Icon(
+                    imageVector = Icons.Default.PhotoLibrary,
+                    contentDescription = null,
+                    modifier = Modifier.size(56.dp),
+                    tint = accentColor
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
         Text(
-            text = "No photos yet",
-            fontSize = 18.sp,
-            fontWeight = FontWeight.Medium,
-            color = Color.Gray
+            text = "Your feed is waiting",
+            fontSize = 22.sp,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onBackground
         )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
         Text(
-            text = "Share your first photo!",
+            text = "Upload your first photo or invite friends to see memories here.",
             fontSize = 14.sp,
-            color = Color.Gray.copy(alpha = 0.7f)
+            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+            lineHeight = 20.sp
         )
+
+        Spacer(modifier = Modifier.height(32.dp))
+
+        // Primary CTA: Upload
+        Button(
+            onClick = { onNavigate("upload") },
+            shape = RoundedCornerShape(12.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = accentColor),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Icon(
+                imageVector = Icons.Default.AddCircle,
+                contentDescription = null,
+                modifier = Modifier.size(20.dp)
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                text = "Upload your first PicFlick",
+                fontWeight = FontWeight.SemiBold,
+                fontSize = 15.sp
+            )
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        // Secondary CTA: Find friends
+        OutlinedButton(
+            onClick = { onNavigate("find_friends") },
+            shape = RoundedCornerShape(12.dp),
+            colors = ButtonDefaults.outlinedButtonColors(contentColor = accentColor),
+            border = androidx.compose.foundation.BorderStroke(1.dp, accentColor.copy(alpha = 0.5f)),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Icon(
+                imageVector = Icons.Default.People,
+                contentDescription = null,
+                modifier = Modifier.size(20.dp)
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                text = "Find friends",
+                fontWeight = FontWeight.Medium,
+                fontSize = 15.sp
+            )
+        }
+    }
+}
+
+@Preview(showBackground = true, showSystemUi = true)
+@Composable
+private fun EmptyStatePreview() {
+    MaterialTheme {
+        EmptyState(onNavigate = { })
     }
 }
 

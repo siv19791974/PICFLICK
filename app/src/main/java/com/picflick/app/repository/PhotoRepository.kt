@@ -23,7 +23,21 @@ class PhotoRepository private constructor() {
     private val db = FirebaseFirestore.getInstance()
     private val storage = FirebaseStorage.getInstance()
     private val notificationRepository = NotificationRepository.getInstance()
-    private val repositoryScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private var supervisorJob = SupervisorJob()
+    private var repositoryScope = CoroutineScope(supervisorJob + Dispatchers.IO)
+
+    /** Cancel all running coroutines in this repository. Call when app backgrounds. */
+    fun shutdown() {
+        supervisorJob.cancel()
+    }
+
+    /** Restart the internal coroutine scope after shutdown. Call when app foregrounds. */
+    fun restart() {
+        if (!supervisorJob.isActive) {
+            supervisorJob = SupervisorJob()
+            repositoryScope = CoroutineScope(supervisorJob + Dispatchers.IO)
+        }
+    }
 
     companion object {
         @Volatile

@@ -162,5 +162,4 @@ object Constants {
         "LpSqE40IZGeAGMknTAEzysqp5l33" to "PicFlick Developer",
         "cuj8dU3zNMN9TELEU2qmPR6Np5A2" to "Thomas Sivyer"
     )
-    const val DEVELOPER_ACCESS_PASSWORD = "687495"
 }

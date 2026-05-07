@@ -1,11 +1,14 @@
 package com.picflick.app.util
 
+import com.google.firebase.crashlytics.FirebaseCrashlytics
 import com.google.firebase.firestore.FirebaseFirestore
 import com.picflick.app.Constants
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 
@@ -25,6 +28,9 @@ object CostControlManager {
     @Volatile
     private var flags: Map<String, Boolean> = emptyMap()
 
+    @Volatile
+    private var refreshJob: Job? = null
+
     /** Check a cached flag synchronously (safe from any thread). */
     fun isEnabled(flagName: String): Boolean = flags[flagName] == true
 
@@ -34,12 +40,20 @@ object CostControlManager {
 
     /** Start periodic refresh (call once from Application.onCreate or MainActivity). */
     fun startRefresh(periodMs: Long = 60_000L) {
-        scope.launch {
-            while (true) {
+        // Cancel any existing refresh loop to avoid duplicate jobs
+        refreshJob?.cancel()
+        refreshJob = scope.launch {
+            while (isActive) {
                 refresh()
                 delay(periodMs)
             }
         }
+    }
+
+    /** Stop the periodic refresh loop (call when app backgrounds). */
+    fun stopRefresh() {
+        refreshJob?.cancel()
+        refreshJob = null
     }
 
     /** Force an immediate refresh (e.g. on app foreground). */
@@ -51,8 +65,9 @@ object CostControlManager {
                 .await()
             val data = doc.data ?: return
             flags = data.mapValues { it.value == true }
-        } catch (_: Exception) {
-            // Fail-open: keep previous flags on error
+        } catch (e: Exception) {
+            // Fail-open: keep previous flags on error, but log to Crashlytics
+            FirebaseCrashlytics.getInstance().recordException(e)
         }
     }
 
@@ -72,8 +87,9 @@ object CostControlManager {
                     .set(mapOf(flagName to value))
                     .await()
                 flags = flags.toMutableMap().apply { put(flagName, value) }
-            } catch (_: Exception) {
-                // Fail silently
+            } catch (e2: Exception) {
+                // Fail silently but log to Crashlytics
+                FirebaseCrashlytics.getInstance().recordException(e2)
             }
         }
     }
