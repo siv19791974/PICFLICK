@@ -28,6 +28,9 @@ class FlickRepository private constructor() {
     private val db = FirebaseFirestore.getInstance()
     private val storage = FirebaseStorage.getInstance()
 
+    /** Active comment/reply listeners for safety-net cleanup */
+    private val activeCommentListeners = mutableMapOf<String, ListenerRegistration>()
+
     private fun com.google.firebase.firestore.DocumentSnapshot.toNormalizedFriendGroup(): FriendGroup? {
         val parsed = toObject(FriendGroup::class.java) ?: return null
         val resolvedId = parsed.id.ifBlank { id }
@@ -230,6 +233,12 @@ class FlickRepository private constructor() {
             supervisorJob = SupervisorJob()
             repositoryScope = CoroutineScope(supervisorJob + Dispatchers.IO)
         }
+    }
+
+    /** Remove all tracked comment/reply listeners. Call when leaving photo detail screens. */
+    fun clearCommentListeners() {
+        activeCommentListeners.values.forEach { it.remove() }
+        activeCommentListeners.clear()
     }
 
     // Cache for user profile
@@ -525,13 +534,13 @@ class FlickRepository private constructor() {
 
     /**
      * Get explore flicks (trending/popular for discovery)
-     * Gets photos with most reactions from last 7 days
+     * Gets photos with most reactions from last 3 days (cost control)
      */
     fun getExploreFlicks(onResult: (Result<List<Flick>>) -> Unit) {
         repositoryScope.launch {
             try {
-                // Get photos from last 7 days (query without orderBy to avoid composite index)
-                val weekAgo = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -7) }.timeInMillis
+                // Get photos from last 3 days (query without orderBy to avoid composite index)
+                val weekAgo = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -3) }.timeInMillis
 
                 val flicksSnapshot = db.collection("flicks")
                     .whereGreaterThan("timestamp", weekAgo)
@@ -2416,7 +2425,8 @@ class FlickRepository private constructor() {
      * Get comments for a flick - returns a ListenerRegistration that must be removed when done
      */
     fun getComments(flickId: String, onResult: (Result<List<Comment>>) -> Unit): ListenerRegistration {
-        return db.collection("comments")
+        activeCommentListeners["comments_$flickId"]?.remove()
+        val registration = db.collection("comments")
             .whereEqualTo("flickId", flickId)
             .limit(50)
             .addSnapshotListener { snapshot, error ->
@@ -2438,6 +2448,8 @@ class FlickRepository private constructor() {
                     onResult(Result.Success(comments))
                 }
             }
+        activeCommentListeners["comments_$flickId"] = registration
+        return registration
     }
 
     /**
@@ -2641,7 +2653,8 @@ class FlickRepository private constructor() {
      * Get replies for a specific comment
      */
     fun getReplies(parentCommentId: String, onResult: (Result<List<Comment>>) -> Unit): ListenerRegistration {
-        return db.collection("comments")
+        activeCommentListeners["replies_$parentCommentId"]?.remove()
+        val registration = db.collection("comments")
             .whereEqualTo("parentCommentId", parentCommentId)
             .orderBy("timestamp", Query.Direction.ASCENDING)
             .addSnapshotListener { snapshot, error ->
@@ -2657,6 +2670,8 @@ class FlickRepository private constructor() {
                     onResult(Result.Success(replies))
                 }
             }
+        activeCommentListeners["replies_$parentCommentId"] = registration
+        return registration
     }
 
     /**

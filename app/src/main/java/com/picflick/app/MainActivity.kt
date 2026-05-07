@@ -189,8 +189,9 @@ class MainActivity : ComponentActivity() {
         WindowInsetsControllerCompat(window, window.decorView).show(WindowInsetsCompat.Type.statusBars())
         // Restart cost-control flag polling when app returns to foreground
         CostControlManager.startRefresh()
-        // Restart unread count observer if it stopped while backgrounded
+        // Restart chat listeners if they were stopped while backgrounded
         if (::chatViewModelRef.isInitialized) {
+            chatViewModelRef.restartChatSessionsIfNeeded()
             chatViewModelRef.restartUnreadCountIfNeeded()
         }
     }

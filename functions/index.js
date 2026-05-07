@@ -77,7 +77,24 @@ exports.sendPushNotification = functions
     }
 
     console.log('Sending push for important type:', notification.type);
-    
+
+    // Rate-limit: max 10 push notifications per recipient per hour
+    const rateLimitRef = admin.firestore().collection('pushRateLimit').doc(notification.userId);
+    const rateLimitDoc = await rateLimitRef.get();
+    const rateData = rateLimitDoc.exists ? rateLimitDoc.data() : { count: 0, windowStart: 0 };
+    const now = Date.now();
+    const oneHour = 60 * 60 * 1000;
+    if (now - (rateData.windowStart || 0) > oneHour) {
+      await rateLimitRef.set({ count: 1, windowStart: now }, { merge: true });
+    } else {
+      const currentCount = Number.isFinite(Number(rateData.count)) ? Number(rateData.count) : 0;
+      if (currentCount >= 10) {
+        console.log('Rate limit hit for user:', notification.userId, 'count:', currentCount);
+        return null;
+      }
+      await rateLimitRef.update({ count: admin.firestore.FieldValue.increment(1) });
+    }
+
     // Get recipient's FCM token
     try {
       const userDoc = await admin.firestore()
@@ -1749,3 +1766,44 @@ exports.streakDangerPush = functions.pubsub
   });
 
 // deploy-bump 
+
+/**
+ * Cloud Function: Delete Storage files when a flick document is deleted.
+ * Cleans up original image + both thumbnails to avoid orphaned Storage objects.
+ */
+exports.deleteFlickStorage = functions
+  .runWith({ memory: '256MB', timeoutSeconds: 60 })
+  .firestore
+  .document('flicks/{flickId}')
+  .onDelete(async (snap, context) => {
+    if (await shouldSkipTrigger('deleteFlickStorage')) return null;
+
+    const data = snap.data() || {};
+    const paths = [];
+    if (data.storagePath) paths.push(data.storagePath);
+    if (data.thumbnailPath512) paths.push(data.thumbnailPath512);
+    if (data.thumbnailPath1080) paths.push(data.thumbnailPath1080);
+
+    if (paths.length === 0) {
+      console.log('No storage paths to delete for flick:', context.params.flickId);
+      return null;
+    }
+
+    const bucket = admin.storage().bucket();
+    const deletePromises = paths.map(async (path) => {
+      try {
+        await bucket.file(path).delete();
+        console.log('Deleted Storage file:', path);
+      } catch (e) {
+        if (e.code === 404) {
+          console.log('Storage file already deleted or missing:', path);
+        } else {
+          console.error('Failed to delete Storage file:', path, e.message);
+        }
+      }
+    });
+
+    await Promise.all(deletePromises);
+    console.log('Storage cleanup completed for flick:', context.params.flickId, 'files:', paths.length);
+    return null;
+  });

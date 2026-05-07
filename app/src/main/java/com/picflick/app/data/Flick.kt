@@ -37,7 +37,10 @@ data class Flick(
     val imageSizeBytes: Long = 0, // Exact uploaded image size in bytes (for storage accounting)
     val clientUploadId: String = "", // Client-side id used to reconcile optimistic -> real upload
     val reactionsCount: Int = 0, // Cached count for fast reads (may differ from reactions.size when migrated)
-    val reactionsMigrated: Boolean = false // True when reactions moved to subcollection
+    val reactionsMigrated: Boolean = false, // True when reactions moved to subcollection
+    val storagePath: String = "", // Firebase Storage path to original image (for cleanup on delete)
+    val thumbnailPath512: String = "", // Firebase Storage path to 512px thumbnail
+    val thumbnailPath1080: String = "" // Firebase Storage path to 1080px thumbnail
 ) {
     /**
      * Get total reaction count

@@ -852,7 +852,23 @@ private fun ChatsScreenContent(
                 userPhoto = userProfile.photoUrl,
                 otherUserPhoto = friendPhoto,
                 onChatReady = { chatId ->
-                    // Navigate to chat detail
+                    // Create a minimal session so ChatDetail can render
+                    val session = ChatSession(
+                        id = chatId,
+                        participants = listOf(userProfile.uid, friendId),
+                        participantNames = mapOf(
+                            userProfile.uid to userProfile.displayName,
+                            friendId to friendName
+                        ),
+                        participantPhotos = mapOf(
+                            userProfile.uid to userProfile.photoUrl,
+                            friendId to friendPhoto
+                        ),
+                        lastMessage = "",
+                        lastTimestamp = System.currentTimeMillis(),
+                        unreadCount = 0
+                    )
+                    onSetSelectedChat(session, friendId)
                     onScreenChange(Screen.ChatDetail)
                 }
             )

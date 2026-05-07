@@ -226,7 +226,10 @@ class UploadViewModel : ViewModel() {
                     sharedGroupId = sharedGroupId,
                     taggedFriends = taggedFriends,
                     imageSizeBytes = uploadResult.uploadedBytes,
-                    clientUploadId = clientUploadId
+                    clientUploadId = clientUploadId,
+                    storagePath = uploadResult.storagePath,
+                    thumbnailPath512 = uploadResult.thumbnailPath512,
+                    thumbnailPath1080 = uploadResult.thumbnailPath1080
                 )
 
                 // Use repository to create flick - this sends notifications!
@@ -366,7 +369,10 @@ class UploadViewModel : ViewModel() {
                         sharedGroupId = sharedGroupId,
                         taggedFriends = emptyList(),
                         imageSizeBytes = uploadResult.uploadedBytes,
-                        clientUploadId = clientUploadId
+                        clientUploadId = clientUploadId,
+                        storagePath = uploadResult.storagePath,
+                        thumbnailPath512 = uploadResult.thumbnailPath512,
+                        thumbnailPath1080 = uploadResult.thumbnailPath1080
                     )
 
                     val result = flickRepository.createFlick(flick, userProfile.photoUrl)
@@ -417,7 +423,10 @@ class UploadViewModel : ViewModel() {
         val thumbnailUrl512: String,
         val thumbnailUrl1080: String,
         val uploadedBytes: Long,
-        val totalBytes: Long = uploadedBytes // original + all thumbnails
+        val totalBytes: Long = uploadedBytes, // original + all thumbnails
+        val storagePath: String = "",
+        val thumbnailPath512: String = "",
+        val thumbnailPath1080: String = ""
     )
 
     /**
@@ -467,7 +476,10 @@ class UploadViewModel : ViewModel() {
                     thumbnailUrl512 = thumbnail512Url ?: downloadUrl,
                     thumbnailUrl1080 = thumbnail1080Url ?: downloadUrl,
                     uploadedBytes = originalBytes,
-                    totalBytes = totalBytes
+                    totalBytes = totalBytes,
+                    storagePath = imageName,
+                    thumbnailPath512 = "photos/${userId}/thumbnails_512/${baseName}.jpg",
+                    thumbnailPath1080 = "photos/${userId}/thumbnails_1080/${baseName}.jpg"
                 )
             } catch (e: Exception) {
                 lastError = e

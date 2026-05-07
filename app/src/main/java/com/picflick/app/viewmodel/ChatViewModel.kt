@@ -530,6 +530,18 @@ class ChatViewModel : ViewModel() {
     }
 
     /**
+     * Restart chat sessions listener if it stopped (e.g. after app backgrounding).
+     */
+    fun restartChatSessionsIfNeeded() {
+        observingChatSessionsUserId?.let { userId ->
+            if (chatSessionsJob?.isActive != true) {
+                android.util.Log.d("ChatViewModel", "restartChatSessionsIfNeeded: restarting for $userId")
+                loadChatSessions(userId)
+            }
+        }
+    }
+
+    /**
      * Delete selected messages in currently open chat.
      */
     fun deleteSelectedMessages(

@@ -475,10 +475,9 @@ val canDeleteCurrent = currentFlick.userId == currentUser.uid
     }
     
     // Handle page changes
+    var hasNotifiedParent by remember { mutableStateOf(false) }
     LaunchedEffect(currentPageIndex) {
         if (validPhotos.isNotEmpty()) {
-            onNavigateToPhoto(currentPageIndex)
-
             val activeFlick = validPhotos[currentPageIndex]
             currentSwipeTraceStartedAt = System.currentTimeMillis()
             currentSwipeTracePhotoKey = activeFlick.id.ifBlank { activeFlick.imageUrl }
@@ -487,6 +486,14 @@ val canDeleteCurrent = currentFlick.userId == currentUser.uid
                 "PhotoViewerPerf",
                 "SWIPE_START index=$currentPageIndex flickId=${activeFlick.id} key=$currentSwipeTracePhotoKey"
             )
+            // Skip notifying parent on first composition — the caller already knows
+            // which photo is selected. This avoids a redundant recomposition that
+            // can race with the user’s first swipe gesture.
+            if (hasNotifiedParent) {
+                onNavigateToPhoto(currentPageIndex)
+            } else {
+                hasNotifiedParent = true
+            }
         }
     }
 
