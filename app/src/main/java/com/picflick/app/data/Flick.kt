@@ -40,7 +40,8 @@ data class Flick(
     val reactionsMigrated: Boolean = false, // True when reactions moved to subcollection
     val storagePath: String = "", // Firebase Storage path to original image (for cleanup on delete)
     val thumbnailPath512: String = "", // Firebase Storage path to 512px thumbnail
-    val thumbnailPath1080: String = "" // Firebase Storage path to 1080px thumbnail
+    val thumbnailPath1080: String = "", // Firebase Storage path to 1080px thumbnail
+    val schemaVersion: Int = 2 // Current schema version for migration tracking
 ) {
     /**
      * Get total reaction count

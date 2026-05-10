@@ -1807,3 +1807,66 @@ exports.deleteFlickStorage = functions
     console.log('Storage cleanup completed for flick:', context.params.flickId, 'files:', paths.length);
     return null;
   });
+
+/**
+ * Admin-only callable: backfill schemaVersion on all flicks and user profiles.
+ * Idempotent and safe to run multiple times.
+ */
+exports.backfillSchemaVersion = functions
+  .runWith({ memory: '512MB', timeoutSeconds: 120 })
+  .https
+  .onCall(async (data, context) => {
+  if (!context.auth) {
+    throw new functions.https.HttpsError('unauthenticated', 'Authentication required');
+  }
+
+  const callerDoc = await admin.firestore().collection('users').doc(context.auth.uid).get();
+  const caller = callerDoc.data() || {};
+  const isAdmin = caller.isAdmin === true || caller.role === 'admin';
+  if (!isAdmin) {
+    throw new functions.https.HttpsError('permission-denied', 'Admin access required');
+  }
+
+  const dryRun = data?.dryRun === true;
+  const batchSize = 500;
+  let flickScanned = 0;
+  let flickUpdated = 0;
+  let userScanned = 0;
+  let userUpdated = 0;
+
+  // Migrate flicks
+  const flicksSnapshot = await admin.firestore().collection('flicks').limit(batchSize).get();
+  const flickBatch = admin.firestore().batch();
+  flicksSnapshot.docs.forEach((doc) => {
+    flickScanned++;
+    const d = doc.data() || {};
+    if (Number(d.schemaVersion || 0) < 2) {
+      flickUpdated++;
+      if (!dryRun) {
+        flickBatch.update(doc.ref, { schemaVersion: 2, schemaMigratedAt: admin.firestore.FieldValue.serverTimestamp() });
+      }
+    }
+  });
+  if (!dryRun && flickUpdated > 0) {
+    await flickBatch.commit();
+  }
+
+  // Migrate users
+  const usersSnapshot = await admin.firestore().collection('users').limit(batchSize).get();
+  const userBatch = admin.firestore().batch();
+  usersSnapshot.docs.forEach((doc) => {
+    userScanned++;
+    const d = doc.data() || {};
+    if (Number(d.schemaVersion || 0) < 2) {
+      userUpdated++;
+      if (!dryRun) {
+        userBatch.update(doc.ref, { schemaVersion: 2, schemaMigratedAt: admin.firestore.FieldValue.serverTimestamp() });
+      }
+    }
+  });
+  if (!dryRun && userUpdated > 0) {
+    await userBatch.commit();
+  }
+
+  return { success: true, dryRun, flickScanned, flickUpdated, userScanned, userUpdated };
+});

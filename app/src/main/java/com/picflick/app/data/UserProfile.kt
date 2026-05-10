@@ -66,6 +66,7 @@ data class UserProfile(
     // Timezone and country for localized push + leaderboard flags
     val timezoneOffset: Int = 0, // UTC offset in hours (e.g., 0, +1, -5, +8)
     val countryCode: String = "", // ISO country code (e.g., "GB", "US", "FR") for flag emoji
+    val schemaVersion: Int = 2 // Current schema version for migration tracking
 ) {
     /**
      * Check if user has a pending follow request from another user
