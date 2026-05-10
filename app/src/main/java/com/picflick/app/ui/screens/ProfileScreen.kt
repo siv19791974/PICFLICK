@@ -101,6 +101,7 @@ fun ProfileScreen(
     onBack: () -> Unit,
     onPhotoSelected: (Uri) -> Unit = {},
     onBioUpdated: (String) -> Unit = {},
+    onDisplayNameUpdated: (String) -> Unit = {},
     onPhotoClick: (Flick, Int) -> Unit = { _, _ -> },
     onProfilePhotoClick: () -> Unit = {},
     onRefresh: () -> Unit = {},
@@ -194,16 +195,26 @@ fun ProfileScreen(
     
     // Bio edit dialog state - use rememberSaveable to survive recompositions
     var showBioDialog by remember { mutableStateOf(false) }
-    
+
     // Keep bio text stable - only update when dialog opens, not on every profile change
     var bioText by remember { mutableStateOf(userProfile.bio) }
-    
+
     // Update bioText when dialog opens (not on every recomposition)
     LaunchedEffect(showBioDialog) {
         if (showBioDialog) {
             bioText = displayBio
         }
     }
+
+    // Display name edit dialog state
+    var showNameDialog by remember { mutableStateOf(false) }
+    var displayNameText by remember { mutableStateOf(userProfile.displayName) }
+    LaunchedEffect(showNameDialog) {
+        if (showNameDialog) {
+            displayNameText = userProfile.displayName
+        }
+    }
+
     if (showBioDialog) {
         ModalBottomSheet(
             onDismissRequest = { showBioDialog = false },
@@ -237,6 +248,46 @@ fun ProfileScreen(
                         ActionSheetRow(icon = Icons.Default.Save, title = "Save", accentColor = Color(0xFF4CAF50), onClick = {
                             onBioUpdated(bioText.trim())
                             showBioDialog = false
+                        })
+                    }
+                }
+                Spacer(Modifier.height(12.dp))
+            }
+        }
+    }
+
+    if (showNameDialog) {
+        ModalBottomSheet(
+            onDismissRequest = { showNameDialog = false },
+            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+            containerColor = Color(0xFF121212),
+            dragHandle = { Surface(modifier = Modifier.padding(top = 8.dp).size(width = 44.dp, height = 5.dp), shape = RoundedCornerShape(50), color = Color.White.copy(alpha = 0.28f)) {} }
+        ) {
+            Column(Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 20.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                Text("Edit Name", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 20.dp))
+                OutlinedTextField(
+                    value = displayNameText,
+                    onValueChange = { displayNameText = it },
+                    label = { Text("Display Name", color = Color(0xFFB7BDC9)) },
+                    placeholder = { Text("Your name...", color = Color(0xFFB7BDC9).copy(alpha = 0.5f)) },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = Color(0xFF2A4A73), unfocusedBorderColor = Color.Gray.copy(alpha = 0.4f),
+                        focusedTextColor = Color.White, unfocusedTextColor = Color.White,
+                        focusedLabelColor = Color(0xFF2A4A73), unfocusedLabelColor = Color(0xFFB7BDC9),
+                        cursorColor = Color(0xFF2A4A73)
+                    )
+                )
+                Spacer(Modifier.height(12.dp))
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Box(modifier = Modifier.weight(1f)) {
+                        ActionSheetRow(icon = Icons.Default.Close, title = "Cancel", accentColor = Color.Gray, onClick = { showNameDialog = false })
+                    }
+                    Box(modifier = Modifier.weight(1f)) {
+                        ActionSheetRow(icon = Icons.Default.Save, title = "Save", accentColor = Color(0xFF4CAF50), onClick = {
+                            onDisplayNameUpdated(displayNameText.trim())
+                            showNameDialog = false
                         })
                     }
                 }
@@ -367,13 +418,29 @@ fun ProfileScreen(
 
         Spacer(modifier = Modifier.height(20.dp))
 
-        // Name with better typography
-        Text(
-            text = userProfile.displayName,
-            fontSize = 28.sp,
-            fontWeight = FontWeight.Bold,
-            color = if (isDarkMode) Color.White else Color.Black
-        )
+        // Name with better typography + edit pencil
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Text(
+                text = userProfile.displayName,
+                fontSize = 28.sp,
+                fontWeight = FontWeight.Bold,
+                color = if (isDarkMode) Color.White else Color.Black
+            )
+            IconButton(
+                onClick = { showNameDialog = true },
+                modifier = Modifier.size(32.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Edit,
+                    contentDescription = "Edit name",
+                    tint = Color(0xFF2A4A73),
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+        }
 
         // Mythic Tier Badge
         if (userProfile.mythicTier.isNotBlank()) {

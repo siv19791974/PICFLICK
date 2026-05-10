@@ -685,6 +685,7 @@ private fun ProfileScreenContent(
         onBack = { onScreenChange(Screen.Home) },
         onPhotoSelected = onPhotoSelected,
         onBioUpdated = { newBio -> authViewModel.updateBio(newBio) },
+        onDisplayNameUpdated = { newName -> authViewModel.updateDisplayName(newName) },
         onPhotoClick = { flick, index ->
             selectedPhoto = flick
             selectedPhotoIndex = index

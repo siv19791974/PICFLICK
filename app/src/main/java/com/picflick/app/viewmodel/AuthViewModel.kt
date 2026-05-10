@@ -340,6 +340,38 @@ class AuthViewModel : ViewModel() {
     }
 
     /**
+     * Update user display name
+     */
+    fun updateDisplayName(newName: String) {
+        viewModelScope.launch {
+            userProfile?.let { profile ->
+                val trimmed = newName.trim()
+                if (trimmed.isBlank()) return@let
+                repository.patchUserProfile(
+                    profile.uid,
+                    mapOf(
+                        "displayName" to trimmed,
+                        "displayNameLower" to trimmed.lowercase()
+                    )
+                ) { result ->
+                    when (result) {
+                        is Result.Success -> {
+                            userProfile = profile.copy(
+                                displayName = trimmed,
+                                displayNameLower = trimmed.lowercase()
+                            )
+                        }
+                        is Result.Error -> {
+                            errorMessage = result.message
+                        }
+                        is Result.Loading -> { }
+                    }
+                }
+            }
+        }
+    }
+
+    /**
      * Update user notification preferences
      */
     fun updateNotificationPreferences(preferences: com.picflick.app.data.NotificationPreferences) {
