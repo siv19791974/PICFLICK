@@ -32,9 +32,11 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.NotificationsOff
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.window.Dialog
@@ -52,6 +54,7 @@ import android.widget.Toast
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
+import kotlin.math.absoluteValue
 import kotlin.math.roundToInt
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -530,71 +533,7 @@ fun ChatDetailScreen(
                                     )
                                 }
 
-                                DropdownMenu(
-                                    expanded = showHeaderMenu,
-                                    onDismissRequest = { showHeaderMenu = false }
-                                ) {
-                                    if (isGroupChat) {
-                                        DropdownMenuItem(
-                                            text = { Text("View group") },
-                                            onClick = {
-                                                showHeaderMenu = false
-                                                onViewGroupInfo(
-                                                    chatSession.groupId.ifBlank { chatSession.id.removePrefix("group_") },
-                                                    chatSession.groupName.ifBlank { chatSession.participantNames.values.firstOrNull().orEmpty() },
-                                                    chatSession.groupIcon
-                                                )
-                                            }
-                                        )
-                                        DropdownMenuItem(
-                                            text = { Text("Mute chat") },
-                                            onClick = {
-                                                showHeaderMenu = false
-                                                showMuteDurationDialog = true
-                                            }
-                                        )
 
-                                    } else {
-                                        DropdownMenuItem(
-                                            text = { Text("View profile") },
-                                            onClick = {
-                                                showHeaderMenu = false
-                                                onUserProfileClick(otherUserId)
-                                            }
-                                        )
-                                    }
-
-                                    DropdownMenuItem(
-                                        text = { Text("Select messages") },
-                                        onClick = {
-                                            showHeaderMenu = false
-                                            isSelectionMode = true
-                                        }
-                                    )
-
-                                    HorizontalDivider()
-
-                                    DropdownMenuItem(
-                                        text = {
-                                            Text(
-                                                if (isGroupChat) "Exit group conversation" else "Delete conversation",
-                                                color = Color.Red
-                                            )
-                                        },
-                                        onClick = {
-                                            showHeaderMenu = false
-                                            showClearChatConfirm = true
-                                        }
-                                    )
-
-                                    DropdownMenuItem(
-                                        text = { Text("Block user", color = Color.Red) },
-                                        onClick = {
-                                            showHeaderMenu = false
-                                            showBlockUserConfirm = true
-                                        }
-                                    )
-                                }
                             }
                         }
                     }
@@ -680,6 +619,9 @@ Column(modifier = Modifier.fillMaxSize()) {
                                         isMe = isMe,
                                         otherUserPhoto = if (isMe) "" else otherUserPhoto,
                                         currentUserId = currentUser.uid,
+                                        isGroupChat = isGroupChat,
+                                        participantNames = chatSession.participantNames,
+                                        participantPhotos = chatSession.participantPhotos,
                                         onReplyClick = { replyToMessage = message },
                                         onReaction = { emoji ->
                                             viewModel.addReaction(chatId, message.id, currentUser.uid, emoji, currentUser.displayName, currentUser.photoUrl)
@@ -1298,6 +1240,98 @@ Column(modifier = Modifier.fillMaxSize()) {
         }
     }
 
+    if (showHeaderMenu) {
+        AddPhotoStyleActionSheet(
+            title = if (isGroupChat) "Group chat options" else "Chat options",
+            options = buildList {
+                if (isGroupChat) {
+                    add(
+                        ActionSheetOption(
+                            icon = Icons.Default.Group,
+                            title = "View group",
+                            subtitle = "View album info and members",
+                            accentColor = Color(0xFF2E86DE),
+                            onClick = {
+                                showHeaderMenu = false
+                                onViewGroupInfo(
+                                    chatSession.groupId.ifBlank { chatSession.id.removePrefix("group_") },
+                                    chatSession.groupName.ifBlank { chatSession.participantNames.values.firstOrNull().orEmpty() },
+                                    chatSession.groupIcon
+                                )
+                            }
+                        )
+                    )
+                    add(
+                        ActionSheetOption(
+                            icon = Icons.Default.NotificationsOff,
+                            title = "Mute chat",
+                            subtitle = "Temporarily mute notifications",
+                            accentColor = Color(0xFF2E86DE),
+                            onClick = {
+                                showHeaderMenu = false
+                                showMuteDurationDialog = true
+                            }
+                        )
+                    )
+                } else {
+                    add(
+                        ActionSheetOption(
+                            icon = Icons.Default.Person,
+                            title = "View profile",
+                            subtitle = "See this user's profile",
+                            accentColor = Color(0xFF2E86DE),
+                            onClick = {
+                                showHeaderMenu = false
+                                onUserProfileClick(otherUserId)
+                            }
+                        )
+                    )
+                }
+                add(
+                    ActionSheetOption(
+                        icon = Icons.Default.Edit,
+                        title = "Select messages",
+                        subtitle = "Select multiple messages to delete",
+                        accentColor = Color(0xFF2E86DE),
+                        onClick = {
+                            showHeaderMenu = false
+                            isSelectionMode = true
+                        }
+                    )
+                )
+                add(
+                    ActionSheetOption(
+                        icon = if (isGroupChat) Icons.AutoMirrored.Filled.ExitToApp else Icons.Default.Delete,
+                        title = if (isGroupChat) "Exit group conversation" else "Delete conversation",
+                        subtitle = if (isGroupChat) "Leave this group chat" else "Remove this conversation from your inbox",
+                        accentColor = Color(0xFFD84343),
+                        onClick = {
+                            showHeaderMenu = false
+                            showClearChatConfirm = true
+                        }
+                    )
+                )
+                add(
+                    ActionSheetOption(
+                        icon = Icons.Default.Block,
+                        title = "Block user",
+                        subtitle = "Block and report this user",
+                        accentColor = Color(0xFFD84343),
+                        onClick = {
+                            showHeaderMenu = false
+                            showBlockUserConfirm = true
+                        }
+                    )
+                )
+            },
+            onDismiss = { showHeaderMenu = false },
+            cancelTitle = "Cancel",
+            cancelSubtitle = "Close menu",
+            cancelIcon = Icons.Default.Close,
+            cancelAccentColor = Color(0xFF4B5563)
+        )
+    }
+
     if (showBlockUserConfirm) {
         ModalBottomSheet(
             onDismissRequest = { showBlockUserConfirm = false },
@@ -1747,6 +1781,9 @@ private fun ChatBubble(
     isMe: Boolean,
     otherUserPhoto: String,
     currentUserId: String,
+    isGroupChat: Boolean = false,
+    participantNames: Map<String, String> = emptyMap(),
+    participantPhotos: Map<String, String> = emptyMap(),
     onReplyClick: () -> Unit = {},
     onReaction: (String) -> Unit = {},
     onPhotoClick: () -> Unit = {},
@@ -1983,13 +2020,26 @@ Box(
             }
         } else {
             // USER B (Left side)
+            if (isGroupChat) {
+                val senderPhotoUrl = message.senderPhotoUrl.ifBlank { participantPhotos[message.senderId].orEmpty() }
+                AsyncImage(
+                    model = rememberChatImageModel(senderPhotoUrl, message.timestamp),
+                    contentDescription = "Sender avatar",
+                    modifier = Modifier
+                        .padding(start = 4.dp, top = 2.dp)
+                        .size(28.dp)
+                        .clip(CircleShape),
+                    contentScale = ContentScale.Crop
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+            }
             Box(
-                modifier = Modifier.fillMaxWidth(0.85f),
+                modifier = Modifier.fillMaxWidth(if (isGroupChat) 0.78f else 0.85f),
                 contentAlignment = Alignment.TopStart
             ) {
                 Column(modifier = Modifier.padding(horizontal = 0.dp)) {
                     Box(
-modifier = Modifier
+                        modifier = Modifier
                             .align(Alignment.Start)
                             .wrapContentWidth()
                             .wrapContentHeight()
@@ -2008,6 +2058,16 @@ modifier = Modifier
                                     .padding(end = if (message.imageUrl.isNotBlank()) 4.dp else 52.dp, bottom = 2.dp),
                                 verticalArrangement = Arrangement.Top
                             ) {
+                                if (isGroupChat) {
+                                    val senderName = message.senderName.ifBlank { participantNames[message.senderId] ?: "Unknown" }
+                                    Text(
+                                        text = senderName,
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = senderColorForId(message.senderId),
+                                        modifier = Modifier.padding(bottom = 2.dp)
+                                    )
+                                }
                                 if (message.isReply()) {
                                     QuotedMessage(
                                         quotedSenderName = message.quotedSenderName ?: "Unknown",
@@ -2142,6 +2202,17 @@ modifier = Modifier
 
 private fun formatMessageTime(timestamp: Long): String {
     return SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(timestamp))
+}
+
+/**
+ * Generate a deterministic color for a sender ID so each group member gets a consistent label color.
+ */
+private fun senderColorForId(senderId: String): Color {
+    val hash = senderId.hashCode().absoluteValue
+    val hue = (hash % 360).toFloat()
+    val saturation = 0.65f + ((hash % 3) * 0.05f)
+    val lightness = 0.45f + ((hash % 2) * 0.05f)
+    return Color.hsl(hue, saturation, lightness)
 }
 
 @Composable

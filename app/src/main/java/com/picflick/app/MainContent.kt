@@ -626,8 +626,13 @@ private fun HomeScreenContent(
                     ?: ChatSession(
                         id = chatId,
                         participants = group.effectiveMemberIds(),
-                        participantNames = emptyMap(),
-                        participantPhotos = emptyMap(),
+                        participantNames = buildMap {
+                            put(userProfile.uid, userProfile.displayName)
+                            group.friendIds.forEach { uid -> put(uid, "Member") }
+                        },
+                        participantPhotos = buildMap {
+                            put(userProfile.uid, userProfile.photoUrl)
+                        },
                         isGroup = true,
                         groupId = group.id,
                         groupName = group.name,

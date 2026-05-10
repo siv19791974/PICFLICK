@@ -21,7 +21,9 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.Font
+import coil3.compose.AsyncImage
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.Modifier
@@ -43,7 +45,9 @@ fun BottomNavBar(
     currentRoute: String,
     onNavigate: (String) -> Unit,
     unreadMessages: Int = 0,
-    activeAlbum: FriendGroup? = null
+    activeAlbum: FriendGroup? = null,
+    userPhotoUrl: String = "",
+    userDisplayName: String = ""
 ) {
     NavigationBar(
         modifier = Modifier.fillMaxWidth(),
@@ -79,20 +83,39 @@ fun BottomNavBar(
                             )
                         }
                     } else {
-                        androidx.compose.material3.Surface(
-                            shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
-                            color = Color(0xFF1565C0),
-                            modifier = Modifier.padding(horizontal = 2.dp, vertical = 2.dp)
-                        ) {
-                            Text(
-                                text = "Albums",
-                                color = Color.White,
-                                fontWeight = FontWeight.ExtraBold,
-                                fontSize = 11.sp,
-                                letterSpacing = 0.05.sp,
-                                fontFamily = PoppinsFontFamily,
-                                maxLines = 1,
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                        val initials = userDisplayName.take(1).uppercase()
+                        if (userPhotoUrl.isNotBlank()) {
+                            AsyncImage(
+                                model = userPhotoUrl,
+                                contentDescription = "Home",
+                                modifier = Modifier
+                                    .size(28.dp)
+                                    .clip(androidx.compose.foundation.shape.CircleShape),
+                                contentScale = androidx.compose.ui.layout.ContentScale.Crop
+                            )
+                        } else if (initials.isNotBlank()) {
+                            androidx.compose.material3.Surface(
+                                shape = androidx.compose.foundation.shape.CircleShape,
+                                color = Color(0xFF1565C0),
+                                modifier = Modifier.size(28.dp)
+                            ) {
+                                androidx.compose.foundation.layout.Box(
+                                    contentAlignment = androidx.compose.ui.Alignment.Center
+                                ) {
+                                    Text(
+                                        text = initials,
+                                        color = Color.White,
+                                        fontWeight = FontWeight.ExtraBold,
+                                        fontSize = 14.sp,
+                                        fontFamily = PoppinsFontFamily
+                                    )
+                                }
+                            }
+                        } else {
+                            Icon(
+                                imageVector = Icons.Outlined.Home,
+                                contentDescription = "Home",
+                                tint = Color.LightGray
                             )
                         }
                     }

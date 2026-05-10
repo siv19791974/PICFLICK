@@ -53,6 +53,8 @@ import com.google.firebase.firestore.FirebaseFirestore
 import com.picflick.app.data.Notification
 import com.picflick.app.data.NotificationType
 import com.picflick.app.data.UserProfile
+import com.picflick.app.ui.components.ActionSheetOption
+import com.picflick.app.ui.components.AddPhotoStyleActionSheet
 import com.picflick.app.ui.theme.isDarkModeBackground
 import com.picflick.app.ui.theme.ThemeManager
 import com.picflick.app.util.rememberLiveUserPhotoUrl
@@ -89,6 +91,45 @@ fun NotificationsScreen(
     val isDarkMode = ThemeManager.isDarkMode.value
     var showHeaderMenu by remember { mutableStateOf(false) }
     val selectedNotificationIds = remember { mutableStateListOf<String>() }
+
+    if (showHeaderMenu) {
+        AddPhotoStyleActionSheet(
+            title = "Notification options",
+            options = buildList {
+                if (unreadCount > 0) {
+                    add(
+                        ActionSheetOption(
+                            icon = Icons.Default.Email,
+                            title = "Mark all read",
+                            subtitle = "Clear $unreadCount unread notifications",
+                            accentColor = Color(0xFF2E86DE),
+                            onClick = {
+                                viewModel.markAllAsRead(userProfile.uid)
+                                showHeaderMenu = false
+                            }
+                        )
+                    )
+                }
+                add(
+                    ActionSheetOption(
+                        icon = Icons.Default.Delete,
+                        title = "Delete all",
+                        subtitle = "Remove all notifications permanently",
+                        accentColor = Color(0xFFD84343),
+                        onClick = {
+                            viewModel.deleteAllNotifications(userProfile.uid)
+                            showHeaderMenu = false
+                        }
+                    )
+                )
+            },
+            onDismiss = { showHeaderMenu = false },
+            cancelTitle = "Cancel",
+            cancelSubtitle = "Close menu",
+            cancelIcon = Icons.Default.Close,
+            cancelAccentColor = Color(0xFF4B5563)
+        )
+    }
     var isSelectionMode by remember { mutableStateOf(false) }
     val acceptedInviteIds = remember { mutableStateMapOf<String, Boolean>() }
     val declinedInviteIds = remember { mutableStateMapOf<String, Boolean>() }
@@ -193,35 +234,13 @@ fun NotificationsScreen(
                         textAlign = androidx.compose.ui.text.style.TextAlign.Center
                     )
 
-                    Box {
-                        IconButton(onClick = { showHeaderMenu = true }, modifier = Modifier.size(48.dp)) {
-                            Text(
-                                text = "⋮",
-                                color = Color.White,
-                                fontSize = 20.sp,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-                        DropdownMenu(
-                            expanded = showHeaderMenu,
-                            onDismissRequest = { showHeaderMenu = false }
-                        ) {
-                            DropdownMenuItem(
-                                text = { Text("Mark all read") },
-                                onClick = {
-                                    viewModel.markAllAsRead(userProfile.uid)
-                                    showHeaderMenu = false
-                                },
-                                enabled = unreadCount > 0
-                            )
-                            DropdownMenuItem(
-                                text = { Text("Delete all") },
-                                onClick = {
-                                    viewModel.deleteAllNotifications(userProfile.uid)
-                                    showHeaderMenu = false
-                                }
-                            )
-                        }
+                    IconButton(onClick = { showHeaderMenu = true }, modifier = Modifier.size(48.dp)) {
+                        Text(
+                            text = "⋮",
+                            color = Color.White,
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Bold
+                        )
                     }
                 }
             }

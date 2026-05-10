@@ -369,7 +369,9 @@ fun ProfileScreen(
                             .diskCachePolicy(CachePolicy.ENABLED)
                             .build(),
                         contentDescription = "Profile photo",
-                        modifier = Modifier.fillMaxSize(),
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .clip(CircleShape),
                         error = painterResource(id = android.R.drawable.ic_menu_myplaces),
                         contentScale = ContentScale.Crop
                     )

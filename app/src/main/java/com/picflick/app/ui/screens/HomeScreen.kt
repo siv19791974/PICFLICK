@@ -1528,6 +1528,7 @@ private fun GroupManagerSheet(
     }
     var draggingGroupId by remember { mutableStateOf<String?>(null) }
     var confirmDeleteGroup by remember { mutableStateOf<FriendGroup?>(null) }
+    var menuTargetGroup by remember { mutableStateOf<FriendGroup?>(null) }
     var searchQuery by remember { mutableStateOf("") }
 
     val filteredOrderedGroupIds by remember { derivedStateOf {
@@ -1544,6 +1545,113 @@ private fun GroupManagerSheet(
             }
         }
     } }
+
+    menuTargetGroup?.let { group ->
+        val isOwner = group.isOwner(currentUserId)
+        val isAdmin = group.isAdmin(currentUserId)
+        val memberCount = group.effectiveMemberIds().size
+        AddPhotoStyleActionSheet(
+            title = "${group.name}  •  $memberCount members",
+            options = buildList {
+                add(
+                    ActionSheetOption(
+                        icon = Icons.Default.Chat,
+                        title = "View album",
+                        subtitle = "Open this album's photo feed",
+                        accentColor = Color(0xFF2E86DE),
+                        onClick = {
+                            menuTargetGroup = null
+                            onSelectGroup(FeedFilter.ByGroup(group))
+                        }
+                    )
+                )
+                if (isOwner) {
+                    add(
+                        ActionSheetOption(
+                            icon = Icons.AutoMirrored.Filled.Send,
+                            title = "Invite",
+                            subtitle = "Add friends to this album",
+                            accentColor = Color(0xFF2E86DE),
+                            onClick = {
+                                menuTargetGroup = null
+                                onInviteToGroup(group)
+                            }
+                        )
+                    )
+                    add(
+                        ActionSheetOption(
+                            icon = Icons.Default.AdminPanelSettings,
+                            title = "Admins",
+                            subtitle = "Manage album administrators",
+                            accentColor = Color(0xFF2E86DE),
+                            onClick = {
+                                menuTargetGroup = null
+                                onManageAdmins(group)
+                            }
+                        )
+                    )
+                }
+                add(
+                    ActionSheetOption(
+                        icon = if (isAdmin) Icons.Default.Edit else Icons.Default.Group,
+                        title = if (isAdmin) "Edit album" else "View members",
+                        subtitle = if (isAdmin) "Change album name, icon, members" else "See who's in this album",
+                        accentColor = Color(0xFF2E86DE),
+                        onClick = {
+                            menuTargetGroup = null
+                            if (isAdmin) onEditGroup(group) else onViewGroup(group)
+                        }
+                    )
+                )
+                add(
+                    ActionSheetOption(
+                        icon = Icons.Default.ChatBubble,
+                        title = "Open chat",
+                        subtitle = "Chat with album members",
+                        accentColor = Color(0xFF2E86DE),
+                        onClick = {
+                            menuTargetGroup = null
+                            onOpenGroupChat(group)
+                        }
+                    )
+                )
+                add(
+                    ActionSheetOption(
+                        icon = Icons.Default.PushPin,
+                        title = "Pin to top",
+                        subtitle = "Move this album to the top of your list",
+                        accentColor = Color(0xFF2E86DE),
+                        onClick = {
+                            menuTargetGroup = null
+                            val currentIndex = orderedGroupIdsState.indexOf(group.id)
+                            if (currentIndex > 0) {
+                                orderedGroupIdsState.removeAt(currentIndex)
+                                orderedGroupIdsState.add(0, group.id)
+                                onReorderGroups(orderedGroupIdsState.toList())
+                            }
+                        }
+                    )
+                )
+                add(
+                    ActionSheetOption(
+                        icon = if (isOwner) Icons.Default.Delete else Icons.AutoMirrored.Filled.ExitToApp,
+                        title = if (isOwner) "Delete album" else "Exit album",
+                        subtitle = if (isOwner) "Permanently delete this album for everyone" else "Leave this album",
+                        accentColor = Color(0xFFD84343),
+                        onClick = {
+                            menuTargetGroup = null
+                            confirmDeleteGroup = group
+                        }
+                    )
+                )
+            },
+            onDismiss = { menuTargetGroup = null },
+            cancelTitle = "Cancel",
+            cancelSubtitle = "Close menu",
+            cancelIcon = Icons.Default.Close,
+            cancelAccentColor = Color(0xFF4B5563)
+        )
+    }
 
     confirmDeleteGroup?.let { group ->
         val isOwner = group.isOwner(currentUserId)
@@ -1645,33 +1753,39 @@ private fun GroupManagerSheet(
                             onClick = { onSelectGroup(FeedFilter.AllFriends) },
                             textColor = textColor,
                             trailingContent = {
-                                Box {
-                                    IconButton(onClick = { showAllFriendsMenu = true }) {
-                                        Icon(Icons.Default.MoreVert, contentDescription = "All Friends menu", tint = textColor)
-                                    }
-                                    DropdownMenu(
-                                        expanded = showAllFriendsMenu,
-                                        onDismissRequest = { showAllFriendsMenu = false }
-                                    ) {
-                                        DropdownMenuItem(
-                                            text = { Text("Change Avatar") },
-                                            onClick = {
-                                                showAllFriendsMenu = false
-                                                onChangeAllFriendsAvatar()
-                                            },
-                                            leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null) }
-                                        )
-                                    }
+                                IconButton(onClick = { showAllFriendsMenu = true }) {
+                                    Icon(Icons.Default.MoreVert, contentDescription = "All Friends menu", tint = textColor)
                                 }
                             }
                         )
+                        if (showAllFriendsMenu) {
+                            AddPhotoStyleActionSheet(
+                                title = "All friends",
+                                options = listOf(
+                                    ActionSheetOption(
+                                        icon = Icons.Default.Edit,
+                                        title = "Change Avatar",
+                                        subtitle = "Update the All friends album icon",
+                                        accentColor = Color(0xFF2E86DE),
+                                        onClick = {
+                                            showAllFriendsMenu = false
+                                            onChangeAllFriendsAvatar()
+                                        }
+                                    )
+                                ),
+                                onDismiss = { showAllFriendsMenu = false },
+                                cancelTitle = "Cancel",
+                                cancelSubtitle = "Close menu",
+                                cancelIcon = Icons.Default.Close,
+                                cancelAccentColor = Color(0xFF4B5563)
+                            )
+                        }
                     }
                 }
 
                 items(filteredOrderedGroupIds, key = { it }) { groupId ->
                     val group = sortedGroups.firstOrNull { it.id == groupId } ?: return@items
                     val isSelected = selectedFilter is FeedFilter.ByGroup && selectedFilter.group.id == group.id
-                    var showGroupMenu by remember(group.id) { mutableStateOf(false) }
                     var dragDeltaY by remember(group.id) { mutableStateOf(0f) }
 
                     GroupRowCard(
@@ -1726,94 +1840,8 @@ private fun GroupManagerSheet(
                                     )
                                 }
 
-                                Box {
-                                    IconButton(onClick = { showGroupMenu = true }) {
-                                        Icon(Icons.Default.MoreVert, contentDescription = "Album menu", tint = textColor)
-                                    }
-                                    DropdownMenu(
-                                        expanded = showGroupMenu,
-                                        onDismissRequest = { showGroupMenu = false }
-                                    ) {
-                                        DropdownMenuItem(
-                                            text = { Text("View album") },
-                                            onClick = {
-                                                showGroupMenu = false
-                                                onSelectGroup(FeedFilter.ByGroup(group))
-                                            },
-                                            leadingIcon = { Icon(Icons.Default.Chat, contentDescription = null) }
-                                        )
-                                        if (group.isOwner(currentUserId)) {
-                                            DropdownMenuItem(
-                                                text = { Text("Invite") },
-                                                onClick = {
-                                                    showGroupMenu = false
-                                                    onInviteToGroup(group)
-                                                },
-                                                leadingIcon = { Icon(Icons.AutoMirrored.Filled.Send, contentDescription = null) }
-                                            )
-                                            DropdownMenuItem(
-                                                text = { Text("Admins") },
-                                                onClick = {
-                                                    showGroupMenu = false
-                                                    onManageAdmins(group)
-                                                },
-                                                leadingIcon = { Icon(Icons.Default.AdminPanelSettings, contentDescription = null) }
-                                            )
-                                        }
-                                        DropdownMenuItem(
-                                            text = { Text(if (group.isAdmin(currentUserId)) "Edit album" else "View members") },
-                                            onClick = {
-                                                showGroupMenu = false
-                                                if (group.isAdmin(currentUserId)) {
-                                                    onEditGroup(group)
-                                                } else {
-                                                    onViewGroup(group)
-                                                }
-                                            },
-                                            leadingIcon = { Icon(if (group.isAdmin(currentUserId)) Icons.Default.Edit else Icons.Default.Group, contentDescription = null) }
-                                        )
-                                        DropdownMenuItem(
-                                            text = { Text("Open chat") },
-                                            onClick = {
-                                                showGroupMenu = false
-                                                onOpenGroupChat(group)
-                                            },
-                                            leadingIcon = { Icon(Icons.Default.ChatBubble, contentDescription = null) }
-                                        )
-                                        DropdownMenuItem(
-                                            text = { Text("Pin to top") },
-                                            onClick = {
-                                                showGroupMenu = false
-                                                val currentIndex = orderedGroupIdsState.indexOf(group.id)
-                                                if (currentIndex > 0) {
-                                                    orderedGroupIdsState.removeAt(currentIndex)
-                                                    orderedGroupIdsState.add(0, group.id)
-                                                    onReorderGroups(orderedGroupIdsState.toList())
-                                                }
-                                            },
-                                            leadingIcon = { Icon(Icons.Default.PushPin, contentDescription = null) }
-                                        )
-                                        DropdownMenuItem(
-                                            text = { Text("${group.effectiveMemberIds().size} members") },
-                                            onClick = { showGroupMenu = false },
-                                            enabled = false,
-                                            leadingIcon = { Icon(Icons.Default.People, contentDescription = null) }
-                                        )
-                                        DropdownMenuItem(
-                                            text = { Text(if (group.isOwner(currentUserId)) "Delete album" else "Exit album") },
-                                            onClick = {
-                                                showGroupMenu = false
-                                                confirmDeleteGroup = group
-                                            },
-                                            leadingIcon = {
-                                                Icon(
-                                                    imageVector = if (group.isOwner(currentUserId)) Icons.Default.Delete else Icons.AutoMirrored.Filled.ExitToApp,
-                                                    contentDescription = null,
-                                                    tint = Color(0xFFD84343)
-                                                )
-                                            }
-                                        )
-                                    }
+                                IconButton(onClick = { menuTargetGroup = group }) {
+                                    Icon(Icons.Default.MoreVert, contentDescription = "Album menu", tint = textColor)
                                 }
                             }
                         }

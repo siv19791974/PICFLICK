@@ -417,6 +417,33 @@ fun MainScreen(
     var wasPreviouslyLoggedOut by remember { mutableStateOf(true) }
     val appContext = LocalContext.current
 
+    // Send any pending crash reports to dev feedback inbox on launch
+    LaunchedEffect(Unit) {
+        withContext(Dispatchers.IO) {
+            val report = CrashReporter.getPendingCrashReport(appContext)
+            if (report != null) {
+                val (message, stackTrace, time) = report
+                val userId = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid ?: "unknown"
+                val userName = authViewModel.userProfile?.displayName ?: "Unknown User"
+                val result = FlickRepository.getInstance().submitFeedback(
+                    userId = userId,
+                    userName = userName,
+                    userEmail = "crash@picflick.app",
+                    subject = "Auto Crash Report",
+                    message = "Crash at ${java.util.Date(time)}: $message\n\n$stackTrace",
+                    category = "CRASH_REPORT",
+                    appVersion = try {
+                        appContext.packageManager.getPackageInfo(appContext.packageName, 0).versionName ?: "unknown"
+                    } catch (_: Exception) { "unknown" },
+                    deviceInfo = "${Build.MANUFACTURER} ${Build.MODEL}, Android ${Build.VERSION.RELEASE}"
+                )
+                if (result is com.picflick.app.data.Result.Success) {
+                    CrashReporter.clearPendingCrashReport(appContext)
+                }
+            }
+        }
+    }
+
     var forceHomeResetVersion by remember { mutableIntStateOf(0) }
 
     fun navigateTo(screen: Screen) {
@@ -1256,6 +1283,8 @@ fun MainScreen(
                         else -> "other"
                     },
                     activeAlbum = activeAlbum,
+                    userPhotoUrl = userProfile?.photoUrl.orEmpty(),
+                    userDisplayName = userProfile?.displayName.orEmpty(),
                     onNavigate = { route ->
                         if (profileReady) {
                             when (route) {

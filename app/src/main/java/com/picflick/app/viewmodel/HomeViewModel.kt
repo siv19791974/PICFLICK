@@ -177,6 +177,13 @@ class HomeViewModel : ViewModel() {
         val userId = currentUserId
         if (userId == null || isLoadingMore) return
 
+        // Album/group feeds do not support pagination; getFlicksForFriendGroup already loads up to 250.
+        if (selectedFilter is FeedFilter.ByGroup) {
+            isLoadingMore = false
+            canLoadMore = false
+            return
+        }
+
         // Use deterministic cursor state instead of deriving from current list tail
         val cursorTimestamp = paginationCursorTimestamp ?: flicks.lastOrNull()?.timestamp
         val cursorId = paginationCursorId ?: flicks.lastOrNull()?.id

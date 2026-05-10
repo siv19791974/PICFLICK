@@ -28,6 +28,8 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.AddAPhoto
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material3.*
 import androidx.compose.material.icons.outlined.Settings
@@ -55,7 +57,9 @@ import com.picflick.app.data.FriendGroup
 import com.picflick.app.data.UserProfile
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import com.picflick.app.ui.components.ActionSheetOption
 import com.picflick.app.ui.components.ActionSheetRow
+import com.picflick.app.ui.components.AddPhotoStyleActionSheet
 import com.picflick.app.ui.components.BottomNavBar
 import com.picflick.app.ui.components.LogoImage
 import com.picflick.app.ui.theme.PicFlickBannerBackground
@@ -289,8 +293,7 @@ fun ChatsScreen(
                         fontWeight = FontWeight.Bold,
                         textAlign = androidx.compose.ui.text.style.TextAlign.Center
                     )
-                    Box {
-                        IconButton(
+                                            IconButton(
                             onClick = { showHeaderMenu = true },
                             modifier = Modifier.size(48.dp)
                         ) {
@@ -301,59 +304,6 @@ fun ChatsScreen(
                                 fontWeight = FontWeight.Bold
                             )
                         }
-                        DropdownMenu(
-                            expanded = showHeaderMenu,
-                            onDismissRequest = { showHeaderMenu = false }
-                        ) {
-                            DropdownMenuItem(
-                                text = { Text("Mark selected as read") },
-                                onClick = {
-                                    selectedChatIds.toList().forEach { chatId ->
-                                        viewModel.markAsRead(chatId, userProfile.uid)
-                                    }
-                                    selectedChatIds.clear()
-                                    showHeaderMenu = false
-                                },
-                                enabled = selectedChatIds.isNotEmpty()
-                            )
-                            DropdownMenuItem(
-                                text = { Text("Clear selection") },
-                                onClick = {
-                                    selectedChatIds.clear()
-                                    showHeaderMenu = false
-                                },
-                                enabled = selectedChatIds.isNotEmpty()
-                            )
-
-                            HorizontalDivider(
-                                modifier = Modifier.padding(vertical = 4.dp),
-                                thickness = 0.5.dp,
-                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f)
-                            )
-
-                            DropdownMenuItem(
-                                text = {
-                                    Text(
-                                        if (selectedChatIds.size <= 1) "Delete selected" else "Delete selected (${selectedChatIds.size})",
-                                        color = Color.Red
-                                    )
-                                },
-                                onClick = {
-                                    showHeaderMenu = false
-                                    showDeleteConfirm = true
-                                },
-                                enabled = selectedChatIds.isNotEmpty()
-                            )
-                            DropdownMenuItem(
-                                text = { Text("Block user", color = Color.Red) },
-                                onClick = {
-                                    showHeaderMenu = false
-                                    showBlockConfirm = true
-                                },
-                                enabled = selectedChatIds.size == 1 && !selectedOtherUserId.isNullOrBlank()
-                            )
-                        }
-                    }
                 }
             }
 
@@ -579,6 +529,77 @@ fun ChatsScreen(
                 modifier = Modifier.size(28.dp)
             )
         }
+    }
+
+    if (showHeaderMenu) {
+        val hasSelection = selectedChatIds.isNotEmpty()
+        val selectedCount = selectedChatIds.size
+        val canBlock = selectedChatIds.size == 1 && !selectedOtherUserId.isNullOrBlank()
+        AddPhotoStyleActionSheet(
+            title = if (isSelectionMode) "$selectedCount selected" else "Message options",
+            options = buildList {
+                if (hasSelection) {
+                    add(
+                        ActionSheetOption(
+                            icon = Icons.Default.Check,
+                            title = "Mark selected as read",
+                            subtitle = "Clear unread count for ${selectedCount} chat${if (selectedCount > 1) "s" else ""}",
+                            accentColor = Color(0xFF2E86DE),
+                            onClick = {
+                                selectedChatIds.toList().forEach { chatId ->
+                                    viewModel.markAsRead(chatId, userProfile.uid)
+                                }
+                                selectedChatIds.clear()
+                                showHeaderMenu = false
+                            }
+                        )
+                    )
+                    add(
+                        ActionSheetOption(
+                            icon = Icons.Default.Close,
+                            title = "Clear selection",
+                            subtitle = "Deselect all conversations",
+                            accentColor = Color(0xFF4B5563),
+                            onClick = {
+                                selectedChatIds.clear()
+                                showHeaderMenu = false
+                            }
+                        )
+                    )
+                    add(
+                        ActionSheetOption(
+                            icon = Icons.Default.Delete,
+                            title = if (selectedCount <= 1) "Delete selected" else "Delete selected ($selectedCount)",
+                            subtitle = "Remove conversations from your inbox",
+                            accentColor = Color(0xFFD84343),
+                            onClick = {
+                                showHeaderMenu = false
+                                showDeleteConfirm = true
+                            }
+                        )
+                    )
+                }
+                if (canBlock) {
+                    add(
+                        ActionSheetOption(
+                            icon = Icons.Default.Block,
+                            title = "Block user",
+                            subtitle = "Block and report this user",
+                            accentColor = Color(0xFFD84343),
+                            onClick = {
+                                showHeaderMenu = false
+                                showBlockConfirm = true
+                            }
+                        )
+                    )
+                }
+            },
+            onDismiss = { showHeaderMenu = false },
+            cancelTitle = "Cancel",
+            cancelSubtitle = "Close menu",
+            cancelIcon = Icons.Default.Close,
+            cancelAccentColor = Color(0xFF4B5563)
+        )
     }
 
     if (showDeleteConfirm) {

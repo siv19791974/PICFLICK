@@ -23,7 +23,9 @@ import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.*
 import androidx.compose.ui.graphics.vector.ImageVector
+import com.picflick.app.ui.components.ActionSheetOption
 import com.picflick.app.ui.components.ActionSheetRow
+import com.picflick.app.ui.components.AddPhotoStyleActionSheet
 import androidx.compose.material.pullrefresh.PullRefreshIndicator
 import androidx.compose.material.pullrefresh.pullRefresh
 import androidx.compose.material.pullrefresh.rememberPullRefreshState
@@ -1258,75 +1260,7 @@ if (canDeleteCurrent) {
                                         )
                                     }
                                     
-                                    // Dropdown Menu for Report / Mute / Block
-                                    DropdownMenu(
-                                        expanded = showMoreMenu,
-                                        onDismissRequest = { showMoreMenu = false },
-                                        modifier = Modifier.background(Color(0xFF1C1C1E))
-                                    ) {
-                                        // REPORT PHOTO Option
-                                        DropdownMenuItem(
-                                            text = { 
-                                                Text(
-                                                    "Report Photo",
-                                                    color = Color(0xFFFF6B6B)
-                                                ) 
-                                            },
-                                            leadingIcon = {
-                                                Icon(
-                                                    Icons.Default.Flag,
-                                                    contentDescription = null,
-                                                    tint = Color(0xFFFF6B6B)
-                                                )
-                                            },
-                                            onClick = {
-                                                showMoreMenu = false
-                                                showReportDialog = true
-                                            }
-                                        )
-                                        
-                                        // MUTE USER Option
-                                        DropdownMenuItem(
-                                            text = {
-                                                Text(
-                                                    "Mute User",
-                                                    color = Color(0xFFFFB347)
-                                                )
-                                            },
-                                            leadingIcon = {
-                                                Icon(
-                                                    Icons.Default.NotificationsOff,
-                                                    contentDescription = null,
-                                                    tint = Color(0xFFFFB347)
-                                                )
-                                            },
-                                            onClick = {
-                                                showMoreMenu = false
-                                                showMuteUserDialog = true
-                                            }
-                                        )
 
-                                        // BLOCK USER Option
-                                        DropdownMenuItem(
-                                            text = { 
-                                                Text(
-                                                    "Block User",
-                                                    color = Color.White
-                                                ) 
-                                            },
-                                            leadingIcon = {
-                                                Icon(
-                                                    Icons.Default.Block,
-                                                    contentDescription = null,
-                                                    tint = Color.White
-                                                )
-                                            },
-                                            onClick = {
-                                                showMoreMenu = false
-                                                showBlockConfirmation = true
-                                            }
-                                        )
-                                    }
                                 }
                             }
                         }
@@ -1761,7 +1695,51 @@ if (canDeleteCurrent) {
                         showPicFlickToast = { message -> showPicFlickToast(message) }
                     )
                 }
-                
+
+                // MORE MENU BOTTOM SHEET - Sexy popup menu (replaces DropdownMenu)
+                if (showMoreMenu) {
+                    AddPhotoStyleActionSheet(
+                        title = "Photo options",
+                        options = listOf(
+                            ActionSheetOption(
+                                icon = Icons.Default.Flag,
+                                title = "Report Photo",
+                                subtitle = "Report this photo for moderation",
+                                accentColor = Color(0xFFFF6B6B),
+                                onClick = {
+                                    showMoreMenu = false
+                                    showReportDialog = true
+                                }
+                            ),
+                            ActionSheetOption(
+                                icon = Icons.Default.NotificationsOff,
+                                title = "Mute User",
+                                subtitle = "Stop seeing photos from this user",
+                                accentColor = Color(0xFFFFB347),
+                                onClick = {
+                                    showMoreMenu = false
+                                    showMuteUserDialog = true
+                                }
+                            ),
+                            ActionSheetOption(
+                                icon = Icons.Default.Block,
+                                title = "Block User",
+                                subtitle = "Block and report this user",
+                                accentColor = Color.White,
+                                onClick = {
+                                    showMoreMenu = false
+                                    showBlockConfirmation = true
+                                }
+                            )
+                        ),
+                        onDismiss = { showMoreMenu = false },
+                        cancelTitle = "Cancel",
+                        cancelSubtitle = "Close menu",
+                        cancelIcon = Icons.Default.Close,
+                        cancelAccentColor = Color(0xFF4B5563)
+                    )
+                }
+
                 // BLOCK CONFIRMATION BOTTOM SHEET - Sexy popup menu
                 if (showBlockConfirmation) {
                     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
