@@ -12,6 +12,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
@@ -58,6 +60,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import com.picflick.app.data.Flick
+import com.picflick.app.data.FriendGroup
 import com.picflick.app.data.ReactionType
 import com.picflick.app.data.UserProfile
 import com.picflick.app.data.getImageQuality
@@ -105,7 +108,9 @@ fun ProfileScreen(
     onStreakClick: () -> Unit = {},
     onReaction: (Flick, ReactionType?) -> Unit = { _, _ -> },
     isLoading: Boolean = false,
-    onDeletePhotos: (Set<String>, (Boolean) -> Unit) -> Unit = { _, done -> done(false) }
+    onDeletePhotos: (Set<String>, (Boolean) -> Unit) -> Unit = { _, done -> done(false) },
+    albums: List<FriendGroup> = emptyList(),
+    onAlbumClick: (FriendGroup) -> Unit = {}
 ) {
     val isDarkMode = ThemeManager.isDarkMode.value
     val configuration = LocalConfiguration.current
@@ -513,6 +518,53 @@ fun ProfileScreen(
         }
 
         Spacer(modifier = Modifier.height(32.dp))
+
+        // Album highlights row (Instagram-style)
+        if (albums.isNotEmpty()) {
+            LazyRow(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                items(
+                    items = albums,
+                    key = { it.id }
+                ) { group ->
+                    val albumColor = try {
+                        Color(android.graphics.Color.parseColor(group.color))
+                    } catch (_: Exception) {
+                        Color(0xFF4FC3F7)
+                    }
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier.clickable { onAlbumClick(group) }
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(64.dp)
+                                .clip(CircleShape)
+                                .background(albumColor.copy(alpha = 0.2f))
+                                .border(2.dp, albumColor, CircleShape),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = group.icon.takeIf { it.isNotBlank() } ?: "👥",
+                                fontSize = 28.sp
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = group.name,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = if (isDarkMode) Color.White else Color.Black,
+                            maxLines = 1
+                        )
+                    }
+                }
+            }
+            Spacer(modifier = Modifier.height(24.dp))
+        }
 
         // MY PHOTOS GRID - 3 column grid matching home feed style
         Column(

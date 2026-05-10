@@ -717,6 +717,10 @@ private fun ProfileScreenContent(
                 }
                 onComplete(success)
             }
+        },
+        albums = homeViewModel.friendGroups.filter { it.isMember(userProfile.uid) },
+        onAlbumClick = { group ->
+            onScreenChange(Screen.GroupAlbumInfo(group.id, group.name, group.icon))
         }
     )
 
