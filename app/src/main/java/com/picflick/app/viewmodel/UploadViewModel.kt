@@ -125,6 +125,17 @@ class UploadViewModel : ViewModel() {
     }
 
     /**
+     * Track a chat photo upload against both daily and total limits.
+     */
+    fun trackUploadUsage(userId: String) {
+        viewModelScope.launch {
+            incrementDailyUploadCount(userId)
+            incrementTotalPhotos(userId)
+            dailyUploadCount++
+        }
+    }
+
+    /**
      * Increment the total photos count in Firestore
      * This tracks lifetime photos uploaded (never decrements on delete)
      */

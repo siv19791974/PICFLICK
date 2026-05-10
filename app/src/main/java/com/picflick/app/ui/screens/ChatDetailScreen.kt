@@ -22,6 +22,8 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.AttachFile
@@ -105,7 +107,8 @@ fun ChatDetailScreen(
     quickSwitchChats: List<QuickSwitchChatItem> = emptyList(),
     onQuickSwitchChat: (ChatSession, String) -> Unit = { _, _ -> },
     friendsViewModel: FriendsViewModel? = null,
-    homeViewModel: HomeViewModel? = null
+    homeViewModel: HomeViewModel? = null,
+    uploadViewModel: com.picflick.app.viewmodel.UploadViewModel? = null
 ) {
     val chatId = chatSession.id
     val isDarkMode = ThemeManager.isDarkMode.value
@@ -140,6 +143,34 @@ fun ChatDetailScreen(
 
     val context = androidx.compose.ui.platform.LocalContext.current
     val listState = rememberLazyListState()
+
+    val photoPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: android.net.Uri? ->
+        if (uri != null) {
+            val chatId = chatSession.id
+            val senderId = currentUser.uid
+            val senderName = currentUser.displayName
+            val senderPhotoUrl = currentUser.photoUrl
+            val recipientId = if (chatSession.isGroup || otherUserId.startsWith("group:")) {
+                "group:$chatId"
+            } else {
+                otherUserId
+            }
+            viewModel.sendPhotoMessage(
+                chatId = chatId,
+                imageUri = uri,
+                senderId = senderId,
+                recipientId = recipientId,
+                senderName = senderName,
+                senderPhotoUrl = senderPhotoUrl,
+                context = context,
+                onComplete = {
+                    uploadViewModel?.trackUploadUsage(senderId)
+                }
+            )
+        }
+    }
 
     val currentGroupId = remember(chatSession) {
         chatSession.groupId.ifBlank { chatSession.id.removePrefix("group_") }
@@ -765,7 +796,7 @@ Column(modifier = Modifier.fillMaxSize()) {
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     IconButton(
-                        onClick = { openMyFlickPicker() },
+                        onClick = { photoPickerLauncher.launch("image/*") },
                         modifier = Modifier.size(40.dp)
                     ) {
                         Icon(
