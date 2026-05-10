@@ -53,9 +53,10 @@ import com.picflick.app.data.ChatSession
 import com.picflick.app.data.Result
 import com.picflick.app.data.FriendGroup
 import com.picflick.app.data.UserProfile
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import com.picflick.app.ui.components.ActionSheetRow
 import com.picflick.app.ui.components.BottomNavBar
-import com.picflick.app.ui.components.SingleSelectMediaPicker
 import com.picflick.app.ui.components.LogoImage
 import com.picflick.app.ui.theme.PicFlickBannerBackground
 import com.picflick.app.repository.FlickRepository
@@ -111,8 +112,16 @@ fun ChatsScreen(
     var viewingChatGroup by remember { mutableStateOf<FriendGroup?>(null) }
     var chatEditDialogIconOverride by remember { mutableStateOf<String?>(null) }
     var pendingChatGroupIconTarget by remember { mutableStateOf<String?>(null) }
-    var showMediaPicker by remember { mutableStateOf(false) }
     val selectedChatIds = remember { mutableStateListOf<String>() }
+
+    val photoPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri ->
+        uri?.let {
+            groupIconCropSourceUri = it
+            showGroupIconCropDialog = true
+        }
+    }
     var showHeaderMenu by remember { mutableStateOf(false) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
     var showBlockConfirm by remember { mutableStateOf(false) }
@@ -703,7 +712,7 @@ fun ChatsScreen(
                 createDialogIconOverride = null
             },
             onAddPhoto = {
-                showMediaPicker = true
+                photoPickerLauncher.launch("image/*")
             },
             onCreateSharedGroup = { name, icon, selectedFriendIds, onDone ->
                 onCreateSharedGroup(name, icon, selectedFriendIds) { success, createdGroup ->
@@ -716,18 +725,6 @@ fun ChatsScreen(
                 }
             },
             onUserProfileClick = onUserProfileClick
-        )
-    }
-
-    if (showMediaPicker) {
-        SingleSelectMediaPicker(
-            isDarkMode = isDarkMode,
-            onBack = { showMediaPicker = false },
-            onPhotoSelected = { uri ->
-                groupIconCropSourceUri = uri
-                showGroupIconCropDialog = true
-                showMediaPicker = false
-            }
         )
     }
 
@@ -764,7 +761,7 @@ fun ChatsScreen(
             },
             onAddPhoto = {
                 pendingChatGroupIconTarget = "edit_chat"
-                showMediaPicker = true
+                photoPickerLauncher.launch("image/*")
             },
             onSubmit = { name, icon, selectedFriendIds, color ->
                 homeViewModel?.updateFriendGroup(

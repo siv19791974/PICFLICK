@@ -66,9 +66,10 @@ import com.picflick.app.data.getColor
 import com.picflick.app.data.getDarkColor
 import com.picflick.app.data.getLightColor
 import com.picflick.app.ui.components.ActionSheetOption
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import com.picflick.app.ui.components.ActionSheetRow
 import com.picflick.app.ui.components.AddPhotoStyleActionSheet
-import com.picflick.app.ui.components.SingleSelectMediaPicker
 import com.picflick.app.ui.components.AnimatedReactionPicker
 import com.picflick.app.ui.components.MythicProgressRing
 import com.picflick.app.ui.theme.ThemeManager
@@ -142,7 +143,15 @@ fun ProfileScreen(
 
     var pendingProfilePhotoUri by remember { mutableStateOf<Uri?>(null) }
     var showCropDialog by remember { mutableStateOf(false) }
-    var showMediaPicker by remember { mutableStateOf(false) }
+
+    val photoPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri ->
+        uri?.let {
+            pendingProfilePhotoUri = it
+            showCropDialog = true
+        }
+    }
 
     val selectedPhotoIds = remember { mutableStateListOf<String>() }
     val isSelectionMode = selectedPhotoIds.isNotEmpty()
@@ -290,7 +299,7 @@ fun ProfileScreen(
                             if (displayPhotoUrl.isNotEmpty()) {
                                 onProfilePhotoClick()
                             } else {
-                                showMediaPicker = true
+                                photoPickerLauncher.launch("image/*")
                             }
                         },
                     contentAlignment = Alignment.Center
@@ -331,8 +340,10 @@ fun ProfileScreen(
                                 .offset((-8).dp, (-8).dp)
                                 .size(44.dp)
                                 .background(MaterialTheme.colorScheme.primary, CircleShape)
-                                .border(3.dp, Color.Black, CircleShape)
-                                .clickable { showMediaPicker = true },
+                            .border(3.dp, Color.Black, CircleShape)
+                            .clickable {
+                                photoPickerLauncher.launch("image/*")
+                            },
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
@@ -690,18 +701,6 @@ fun ProfileScreen(
                 showCropDialog = false
                 pendingProfilePhotoUri = null
                 croppedUri?.let(onPhotoSelected)
-            }
-        )
-    }
-
-    if (showMediaPicker) {
-        SingleSelectMediaPicker(
-            isDarkMode = ThemeManager.isDarkMode.value,
-            onBack = { showMediaPicker = false },
-            onPhotoSelected = { uri ->
-                pendingProfilePhotoUri = uri
-                showCropDialog = true
-                showMediaPicker = false
             }
         )
     }

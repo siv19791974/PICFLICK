@@ -417,9 +417,7 @@ fun AuthenticatedContent(
             onScreenChange(Screen.Home)
         }
 
-        is Screen.MediaPicker -> {
-            // Media picker UI is hosted in MainActivity overlay for shared shell consistency
-        }
+
 
         is Screen.GroupAlbumInfo -> {
             val group = homeViewModel.friendGroups.find { it.id == currentScreen.groupId }

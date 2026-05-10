@@ -1,6 +1,5 @@
 package com.picflick.app.ui.screens
 
-import android.content.ContentUris
 import android.content.Context
 import android.content.Intent
 import android.content.res.Configuration
@@ -8,7 +7,6 @@ import android.graphics.Bitmap
 import android.net.Uri
 import android.os.Build
 import android.provider.MediaStore
-import android.provider.Settings
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -149,10 +147,17 @@ fun HomeScreen(
     var adminTargetGroup by remember { mutableStateOf<FriendGroup?>(null) }
     var pendingGroupIconSourceUri by remember { mutableStateOf<Uri?>(null) }
     var showGroupIconCropDialog by remember { mutableStateOf(false) }
-    var showGroupIconMediaPicker by remember { mutableStateOf(false) }
-    var selectedGroupIconMediaUris by remember { mutableStateOf<List<Uri>>(emptyList()) }
     var pendingGroupIconTarget by remember { mutableStateOf<String?>(null) }
     var groupIconCropSourceUri by remember { mutableStateOf<Uri?>(null) }
+
+    val groupIconPhotoPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri ->
+        uri?.let {
+            groupIconCropSourceUri = it
+            showGroupIconCropDialog = true
+        }
+    }
     var createDialogIconOverride by remember { mutableStateOf<String?>(null) }
     var editDialogIconOverride by remember { mutableStateOf<String?>(null) }
     var allFriendsAvatarUrl by remember { mutableStateOf(prefs.getString("all_friends_avatar_url", "") ?: "") }
@@ -492,12 +497,6 @@ fun HomeScreen(
         flickForReaction = null
     }
 
-    BackHandler(enabled = showGroupIconMediaPicker && !showGroupIconCropDialog && !showCreateGroupDialog && editingGroup == null) {
-        showGroupIconMediaPicker = false
-        selectedGroupIconMediaUris = emptyList()
-        pendingGroupIconTarget = null
-    }
-
     if (showShareToChatDialog && flickToShare != null) {
         ModalBottomSheet(
             onDismissRequest = {
@@ -597,8 +596,7 @@ fun HomeScreen(
             onDismiss = { showGroupsManager = false },
             onChangeAllFriendsAvatar = {
                 pendingGroupIconTarget = "allfriends"
-                selectedGroupIconMediaUris = emptyList()
-                showGroupIconMediaPicker = true
+                groupIconPhotoPickerLauncher.launch("image/*")
             },
             onSelectGroup = { filter ->
                 viewModel.setFilter(filter)
@@ -638,8 +636,7 @@ fun HomeScreen(
             },
             onAddPhoto = {
                 pendingGroupIconTarget = "create"
-                selectedGroupIconMediaUris = emptyList()
-                showGroupIconMediaPicker = true
+                groupIconPhotoPickerLauncher.launch("image/*")
             },
             onSubmit = { _, _, _, _ -> },
             onCreateLocal = { name, icon, selectedFriendIds, color ->
@@ -702,8 +699,7 @@ fun HomeScreen(
             onDismiss = { showCreateChatGroupDialog = false },
             onAddPhoto = {
                 pendingGroupIconTarget = "chat_group"
-                selectedGroupIconMediaUris = emptyList()
-                showGroupIconMediaPicker = true
+                groupIconPhotoPickerLauncher.launch("image/*")
             },
             onCreateGroup = { name, icon, selectedFriendIds ->
                 chatViewModel?.startGroupChat(
@@ -740,8 +736,7 @@ fun HomeScreen(
             },
             onAddPhoto = {
                 pendingGroupIconTarget = "edit"
-                selectedGroupIconMediaUris = emptyList()
-                showGroupIconMediaPicker = true
+                groupIconPhotoPickerLauncher.launch("image/*")
             },
             onSubmit = { name, icon, selectedFriendIds, color ->
                 viewModel.updateFriendGroup(
@@ -782,34 +777,6 @@ fun HomeScreen(
             onCreateShared = null,
             readOnly = true,
             onUserProfileClick = onUserProfileClick
-        )
-    }
-
-    if (showGroupIconMediaPicker) {
-        GroupIconMediaPickerScreen(
-            isDarkMode = isDarkMode,
-            selectedUris = selectedGroupIconMediaUris,
-            onToggleSelection = { uri ->
-                selectedGroupIconMediaUris = if (selectedGroupIconMediaUris.contains(uri)) {
-                    selectedGroupIconMediaUris - uri
-                } else {
-                    listOf(uri)
-                }
-            },
-            onBack = {
-                showGroupIconMediaPicker = false
-                selectedGroupIconMediaUris = emptyList()
-                pendingGroupIconTarget = null
-            },
-            onDone = {
-                val selectedUri = selectedGroupIconMediaUris.firstOrNull()
-                if (selectedUri != null) {
-                    groupIconCropSourceUri = selectedUri
-                    showGroupIconCropDialog = true
-                }
-                showGroupIconMediaPicker = false
-                selectedGroupIconMediaUris = emptyList()
-            }
         )
     }
 
@@ -2758,324 +2725,6 @@ fun GroupPhotoCropDialog(
             Spacer(Modifier.height(12.dp))
         }
     }
-}
-
-data class GroupIconMediaPickerItem(
-    val uri: Uri,
-    val id: Long,
-    val dateAddedSeconds: Long
-)
-
-@Composable
-private fun GroupIconMediaPickerScreen(
-    isDarkMode: Boolean,
-    selectedUris: List<Uri>,
-    onToggleSelection: (Uri) -> Unit,
-    onBack: () -> Unit,
-    onDone: () -> Unit
-) {
-    val context = LocalContext.current
-    val mediaPermission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-        android.Manifest.permission.READ_MEDIA_IMAGES
-    } else {
-        android.Manifest.permission.READ_EXTERNAL_STORAGE
-    }
-    val visualUserSelectedPermission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-        android.Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED
-    } else null
-
-    fun hasAnyMediaPermission(): Boolean {
-        val hasBase = androidx.core.content.ContextCompat.checkSelfPermission(
-            context,
-            mediaPermission
-        ) == android.content.pm.PackageManager.PERMISSION_GRANTED
-
-        val hasSelected = visualUserSelectedPermission != null &&
-            androidx.core.content.ContextCompat.checkSelfPermission(
-                context,
-                visualUserSelectedPermission
-            ) == android.content.pm.PackageManager.PERMISSION_GRANTED
-
-        return hasBase || hasSelected
-    }
-
-    fun isFullMediaAccess(): Boolean {
-        return androidx.core.content.ContextCompat.checkSelfPermission(
-            context,
-            mediaPermission
-        ) == android.content.pm.PackageManager.PERMISSION_GRANTED
-    }
-
-    var hasMediaPermission by remember { mutableStateOf(hasAnyMediaPermission()) }
-    var isLimitedAccess by remember { mutableStateOf(false) }
-
-    fun checkAccessState() {
-        hasMediaPermission = hasAnyMediaPermission()
-        isLimitedAccess = hasMediaPermission && !isFullMediaAccess()
-    }
-
-    val mediaPermissionsToRequest = remember(mediaPermission, visualUserSelectedPermission) {
-        buildList {
-            add(mediaPermission)
-            if (visualUserSelectedPermission != null) add(visualUserSelectedPermission)
-        }
-    }
-
-    val mediaPermissionLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestMultiplePermissions()
-    ) { _ ->
-        checkAccessState()
-    }
-
-    var mediaItems by remember { mutableStateOf<List<GroupIconMediaPickerItem>>(emptyList()) }
-    var isLoadingMedia by remember { mutableStateOf(true) }
-
-    LaunchedEffect(hasMediaPermission) {
-        if (!hasMediaPermission) {
-            isLoadingMedia = false
-            mediaItems = emptyList()
-            return@LaunchedEffect
-        }
-
-        isLoadingMedia = true
-        mediaItems = loadGroupIconDeviceMedia(context)
-        isLoadingMedia = false
-    }
-
-    LaunchedEffect(Unit) {
-        checkAccessState()
-        if (!hasMediaPermission) {
-            mediaPermissionLauncher.launch(mediaPermissionsToRequest.toTypedArray())
-        }
-    }
-
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(isDarkModeBackground(isDarkMode))
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(48.dp)
-                .background(Color.Black)
-        ) {
-            IconButton(
-                onClick = onBack,
-                modifier = Modifier
-                    .align(Alignment.CenterStart)
-                    .size(48.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = "Back",
-                    tint = Color.White
-                )
-            }
-
-            Text(
-                text = "Choose from Gallery",
-                color = Color.White,
-                fontSize = 15.sp,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.align(Alignment.Center)
-            )
-
-            if (selectedUris.isNotEmpty()) {
-                Button(
-                    onClick = onDone,
-                    modifier = Modifier
-                        .align(Alignment.CenterEnd)
-                        .padding(end = 12.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFF2E86DE),
-                        contentColor = Color.White
-                    ),
-                    shape = RoundedCornerShape(18.dp),
-                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Check,
-                        contentDescription = "Select",
-                        modifier = Modifier.size(16.dp)
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(
-                        text = "Select",
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 13.sp
-                    )
-                }
-            }
-        }
-
-        if (isLimitedAccess) {
-            GroupLimitedAccessBanner(
-                isDarkMode = isDarkMode,
-                onGrantFullAccess = {
-                    val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
-                        data = Uri.fromParts("package", context.packageName, null)
-                    }
-                    context.startActivity(intent)
-                }
-            )
-        }
-
-        Box(modifier = Modifier.weight(1f)) {
-            when {
-                isLoadingMedia -> {
-                    CircularProgressIndicator(
-                        modifier = Modifier.align(Alignment.Center),
-                        color = if (isDarkMode) Color.White else Color(0xFF1565C0)
-                    )
-                }
-
-                !hasMediaPermission -> {
-                    Column(
-                        modifier = Modifier
-                            .align(Alignment.Center)
-                            .padding(horizontal = 20.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        Text(
-                            text = "Allow photo permission to show your gallery",
-                            color = if (isDarkMode) Color.White.copy(alpha = 0.9f) else Color(0xFF374151),
-                            textAlign = TextAlign.Center
-                        )
-                        Button(
-                            onClick = { mediaPermissionLauncher.launch(mediaPermissionsToRequest.toTypedArray()) },
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = Color(0xFF2E86DE),
-                                contentColor = Color.White
-                            )
-                        ) {
-                            Text("Grant permission")
-                        }
-                    }
-                }
-
-                mediaItems.isEmpty() -> {
-                    Text(
-                        text = "No photos found on device",
-                        color = if (isDarkMode) Color.White.copy(alpha = 0.8f) else Color(0xFF374151),
-                        modifier = Modifier.align(Alignment.Center)
-                    )
-                }
-
-                else -> {
-                    LazyVerticalGrid(
-                        columns = GridCells.Fixed(3),
-                        modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(8.dp),
-                        horizontalArrangement = Arrangement.spacedBy(4.dp),
-                        verticalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        items(mediaItems, key = { it.id }) { item ->
-                            val isSelected = selectedUris.contains(item.uri)
-                            Box(
-                                modifier = Modifier
-                                    .aspectRatio(1f)
-                                    .clip(RoundedCornerShape(6.dp))
-                                    .clickable { onToggleSelection(item.uri) }
-                            ) {
-                                AsyncImage(
-                                    model = item.uri,
-                                    contentDescription = "Media",
-                                    modifier = Modifier.fillMaxSize(),
-                                    contentScale = ContentScale.Crop
-                                )
-
-                                if (isSelected) {
-                                    Box(
-                                        modifier = Modifier
-                                            .fillMaxSize()
-                                            .background(Color(0x802E86DE))
-                                    )
-                                    Icon(
-                                        imageVector = Icons.Default.CheckCircle,
-                                        contentDescription = "Selected",
-                                        tint = Color.White,
-                                        modifier = Modifier
-                                            .align(Alignment.TopEnd)
-                                            .padding(6.dp)
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun GroupLimitedAccessBanner(
-    isDarkMode: Boolean,
-    onGrantFullAccess: () -> Unit
-) {
-    val bgColor = if (isDarkMode) Color(0xFF3D3400) else Color(0xFFFFF3CD)
-    val textColor = if (isDarkMode) Color(0xFFFFE082) else Color(0xFF856404)
-
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(bgColor)
-            .padding(horizontal = 12.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
-        Text(
-            text = "Limited gallery access. Only selected photos shown.",
-            color = textColor,
-            fontSize = 12.sp,
-            modifier = Modifier.weight(1f)
-        )
-        TextButton(
-            onClick = onGrantFullAccess,
-            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
-        ) {
-            Text(
-                text = "Grant Full Access",
-                color = textColor,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Bold
-            )
-        }
-    }
-}
-
-private fun loadGroupIconDeviceMedia(context: android.content.Context): List<GroupIconMediaPickerItem> {
-    val collection = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-        MediaStore.Images.Media.getContentUri(MediaStore.VOLUME_EXTERNAL)
-    } else {
-        MediaStore.Images.Media.EXTERNAL_CONTENT_URI
-    }
-
-    val projection = arrayOf(
-        MediaStore.Images.Media._ID,
-        MediaStore.Images.Media.DATE_TAKEN,
-        MediaStore.Images.Media.DATE_ADDED
-    )
-
-    val result = mutableListOf<GroupIconMediaPickerItem>()
-    context.contentResolver.query(collection, projection, null, null, null)?.use { cursor ->
-        val idColumn = cursor.getColumnIndexOrThrow(MediaStore.Images.Media._ID)
-        val dateTakenColumn = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.DATE_TAKEN)
-        val dateAddedColumn = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.DATE_ADDED)
-
-        while (cursor.moveToNext()) {
-            val id = cursor.getLong(idColumn)
-            val dateTaken = cursor.getLong(dateTakenColumn)
-            val dateAdded = cursor.getLong(dateAddedColumn)
-            val effectiveDate = if (dateTaken > 0) dateTaken else dateAdded * 1000L
-            val contentUri = ContentUris.withAppendedId(collection, id)
-            result.add(GroupIconMediaPickerItem(uri = contentUri, id = id, dateAddedSeconds = effectiveDate))
-        }
-    }
-
-    return result.sortedByDescending { it.dateAddedSeconds }
 }
 
 private fun clampPanOffsetForGroup(
