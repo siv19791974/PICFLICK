@@ -154,12 +154,12 @@ object Constants {
      * Developer access — UIDs that always see the Developer menu entry.
      * Add Thomas Sivyer's UID here when known.
      */
+    // NOTE: LpSqE40IZGeAGMknTAEzysqp5l33 temporarily removed — reinstate later
     val DEVELOPER_UIDS = setOf(
-        "LpSqE40IZGeAGMknTAEzysqp5l33",
         "cuj8dU3zNMN9TELEU2qmPR6Np5A2"  // Thomas Sivyer
     )
     val DEVELOPER_DISPLAY_NAMES = mapOf(
-        "LpSqE40IZGeAGMknTAEzysqp5l33" to "PicFlick Developer",
+        "LpSqE40IZGeAGMknTAEzysqp5l33" to "Eloise Sivyer",   // Temp name for reinstatement
         "cuj8dU3zNMN9TELEU2qmPR6Np5A2" to "Thomas Sivyer"
     )
 }
