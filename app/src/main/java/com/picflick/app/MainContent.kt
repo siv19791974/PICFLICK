@@ -28,6 +28,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.sp
 import com.picflick.app.data.ChatMessage
 import com.picflick.app.data.ChatSession
+import com.picflick.app.data.FeedFilter
 import com.picflick.app.data.Flick
 import com.picflick.app.data.ReactionType
 import com.picflick.app.data.SubscriptionTier
@@ -735,7 +736,8 @@ private fun ProfileScreenContent(
         },
         albums = homeViewModel.friendGroups.filter { it.isMember(userProfile.uid) && !it.isChatGroup },
         onAlbumClick = { group ->
-            onScreenChange(Screen.GroupAlbumInfo(group.id, group.name, group.icon))
+            homeViewModel.setFilter(FeedFilter.ByGroup(group))
+            onScreenChange(Screen.Home)
         },
         onCreateAlbum = onCreateAlbum
     )
