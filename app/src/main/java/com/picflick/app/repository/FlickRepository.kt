@@ -76,6 +76,7 @@ class FlickRepository private constructor() {
             "icon" to icon,
             "color" to color,
             "eventAt" to eventAt,
+            "isChatGroup" to isChatGroup,
             "orderIndex" to orderIndex,
             "createdAt" to createdAt,
             "updatedAt" to updatedAt,
@@ -3302,7 +3303,8 @@ android.util.Log.e("FlickRepository", "Failed to submit feedback", e)
         friendIds: List<String>,
         icon: String = "👥",
         color: String = "#4FC3F7",
-        eventAt: Long? = null
+        eventAt: Long? = null,
+        isChatGroup: Boolean = false
     ): Result<FriendGroup> {
         return try {
             val groupId = UUID.randomUUID().toString()
@@ -3319,6 +3321,7 @@ android.util.Log.e("FlickRepository", "Failed to submit feedback", e)
                 icon = icon,
                 color = color,
                 eventAt = eventAt,
+                isChatGroup = isChatGroup,
                 orderIndex = now,
                 createdAt = now,
                 updatedAt = now

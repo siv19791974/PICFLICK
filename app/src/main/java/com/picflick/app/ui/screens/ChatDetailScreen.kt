@@ -102,6 +102,7 @@ fun ChatDetailScreen(
     viewModel: ChatViewModel,
     onBack: () -> Unit,
     onUserProfileClick: (String) -> Unit = {},
+    onViewGroupInfo: (String, String, String) -> Unit = { _, _, _ -> },
     onPhotoClick: (ChatMessage) -> Unit = {},
     onAddNewPhoto: () -> Unit = {},
     quickSwitchChats: List<QuickSwitchChatItem> = emptyList(),
@@ -534,6 +535,17 @@ fun ChatDetailScreen(
                                     onDismissRequest = { showHeaderMenu = false }
                                 ) {
                                     if (isGroupChat) {
+                                        DropdownMenuItem(
+                                            text = { Text("View group") },
+                                            onClick = {
+                                                showHeaderMenu = false
+                                                onViewGroupInfo(
+                                                    chatSession.groupId.ifBlank { chatSession.id.removePrefix("group_") },
+                                                    chatSession.groupName.ifBlank { chatSession.participantNames.values.firstOrNull().orEmpty() },
+                                                    chatSession.groupIcon
+                                                )
+                                            }
+                                        )
                                         DropdownMenuItem(
                                             text = { Text("Mute chat") },
                                             onClick = {

@@ -17,6 +17,7 @@ data class FriendGroup(
     val icon: String = "👥", // Emoji icon for the group
     val color: String = "#4FC3F7", // Color hex for the group chip
     val eventAt: Long? = null, // Optional event date-time
+    val isChatGroup: Boolean = false, // True for groups created from Chats (not albums)
     val orderIndex: Long = Long.MAX_VALUE, // Manual group ordering in manager sheet
     val createdAt: Long = System.currentTimeMillis(),
     val updatedAt: Long = System.currentTimeMillis()

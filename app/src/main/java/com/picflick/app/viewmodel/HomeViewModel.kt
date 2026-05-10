@@ -272,11 +272,12 @@ class HomeViewModel : ViewModel() {
         friendIds: List<String>,
         color: String = "#4FC3F7",
         eventAt: Long? = null,
+        isChatGroup: Boolean = false,
         onComplete: (Boolean, FriendGroup?) -> Unit = { _, _ -> }
     ) {
         viewModelScope.launch {
             isLoading = true
-            when (val result = repository.createFriendGroup(userId, name, friendIds, icon, color, eventAt)) {
+            when (val result = repository.createFriendGroup(userId, name, friendIds, icon, color, eventAt, isChatGroup)) {
                 is Result.Success -> {
                     friendGroups.add(result.data)
                     isLoading = false

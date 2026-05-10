@@ -732,7 +732,7 @@ private fun ProfileScreenContent(
                 onComplete(success)
             }
         },
-        albums = homeViewModel.friendGroups.filter { it.isMember(userProfile.uid) },
+        albums = homeViewModel.friendGroups.filter { it.isMember(userProfile.uid) && !it.isChatGroup },
         onAlbumClick = { group ->
             onScreenChange(Screen.GroupAlbumInfo(group.id, group.name, group.icon))
         },
@@ -892,12 +892,13 @@ private fun ChatsScreenContent(
             )
         },
         onCreateSharedGroup = { name, icon, selectedFriendIds, onComplete ->
-            // Compose Message must create shared invite-capable groups only
+            // Chat-created groups are chat-only and do not appear in the album screen
             homeViewModel.createFriendGroup(
                 userId = userProfile.uid,
                 name = name,
                 icon = icon,
                 friendIds = selectedFriendIds,
+                isChatGroup = true,
                 onComplete = onComplete
             )
         },
@@ -1014,6 +1015,9 @@ private fun ChatDetailScreenContent(
             onBack = { onScreenChange(Screen.Chats) },
             onUserProfileClick = { userId ->
                 onScreenChange(Screen.UserProfile(userId))
+            },
+            onViewGroupInfo = { groupId, groupName, groupIcon ->
+                onScreenChange(Screen.GroupAlbumInfo(groupId, groupName, groupIcon))
             },
             onAddNewPhoto = onOpenUploadSourceDialog,
             quickSwitchChats = quickSwitchChats,

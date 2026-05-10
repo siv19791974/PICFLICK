@@ -591,7 +591,7 @@ fun HomeScreen(
 
     if (showGroupsManager) {
         GroupManagerSheet(
-            groups = viewModel.friendGroups,
+            groups = viewModel.friendGroups.filter { !it.isChatGroup },
             selectedFilter = viewModel.selectedFilter,
             friends = friends,
             allFriendsCount = max(friends.size, userProfile.following.size),
