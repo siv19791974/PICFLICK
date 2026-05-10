@@ -619,7 +619,10 @@ class FlickRepository private constructor() {
 
                 if (snapshot != null) {
                     val flicks = snapshot.toObjects(Flick::class.java)
-                        .filter { !it.autoHiddenByReports } // Hide auto-moderated photos
+                        .filter {
+                            !it.autoHiddenByReports && // Hide auto-moderated photos
+                                it.sharedGroupId.isBlank() // Hide album/group photos from profile
+                        }
                         .sortedByDescending { it.timestamp } // Sort in memory
                     onResult(Result.Success(flicks))
                 }
@@ -3865,14 +3868,13 @@ android.util.Log.e("FlickRepository", "Failed to submit feedback", e)
             }
 
             db.collection(Constants.FirebaseCollections.FLICKS)
-                .whereIn("userId", resolvedMemberIds)
+                .whereEqualTo("sharedGroupId", groupId)
                 .limit(250)
                 .get()
                 .addOnSuccessListener { snapshot ->
                     val flicks = snapshot.toObjects(Flick::class.java)
                         .filter {
-                            (it.privacy == "public" || it.privacy == "friends") &&
-                                it.sharedGroupId == groupId
+                            it.privacy == "public" || it.privacy == "friends"
                         }
                         .sortedByDescending { it.timestamp }
                         .take(Constants.Pagination.FLICKS_PER_PAGE)
@@ -3883,6 +3885,21 @@ android.util.Log.e("FlickRepository", "Failed to submit feedback", e)
                 }
         } catch (e: Exception) {
             onResult(Result.Error(e, "Failed to get group flicks: ${e.message}"))
+        }
+    }
+
+    /**
+     * Check if a user is allowed to upload photos to a specific group album.
+     * Only the owner and admins can add photos.
+     */
+    suspend fun canUploadToGroup(userId: String, groupId: String): Boolean {
+        return try {
+            val groupDoc = db.collection("groups").document(groupId).get().await()
+            if (!groupDoc.exists()) return false
+            val group = groupDoc.toNormalizedFriendGroup() ?: return false
+            group.effectiveAdminIds().contains(userId)
+        } catch (e: Exception) {
+            false
         }
     }
 

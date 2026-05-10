@@ -473,6 +473,8 @@ fun MainScreen(
     var showUploadSourceDialog by remember { mutableStateOf(false) }
     var showImportChoiceList by remember { mutableStateOf(false) }
     var showPrivateModeList by remember { mutableStateOf(false) }
+    var showBatchAlbumDialog by remember { mutableStateOf(false) }
+    var pendingBatchUris by remember { mutableStateOf<List<Uri>>(emptyList()) }
 
     // Track login state for analytics
     val activity = appContext as? MainActivity
@@ -1025,25 +1027,8 @@ fun MainScreen(
                     Toast.LENGTH_LONG
                 ).show()
             }
-            Toast.makeText(
-                context,
-                "Batch upload uses original photos. You can edit/tag later in your profile.",
-                Toast.LENGTH_LONG
-            ).show()
-            uploadViewModel.uploadPhotosBatch(
-                context = context,
-                photoUris = uploadUris,
-                userProfile = profile,
-                sharedGroupId = "",
-                onOptimisticAdd = { optimisticFlick -> homeViewModel.addOptimisticFlick(optimisticFlick) },
-                onOptimisticRemove = { flickId, uploadSucceeded ->
-                    if (!uploadSucceeded) homeViewModel.removeOptimisticFlick(flickId)
-                },
-                onBatchSuccess = {
-                    homeViewModel.requestDebouncedFeedRefresh(profile.uid, 0L)
-                }
-            )
-            currentScreen = Screen.Home
+            pendingBatchUris = uploadUris
+            showBatchAlbumDialog = true
         }
     }
 
@@ -1451,6 +1436,86 @@ fun MainScreen(
                         )
                     ),
                     onDismiss = { showUploadSourceDialog = false },
+                    cancelSubtitle = "Cancel"
+                )
+            }
+
+            if (showBatchAlbumDialog && pendingBatchUris.isNotEmpty() && userProfile != null) {
+                val profile = userProfile
+                val adminGroups = homeViewModel.friendGroups.filter { it.isAdmin(profile.uid) }
+                AddPhotoStyleActionSheet(
+                    title = "Add ${pendingBatchUris.size} photo(s) to",
+                    options = buildList {
+                        add(
+                            ActionSheetOption(
+                                icon = Icons.Outlined.PhotoLibrary,
+                                title = "My Feed",
+                                subtitle = "Upload to your public/friends feed",
+                                accentColor = Color(0xFF2E86DE),
+                                onClick = {
+                                    showBatchAlbumDialog = false
+                                    Toast.makeText(
+                                        context,
+                                        "Batch upload uses original photos. You can edit/tag later in your profile.",
+                                        Toast.LENGTH_LONG
+                                    ).show()
+                                    uploadViewModel.uploadPhotosBatch(
+                                        context = context,
+                                        photoUris = pendingBatchUris,
+                                        userProfile = profile,
+                                        sharedGroupId = "",
+                                        onOptimisticAdd = { optimisticFlick -> homeViewModel.addOptimisticFlick(optimisticFlick) },
+                                        onOptimisticRemove = { flickId, uploadSucceeded ->
+                                            if (!uploadSucceeded) homeViewModel.removeOptimisticFlick(flickId)
+                                        },
+                                        onBatchSuccess = {
+                                            homeViewModel.requestDebouncedFeedRefresh(profile.uid, 0L)
+                                        }
+                                    )
+                                    currentScreen = Screen.Home
+                                    pendingBatchUris = emptyList()
+                                }
+                            )
+                        )
+                        adminGroups.forEach { group ->
+                            val albumColor = try { Color(android.graphics.Color.parseColor(group.color)) } catch (_: Exception) { Color(0xFF4FC3F7) }
+                            add(
+                                ActionSheetOption(
+                                    icon = Icons.Default.Groups,
+                                    title = group.name,
+                                    subtitle = "Add to album",
+                                    accentColor = albumColor,
+                                    onClick = {
+                                        showBatchAlbumDialog = false
+                                        Toast.makeText(
+                                            context,
+                                            "Batch upload uses original photos. You can edit/tag later in your profile.",
+                                            Toast.LENGTH_LONG
+                                        ).show()
+                                        uploadViewModel.uploadPhotosBatch(
+                                            context = context,
+                                            photoUris = pendingBatchUris,
+                                            userProfile = profile,
+                                            sharedGroupId = group.id,
+                                            onOptimisticAdd = { optimisticFlick -> homeViewModel.addOptimisticFlick(optimisticFlick) },
+                                            onOptimisticRemove = { flickId, uploadSucceeded ->
+                                                if (!uploadSucceeded) homeViewModel.removeOptimisticFlick(flickId)
+                                            },
+                                            onBatchSuccess = {
+                                                homeViewModel.requestDebouncedFeedRefresh(profile.uid, 0L)
+                                            }
+                                        )
+                                        currentScreen = Screen.Home
+                                        pendingBatchUris = emptyList()
+                                    }
+                                )
+                            )
+                        }
+                    },
+                    onDismiss = {
+                        showBatchAlbumDialog = false
+                        pendingBatchUris = emptyList()
+                    },
                     cancelSubtitle = "Cancel"
                 )
             }
