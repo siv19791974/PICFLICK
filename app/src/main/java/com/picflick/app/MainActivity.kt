@@ -413,6 +413,7 @@ fun MainScreen(
 
     var currentScreen by remember { mutableStateOf<Screen>(Screen.Home) }
     var openHomeGroupsManager by remember { mutableStateOf(false) }
+    var openHomeCreateGroupDialog by remember { mutableStateOf(false) }
     var wasPreviouslyLoggedOut by remember { mutableStateOf(true) }
     val appContext = LocalContext.current
 
@@ -1318,6 +1319,9 @@ fun MainScreen(
                     homeResetVersion = forceHomeResetVersion,
                     openGroupsManager = openHomeGroupsManager,
                     onOpenGroupsManagerConsumed = { openHomeGroupsManager = false },
+                    openCreateGroupDialog = openHomeCreateGroupDialog,
+                    onOpenCreateGroupDialogConsumed = { openHomeCreateGroupDialog = false },
+                    onRequestOpenCreateGroupDialog = { openHomeCreateGroupDialog = true },
                     selectedChatSession = selectedChatSession,
                     selectedOtherUserId = selectedOtherUserId,
                     onSetSelectedChat = { session, userId ->

@@ -123,6 +123,8 @@ fun HomeScreen(
     onEditPhotoClick: (Flick) -> Unit = {}, // Navigate to edit photo screen
     openGroupsManager: Boolean = false,
     onOpenGroupsManagerConsumed: () -> Unit = {},
+    openCreateGroupDialog: Boolean = false,
+    onOpenCreateGroupDialogConsumed: () -> Unit = {},
     onOpenGroupChat: (FriendGroup) -> Unit = {},
     onOpenGroupChatFromChatGroup: ((String) -> Unit)? = null
 ) {
@@ -130,15 +132,7 @@ fun HomeScreen(
     val prefs = remember(context) {
         context.getSharedPreferences("picflick_home_prefs", Context.MODE_PRIVATE)
     }
-    val deletedExampleGroupsKey = remember(userProfile.uid) { "deleted_example_groups_${userProfile.uid}" }
-    val defaultExampleGroups = remember {
-        listOf("Uncle John's wedding", "Five a side footie talk")
-    }
     var showGroupsManager by remember { mutableStateOf(false) }
-    val temporaryGroupExamples = remember(userProfile.uid) {
-        val deleted = prefs.getStringSet(deletedExampleGroupsKey, emptySet()) ?: emptySet()
-        mutableStateListOf(*defaultExampleGroups.filterNot { it in deleted }.toTypedArray())
-    }
     var showCreateGroupDialog by remember { mutableStateOf(false) }
     var showCreateChatGroupDialog by remember { mutableStateOf(false) }
     var editingGroup by remember { mutableStateOf<FriendGroup?>(null) }
@@ -210,6 +204,13 @@ fun HomeScreen(
         if (openGroupsManager) {
             showGroupsManager = true
             onOpenGroupsManagerConsumed()
+        }
+    }
+
+    LaunchedEffect(openCreateGroupDialog) {
+        if (openCreateGroupDialog) {
+            showCreateGroupDialog = true
+            onOpenCreateGroupDialogConsumed()
         }
     }
 
@@ -594,7 +595,6 @@ fun HomeScreen(
             selectedFilter = viewModel.selectedFilter,
             friends = friends,
             allFriendsCount = max(friends.size, userProfile.following.size),
-            temporaryExampleGroups = temporaryGroupExamples,
             isDarkMode = isDarkMode,
             currentUserId = userProfile.uid,
             allFriendsAvatarUrl = allFriendsAvatarUrl,
@@ -614,12 +614,6 @@ fun HomeScreen(
             onManageAdmins = { group -> adminTargetGroup = group },
             onDeleteGroup = { group -> viewModel.deleteFriendGroup(userProfile.uid, group.id) },
             onExitGroup = { group -> viewModel.leaveFriendGroup(userProfile.uid, group.id) },
-            onDeleteTemporaryGroup = { title ->
-                temporaryGroupExamples.remove(title)
-                val currentDeleted = prefs.getStringSet(deletedExampleGroupsKey, emptySet())?.toMutableSet() ?: mutableSetOf()
-                currentDeleted.add(title)
-                prefs.edit().putStringSet(deletedExampleGroupsKey, currentDeleted).apply()
-            },
             onReorderGroups = { orderedGroupIds -> viewModel.reorderFriendGroups(userProfile.uid, orderedGroupIds) },
             onOpenGroupChat = onOpenGroupChat
         )
@@ -1528,7 +1522,6 @@ private fun GroupManagerSheet(
     selectedFilter: FeedFilter,
     friends: List<UserProfile>,
     allFriendsCount: Int,
-    temporaryExampleGroups: List<String>,
     isDarkMode: Boolean,
     currentUserId: String,
     allFriendsAvatarUrl: String = "",
@@ -1541,7 +1534,6 @@ private fun GroupManagerSheet(
     onManageAdmins: (FriendGroup) -> Unit,
     onDeleteGroup: (FriendGroup) -> Unit,
     onExitGroup: (FriendGroup) -> Unit,
-    onDeleteTemporaryGroup: (String) -> Unit,
     onReorderGroups: (List<String>) -> Unit,
     onOpenGroupChat: (FriendGroup) -> Unit = {},
     onChangeAllFriendsAvatar: () -> Unit = {}
@@ -1564,7 +1556,6 @@ private fun GroupManagerSheet(
     }
     var draggingGroupId by remember { mutableStateOf<String?>(null) }
     var confirmDeleteGroup by remember { mutableStateOf<FriendGroup?>(null) }
-    var confirmDeleteTempTitle by remember { mutableStateOf<String?>(null) }
     var searchQuery by remember { mutableStateOf("") }
 
     val filteredOrderedGroupIds by remember { derivedStateOf {
@@ -1605,29 +1596,6 @@ private fun GroupManagerSheet(
             onDismiss = { confirmDeleteGroup = null },
             cancelTitle = "Cancel",
             cancelSubtitle = if (isOwner) "Keep this album" else "Stay in this album",
-            cancelIcon = Icons.Default.Close,
-            cancelAccentColor = Color(0xFF4B5563)
-        )
-    }
-
-    confirmDeleteTempTitle?.let { tempTitle ->
-        AddPhotoStyleActionSheet(
-            title = "Delete album?",
-            options = listOf(
-                ActionSheetOption(
-                    icon = Icons.Default.Delete,
-                    title = "Delete \"$tempTitle\"",
-                    subtitle = "This example album will be removed",
-                    accentColor = Color(0xFFD84343),
-                    onClick = {
-                        onDeleteTemporaryGroup(tempTitle)
-                        confirmDeleteTempTitle = null
-                    }
-                )
-            ),
-            onDismiss = { confirmDeleteTempTitle = null },
-            cancelTitle = "Cancel",
-            cancelSubtitle = "Keep this album",
             cancelIcon = Icons.Default.Close,
             cancelAccentColor = Color(0xFF4B5563)
         )
@@ -1874,41 +1842,6 @@ private fun GroupManagerSheet(
                                             }
                                         )
                                     }
-                                }
-                            }
-                        }
-                    )
-                }
-
-                items(temporaryExampleGroups.filter { searchQuery.isBlank() || it.lowercase(Locale.getDefault()).contains(searchQuery.trim().lowercase(Locale.getDefault())) }, key = { "temp_$it" }) { tempTitle ->
-                    val tempIcon = if (tempTitle == "Uncle John's wedding") "👰" else "⚽"
-                    var showTempMenu by remember(tempTitle) { mutableStateOf(false) }
-                    GroupRowCard(
-                        title = tempTitle,
-                        subtitle = "Album example. Delete when you want 🙂",
-                        icon = tempIcon,
-                        colour = "#9E9E9E",
-                        selected = false,
-                        onClick = {},
-                        textColor = textColor,
-                        enabled = true,
-                        trailingContent = {
-                            Box {
-                                IconButton(onClick = { showTempMenu = true }) {
-                                    Icon(Icons.Default.MoreVert, contentDescription = "Example album menu", tint = textColor)
-                                }
-                                DropdownMenu(
-                                    expanded = showTempMenu,
-                                    onDismissRequest = { showTempMenu = false }
-                                ) {
-                                    DropdownMenuItem(
-                                        text = { Text("Delete") },
-                                        onClick = {
-                                            showTempMenu = false
-                                            confirmDeleteTempTitle = tempTitle
-                                        },
-                                        leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null, tint = Color(0xFFD84343)) }
-                                    )
                                 }
                             }
                         }

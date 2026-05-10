@@ -111,7 +111,8 @@ fun ProfileScreen(
     isLoading: Boolean = false,
     onDeletePhotos: (Set<String>, (Boolean) -> Unit) -> Unit = { _, done -> done(false) },
     albums: List<FriendGroup> = emptyList(),
-    onAlbumClick: (FriendGroup) -> Unit = {}
+    onAlbumClick: (FriendGroup) -> Unit = {},
+    onCreateAlbum: () -> Unit = {}
 ) {
     val isDarkMode = ThemeManager.isDarkMode.value
     val configuration = LocalConfiguration.current
@@ -521,13 +522,13 @@ fun ProfileScreen(
         Spacer(modifier = Modifier.height(32.dp))
 
         // Album highlights row (Instagram-style)
-        if (albums.isNotEmpty()) {
-            LazyRow(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp),
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
+        LazyRow(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            if (albums.isNotEmpty()) {
                 items(
                     items = albums,
                     key = { it.id }
@@ -578,9 +579,44 @@ fun ProfileScreen(
                         )
                     }
                 }
+            } else {
+                item(key = "create_album") {
+                    val createColor = Color(0xFF1565C0)
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier.clickable { onCreateAlbum() }
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(64.dp)
+                                .clip(CircleShape)
+                                .background(createColor.copy(alpha = 0.1f))
+                                .border(
+                                    width = 2.dp,
+                                    color = createColor.copy(alpha = 0.4f),
+                                    shape = CircleShape
+                                ),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Add,
+                                contentDescription = "Create album",
+                                tint = createColor,
+                                modifier = Modifier.size(28.dp)
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "Create your first album",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = if (isDarkMode) Color.White else Color.Black,
+                            maxLines = 1
+                        )
+                    }
+                }
             }
-            Spacer(modifier = Modifier.height(24.dp))
         }
+        Spacer(modifier = Modifier.height(24.dp))
 
         // MY PHOTOS GRID - 3 column grid matching home feed style
         Column(

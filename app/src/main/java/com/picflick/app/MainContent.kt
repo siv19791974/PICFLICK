@@ -97,6 +97,9 @@ fun AuthenticatedContent(
     homeResetVersion: Int = 0,
     openGroupsManager: Boolean = false,
     onOpenGroupsManagerConsumed: () -> Unit = {},
+    openCreateGroupDialog: Boolean = false,
+    onOpenCreateGroupDialogConsumed: () -> Unit = {},
+    onRequestOpenCreateGroupDialog: () -> Unit = {},
     selectedChatSession: ChatSession?,
     selectedOtherUserId: String,
     onSetSelectedChat: (ChatSession, String) -> Unit,
@@ -154,6 +157,8 @@ fun AuthenticatedContent(
                 homeResetVersion = homeResetVersion,
                 openGroupsManager = openGroupsManager,
                 onOpenGroupsManagerConsumed = onOpenGroupsManagerConsumed,
+                openCreateGroupDialog = openCreateGroupDialog,
+                onOpenCreateGroupDialogConsumed = onOpenCreateGroupDialogConsumed,
                 onOpenUploadSourceDialog = onOpenUploadSourceDialog
             )
         }
@@ -164,7 +169,11 @@ fun AuthenticatedContent(
             authViewModel = authViewModel,
             homeViewModel = homeViewModel,
             onScreenChange = onScreenChange,
-            onPhotoSelected = onPhotoSelected
+            onPhotoSelected = onPhotoSelected,
+            onCreateAlbum = {
+                onScreenChange(Screen.Home)
+                onRequestOpenCreateGroupDialog()
+            }
         )
 
         is Screen.MyPhotos -> MyPhotosScreen(
@@ -552,6 +561,8 @@ private fun HomeScreenContent(
     homeResetVersion: Int = 0,
     openGroupsManager: Boolean = false,
     onOpenGroupsManagerConsumed: () -> Unit = {},
+    openCreateGroupDialog: Boolean = false,
+    onOpenCreateGroupDialogConsumed: () -> Unit = {},
     onOpenUploadSourceDialog: () -> Unit = {}
 ) {
     LaunchedEffect(userProfile.uid, userProfile.following) {
@@ -598,6 +609,8 @@ private fun HomeScreenContent(
         },
         openGroupsManager = openGroupsManager,
         onOpenGroupsManagerConsumed = onOpenGroupsManagerConsumed,
+        openCreateGroupDialog = openCreateGroupDialog,
+        onOpenCreateGroupDialogConsumed = onOpenCreateGroupDialogConsumed,
         onOpenGroupChat = { group ->
             chatViewModel.startGroupChat(
                 ownerUserId = userProfile.uid,
@@ -649,7 +662,8 @@ private fun ProfileScreenContent(
     authViewModel: AuthViewModel,
     homeViewModel: HomeViewModel,
     onScreenChange: (Screen) -> Unit,
-    onPhotoSelected: (Uri) -> Unit
+    onPhotoSelected: (Uri) -> Unit,
+    onCreateAlbum: () -> Unit = {}
 ) {
     val context = LocalContext.current
 
@@ -721,7 +735,8 @@ private fun ProfileScreenContent(
         albums = homeViewModel.friendGroups.filter { it.isMember(userProfile.uid) },
         onAlbumClick = { group ->
             onScreenChange(Screen.GroupAlbumInfo(group.id, group.name, group.icon))
-        }
+        },
+        onCreateAlbum = onCreateAlbum
     )
 
     // FullScreenPhotoViewer when photo selected
