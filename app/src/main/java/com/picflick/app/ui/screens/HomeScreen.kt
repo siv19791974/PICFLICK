@@ -638,31 +638,7 @@ fun HomeScreen(
                 groupIconPhotoPickerLauncher.launch("image/*")
             },
             onSubmit = { _, _, _, _ -> },
-            onCreateLocal = { name, icon, selectedFriendIds, color ->
-                viewModel.createLocalFriendGroup(
-                    userId = userProfile.uid,
-                    name = name,
-                    icon = icon,
-                    friendIds = selectedFriendIds,
-                    color = color
-                ) { success, createdGroup ->
-                    if (success) {
-                        if (createdGroup != null) {
-                            viewModel.setFilter(FeedFilter.ByGroup(createdGroup))
-                        }
-                        showCreateGroupDialog = false
-                        showGroupsManager = false
-                        createDialogIconOverride = null
-                    } else {
-                        Toast.makeText(
-                            context,
-                            viewModel.errorMessage ?: "Failed to create local album",
-                            Toast.LENGTH_LONG
-                        ).show()
-                    }
-                }
-            },
-            onCreateShared = { name, icon, selectedFriendIds, color ->
+            onCreateAlbum = { name, icon, selectedFriendIds, color ->
                 viewModel.createFriendGroup(
                     userId = userProfile.uid,
                     name = name,
@@ -680,7 +656,7 @@ fun HomeScreen(
                     } else {
                         Toast.makeText(
                             context,
-                            viewModel.errorMessage ?: "Failed to create shared album",
+                            viewModel.errorMessage ?: "Failed to create album",
                             Toast.LENGTH_LONG
                         ).show()
                     }
@@ -752,8 +728,6 @@ fun HomeScreen(
                     }
                 }
             },
-            onCreateLocal = null,
-            onCreateShared = null,
             readOnly = false,
             onUserProfileClick = onUserProfileClick
         )
@@ -772,8 +746,6 @@ fun HomeScreen(
             onDismiss = { viewingGroup = null },
             onAddPhoto = {},
             onSubmit = { _, _, _, _ -> },
-            onCreateLocal = null,
-            onCreateShared = null,
             readOnly = true,
             onUserProfileClick = onUserProfileClick
         )
@@ -1980,8 +1952,7 @@ internal fun CreateOrEditGroupDialog(
     onDismiss: () -> Unit,
     onAddPhoto: () -> Unit,
     onSubmit: (name: String, icon: String, selectedFriendIds: List<String>, color: String) -> Unit,
-    onCreateLocal: ((name: String, icon: String, selectedFriendIds: List<String>, color: String) -> Unit)? = null,
-    onCreateShared: ((name: String, icon: String, selectedFriendIds: List<String>, color: String) -> Unit)? = null,
+    onCreateAlbum: ((name: String, icon: String, selectedFriendIds: List<String>, color: String) -> Unit)? = null,
     readOnly: Boolean = false,
     onUserProfileClick: (String) -> Unit = {}
 ) {
@@ -1996,7 +1967,7 @@ internal fun CreateOrEditGroupDialog(
     val waitingColor = Color(0xFF2A4A73)
     val textColor = if (isDarkMode) Color.White else Color.Black
     val pageBackground = if (isDarkMode) Color.Black else PicFlickLightBackground
-    val isCreateMode = onCreateLocal != null && onCreateShared != null
+    val isCreateMode = onCreateAlbum != null
 
     val sortedFriends = remember(friends) {
         friends.sortedWith(
@@ -2245,42 +2216,21 @@ internal fun CreateOrEditGroupDialog(
             }
 
             if (isCreateMode) {
-                Row(
+                Button(
+                    onClick = {
+                        onCreateAlbum?.invoke(groupName.trim(), selectedIcon, selectedFriends.toList(), selectedColor)
+                    },
+                    enabled = groupName.isNotBlank(),
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 12.dp, vertical = 10.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    shape = RoundedCornerShape(20.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = waitingColor,
+                        contentColor = Color.White
+                    )
                 ) {
-                    OutlinedButton(
-                        onClick = {
-                            onCreateLocal?.invoke(groupName.trim(), selectedIcon, selectedFriends.toList(), selectedColor)
-                        },
-                        enabled = groupName.isNotBlank(),
-                        modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(20.dp),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, addColor),
-                        colors = ButtonDefaults.outlinedButtonColors(
-                            containerColor = Color.Transparent,
-                            contentColor = addColor
-                        )
-                    ) {
-                        Text("Create Local")
-                    }
-
-                    Button(
-                        onClick = {
-                            onCreateShared?.invoke(groupName.trim(), selectedIcon, selectedFriends.toList(), selectedColor)
-                        },
-                        enabled = groupName.isNotBlank(),
-                        modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(20.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = waitingColor,
-                            contentColor = Color.White
-                        )
-                    ) {
-                        Text("Create Shared")
-                    }
+                    Text("Create Album")
                 }
             }
         }

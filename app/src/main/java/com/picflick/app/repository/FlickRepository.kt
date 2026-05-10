@@ -52,7 +52,8 @@ class FlickRepository private constructor() {
             userId = if (parsed.userId.isNotBlank()) parsed.userId else resolvedOwnerId,
             memberIds = normalizedMemberIds,
             friendIds = normalizedMemberIds.filter { it != resolvedOwnerId },
-            adminIds = normalizedAdminIds
+            adminIds = normalizedAdminIds,
+            isChatGroup = parsed.isChatGroup
         )
     }
 

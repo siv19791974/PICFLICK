@@ -778,8 +778,6 @@ fun ChatsScreen(
                     }
                 }
             },
-            onCreateLocal = null,
-            onCreateShared = null,
             readOnly = false,
             onUserProfileClick = onUserProfileClick
         )
@@ -798,8 +796,6 @@ fun ChatsScreen(
             onDismiss = { viewingChatGroup = null },
             onAddPhoto = {},
             onSubmit = { _, _, _, _ -> },
-            onCreateLocal = null,
-            onCreateShared = null,
             readOnly = true,
             onUserProfileClick = onUserProfileClick
         )
