@@ -6,6 +6,10 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.drawable.AdaptiveIconDrawable
+import android.graphics.drawable.BitmapDrawable
 import android.os.Build
 import android.util.Log
 import androidx.core.app.NotificationCompat
@@ -138,9 +142,11 @@ class PicFlickMessagingService : FirebaseMessagingService() {
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
 
-        // Build notification
+        // Build notification with proper app icon as large icon
+        val largeIconBitmap = getAppIconBitmap()
         val notification = NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_launcher_foreground)
+            .setLargeIcon(largeIconBitmap)
             .setContentTitle(title)
             .setContentText(message)
             .setCategory(NotificationCompat.CATEGORY_MESSAGE)
@@ -153,5 +159,44 @@ class PicFlickMessagingService : FirebaseMessagingService() {
 
         // Show notification
         notificationManager.notify(System.currentTimeMillis().toInt(), notification)
+    }
+
+    /**
+     * Generate a bitmap from the adaptive launcher icon to display as the notification large icon.
+     * This ensures the full app icon (foreground + background) is shown without system masking.
+     */
+    private fun getAppIconBitmap(): Bitmap? {
+        return try {
+            val drawable = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                packageManager.getApplicationIcon(packageName)
+            } else {
+                resources.getDrawableForDensity(R.mipmap.ic_launcher, resources.displayMetrics.densityDpi, theme)
+            } ?: return null
+
+            when (drawable) {
+                is BitmapDrawable -> drawable.bitmap
+                is AdaptiveIconDrawable -> {
+                    val width = drawable.intrinsicWidth.coerceAtLeast(192)
+                    val height = drawable.intrinsicHeight.coerceAtLeast(192)
+                    val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+                    val canvas = Canvas(bitmap)
+                    drawable.setBounds(0, 0, canvas.width, canvas.height)
+                    drawable.draw(canvas)
+                    bitmap
+                }
+                else -> {
+                    val width = drawable.intrinsicWidth.coerceAtLeast(192)
+                    val height = drawable.intrinsicHeight.coerceAtLeast(192)
+                    val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+                    val canvas = Canvas(bitmap)
+                    drawable.setBounds(0, 0, canvas.width, canvas.height)
+                    drawable.draw(canvas)
+                    bitmap
+                }
+            }
+        } catch (e: Exception) {
+            Log.w("FCM", "Failed to generate app icon bitmap for notification", e)
+            null
+        }
     }
 }

@@ -78,6 +78,28 @@ exports.sendPushNotification = functions
 
     console.log('Sending push for important type:', notification.type);
 
+    // Per-chat cooldown for MESSAGE type: only send one push per sender every 5 minutes
+    // to avoid spamming the notification shade during active conversations.
+    if (notification.type === 'MESSAGE') {
+      const senderId = notification.senderId || 'unknown';
+      const cooldownKey = `${notification.userId}_${senderId}`;
+      const cooldownRef = admin.firestore().collection('pushChatCooldown').doc(cooldownKey);
+      const cooldownDoc = await cooldownRef.get();
+      const now = Date.now();
+      const fiveMinutes = 5 * 60 * 1000;
+      if (cooldownDoc.exists) {
+        const lastSent = Number.isFinite(Number(cooldownDoc.data().lastSent))
+          ? Number(cooldownDoc.data().lastSent)
+          : 0;
+        if (now - lastSent < fiveMinutes) {
+          console.log('Chat push cooldown active for:', cooldownKey,
+                       'lastSent:', lastSent, 'diff:', now - lastSent);
+          return null;
+        }
+      }
+      await cooldownRef.set({ lastSent: now }, { merge: true });
+    }
+
     // Rate-limit: max 10 push notifications per recipient per hour
     const rateLimitRef = admin.firestore().collection('pushRateLimit').doc(notification.userId);
     const rateLimitDoc = await rateLimitRef.get();
