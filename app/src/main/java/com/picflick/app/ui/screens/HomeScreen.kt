@@ -309,9 +309,14 @@ fun HomeScreen(
                         viewModel.loadFlicks(userProfile.uid)
                     }
                 )
-                !viewModel.isLoading && viewModel.flicks.isEmpty() -> EmptyState(
-                    onNavigate = onNavigate
-                )
+                !viewModel.isLoading && viewModel.flicks.isEmpty() -> {
+                    val activeAlbum = (viewModel.selectedFilter as? FeedFilter.ByGroup)?.group
+                    EmptyState(
+                        album = activeAlbum,
+                        onNavigate = onNavigate,
+                        onOpenGroupManager = { showGroupsManager = true }
+                    )
+                }
                 else -> FlickGrid(
                     flicks = viewModel.flicks,
                     userProfile = userProfile,
@@ -3074,7 +3079,11 @@ private fun FlickGrid(
 }
 
 @Composable
-private fun EmptyState(onNavigate: (String) -> Unit = {}) {
+private fun EmptyState(
+    album: FriendGroup? = null,
+    onNavigate: (String) -> Unit = {},
+    onOpenGroupManager: () -> Unit = {}
+) {
     val accentColor = Color(0xFF1565C0)
     Column(
         modifier = Modifier
@@ -3102,7 +3111,7 @@ private fun EmptyState(onNavigate: (String) -> Unit = {}) {
         Spacer(modifier = Modifier.height(24.dp))
 
         Text(
-            text = "Your feed is waiting",
+            text = if (album != null) "Your album has no photos yet" else "Your feed is waiting",
             fontSize = 22.sp,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onBackground
@@ -3111,7 +3120,11 @@ private fun EmptyState(onNavigate: (String) -> Unit = {}) {
         Spacer(modifier = Modifier.height(8.dp))
 
         Text(
-            text = "Upload your first photo or invite friends to see memories here.",
+            text = if (album != null) {
+                "Upload your first photo to ${album.name} or invite friends to see memories together."
+            } else {
+                "Upload your first photo or invite friends to see memories here."
+            },
             fontSize = 14.sp,
             color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
             textAlign = androidx.compose.ui.text.style.TextAlign.Center,
@@ -3134,7 +3147,7 @@ private fun EmptyState(onNavigate: (String) -> Unit = {}) {
             )
             Spacer(modifier = Modifier.width(8.dp))
             Text(
-                text = "Upload your first PicFlick",
+                text = if (album != null) "Upload photo to ${album.name}" else "Upload your first PicFlick",
                 fontWeight = FontWeight.SemiBold,
                 fontSize = 15.sp
             )
@@ -3142,9 +3155,9 @@ private fun EmptyState(onNavigate: (String) -> Unit = {}) {
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        // Secondary CTA: Find friends
+        // Secondary CTA
         OutlinedButton(
-            onClick = { onNavigate("find_friends") },
+            onClick = if (album != null) onOpenGroupManager else { { onNavigate("find_friends") } },
             shape = RoundedCornerShape(12.dp),
             colors = ButtonDefaults.outlinedButtonColors(contentColor = accentColor),
             border = androidx.compose.foundation.BorderStroke(1.dp, accentColor.copy(alpha = 0.5f)),
@@ -3157,7 +3170,7 @@ private fun EmptyState(onNavigate: (String) -> Unit = {}) {
             )
             Spacer(modifier = Modifier.width(8.dp))
             Text(
-                text = "Find friends",
+                text = if (album != null) "Add friends to view ${album.name}" else "Find friends",
                 fontWeight = FontWeight.Medium,
                 fontSize = 15.sp
             )

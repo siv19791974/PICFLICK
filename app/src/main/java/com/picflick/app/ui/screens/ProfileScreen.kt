@@ -56,6 +56,7 @@ import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.CachePolicy
+import coil3.request.crossfade
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -548,10 +549,25 @@ fun ProfileScreen(
                                 .border(2.dp, albumColor, CircleShape),
                             contentAlignment = Alignment.Center
                         ) {
-                            Text(
-                                text = group.icon.takeIf { it.isNotBlank() } ?: "👥",
-                                fontSize = 28.sp
-                            )
+                            val iconValue = group.icon.takeIf { it.isNotBlank() } ?: "👥"
+                            if (iconValue.startsWith("http")) {
+                                AsyncImage(
+                                    model = ImageRequest.Builder(LocalContext.current)
+                                        .data(iconValue)
+                                        .crossfade(true)
+                                        .diskCachePolicy(CachePolicy.ENABLED)
+                                        .memoryCachePolicy(CachePolicy.ENABLED)
+                                        .build(),
+                                    contentDescription = group.name,
+                                    modifier = Modifier.size(40.dp),
+                                    contentScale = androidx.compose.ui.layout.ContentScale.Crop
+                                )
+                            } else {
+                                Text(
+                                    text = iconValue,
+                                    fontSize = 28.sp
+                                )
+                            }
                         }
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(

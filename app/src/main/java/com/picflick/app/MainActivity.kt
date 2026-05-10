@@ -734,6 +734,15 @@ fun MainScreen(
         navigateBackOneScreen()
     }
 
+    // Album back-stack: viewing album -> open album picker -> home feed
+    BackHandler(
+        enabled = currentScreen is Screen.Home &&
+            homeViewModel.selectedFilter is com.picflick.app.data.FeedFilter.ByGroup
+    ) {
+        homeViewModel.setFilter(com.picflick.app.data.FeedFilter.AllFriends)
+        openHomeGroupsManager = true
+    }
+
     // Initialize billing client
     LaunchedEffect(Unit) {
         billingViewModel.initialize(context)

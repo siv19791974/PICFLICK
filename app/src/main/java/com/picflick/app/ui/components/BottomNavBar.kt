@@ -61,14 +61,20 @@ fun BottomNavBar(
                         } catch (_: Exception) {
                             Color(0xFF1565C0)
                         }
+                        val iconValue = album.icon.takeIf { it.isNotBlank() } ?: "👥"
+                        val iconText = if (iconValue.startsWith("http")) {
+                            album.name.firstOrNull()?.uppercase()?.toString() ?: "👥"
+                        } else {
+                            iconValue
+                        }
                         androidx.compose.material3.Surface(
                             shape = androidx.compose.foundation.shape.CircleShape,
                             color = albumColor.copy(alpha = 0.25f),
                             modifier = Modifier.padding(horizontal = 2.dp, vertical = 2.dp)
                         ) {
                             Text(
-                                text = album.icon.takeIf { it.isNotBlank() } ?: "👥",
-                                fontSize = 20.sp,
+                                text = iconText,
+                                fontSize = if (iconText.length == 1) 20.sp else 12.sp,
                                 modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
                             )
                         }
