@@ -3872,7 +3872,7 @@ android.util.Log.e("FlickRepository", "Failed to submit feedback", e)
                     val flicks = snapshot.toObjects(Flick::class.java)
                         .filter {
                             (it.privacy == "public" || it.privacy == "friends") &&
-                                (it.sharedGroupId.isBlank() || it.sharedGroupId == groupId)
+                                it.sharedGroupId == groupId
                         }
                         .sortedByDescending { it.timestamp }
                         .take(Constants.Pagination.FLICKS_PER_PAGE)
