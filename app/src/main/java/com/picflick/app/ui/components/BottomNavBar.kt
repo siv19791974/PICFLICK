@@ -13,6 +13,7 @@ import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.People
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material3.Badge
+import com.picflick.app.data.FriendGroup
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
@@ -41,7 +42,8 @@ private val PoppinsFontFamily = FontFamily(
 fun BottomNavBar(
     currentRoute: String,
     onNavigate: (String) -> Unit,
-    unreadMessages: Int = 0
+    unreadMessages: Int = 0,
+    activeAlbum: FriendGroup? = null
 ) {
     NavigationBar(
         modifier = Modifier.fillMaxWidth(),
@@ -52,21 +54,41 @@ fun BottomNavBar(
         NavigationBarItem(
             icon = {
                 if (currentRoute == "home") {
-                    androidx.compose.material3.Surface(
-                        shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
-                        color = Color(0xFF1565C0),
-                        modifier = Modifier.padding(horizontal = 2.dp, vertical = 2.dp)
-                    ) {
-                        Text(
-                            text = "Albums",
-                            color = Color.White,
-                            fontWeight = FontWeight.ExtraBold,
-                            fontSize = 11.sp,
-                            letterSpacing = 0.05.sp,
-                            fontFamily = PoppinsFontFamily,
-                            maxLines = 1,
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                        )
+                    val album = activeAlbum
+                    if (album != null) {
+                        val albumColor = try {
+                            Color(android.graphics.Color.parseColor(album.color))
+                        } catch (_: Exception) {
+                            Color(0xFF1565C0)
+                        }
+                        androidx.compose.material3.Surface(
+                            shape = androidx.compose.foundation.shape.CircleShape,
+                            color = albumColor.copy(alpha = 0.25f),
+                            modifier = Modifier.padding(horizontal = 2.dp, vertical = 2.dp)
+                        ) {
+                            Text(
+                                text = album.icon.takeIf { it.isNotBlank() } ?: "👥",
+                                fontSize = 20.sp,
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                            )
+                        }
+                    } else {
+                        androidx.compose.material3.Surface(
+                            shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
+                            color = Color(0xFF1565C0),
+                            modifier = Modifier.padding(horizontal = 2.dp, vertical = 2.dp)
+                        ) {
+                            Text(
+                                text = "Albums",
+                                color = Color.White,
+                                fontWeight = FontWeight.ExtraBold,
+                                fontSize = 11.sp,
+                                letterSpacing = 0.05.sp,
+                                fontFamily = PoppinsFontFamily,
+                                maxLines = 1,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                            )
+                        }
                     }
                 } else {
                     Icon(

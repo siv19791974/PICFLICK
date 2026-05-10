@@ -1231,6 +1231,10 @@ fun MainScreen(
             // Keep bottom bar stable while profile is loading (prevents layout jump)
             if (currentUser != null && !isChatDetailScreen) {
                 val profileReady = userProfile != null
+                val activeAlbum = when (val filter = homeViewModel.selectedFilter) {
+                    is com.picflick.app.data.FeedFilter.ByGroup -> filter.group
+                    else -> null
+                }
                 BottomNavBar(
                     currentRoute = when (currentScreen) {
                         is Screen.Home -> "home"
@@ -1241,6 +1245,7 @@ fun MainScreen(
                         is Screen.UserProfile -> "user_profile"
                         else -> "other"
                     },
+                    activeAlbum = activeAlbum,
                     onNavigate = { route ->
                         if (profileReady) {
                             when (route) {
