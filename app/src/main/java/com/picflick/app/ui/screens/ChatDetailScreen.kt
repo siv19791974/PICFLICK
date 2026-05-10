@@ -868,6 +868,8 @@ Column(modifier = Modifier.fillMaxSize()) {
                             if (messageText.isNotBlank()) {
                                 val messageToSubmit = messageText.trim()
                                 val editingId = editingMessageId
+                                // Clear input immediately so the user doesn't see stale text while Firestore writes
+                                messageText = ""
                                 if (editingId != null) {
                                     viewModel.editMessage(
                                         chatId = chatId,
@@ -876,7 +878,6 @@ Column(modifier = Modifier.fillMaxSize()) {
                                         newText = messageToSubmit
                                     ) { success ->
                                         if (success) {
-                                            messageText = ""
                                             editingMessageId = null
                                             viewModel.stopTyping(chatId, currentUser.uid)
                                         } else {
@@ -884,6 +885,8 @@ Column(modifier = Modifier.fillMaxSize()) {
                                         }
                                     }
                                 } else {
+                                    val replyTo = replyToMessage
+                                    replyToMessage = null
                                     viewModel.sendMessage(
                                         chatId = chatId,
                                         text = messageToSubmit,
@@ -891,10 +894,8 @@ Column(modifier = Modifier.fillMaxSize()) {
                                         recipientId = if (isGroupChat) "group:${chatSession.groupId.ifBlank { chatSession.id }}" else otherUserId,
                                         senderName = currentUser.displayName,
                                         senderPhotoUrl = currentUser.photoUrl,
-                                        replyToMessage = replyToMessage
+                                        replyToMessage = replyTo
                                     ) {
-                                        messageText = ""
-                                        replyToMessage = null
                                         viewModel.stopTyping(chatId, currentUser.uid)
                                         scope.launch {
                                             delay(80)
