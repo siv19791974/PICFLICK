@@ -639,6 +639,9 @@ exports.migrateGroupsToCanonicalSchema = functions
       icon: g.icon || '👥',
       color: g.color || '#4FC3F7',
       eventAt: g.eventAt || null,
+      isChatGroup: g.isChatGroup === true || g.groupType === 'chat' || g.source === 'chat',
+      groupType: (g.isChatGroup === true || g.groupType === 'chat' || g.source === 'chat') ? 'chat' : 'album',
+      source: (g.isChatGroup === true || g.groupType === 'chat' || g.source === 'chat') ? 'chat' : 'album',
       orderIndex: typeof g.orderIndex === 'number' ? g.orderIndex : Date.now(),
       createdAt: typeof g.createdAt === 'number' ? g.createdAt : Date.now(),
       updatedAt: Date.now(),
@@ -650,6 +653,9 @@ exports.migrateGroupsToCanonicalSchema = functions
       JSON.stringify(g.memberIds || []) !== JSON.stringify(canonical.memberIds) ||
       JSON.stringify(g.adminIds || []) !== JSON.stringify(canonical.adminIds) ||
       g.schemaVersion !== 2 ||
+      g.isChatGroup !== canonical.isChatGroup ||
+      g.groupType !== canonical.groupType ||
+      g.source !== canonical.source ||
       ('userId' in g) ||
       ('friendIds' in g)
     );

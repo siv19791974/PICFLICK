@@ -28,7 +28,10 @@ service cloud.firestore {
         data.ownerId is string &&
         data.memberIds is list &&
         data.adminIds is list &&
-        data.schemaVersion == 2;
+        data.schemaVersion == 2 &&
+        (!('isChatGroup' in data) || data.isChatGroup is bool) &&
+        (!('groupType' in data) || data.groupType in ['album', 'chat']) &&
+        (!('source' in data) || data.source in ['album', 'chat']);
     }
 
     // Check if authenticated user is a member/admin/owner of a shared group doc
@@ -137,7 +140,7 @@ service cloud.firestore {
           isCanonicalGroupData(request.resource.data) &&
           request.auth.uid in resource.data.adminIds &&
           request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-            'name', 'memberIds', 'icon', 'color', 'eventAt', 'orderIndex', 'updatedAt', 'schemaVersion'
+            'name', 'memberIds', 'icon', 'color', 'eventAt', 'isChatGroup', 'groupType', 'source', 'orderIndex', 'updatedAt', 'schemaVersion'
           ])
         ) ||
         (

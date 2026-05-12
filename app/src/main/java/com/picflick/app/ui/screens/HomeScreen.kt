@@ -1,7 +1,6 @@
 package com.picflick.app.ui.screens
 
 import android.content.Context
-import android.content.Intent
 import android.content.res.Configuration
 import android.graphics.Bitmap
 import android.net.Uri
@@ -57,10 +56,10 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.IntSize
@@ -1515,7 +1514,6 @@ private fun GroupManagerSheet(
     val backgroundColor = if (isDarkMode) Color.Black else PicFlickLightBackground
     val textColor = if (isDarkMode) Color.White else Color.Black
     val addColor = Color(0xFF2A4A73)
-    val waitingColor = Color(0xFF2A4A73)
 
     val sortedGroups = remember(groups) {
         groups.sortedWith(
@@ -2530,6 +2528,7 @@ fun GroupPhotoCropDialog(
     onConfirm: (Uri?) -> Unit
 ) {
     val context = LocalContext.current
+    val density = LocalDensity.current
     val scope = rememberCoroutineScope()
     var sourceBitmap by remember(imageUri) { mutableStateOf<Bitmap?>(null) }
     var viewportSize by remember { mutableStateOf(IntSize.Zero) }
@@ -2591,12 +2590,27 @@ fun GroupPhotoCropDialog(
                 if (sourceBitmap == null) {
                     CircularProgressIndicator()
                 } else {
+                    val bitmap = sourceBitmap
+                    val previewScale = if (bitmap != null) {
+                        baseGroupCropPreviewScale(viewportSize, bitmap.width, bitmap.height)
+                    } else {
+                        1f
+                    }
                     AsyncImage(
-                        model = sourceBitmap,
+                        model = bitmap,
                         contentDescription = "Crop album photo",
-                        contentScale = ContentScale.Crop,
+                        contentScale = ContentScale.FillBounds,
                         modifier = Modifier
-                            .fillMaxSize()
+                            .then(if (bitmap != null && viewportSize.width > 0 && viewportSize.height > 0) {
+                                with(density) {
+                                    Modifier.size(
+                                        width = (bitmap.width * previewScale).toDp(),
+                                        height = (bitmap.height * previewScale).toDp()
+                                    )
+                                }
+                            } else {
+                                Modifier.fillMaxSize()
+                            })
                             .graphicsLayer {
                                 scaleX = scale
                                 scaleY = scale
@@ -2643,6 +2657,21 @@ fun GroupPhotoCropDialog(
     }
 }
 
+private fun baseGroupCropPreviewScale(
+    viewportSize: IntSize,
+    imageWidth: Int,
+    imageHeight: Int
+): Float {
+    if (viewportSize.width <= 0 || viewportSize.height <= 0 || imageWidth <= 0 || imageHeight <= 0) {
+        return 1f
+    }
+
+    return max(
+        viewportSize.width.toFloat() / imageWidth.toFloat(),
+        viewportSize.height.toFloat() / imageHeight.toFloat()
+    )
+}
+
 private fun clampPanOffsetForGroup(
     viewportSize: IntSize,
     imageWidth: Int,
@@ -2654,10 +2683,7 @@ private fun clampPanOffsetForGroup(
         return Offset.Zero
     }
 
-    val baseScale = max(
-        viewportSize.width.toFloat() / imageWidth.toFloat(),
-        viewportSize.height.toFloat() / imageHeight.toFloat()
-    )
+    val baseScale = baseGroupCropPreviewScale(viewportSize, imageWidth, imageHeight)
     val scaledWidth = imageWidth * baseScale * scale
     val scaledHeight = imageHeight * baseScale * scale
 
@@ -2680,10 +2706,7 @@ private fun createCroppedGroupImageUri(
 ): Uri? {
     if (viewportSize.width <= 0 || viewportSize.height <= 0) return null
 
-    val baseScale = max(
-        viewportSize.width.toFloat() / sourceBitmap.width.toFloat(),
-        viewportSize.height.toFloat() / sourceBitmap.height.toFloat()
-    )
+    val baseScale = baseGroupCropPreviewScale(viewportSize, sourceBitmap.width, sourceBitmap.height)
     val totalScale = (baseScale * zoomScale).coerceAtLeast(0.0001f)
 
     val cropWidth = (viewportSize.width / totalScale).roundToInt().coerceIn(1, sourceBitmap.width)

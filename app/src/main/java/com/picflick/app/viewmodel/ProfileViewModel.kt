@@ -42,11 +42,12 @@ class ProfileViewModel : ViewModel() {
         private set
 
     /**
-     * Load photos for a specific user and calculate total reactions and streak
+     * Load visible profile photos, plus the user's total uploaded flick count for the POSTS stat.
      */
-    fun loadUserPhotos(userId: String) {
+    fun loadUserPhotos(userId: String, lifetimeUploadCount: Int = 0) {
         isLoading = true
         errorMessage = null
+        photoCount = maxOf(photoCount, lifetimeUploadCount)
 
         // Remove previous listener to avoid duplicate registrations
         photosListener?.remove()
@@ -57,7 +58,7 @@ class ProfileViewModel : ViewModel() {
                 is Result.Success -> {
                     photos.clear()
                     photos.addAll(result.data)
-                    photoCount = result.data.size
+                    photoCount = maxOf(photoCount, lifetimeUploadCount, result.data.size)
                     // Calculate ALL reactions (likes, loves, fires, etc.)
                     totalReactions = result.data.sumOf { it.getTotalReactions() }
                     isLoading = false
@@ -67,6 +68,18 @@ class ProfileViewModel : ViewModel() {
                     isLoading = false
                 }
                 is Result.Loading -> { /* Do nothing */ }
+            }
+        }
+
+        viewModelScope.launch {
+            when (val countResult = repository.getUserFlickUploadCount(userId)) {
+                is Result.Success -> {
+                    photoCount = maxOf(photoCount, lifetimeUploadCount, countResult.data)
+                }
+                is Result.Error -> {
+                    photoCount = maxOf(photoCount, lifetimeUploadCount, photos.size)
+                }
+                is Result.Loading -> Unit
             }
         }
 

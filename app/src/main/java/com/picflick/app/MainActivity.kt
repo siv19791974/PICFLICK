@@ -1283,8 +1283,6 @@ fun MainScreen(
                         else -> "other"
                     },
                     activeAlbum = activeAlbum,
-                    userPhotoUrl = userProfile?.photoUrl.orEmpty(),
-                    userDisplayName = userProfile?.displayName.orEmpty(),
                     onNavigate = { route ->
                         if (profileReady) {
                             when (route) {
@@ -1710,7 +1708,7 @@ fun MainScreen(
                                     senderPhotoUrl = userProfile.photoUrl,
                                     context = context,
                                     onComplete = {
-                                        uploadViewModel.consumeDailyUploadSlot(userProfile.uid)
+                                        uploadViewModel.trackUploadUsage(userProfile.uid)
                                     }
                                 )
                             }
@@ -1741,7 +1739,7 @@ fun MainScreen(
                                     senderPhotoUrl = userProfile.photoUrl,
                                     context = context,
                                     onComplete = {
-                                        uploadViewModel.consumeDailyUploadSlot(userProfile.uid)
+                                        uploadViewModel.trackUploadUsage(userProfile.uid)
                                     }
                                 )
                             }

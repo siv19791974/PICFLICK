@@ -169,7 +169,6 @@ fun AuthenticatedContent(
             profileViewModel = profileViewModel,
             authViewModel = authViewModel,
             homeViewModel = homeViewModel,
-            chatViewModel = chatViewModel,
             onScreenChange = onScreenChange,
             onPhotoSelected = onPhotoSelected,
             onCreateAlbum = {
@@ -475,7 +474,7 @@ fun AuthenticatedContent(
                                 val prefs = context.getSharedPreferences("picflick_reports", android.content.Context.MODE_PRIVATE)
                                 homeViewModel.reportedFlickIds = prefs.getStringSet("reported_flick_ids", emptySet())?.toSet() ?: emptySet()
                                 homeViewModel.loadFlicks(userProfile.uid)
-                                profileViewModel.loadUserPhotos(userProfile.uid)
+                                profileViewModel.loadUserPhotos(userProfile.uid, userProfile.totalPhotos)
                                 true
                             }
                             is com.picflick.app.data.Result.Error -> {
@@ -668,25 +667,15 @@ private fun ProfileScreenContent(
     profileViewModel: ProfileViewModel,
     authViewModel: AuthViewModel,
     homeViewModel: HomeViewModel,
-    chatViewModel: ChatViewModel,
     onScreenChange: (Screen) -> Unit,
     onPhotoSelected: (Uri) -> Unit,
     onCreateAlbum: () -> Unit = {}
 ) {
     val context = LocalContext.current
-    val chatGroupIds = remember(chatViewModel.chatSessions) {
-        chatViewModel.chatSessions
-            .filter { it.isGroup }
-            .mapNotNull { session ->
-                session.groupId.ifBlank { session.id.removePrefix("group_") }
-                    .takeIf { it.isNotBlank() }
-            }
-            .toSet()
-    }
 
     // Load photos when profile screen is shown
     LaunchedEffect(userProfile.uid) {
-        profileViewModel.loadUserPhotos(userProfile.uid)
+        profileViewModel.loadUserPhotos(userProfile.uid, userProfile.totalPhotos)
     }
 
     // State for fullscreen photo viewer
@@ -723,7 +712,7 @@ private fun ProfileScreenContent(
             }
         },
         onRefresh = {
-            profileViewModel.loadUserPhotos(userProfile.uid)
+            profileViewModel.loadUserPhotos(userProfile.uid, userProfile.totalPhotos)
             authViewModel.reloadUserProfile()
         },
         onPlanOptions = { onScreenChange(Screen.PlanOptions) },
@@ -751,7 +740,7 @@ private fun ProfileScreenContent(
             }
         },
         albums = homeViewModel.friendGroups.filter { group ->
-            group.isMember(userProfile.uid) && !group.isChatGroup && group.id !in chatGroupIds
+            group.isMember(userProfile.uid) && !group.isChatGroup
         },
         onAlbumClick = { group ->
             homeViewModel.setFilter(FeedFilter.ByGroup(group))
@@ -1546,7 +1535,7 @@ private fun FilterScreenContent(
                             context = context,
                             onComplete = {
                                 if (index == 0) {
-                                    uploadViewModel.consumeDailyUploadSlot(userProfile.uid)
+                                    uploadViewModel.trackUploadUsage(userProfile.uid)
                                 }
                             }
                         )
@@ -1572,7 +1561,7 @@ private fun FilterScreenContent(
                         senderPhotoUrl = userProfile.photoUrl,
                         context = context,
                         onComplete = {
-                            uploadViewModel.consumeDailyUploadSlot(userProfile.uid)
+                            uploadViewModel.trackUploadUsage(userProfile.uid)
                         }
                     )
                 }

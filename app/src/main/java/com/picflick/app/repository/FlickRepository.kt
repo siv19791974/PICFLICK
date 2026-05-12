@@ -1,6 +1,7 @@
 package com.picflick.app.repository
 
 import com.picflick.app.data.*
+import com.google.firebase.firestore.AggregateSource
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ListenerRegistration
@@ -46,6 +47,18 @@ class FlickRepository private constructor() {
             emptyList()
         }
 
+        val data = data ?: emptyMap<String, Any>()
+        val rawIsChatGroup = data["isChatGroup"] ?: data["chatGroup"]
+        val explicitIsChatGroup = when (rawIsChatGroup) {
+            is Boolean -> rawIsChatGroup
+            is String -> rawIsChatGroup.equals("true", ignoreCase = true) || rawIsChatGroup.equals("chat", ignoreCase = true)
+            else -> false
+        }
+        val isChatGroup = explicitIsChatGroup ||
+            parsed.isChatGroup ||
+            (data["groupType"] as? String).equals("chat", ignoreCase = true) ||
+            (data["source"] as? String).equals("chat", ignoreCase = true)
+
         return parsed.copy(
             id = resolvedId,
             ownerId = resolvedOwnerId,
@@ -53,7 +66,7 @@ class FlickRepository private constructor() {
             memberIds = normalizedMemberIds,
             friendIds = normalizedMemberIds.filter { it != resolvedOwnerId },
             adminIds = normalizedAdminIds,
-            isChatGroup = parsed.isChatGroup
+            isChatGroup = isChatGroup
         )
     }
 
@@ -78,6 +91,8 @@ class FlickRepository private constructor() {
             "color" to color,
             "eventAt" to eventAt,
             "isChatGroup" to isChatGroup,
+            "groupType" to if (isChatGroup) "chat" else "album",
+            "source" to if (isChatGroup) "chat" else "album",
             "orderIndex" to orderIndex,
             "createdAt" to createdAt,
             "updatedAt" to updatedAt,
@@ -107,6 +122,9 @@ class FlickRepository private constructor() {
             "icon" to icon,
             "color" to color,
             "eventAt" to eventAt,
+            "isChatGroup" to isChatGroup,
+            "groupType" to if (isChatGroup) "chat" else "album",
+            "source" to if (isChatGroup) "chat" else "album",
             "orderIndex" to orderIndex,
             "createdAt" to createdAt,
             "updatedAt" to updatedAt,
@@ -599,6 +617,24 @@ class FlickRepository private constructor() {
                     onResult(Result.Success(flicks))
                 }
             }
+    }
+
+    /**
+     * Count all flick documents uploaded by a user, including album/group photos hidden from the profile grid.
+     */
+    suspend fun getUserFlickUploadCount(userId: String): Result<Int> {
+        return try {
+            val count = db.collection(Constants.FirebaseCollections.FLICKS)
+                .whereEqualTo("userId", userId)
+                .count()
+                .get(AggregateSource.SERVER)
+                .await()
+                .count
+                .toInt()
+            Result.Success(count)
+        } catch (e: Exception) {
+            Result.Error(e, "Failed to count user photos")
+        }
     }
 
     /**

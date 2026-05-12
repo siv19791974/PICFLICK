@@ -916,6 +916,7 @@ private fun ProfilePhotoCropDialog(
     onConfirm: (Uri?) -> Unit
 ) {
     val context = LocalContext.current
+    val density = LocalDensity.current
     val scope = rememberCoroutineScope()
     var sourceBitmap by remember(imageUri) { mutableStateOf<Bitmap?>(null) }
     var viewportSize by remember { mutableStateOf(IntSize.Zero) }
@@ -976,12 +977,27 @@ private fun ProfilePhotoCropDialog(
                 if (sourceBitmap == null) {
                     CircularProgressIndicator()
                 } else {
+                    val bitmap = sourceBitmap
+                    val previewScale = if (bitmap != null) {
+                        baseCropPreviewScale(viewportSize, bitmap.width, bitmap.height)
+                    } else {
+                        1f
+                    }
                     AsyncImage(
-                        model = sourceBitmap,
+                        model = bitmap,
                         contentDescription = "Crop profile photo",
-                        contentScale = ContentScale.Crop,
+                        contentScale = ContentScale.FillBounds,
                         modifier = Modifier
-                            .fillMaxSize()
+                            .then(if (bitmap != null && viewportSize.width > 0 && viewportSize.height > 0) {
+                                with(density) {
+                                    Modifier.size(
+                                        width = (bitmap.width * previewScale).toDp(),
+                                        height = (bitmap.height * previewScale).toDp()
+                                    )
+                                }
+                            } else {
+                                Modifier.fillMaxSize()
+                            })
                             .graphicsLayer {
                                 scaleX = scale
                                 scaleY = scale
@@ -1028,6 +1044,21 @@ private fun ProfilePhotoCropDialog(
     }
 }
 
+private fun baseCropPreviewScale(
+    viewportSize: IntSize,
+    imageWidth: Int,
+    imageHeight: Int
+): Float {
+    if (viewportSize.width <= 0 || viewportSize.height <= 0 || imageWidth <= 0 || imageHeight <= 0) {
+        return 1f
+    }
+
+    return max(
+        viewportSize.width.toFloat() / imageWidth.toFloat(),
+        viewportSize.height.toFloat() / imageHeight.toFloat()
+    )
+}
+
 private fun clampPanOffset(
     viewportSize: IntSize,
     imageWidth: Int,
@@ -1039,10 +1070,7 @@ private fun clampPanOffset(
         return Offset.Zero
     }
 
-    val baseScale = max(
-        viewportSize.width.toFloat() / imageWidth.toFloat(),
-        viewportSize.height.toFloat() / imageHeight.toFloat()
-    )
+    val baseScale = baseCropPreviewScale(viewportSize, imageWidth, imageHeight)
     val scaledWidth = imageWidth * baseScale * scale
     val scaledHeight = imageHeight * baseScale * scale
 
@@ -1065,10 +1093,7 @@ private fun createCroppedProfileImageUri(
 ): Uri? {
     if (viewportSize.width <= 0 || viewportSize.height <= 0) return null
 
-    val baseScale = max(
-        viewportSize.width.toFloat() / sourceBitmap.width.toFloat(),
-        viewportSize.height.toFloat() / sourceBitmap.height.toFloat()
-    )
+    val baseScale = baseCropPreviewScale(viewportSize, sourceBitmap.width, sourceBitmap.height)
     val totalScale = (baseScale * zoomScale).coerceAtLeast(0.0001f)
 
     val cropWidth = (viewportSize.width / totalScale).roundToInt().coerceIn(1, sourceBitmap.width)

@@ -47,8 +47,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import coil3.compose.AsyncImage
 import com.picflick.app.R
 import com.picflick.app.data.ChatSession
@@ -556,18 +554,6 @@ fun ChatsScreen(
                     )
                     add(
                         ActionSheetOption(
-                            icon = Icons.Default.Close,
-                            title = "Clear selection",
-                            subtitle = "Deselect all conversations",
-                            accentColor = Color(0xFF4B5563),
-                            onClick = {
-                                selectedChatIds.clear()
-                                showHeaderMenu = false
-                            }
-                        )
-                    )
-                    add(
-                        ActionSheetOption(
                             icon = Icons.Default.Delete,
                             title = if (selectedCount <= 1) "Delete selected" else "Delete selected ($selectedCount)",
                             subtitle = "Remove conversations from your inbox",
@@ -603,69 +589,35 @@ fun ChatsScreen(
     }
 
     if (showDeleteConfirm) {
-        Dialog(
-            onDismissRequest = { showDeleteConfirm = false },
-            properties = DialogProperties(usePlatformDefaultWidth = false)
-        ) {
-            Surface(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 22.dp),
-                shape = RoundedCornerShape(24.dp),
-                tonalElevation = 10.dp,
-                shadowElevation = 18.dp,
-                color = if (isDarkMode) Color(0xFF151922) else Color.White
-            ) {
-                Column(
-                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 18.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Text(
-                        text = if (selectedChatIds.size <= 1) "Delete conversation?" else "Delete conversations?",
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.ExtraBold,
-                        color = if (isDarkMode) Color.White else Color.Black
-                    )
-                    Text(
-                        text = if (selectedChatIds.size <= 1) {
-                            "This will remove this conversation from your inbox only. Other participants will still see it."
-                        } else {
-                            "This will remove the selected conversations from your inbox only. Other participants will still see them."
-                        },
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = if (isDarkMode) Color(0xFFBFC7D9) else Color(0xFF475569)
-                    )
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.End,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        TextButton(onClick = { showDeleteConfirm = false }) {
-                            Text("Cancel")
+        val selectedCount = selectedChatIds.size
+        AddPhotoStyleActionSheet(
+            title = if (selectedCount <= 1) "Permanently delete conversation?" else "Permanently delete $selectedCount conversations?",
+            options = listOf(
+                ActionSheetOption(
+                    icon = Icons.Default.Delete,
+                    title = if (selectedCount <= 1) "Delete conversation permanently" else "Delete $selectedCount conversations permanently",
+                    subtitle = if (selectedCount <= 1) {
+                        "Permanent for you: this removes it from your inbox and cannot be undone. Other participants keep their copy."
+                    } else {
+                        "Permanent for you: these are removed from your inbox and cannot be undone. Other participants keep their copies."
+                    },
+                    accentColor = Color(0xFFD84343),
+                    onClick = {
+                        selectedChatIds.toList().forEach { chatId ->
+                            viewModel.deleteChat(chatId, userProfile.uid)
                         }
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Button(
-                            onClick = {
-                                selectedChatIds.toList().forEach { chatId ->
-                                    viewModel.deleteChat(chatId, userProfile.uid)
-                                }
-                                selectedChatIds.clear()
-                                showDeleteConfirm = false
-                                Toast.makeText(context, "Conversation removed from your inbox", Toast.LENGTH_SHORT).show()
-                            },
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = Color(0xFF2A4A73),
-                                contentColor = Color.White
-                            ),
-                            shape = RoundedCornerShape(14.dp)
-                        ) {
-                            Text("Delete")
-                        }
+                        selectedChatIds.clear()
+                        showDeleteConfirm = false
+                        Toast.makeText(context, "Conversation permanently removed from your inbox", Toast.LENGTH_SHORT).show()
                     }
-                }
-            }
-        }
+                )
+            ),
+            onDismiss = { showDeleteConfirm = false },
+            cancelTitle = "Keep conversations",
+            cancelSubtitle = "Cancel and return to your inbox",
+            cancelIcon = Icons.Default.Close,
+            cancelAccentColor = Color(0xFF4B5563)
+        )
     }
 
     if (showBlockConfirm) {
