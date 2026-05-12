@@ -48,6 +48,8 @@ import com.picflick.app.util.rememberLiveUserPhotoUrl
 import com.picflick.app.util.rememberLiveUserTierColor
 import com.picflick.app.viewmodel.FriendsViewModel
 
+private const val PICFLICK_PLAY_STORE_URL = "https://play.google.com/store/apps/details?id=com.picflick.app"
+
 /**
  * Comprehensive screen for finding friends, inviting contacts, and following users
  * Now with 3 tabs: Discover, Contacts, Invite
@@ -760,7 +762,7 @@ private fun InviteTab(
 Check out PicFlick - a cool photo sharing app I've been using!
 
 Join me and share your best shots: 
-https://play.google.com/store/apps/details?id=com.picflick.app
+$PICFLICK_PLAY_STORE_URL
 
 My username: ${userProfile.displayName}"""
 
