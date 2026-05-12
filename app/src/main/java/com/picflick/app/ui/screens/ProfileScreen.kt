@@ -602,11 +602,6 @@ fun ProfileScreen(
                     items = albums,
                     key = { it.id }
                 ) { group ->
-                    val albumColor = try {
-                        Color(android.graphics.Color.parseColor(group.color))
-                    } catch (_: Exception) {
-                        Color(0xFF4FC3F7)
-                    }
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         modifier = Modifier.clickable { onAlbumClick(group) }
@@ -615,8 +610,8 @@ fun ProfileScreen(
                             modifier = Modifier
                                 .size(64.dp)
                                 .clip(CircleShape)
-                                .background(albumColor.copy(alpha = 0.2f))
-                                .border(2.dp, albumColor, CircleShape),
+                                .background(Color.White.copy(alpha = 0.15f))
+                                .border(2.dp, Color.Black, CircleShape),
                             contentAlignment = Alignment.Center
                         ) {
                             val iconValue = group.icon.takeIf { it.isNotBlank() } ?: "👥"
@@ -629,8 +624,10 @@ fun ProfileScreen(
                                         .memoryCachePolicy(CachePolicy.ENABLED)
                                         .build(),
                                     contentDescription = group.name,
-                                    modifier = Modifier.size(40.dp),
-                                    contentScale = androidx.compose.ui.layout.ContentScale.Crop
+                                    modifier = Modifier
+                                        .matchParentSize()
+                                        .clip(CircleShape),
+                                    contentScale = ContentScale.Crop
                                 )
                             } else {
                                 Text(

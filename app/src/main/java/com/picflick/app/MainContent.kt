@@ -169,6 +169,7 @@ fun AuthenticatedContent(
             profileViewModel = profileViewModel,
             authViewModel = authViewModel,
             homeViewModel = homeViewModel,
+            chatViewModel = chatViewModel,
             onScreenChange = onScreenChange,
             onPhotoSelected = onPhotoSelected,
             onCreateAlbum = {
@@ -667,11 +668,21 @@ private fun ProfileScreenContent(
     profileViewModel: ProfileViewModel,
     authViewModel: AuthViewModel,
     homeViewModel: HomeViewModel,
+    chatViewModel: ChatViewModel,
     onScreenChange: (Screen) -> Unit,
     onPhotoSelected: (Uri) -> Unit,
     onCreateAlbum: () -> Unit = {}
 ) {
     val context = LocalContext.current
+    val chatGroupIds = remember(chatViewModel.chatSessions) {
+        chatViewModel.chatSessions
+            .filter { it.isGroup }
+            .mapNotNull { session ->
+                session.groupId.ifBlank { session.id.removePrefix("group_") }
+                    .takeIf { it.isNotBlank() }
+            }
+            .toSet()
+    }
 
     // Load photos when profile screen is shown
     LaunchedEffect(userProfile.uid) {
@@ -739,7 +750,9 @@ private fun ProfileScreenContent(
                 onComplete(success)
             }
         },
-        albums = homeViewModel.friendGroups.filter { it.isMember(userProfile.uid) && !it.isChatGroup },
+        albums = homeViewModel.friendGroups.filter { group ->
+            group.isMember(userProfile.uid) && !group.isChatGroup && group.id !in chatGroupIds
+        },
         onAlbumClick = { group ->
             homeViewModel.setFilter(FeedFilter.ByGroup(group))
             onScreenChange(Screen.Home)
