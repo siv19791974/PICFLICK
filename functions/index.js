@@ -40,6 +40,23 @@ async function shouldSkipTrigger(triggerName) {
   return true;
 }
 
+async function shouldSkipMythicScheduledPush(triggerName) {
+  if (await shouldSkipTrigger(triggerName)) return true;
+
+  try {
+    const flagsDoc = await admin.firestore().doc('appConfig/featureFlags').get();
+    const data = flagsDoc.exists ? flagsDoc.data() : {};
+    if (data.disableMythicScheduledPushes === true) {
+      console.warn(`[SAFETY] Mythic scheduled push disabled by feature flag: ${triggerName}`);
+      return true;
+    }
+  } catch (e) {
+    console.warn(`[SAFETY] Failed to load Mythic scheduled push flag for ${triggerName}:`, e.message);
+  }
+
+  return false;
+}
+
 /**
  * Cloud Function: Send push notification when a new notification document is created
  * This function listens to the 'notifications' collection and sends FCM push
@@ -1512,7 +1529,7 @@ exports.mythicMondayPush = functions
   .schedule('0 12 * * 1')
   .timeZone('UTC')
   .onRun(async (context) => {
-    if (await shouldSkipTrigger('mythicMondayPush')) return null;
+    if (await shouldSkipMythicScheduledPush('mythicMondayPush')) return null;
     const db = admin.firestore();
 
     const date = new Date();
@@ -1652,7 +1669,7 @@ exports.checkBrokenStreaks = functions.pubsub
   .schedule('0 23 * * *')
   .timeZone('UTC')
   .onRun(async (context) => {
-    if (await shouldSkipTrigger('checkBrokenStreaks')) return null;
+    if (await shouldSkipMythicScheduledPush('checkBrokenStreaks')) return null;
     const db = admin.firestore();
     const now = new Date();
     const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
@@ -1740,7 +1757,7 @@ exports.streakDangerPush = functions.pubsub
   .schedule('30 * * * *')
   .timeZone('UTC')
   .onRun(async (context) => {
-    if (await shouldSkipTrigger('streakDangerPush')) return null;
+    if (await shouldSkipMythicScheduledPush('streakDangerPush')) return null;
     const db = admin.firestore();
     const now = new Date();
     const currentUTCHour = now.getUTCHours();

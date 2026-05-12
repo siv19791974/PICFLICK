@@ -39,7 +39,7 @@ object CostControlManager {
         if (isEnabled(Constants.FeatureFlags.REDUCE_PAGINATION)) (default / 2).coerceAtLeast(1) else default
 
     /** Start periodic refresh (call once from Application.onCreate or MainActivity). */
-    fun startRefresh(periodMs: Long = 60_000L) {
+    fun startRefresh(periodMs: Long = 5 * 60_000L) {
         // Cancel any existing refresh loop to avoid duplicate jobs
         refreshJob?.cancel()
         refreshJob = scope.launch {
