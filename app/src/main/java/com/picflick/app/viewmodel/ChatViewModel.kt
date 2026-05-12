@@ -593,6 +593,11 @@ class ChatViewModel : ViewModel() {
      * Instantly report + block target user from messages and remove current chat.
      */
     fun blockAndReportUser(currentUserId: String, targetUserId: String, chatId: String?) {
+        if (targetUserId.isBlank() || targetUserId.startsWith("group:") || targetUserId.startsWith("group_")) {
+            errorMessage = "Group chats can be muted or exited, not blocked."
+            return
+        }
+
         viewModelScope.launch {
             when (val result = repository.blockAndReportUser(currentUserId, targetUserId)) {
                 is Result.Success -> {

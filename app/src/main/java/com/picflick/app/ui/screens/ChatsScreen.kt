@@ -30,6 +30,7 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.AddAPhoto
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.NotificationsOff
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material3.*
 import androidx.compose.material.icons.outlined.Settings
@@ -127,6 +128,7 @@ fun ChatsScreen(
     var showHeaderMenu by remember { mutableStateOf(false) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
     var showBlockConfirm by remember { mutableStateOf(false) }
+    var showMuteDurationDialog by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf("") }
     val isSelectionMode = selectedChatIds.isNotEmpty()
     val isDarkMode = ThemeManager.isDarkMode.value
@@ -143,7 +145,10 @@ fun ChatsScreen(
         viewModel.chatSessions.firstOrNull { it.id == selectedChatId }
     }
     val selectedOtherUserId = remember(selectedSession, userProfile.uid) {
-        selectedSession?.participants?.firstOrNull { it != userProfile.uid }
+        selectedSession
+            ?.takeUnless { it.isGroup || it.groupId.isNotBlank() || it.id.startsWith("group_") }
+            ?.participants
+            ?.firstOrNull { it != userProfile.uid }
     }
 
     val inboxChatSessions = remember(viewModel.chatSessions, userProfile.uid) {
@@ -533,6 +538,7 @@ fun ChatsScreen(
         val hasSelection = selectedChatIds.isNotEmpty()
         val selectedCount = selectedChatIds.size
         val canBlock = selectedChatIds.size == 1 && !selectedOtherUserId.isNullOrBlank()
+        val canMute = selectedChatIds.size == 1 && selectedSession != null
         AddPhotoStyleActionSheet(
             title = if (isSelectionMode) "$selectedCount selected" else "Message options",
             options = buildList {
@@ -552,6 +558,20 @@ fun ChatsScreen(
                             }
                         )
                     )
+                    if (canMute) {
+                        add(
+                            ActionSheetOption(
+                                icon = Icons.Default.NotificationsOff,
+                                title = if (selectedSession?.isGroup == true || selectedSession?.groupId?.isNotBlank() == true || selectedSession?.id?.startsWith("group_") == true) "Mute group chat" else "Mute conversation",
+                                subtitle = "Choose how long to silence notifications",
+                                accentColor = Color(0xFFFFC107),
+                                onClick = {
+                                    showHeaderMenu = false
+                                    showMuteDurationDialog = true
+                                }
+                            )
+                        )
+                    }
                     add(
                         ActionSheetOption(
                             icon = Icons.Default.Delete,
@@ -583,6 +603,61 @@ fun ChatsScreen(
             onDismiss = { showHeaderMenu = false },
             cancelTitle = "Cancel",
             cancelSubtitle = "Close menu",
+            cancelIcon = Icons.Default.Close,
+            cancelAccentColor = Color(0xFF4B5563)
+        )
+    }
+
+    if (showMuteDurationDialog && selectedSession != null) {
+        val now = System.currentTimeMillis()
+        val selectedChatName = if (selectedSession.isGroup || selectedSession.groupId.isNotBlank() || selectedSession.id.startsWith("group_")) {
+            "group chat"
+        } else {
+            "conversation"
+        }
+        fun muteSelectedChat(durationMs: Long, label: String) {
+            val chatId = selectedChatId ?: return
+            showMuteDurationDialog = false
+            viewModel.muteChat(userProfile.uid, chatId, now + durationMs)
+            selectedChatIds.clear()
+            Toast.makeText(context, "Chat muted for $label", Toast.LENGTH_SHORT).show()
+        }
+
+        AddPhotoStyleActionSheet(
+            title = if (selectedChatName == "group chat") "Mute group chat" else "Mute conversation",
+            options = listOf(
+                ActionSheetOption(
+                    icon = Icons.Default.NotificationsOff,
+                    title = "Mute for 1 hour",
+                    subtitle = "Temporarily silence this $selectedChatName",
+                    accentColor = Color(0xFFFFC107),
+                    onClick = { muteSelectedChat(1L * 60L * 60L * 1000L, "1 hour") }
+                ),
+                ActionSheetOption(
+                    icon = Icons.Default.NotificationsOff,
+                    title = "Mute for 8 hours",
+                    subtitle = "Good for the rest of your day",
+                    accentColor = Color(0xFFFFC107),
+                    onClick = { muteSelectedChat(8L * 60L * 60L * 1000L, "8 hours") }
+                ),
+                ActionSheetOption(
+                    icon = Icons.Default.NotificationsOff,
+                    title = "Mute for 24 hours",
+                    subtitle = "Silence notifications until tomorrow",
+                    accentColor = Color(0xFFFFC107),
+                    onClick = { muteSelectedChat(24L * 60L * 60L * 1000L, "24 hours") }
+                ),
+                ActionSheetOption(
+                    icon = Icons.Default.NotificationsOff,
+                    title = "Mute for 7 days",
+                    subtitle = "Silence this $selectedChatName for a week",
+                    accentColor = Color(0xFFFFC107),
+                    onClick = { muteSelectedChat(7L * 24L * 60L * 60L * 1000L, "7 days") }
+                )
+            ),
+            onDismiss = { showMuteDurationDialog = false },
+            cancelTitle = "Cancel",
+            cancelSubtitle = "Keep notifications on",
             cancelIcon = Icons.Default.Close,
             cancelAccentColor = Color(0xFF4B5563)
         )

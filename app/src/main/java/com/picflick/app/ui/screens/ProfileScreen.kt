@@ -560,7 +560,7 @@ fun ProfileScreen(
         ) {
             ModernStatItem(
                 value = photoCount.toString(),
-                label = "POSTS",
+                label = "LIFETIME POSTS",
                 isDarkMode = isDarkMode,
                 onClick = {
                     scope.launch {
@@ -990,7 +990,7 @@ private fun ProfilePhotoCropDialog(
                         modifier = Modifier
                             .then(if (bitmap != null && viewportSize.width > 0 && viewportSize.height > 0) {
                                 with(density) {
-                                    Modifier.size(
+                                    Modifier.requiredSize(
                                         width = (bitmap.width * previewScale).toDp(),
                                         height = (bitmap.height * previewScale).toDp()
                                     )

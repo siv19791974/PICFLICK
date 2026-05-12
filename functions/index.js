@@ -129,7 +129,15 @@ exports.sendPushNotification = functions
         return null;
       }
       
-      const userData = userDoc.data();
+        const userData = userDoc.data();
+      const mutedUsers = userData.mutedUsers || {};
+      const mutedUntilRaw = mutedUsers[notification.senderId || ''];
+      const mutedUntil = Number(mutedUntilRaw || 0);
+      if (mutedUntilRaw === 'forever' || mutedUntil >= 9223372036854775000 || mutedUntil > Date.now()) {
+        console.log('Skipping push - sender is muted by recipient:', notification.senderId, 'until:', mutedUntilRaw);
+        return null;
+      }
+
       const fcmToken = userData.fcmToken;
       
       if (!fcmToken) {

@@ -403,7 +403,9 @@ class ChatRepository {
 
             val unreadMap = participants.associateWith { 0 }
             val now = System.currentTimeMillis()
-            val newSession = hashMapOf(
+            val docRef = db.collection("chatSessions").document(deterministicChatId)
+            val existingSession = docRef.get().await()
+            val sessionUpdates = hashMapOf<String, Any>(
                 "id" to deterministicChatId,
                 "participants" to participants,
                 "participantNames" to participantNames,
@@ -412,15 +414,17 @@ class ChatRepository {
                 "groupId" to groupId,
                 "groupName" to groupName,
                 "groupIcon" to groupIcon,
-                "unreadCount" to unreadMap,
-                "lastMessage" to "",
-                "lastTimestamp" to now,
-                "createdAt" to now,
                 "updatedAt" to now
             )
 
-            val docRef = db.collection("chatSessions").document(deterministicChatId)
-            docRef.set(newSession, SetOptions.merge()).await()
+            if (!existingSession.exists()) {
+                sessionUpdates["unreadCount"] = unreadMap
+                sessionUpdates["lastMessage"] = ""
+                sessionUpdates["lastTimestamp"] = now
+                sessionUpdates["createdAt"] = now
+            }
+
+            docRef.set(sessionUpdates, SetOptions.merge()).await()
             Result.Success(deterministicChatId)
         } catch (e: Exception) {
             Result.Error(e, e.message ?: "Failed to create group chat session")
@@ -507,6 +511,29 @@ class ChatRepository {
             Result.Success(Unit)
         } catch (e: Exception) {
             Result.Error(e, e.message ?: "Failed to send group message")
+        }
+    }
+
+    suspend fun muteDirectChatWithUser(
+        currentUserId: String,
+        targetUserId: String,
+        currentUserName: String,
+        targetUserName: String,
+        currentUserPhoto: String,
+        targetUserPhoto: String,
+        muteUntilEpochMs: Long
+    ): Result<Unit> {
+        return when (val sessionResult = getOrCreateChatSession(
+            userId1 = currentUserId,
+            userId2 = targetUserId,
+            user1Name = currentUserName,
+            user2Name = targetUserName,
+            user1Photo = currentUserPhoto,
+            user2Photo = targetUserPhoto
+        )) {
+            is Result.Success -> muteChat(currentUserId, sessionResult.data, muteUntilEpochMs)
+            is Result.Error -> sessionResult
+            is Result.Loading -> Result.Loading
         }
     }
 
@@ -839,6 +866,10 @@ class ChatRepository {
      * Report and block a user instantly from chat context.
      */
     suspend fun blockAndReportUser(currentUserId: String, targetUserId: String): Result<Unit> {
+        if (targetUserId.isBlank() || targetUserId.startsWith("group:") || targetUserId.startsWith("group_")) {
+            return Result.Error(IllegalArgumentException("Cannot block a group chat"), "Group chats can be muted or exited, not blocked")
+        }
+
         return try {
             db.collection("reports")
                 .add(

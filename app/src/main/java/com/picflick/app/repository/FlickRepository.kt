@@ -764,52 +764,58 @@ class FlickRepository private constructor() {
             .addOnFailureListener { e -> onResult(Result.Error(e, "Failed to get photo")) }
     }
 
+    private suspend fun deleteFlickSnapshotCompletely(flickSnapshot: com.google.firebase.firestore.DocumentSnapshot) {
+        val flick = flickSnapshot.toObject(Flick::class.java)
+        val flickId = flickSnapshot.id
+        val ownerId = flick?.userId.orEmpty()
+        val imageUrl = flick?.imageUrl.orEmpty()
+
+        if (imageUrl.isNotBlank()) {
+            try {
+                storage.getReferenceFromUrl(imageUrl).delete().await()
+            } catch (e: Exception) {
+                android.util.Log.w("FlickRepository", "Failed to delete storage object for flick=$flickId", e)
+            }
+        }
+
+        val thumb512 = flick?.thumbnailUrl512
+        if (!thumb512.isNullOrBlank() && thumb512 != imageUrl) {
+            try {
+                storage.getReferenceFromUrl(thumb512).delete().await()
+            } catch (e: Exception) {
+                android.util.Log.w("FlickRepository", "Failed to delete 512px thumbnail for flick=$flickId", e)
+            }
+        }
+
+        val thumb1080 = flick?.thumbnailUrl1080
+        if (!thumb1080.isNullOrBlank() && thumb1080 != imageUrl) {
+            try {
+                storage.getReferenceFromUrl(thumb1080).delete().await()
+            } catch (e: Exception) {
+                android.util.Log.w("FlickRepository", "Failed to delete 1080px thumbnail for flick=$flickId", e)
+            }
+        }
+
+        flickSnapshot.reference.delete().await()
+
+        if (ownerId.isNotBlank()) {
+            decrementStorageUsedBytes(ownerId, flick?.imageSizeBytes ?: 0L)
+        }
+    }
+
     /**
      * Delete a flick
      */
     fun deleteFlick(flickId: String, onResult: (Result<Unit>) -> Unit) {
         repositoryScope.launch {
             try {
-                val flickRef = db.collection("flicks").document(flickId)
-                val flickSnapshot = flickRef.get().await()
-                val flick = flickSnapshot.toObject(Flick::class.java)
-
-                val ownerId = flick?.userId.orEmpty()
-                val imageUrl = flick?.imageUrl.orEmpty()
-
-                if (imageUrl.isNotBlank()) {
-                    try {
-                        val imageRef = storage.getReferenceFromUrl(imageUrl)
-                        imageRef.delete().await()
-                    } catch (e: Exception) {
-                        android.util.Log.w("FlickRepository", "Failed to delete storage object for flick=$flickId", e)
-                    }
+                val flickSnapshot = db.collection("flicks").document(flickId).get().await()
+                if (!flickSnapshot.exists()) {
+                    onResult(Result.Success(Unit))
+                    return@launch
                 }
 
-                // Delete thumbnails if they exist and differ from original
-                val thumb512 = flick?.thumbnailUrl512
-                if (!thumb512.isNullOrBlank() && thumb512 != imageUrl) {
-                    try {
-                        storage.getReferenceFromUrl(thumb512).delete().await()
-                    } catch (e: Exception) {
-                        android.util.Log.w("FlickRepository", "Failed to delete 512px thumbnail for flick=$flickId", e)
-                    }
-                }
-                val thumb1080 = flick?.thumbnailUrl1080
-                if (!thumb1080.isNullOrBlank() && thumb1080 != imageUrl) {
-                    try {
-                        storage.getReferenceFromUrl(thumb1080).delete().await()
-                    } catch (e: Exception) {
-                        android.util.Log.w("FlickRepository", "Failed to delete 1080px thumbnail for flick=$flickId", e)
-                    }
-                }
-
-                flickRef.delete().await()
-
-                if (ownerId.isNotBlank()) {
-                    decrementStorageUsedBytes(ownerId, flick?.imageSizeBytes ?: 0L)
-                }
-
+                deleteFlickSnapshotCompletely(flickSnapshot)
                 onResult(Result.Success(Unit))
             } catch (e: Exception) {
                 onResult(Result.Error(e, "Failed to delete photo"))
@@ -1365,11 +1371,24 @@ class FlickRepository private constructor() {
     /**
      * Mute a user until a specific epoch millis (or forever with Long.MAX_VALUE).
      */
+    suspend fun muteUser(currentUserId: String, targetUserId: String, muteUntilEpochMs: Long): Result<Unit> {
+        return try {
+            db.collection("users").document(currentUserId)
+                .update("mutedUsers.$targetUserId", muteUntilEpochMs)
+                .await()
+            Result.Success(Unit)
+        } catch (e: Exception) {
+            Result.Error(e, "Failed to mute user")
+        }
+    }
+
+    /**
+     * Mute a user until a specific epoch millis (or forever with Long.MAX_VALUE).
+     */
     fun muteUser(currentUserId: String, targetUserId: String, muteUntilEpochMs: Long, onResult: (Result<Unit>) -> Unit) {
-        db.collection("users").document(currentUserId)
-            .update("mutedUsers.$targetUserId", muteUntilEpochMs)
-            .addOnSuccessListener { onResult(Result.Success(Unit)) }
-            .addOnFailureListener { e -> onResult(Result.Error(e, "Failed to mute user")) }
+        repositoryScope.launch {
+            onResult(muteUser(currentUserId, targetUserId, muteUntilEpochMs))
+        }
     }
 
     /**
@@ -1946,14 +1965,36 @@ class FlickRepository private constructor() {
 
                 if (snapshot != null) {
                     android.util.Log.d("FlickRepository", "Notification snapshot received: ${snapshot.documents.size} documents")
-                    val notifications = snapshot.documents.mapNotNull { doc ->
+                    repositoryScope.launch {
+                        val currentMutedUserIds = runCatching {
+                            val currentUserDoc = db.collection("users").document(userId).get().await()
+                            val mutedUsers = (currentUserDoc.get("mutedUsers") as? Map<*, *>) ?: emptyMap<Any, Any>()
+                            val now = System.currentTimeMillis()
+                            mutedUsers.mapNotNull { (mutedUserId, mutedUntil) ->
+                                val until = when (mutedUntil) {
+                                    is Long -> mutedUntil
+                                    is Double -> mutedUntil.toLong()
+                                    is Number -> mutedUntil.toLong()
+                                    is String -> mutedUntil.toLongOrNull() ?: if (mutedUntil == "forever") Long.MAX_VALUE else null
+                                    else -> null
+                                }
+                                if (mutedUserId is String && until != null && (until == Long.MAX_VALUE || until > now)) mutedUserId else null
+                            }.toSet()
+                        }.getOrElse { emptySet() }
+
+                        val notifications = snapshot.documents.mapNotNull { doc ->
                         try {
                             val data = doc.data ?: return@mapNotNull null
                             android.util.Log.d("FlickRepository", "Processing notification doc: ${doc.id}, type: ${data["type"]}, userId: ${data["userId"]}")
+                            val senderId = data["senderId"] as? String ?: ""
+                            if (senderId.isNotBlank() && currentMutedUserIds.contains(senderId)) {
+                                android.util.Log.d("FlickRepository", "Skipping notification from muted sender: $senderId")
+                                return@mapNotNull null
+                            }
                             Notification(
                                 id = doc.id,
                                 userId = data["userId"] as? String ?: "",
-                                senderId = data["senderId"] as? String ?: "",
+                                senderId = senderId,
                                 senderName = data["senderName"] as? String ?: "",
                                 senderPhotoUrl = data["senderPhotoUrl"] as? String ?: "",
                                 type = parseNotificationType(data["type"] as? String),
@@ -1977,9 +2018,10 @@ class FlickRepository private constructor() {
                             android.util.Log.e("FlickRepository", "Error parsing notification: ${e.message}")
                             null
                         }
-                    }.sortedByDescending { it.timestamp }  // Client-side sorting
-                    android.util.Log.d("FlickRepository", "Parsed ${notifications.size} valid notifications")
-                    onUpdate(notifications)
+                        }.sortedByDescending { it.timestamp }  // Client-side sorting
+                        android.util.Log.d("FlickRepository", "Parsed ${notifications.size} valid notifications")
+                        onUpdate(notifications)
+                    }
                 } else {
                     android.util.Log.d("FlickRepository", "Notification snapshot is null")
                 }
@@ -3579,6 +3621,14 @@ android.util.Log.e("FlickRepository", "Failed to submit feedback", e)
                     return Result.Error(Exception("Permission denied"), "Only owner can delete this group")
                 }
 
+                val groupFlicks = db.collection(Constants.FirebaseCollections.FLICKS)
+                    .whereEqualTo("sharedGroupId", groupId)
+                    .get()
+                    .await()
+                groupFlicks.documents.forEach { flickSnapshot ->
+                    deleteFlickSnapshotCompletely(flickSnapshot)
+                }
+
                 groupRef.delete().await()
                 return Result.Success(Unit)
             }
@@ -3932,6 +3982,28 @@ android.util.Log.e("FlickRepository", "Failed to submit feedback", e)
      * Check if a user is allowed to upload photos to a specific group album.
      * Only the owner and admins can add photos.
      */
+    suspend fun cleanupOrphanedGroupFlicks(userId: String, activeGroupIds: Set<String>): Result<Int> {
+        return try {
+            val snapshot = db.collection(Constants.FirebaseCollections.FLICKS)
+                .whereEqualTo("userId", userId)
+                .get()
+                .await()
+
+            val orphaned = snapshot.documents.filter { doc ->
+                val sharedGroupId = doc.getString("sharedGroupId").orEmpty()
+                sharedGroupId.isNotBlank() && sharedGroupId !in activeGroupIds
+            }
+
+            orphaned.forEach { flickSnapshot ->
+                deleteFlickSnapshotCompletely(flickSnapshot)
+            }
+
+            Result.Success(orphaned.size)
+        } catch (e: Exception) {
+            Result.Error(e, "Failed to clean orphaned album photos")
+        }
+    }
+
     suspend fun canUploadToGroup(userId: String, groupId: String): Boolean {
         return try {
             val groupDoc = db.collection("groups").document(groupId).get().await()

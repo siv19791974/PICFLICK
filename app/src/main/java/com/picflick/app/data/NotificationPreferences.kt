@@ -1,9 +1,12 @@
 package com.picflick.app.data
 
+import com.google.firebase.firestore.IgnoreExtraProperties
+
 /**
  * User notification preferences - simplified unified settings
  * One toggle controls both push and in-app notifications
  */
+@IgnoreExtraProperties
 data class NotificationPreferences(
     // In-app master switch
     val notificationsEnabled: Boolean = true,

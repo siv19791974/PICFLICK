@@ -70,6 +70,8 @@ import coil3.compose.AsyncImage
 import coil3.request.CachePolicy
 import coil3.request.ImageRequest
 import coil3.request.crossfade
+import com.google.firebase.firestore.AggregateSource
+import com.google.firebase.firestore.FirebaseFirestore
 import com.picflick.app.data.ChatMessage
 import com.picflick.app.data.FeedFilter
 import com.picflick.app.data.Flick
@@ -103,6 +105,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
 
 /**
@@ -314,7 +317,13 @@ fun HomeScreen(
                     EmptyState(
                         album = activeAlbum,
                         onNavigate = onNavigate,
-                        onOpenGroupManager = { showGroupsManager = true }
+                        onOpenGroupManager = {
+                            if (activeAlbum != null && activeAlbum.isAdmin(userProfile.uid)) {
+                                editingGroup = activeAlbum
+                            } else {
+                                showGroupsManager = true
+                            }
+                        }
                     )
                 }
                 else -> FlickGrid(
@@ -1528,6 +1537,30 @@ private fun GroupManagerSheet(
     var confirmDeleteGroup by remember { mutableStateOf<FriendGroup?>(null) }
     var menuTargetGroup by remember { mutableStateOf<FriendGroup?>(null) }
     var searchQuery by remember { mutableStateOf("") }
+    val albumPhotoCounts = remember { mutableStateMapOf<String, Int>() }
+
+    LaunchedEffect(sortedGroups.map { it.id }) {
+        val groupIds = sortedGroups.map { it.id }.filter { it.isNotBlank() }
+        val db = FirebaseFirestore.getInstance()
+        albumPhotoCounts.keys.toList()
+            .filterNot { it in groupIds }
+            .forEach { albumPhotoCounts.remove(it) }
+
+        groupIds.forEach { groupId ->
+            val count = runCatching {
+                db.collection("flicks")
+                    .whereEqualTo("sharedGroupId", groupId)
+                    .count()
+                    .get(AggregateSource.SERVER)
+                    .await()
+                    .count
+                    .toInt()
+            }.getOrNull()
+            if (count != null) {
+                albumPhotoCounts[groupId] = count
+            }
+        }
+    }
 
     val filteredOrderedGroupIds by remember { derivedStateOf {
         if (searchQuery.isBlank()) {
@@ -1786,9 +1819,11 @@ private fun GroupManagerSheet(
                     val isSelected = selectedFilter is FeedFilter.ByGroup && selectedFilter.group.id == group.id
                     var dragDeltaY by remember(group.id) { mutableStateOf(0f) }
 
+                    val friendCount = group.membersExcludingOwner().size
+                    val photoCount = albumPhotoCounts[group.id] ?: 0
                     GroupRowCard(
                         title = group.name,
-                        subtitle = "${group.membersExcludingOwner().size} friends",
+                        subtitle = "${friendCount.toCountLabel("friend")} • ${photoCount.toCountLabel("photo")}",
                         icon = group.icon,
                         colour = group.color,
                         selected = isSelected,
@@ -1880,6 +1915,11 @@ private fun GroupManagerSheet(
 }
 
 @OptIn(ExperimentalFoundationApi::class)
+private fun Int.toCountLabel(singular: String): String {
+    val label = if (this == 1) singular else "${singular}s"
+    return "$this $label"
+}
+
 @Composable
 private fun GroupRowCard(
     title: String,
@@ -2603,7 +2643,7 @@ fun GroupPhotoCropDialog(
                         modifier = Modifier
                             .then(if (bitmap != null && viewportSize.width > 0 && viewportSize.height > 0) {
                                 with(density) {
-                                    Modifier.size(
+                                    Modifier.requiredSize(
                                         width = (bitmap.width * previewScale).toDp(),
                                         height = (bitmap.height * previewScale).toDp()
                                     )

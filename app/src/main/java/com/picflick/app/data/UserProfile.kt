@@ -1,6 +1,7 @@
 package com.picflick.app.data
 
 import com.google.firebase.Timestamp
+import com.google.firebase.firestore.IgnoreExtraProperties
 import com.google.firebase.firestore.PropertyName
 import com.picflick.app.Constants
 import com.picflick.app.util.CostControlManager
@@ -8,6 +9,7 @@ import com.picflick.app.util.CostControlManager
 /**
  * Data class representing a user profile in the PicFlick app
  */
+@IgnoreExtraProperties
 data class UserProfile(
     val uid: String = "",
     val email: String = "",

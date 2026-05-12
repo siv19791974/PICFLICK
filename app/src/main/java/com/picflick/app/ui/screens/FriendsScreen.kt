@@ -3,7 +3,6 @@ package com.picflick.app.ui.screens
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -13,8 +12,13 @@ import androidx.compose.material.pullrefresh.PullRefreshIndicator
 import androidx.compose.material.pullrefresh.pullRefresh
 import androidx.compose.material.pullrefresh.rememberPullRefreshState
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.NotificationsOff
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -24,7 +28,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.border
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -34,6 +37,8 @@ import coil3.compose.AsyncImage
 import android.widget.Toast
 import androidx.compose.ui.platform.LocalContext
 import com.picflick.app.data.UserProfile
+import com.picflick.app.ui.components.ActionSheetOption
+import com.picflick.app.ui.components.AddPhotoStyleActionSheet
 import com.picflick.app.ui.components.ListItemShimmer
 import com.picflick.app.ui.theme.isDarkModeBackground
 import com.picflick.app.ui.theme.ThemeManager
@@ -60,10 +65,13 @@ fun FriendsScreen(
     currentUserSentRequestIds: Set<String> = userProfile.sentFollowRequests.toSet(),
     displayedUsersOverride: List<UserProfile>? = null,
     onAddFriendClick: (UserProfile) -> Unit = {},
-    onCancelFriendRequestClick: (UserProfile) -> Unit = {}
+    onCancelFriendRequestClick: (UserProfile) -> Unit = {},
+    onMessageFriendClick: (UserProfile) -> Unit = {}
 ) {
     val context = LocalContext.current
-    var pendingDeleteFriendId by remember { mutableStateOf<String?>(null) }
+    var menuTargetFriend by remember { mutableStateOf<UserProfile?>(null) }
+    var muteTargetFriend by remember { mutableStateOf<UserProfile?>(null) }
+    var removeTargetFriend by remember { mutableStateOf<UserProfile?>(null) }
     val optimisticallyRemovedFriendIds = remember { mutableStateListOf<String>() }
 
     // Load following users
@@ -105,13 +113,6 @@ fun FriendsScreen(
 modifier = Modifier
             .fillMaxSize()
             .background(isDarkModeBackground(isDarkMode))
-            .pointerInput(pendingDeleteFriendId) {
-                detectTapGestures(onTap = {
-                    if (pendingDeleteFriendId != null) {
-                        pendingDeleteFriendId = null
-                    }
-                })
-            }
     ) {
         Box(
             modifier = Modifier
@@ -191,28 +192,13 @@ modifier = Modifier
                             FriendListItem(
                                 friend = friend,
                                 onProfilePhotoClick = { onProfilePhotoClick(friend) },
-                                isPendingDelete = pendingDeleteFriendId == friend.uid,
                                 isRemoving = viewModel.processingUserIds.contains(friend.uid),
                                 isOwnFriendsList = isOwnFriendsList,
                                 isAlreadyFriend = isAlreadyFriend,
                                 hasSentRequest = hasSentRequest,
                                 currentUserId = currentUserId,
-                                onDeleteFriend = {
-                                    if (pendingDeleteFriendId == friend.uid) {
-                                        val friendId = friend.uid
-                                        optimisticallyRemovedFriendIds.add(friendId)
-                                        pendingDeleteFriendId = null
-                                        viewModel.unfollowUser(currentUserId, friendId) { success ->
-                                            if (success) {
-                                                Toast.makeText(context, "Removed", Toast.LENGTH_SHORT).show()
-                                            } else {
-                                                optimisticallyRemovedFriendIds.remove(friendId)
-                                                Toast.makeText(context, "Couldn’t remove. Please try again.", Toast.LENGTH_SHORT).show()
-                                            }
-                                        }
-                                    } else {
-                                        pendingDeleteFriendId = friend.uid
-                                    }
+                                onMenuClick = {
+                                    menuTargetFriend = friend
                                 },
                                 onAddFriend = {
                                     if (!isAlreadyFriend && !hasSentRequest && friend.uid != currentUserId) {
@@ -237,6 +223,148 @@ modifier = Modifier
                 modifier = Modifier.align(Alignment.TopCenter),
                 backgroundColor = MaterialTheme.colorScheme.surface,
                 contentColor = MaterialTheme.colorScheme.primary
+            )
+        }
+
+        menuTargetFriend?.let { friend ->
+            AddPhotoStyleActionSheet(
+                title = friend.displayName,
+                options = listOf(
+                    ActionSheetOption(
+                        icon = Icons.Default.Person,
+                        title = "View profile",
+                        subtitle = "Open ${friend.displayName}'s profile",
+                        accentColor = Color(0xFF2E86DE),
+                        onClick = {
+                            menuTargetFriend = null
+                            onProfilePhotoClick(friend)
+                        }
+                    ),
+                    ActionSheetOption(
+                        icon = Icons.AutoMirrored.Filled.Chat,
+                        title = "Message",
+                        subtitle = "Open your conversation",
+                        accentColor = Color(0xFF2A4A73),
+                        onClick = {
+                            menuTargetFriend = null
+                            onMessageFriendClick(friend)
+                        }
+                    ),
+                    ActionSheetOption(
+                        icon = Icons.Default.NotificationsOff,
+                        title = "Mute",
+                        subtitle = "Silence uploads, notifications, and messages",
+                        accentColor = Color(0xFFFFC107),
+                        onClick = {
+                            menuTargetFriend = null
+                            muteTargetFriend = friend
+                        }
+                    ),
+                    ActionSheetOption(
+                        icon = Icons.Default.Delete,
+                        title = "Remove friend",
+                        subtitle = "Remove them from your friends list",
+                        accentColor = Color(0xFFD84343),
+                        onClick = {
+                            menuTargetFriend = null
+                            removeTargetFriend = friend
+                        }
+                    )
+                ),
+                onDismiss = { menuTargetFriend = null },
+                cancelTitle = "Cancel",
+                cancelSubtitle = "Close menu",
+                cancelIcon = Icons.Default.Close,
+                cancelAccentColor = Color(0xFF4B5563)
+            )
+        }
+
+        muteTargetFriend?.let { friend ->
+            val now = System.currentTimeMillis()
+            fun muteFriend(durationMs: Long, label: String) {
+                muteTargetFriend = null
+                viewModel.muteUser(
+                    currentUser = userProfile,
+                    targetUser = friend,
+                    muteUntilEpochMs = now + durationMs
+                ) { success ->
+                    if (success) {
+                        Toast.makeText(context, "${friend.displayName} muted for $label", Toast.LENGTH_SHORT).show()
+                    } else {
+                        Toast.makeText(context, "Couldn’t mute. Please try again.", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
+
+            AddPhotoStyleActionSheet(
+                title = "Mute ${friend.displayName}?",
+                options = listOf(
+                    ActionSheetOption(
+                        icon = Icons.Default.NotificationsOff,
+                        title = "Mute for 1 hour",
+                        subtitle = "Hide their updates and silence notifications",
+                        accentColor = Color(0xFFFFC107),
+                        onClick = { muteFriend(1L * 60L * 60L * 1000L, "1 hour") }
+                    ),
+                    ActionSheetOption(
+                        icon = Icons.Default.NotificationsOff,
+                        title = "Mute for 8 hours",
+                        subtitle = "Good for the rest of your day",
+                        accentColor = Color(0xFFFFC107),
+                        onClick = { muteFriend(8L * 60L * 60L * 1000L, "8 hours") }
+                    ),
+                    ActionSheetOption(
+                        icon = Icons.Default.NotificationsOff,
+                        title = "Mute for 24 hours",
+                        subtitle = "Silence them until tomorrow",
+                        accentColor = Color(0xFFFFC107),
+                        onClick = { muteFriend(24L * 60L * 60L * 1000L, "24 hours") }
+                    ),
+                    ActionSheetOption(
+                        icon = Icons.Default.NotificationsOff,
+                        title = "Mute for 7 days",
+                        subtitle = "Hide updates and silence messages for a week",
+                        accentColor = Color(0xFFFFC107),
+                        onClick = { muteFriend(7L * 24L * 60L * 60L * 1000L, "7 days") }
+                    )
+                ),
+                onDismiss = { muteTargetFriend = null },
+                cancelTitle = "Cancel",
+                cancelSubtitle = "Keep notifications on",
+                cancelIcon = Icons.Default.Close,
+                cancelAccentColor = Color(0xFF4B5563)
+            )
+        }
+
+        removeTargetFriend?.let { friend ->
+            AddPhotoStyleActionSheet(
+                title = "Remove friend?",
+                options = listOf(
+                    ActionSheetOption(
+                        icon = Icons.Default.Delete,
+                        title = "Remove ${friend.displayName}",
+                        subtitle = "This removes them from your friends list. You can send a new request later.",
+                        accentColor = Color(0xFFD84343),
+                        onClick = {
+                            val friendId = friend.uid
+                            optimisticallyRemovedFriendIds.add(friendId)
+                            removeTargetFriend = null
+                            viewModel.unfollowUser(currentUserId, friendId) { success ->
+                                if (success) {
+                                    Toast.makeText(context, "Removed", Toast.LENGTH_SHORT).show()
+                                } else {
+                                    optimisticallyRemovedFriendIds.remove(friendId)
+                                    Toast.makeText(context, "Couldn’t remove. Please try again.", Toast.LENGTH_SHORT).show()
+                                }
+                            }
+                        }
+                    )
+                ),
+                onDismiss = { removeTargetFriend = null },
+                cancelTitle = "Keep friend",
+                cancelSubtitle = "Cancel and keep them in your friends list",
+                cancelIcon = Icons.Default.Close,
+                cancelAccentColor = Color(0xFF4B5563)
             )
         }
 
@@ -272,13 +400,12 @@ modifier = Modifier
 private fun FriendListItem(
     friend: UserProfile,
     onProfilePhotoClick: () -> Unit = {},
-    isPendingDelete: Boolean = false,
     isRemoving: Boolean = false,
     isOwnFriendsList: Boolean = true,
     isAlreadyFriend: Boolean = false,
     hasSentRequest: Boolean = false,
     currentUserId: String,
-    onDeleteFriend: () -> Unit = {},
+    onMenuClick: () -> Unit = {},
     onAddFriend: () -> Unit = {},
     onCancelRequest: () -> Unit = {}
 ) {
@@ -360,25 +487,22 @@ private fun FriendListItem(
             }
 
             if (isOwnFriendsList) {
-                // Delete friend flow: normal -> solid red "CONFIRM DELETE" -> delete
-                val deleteRed = Color(0xFFD32F2F)
-                OutlinedButton(
-                    onClick = onDeleteFriend,
-                    enabled = !isRemoving,
-                    shape = RoundedCornerShape(20.dp),
-                    modifier = Modifier.wrapContentWidth(),
-                    colors = ButtonDefaults.outlinedButtonColors(
-                        containerColor = if (isPendingDelete) deleteRed else Color.Transparent,
-                        contentColor = if (isPendingDelete) Color.White else deleteRed,
-                        disabledContainerColor = if (isPendingDelete) deleteRed else Color.Transparent,
-                        disabledContentColor = Color.White
-                    ),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, deleteRed)
+                IconButton(
+                    onClick = onMenuClick,
+                    enabled = !isRemoving
                 ) {
-                    when {
-                        isRemoving -> Text("Removing...", fontSize = 12.sp, color = Color.White)
-                        isPendingDelete -> Text("Confirm delete", fontSize = 12.sp, color = Color.White)
-                        else -> Text("Delete friend", fontSize = 12.sp, color = deleteRed)
+                    if (isRemoving) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(20.dp),
+                            strokeWidth = 2.dp,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f)
+                        )
+                    } else {
+                        Icon(
+                            imageVector = Icons.Default.MoreVert,
+                            contentDescription = "Friend options",
+                            tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f)
+                        )
                     }
                 }
             } else {

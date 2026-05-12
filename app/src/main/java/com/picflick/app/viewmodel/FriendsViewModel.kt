@@ -8,6 +8,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.picflick.app.data.Result
 import com.picflick.app.data.UserProfile
+import com.picflick.app.repository.ChatRepository
 import com.picflick.app.repository.FlickRepository
 import com.picflick.app.repository.SocialRepository
 import com.picflick.app.utils.Analytics
@@ -20,6 +21,7 @@ class FriendsViewModel : ViewModel() {
 
     private val flickRepository = FlickRepository.getInstance()
     private val socialRepository = SocialRepository.getInstance()
+    private val chatRepository = ChatRepository()
 
     var searchResults = mutableStateListOf<UserProfile>()
         private set
@@ -258,6 +260,48 @@ class FriendsViewModel : ViewModel() {
                 android.util.Log.e("FriendsViewModel", "Failed to unfollow user $targetUserId")
                 errorMessage = "Failed to delete friend. Please try again."
                 onComplete?.invoke(false)
+            }
+        }
+    }
+
+    /**
+     * Mute a user's uploads/feed activity and direct chat notifications.
+     */
+    fun muteUser(
+        currentUser: UserProfile,
+        targetUser: UserProfile,
+        muteUntilEpochMs: Long,
+        onComplete: ((Boolean) -> Unit)? = null
+    ) {
+        addProcessingUser(targetUser.uid)
+        viewModelScope.launch {
+            try {
+                val userMuteResult = flickRepository.muteUser(currentUser.uid, targetUser.uid, muteUntilEpochMs)
+                val success = userMuteResult is Result.Success
+                if (userMuteResult is Result.Error) {
+                    errorMessage = userMuteResult.message
+                }
+
+                when (val chatResult = chatRepository.muteDirectChatWithUser(
+                    currentUserId = currentUser.uid,
+                    targetUserId = targetUser.uid,
+                    currentUserName = currentUser.displayName,
+                    targetUserName = targetUser.displayName,
+                    currentUserPhoto = currentUser.photoUrl,
+                    targetUserPhoto = targetUser.photoUrl,
+                    muteUntilEpochMs = muteUntilEpochMs
+                )) {
+                    is Result.Error -> android.util.Log.w("FriendsViewModel", "Muted user but failed to mute chat: ${chatResult.message}")
+                    is Result.Success -> Unit
+                    is Result.Loading -> Unit
+                }
+
+                onComplete?.invoke(success)
+            } catch (e: Exception) {
+                errorMessage = e.message ?: "Failed to mute user. Please try again."
+                onComplete?.invoke(false)
+            } finally {
+                removeProcessingUser(targetUser.uid)
             }
         }
     }

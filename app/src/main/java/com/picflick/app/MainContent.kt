@@ -190,7 +190,9 @@ fun AuthenticatedContent(
         is Screen.Friends -> FriendsScreenContent(
             userProfile = userProfile,
             friendsViewModel = friendsViewModel,
+            chatViewModel = chatViewModel,
             onScreenChange = onScreenChange,
+            onSetSelectedChat = onSetSelectedChat,
             followingOverrideIds = null,
             displayedUsersOverride = null,
             titleOverride = null,
@@ -206,7 +208,9 @@ fun AuthenticatedContent(
         is Screen.UserFriends -> FriendsScreenContent(
             userProfile = userProfile,
             friendsViewModel = friendsViewModel,
+            chatViewModel = chatViewModel,
             onScreenChange = onScreenChange,
+            onSetSelectedChat = onSetSelectedChat,
             followingOverrideIds = friendsOverrideIds,
             displayedUsersOverride = friendsOverrideUsers,
             titleOverride = friendsOverrideTitle,
@@ -814,7 +818,9 @@ private fun ProfileScreenContent(
 private fun FriendsScreenContent(
     userProfile: UserProfile,
     friendsViewModel: FriendsViewModel,
+    chatViewModel: ChatViewModel,
     onScreenChange: (Screen) -> Unit,
+    onSetSelectedChat: (ChatSession, String) -> Unit,
     followingOverrideIds: List<String>? = null,
     displayedUsersOverride: List<UserProfile>? = null,
     titleOverride: String? = null,
@@ -842,6 +848,35 @@ private fun FriendsScreenContent(
         },
         onCancelFriendRequestClick = { targetUser ->
             friendsViewModel.cancelFollowRequest(userProfile.uid, targetUser.uid)
+        },
+        onMessageFriendClick = { friend ->
+            chatViewModel.startChat(
+                userId = userProfile.uid,
+                otherUserId = friend.uid,
+                userName = userProfile.displayName,
+                otherUserName = friend.displayName,
+                userPhoto = userProfile.photoUrl,
+                otherUserPhoto = friend.photoUrl,
+                onChatReady = { chatId ->
+                    val session = ChatSession(
+                        id = chatId,
+                        participants = listOf(userProfile.uid, friend.uid),
+                        participantNames = mapOf(
+                            userProfile.uid to userProfile.displayName,
+                            friend.uid to friend.displayName
+                        ),
+                        participantPhotos = mapOf(
+                            userProfile.uid to userProfile.photoUrl,
+                            friend.uid to friend.photoUrl
+                        ),
+                        lastMessage = "",
+                        lastTimestamp = System.currentTimeMillis(),
+                        unreadCount = 0
+                    )
+                    onSetSelectedChat(session, friend.uid)
+                    onScreenChange(Screen.ChatDetail)
+                }
+            )
         }
     )
 }

@@ -1261,18 +1261,6 @@ Column(modifier = Modifier.fillMaxSize()) {
                             }
                         )
                     )
-                    add(
-                        ActionSheetOption(
-                            icon = Icons.Default.NotificationsOff,
-                            title = "Mute chat",
-                            subtitle = "Temporarily mute notifications",
-                            accentColor = Color(0xFF2E86DE),
-                            onClick = {
-                                showHeaderMenu = false
-                                showMuteDurationDialog = true
-                            }
-                        )
-                    )
                 } else {
                     add(
                         ActionSheetOption(
@@ -1301,6 +1289,18 @@ Column(modifier = Modifier.fillMaxSize()) {
                 )
                 add(
                     ActionSheetOption(
+                        icon = Icons.Default.NotificationsOff,
+                        title = if (isGroupChat) "Mute group chat" else "Mute conversation",
+                        subtitle = "Choose how long to silence notifications",
+                        accentColor = Color(0xFFFFC107),
+                        onClick = {
+                            showHeaderMenu = false
+                            showMuteDurationDialog = true
+                        }
+                    )
+                )
+                add(
+                    ActionSheetOption(
                         icon = if (isGroupChat) Icons.AutoMirrored.Filled.ExitToApp else Icons.Default.Delete,
                         title = if (isGroupChat) "Exit group conversation" else "Delete conversation",
                         subtitle = if (isGroupChat) "Leave this group chat" else "Remove this conversation from your inbox",
@@ -1311,18 +1311,20 @@ Column(modifier = Modifier.fillMaxSize()) {
                         }
                     )
                 )
-                add(
-                    ActionSheetOption(
-                        icon = Icons.Default.Block,
-                        title = "Block user",
-                        subtitle = "Block and report this user",
-                        accentColor = Color(0xFFD84343),
-                        onClick = {
-                            showHeaderMenu = false
-                            showBlockUserConfirm = true
-                        }
+                if (!isGroupChat) {
+                    add(
+                        ActionSheetOption(
+                            icon = Icons.Default.Block,
+                            title = "Block user",
+                            subtitle = "Block and report this user",
+                            accentColor = Color(0xFFD84343),
+                            onClick = {
+                                showHeaderMenu = false
+                                showBlockUserConfirm = true
+                            }
+                        )
                     )
-                )
+                }
             },
             onDismiss = { showHeaderMenu = false },
             cancelTitle = "Cancel",
@@ -1332,7 +1334,7 @@ Column(modifier = Modifier.fillMaxSize()) {
         )
     }
 
-    if (showBlockUserConfirm) {
+    if (showBlockUserConfirm && !isGroupChat) {
         ModalBottomSheet(
             onDismissRequest = { showBlockUserConfirm = false },
             sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
@@ -1354,16 +1356,17 @@ Column(modifier = Modifier.fillMaxSize()) {
         }
     }
 
-    if (showMuteDurationDialog && isGroupChat) {
+    if (showMuteDurationDialog) {
         val now = System.currentTimeMillis()
+        val muteTarget = if (isGroupChat) "this group" else "this conversation"
         AddPhotoStyleActionSheet(
-            title = "Mute Chat",
+            title = if (isGroupChat) "Mute group chat" else "Mute conversation",
             options = listOf(
                 ActionSheetOption(
                     icon = Icons.Default.NotificationsOff,
                     title = "Mute for 1 hour",
-                    subtitle = "Temporarily silence this group",
-                    accentColor = Color(0xFF4FC3F7),
+                    subtitle = "Temporarily silence $muteTarget",
+                    accentColor = Color(0xFFFFC107),
                     onClick = {
                         showMuteDurationDialog = false
                         viewModel.muteChat(currentUser.uid, chatId, now + (1L * 60L * 60L * 1000L))
@@ -1374,7 +1377,7 @@ Column(modifier = Modifier.fillMaxSize()) {
                     icon = Icons.Default.NotificationsOff,
                     title = "Mute for 8 hours",
                     subtitle = "Good for the rest of your day",
-                    accentColor = Color(0xFF4FC3F7),
+                    accentColor = Color(0xFFFFC107),
                     onClick = {
                         showMuteDurationDialog = false
                         viewModel.muteChat(currentUser.uid, chatId, now + (8L * 60L * 60L * 1000L))
@@ -1385,7 +1388,7 @@ Column(modifier = Modifier.fillMaxSize()) {
                     icon = Icons.Default.NotificationsOff,
                     title = "Mute for 24 hours",
                     subtitle = "Silence notifications until tomorrow",
-                    accentColor = Color(0xFF4FC3F7),
+                    accentColor = Color(0xFFFFC107),
                     onClick = {
                         showMuteDurationDialog = false
                         viewModel.muteChat(currentUser.uid, chatId, now + (24L * 60L * 60L * 1000L))
@@ -1395,8 +1398,8 @@ Column(modifier = Modifier.fillMaxSize()) {
                 ActionSheetOption(
                     icon = Icons.Default.NotificationsOff,
                     title = "Mute for 7 days",
-                    subtitle = "Silence this group for a week",
-                    accentColor = Color(0xFF4FC3F7),
+                    subtitle = "Silence $muteTarget for a week",
+                    accentColor = Color(0xFFFFC107),
                     onClick = {
                         showMuteDurationDialog = false
                         viewModel.muteChat(currentUser.uid, chatId, now + (7L * 24L * 60L * 60L * 1000L))

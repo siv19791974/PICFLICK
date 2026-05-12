@@ -40,6 +40,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.picflick.app.R
+import com.picflick.app.data.Flick
 import com.picflick.app.data.SubscriptionTier
 import com.picflick.app.data.UserProfile
 import com.picflick.app.data.getColor
@@ -49,9 +50,11 @@ import com.picflick.app.data.getDisplayName
 import com.picflick.app.data.getLightColor
 import com.picflick.app.data.getMonthlyPrice
 import com.picflick.app.data.getNextTier
+import com.picflick.app.data.Result
 import com.picflick.app.data.getQualityDescription
 import com.picflick.app.data.getStorageLimitGB
 import com.picflick.app.data.getStorageLimitBytes
+import com.picflick.app.repository.FlickRepository
 import com.picflick.app.ui.components.PullRefreshContainer
 import com.picflick.app.ui.theme.ThemeManager
 import com.picflick.app.ui.theme.isDarkModeBackground
@@ -141,8 +144,10 @@ fun ManageStorageScreen(
         prefs.edit().putLong(lastSyncKey, System.currentTimeMillis()).apply()
     }
     
-    // Calculate actual photo count from Firestore
-    var actualPhotoCount by remember { mutableIntStateOf(userProfile.totalPhotos) }
+    // Calculate actual stored photo count from Firestore, with a breakdown for hidden/orphaned docs.
+    var storedPhotoStats by remember { mutableStateOf(StoredPhotoStats(total = userProfile.totalPhotos)) }
+    val actualPhotoCount = storedPhotoStats.total
+    val flickRepository = remember { FlickRepository.getInstance() }
     var refreshNonce by remember { mutableIntStateOf(0) }
     var isRefreshing by remember { mutableStateOf(false) }
 
@@ -161,10 +166,44 @@ fun ManageStorageScreen(
                 .whereEqualTo("userId", userProfile.uid)
                 .get()
                 .await()
-            actualPhotoCount = snapshot.size()
+            val flicks = snapshot.documents.mapNotNull { doc ->
+                doc.toObject(Flick::class.java)?.copy(id = doc.id)
+            }
+            val groupDocs = db.collection("groups")
+                .whereArrayContains("memberIds", userProfile.uid)
+                .get()
+                .await()
+                .documents
+            val albumDocs = groupDocs.filter { doc ->
+                doc.getBoolean("isChatGroup") != true &&
+                    !doc.getString("groupType").equals("chat", ignoreCase = true) &&
+                    !doc.getString("source").equals("chat", ignoreCase = true)
+            }
+            val validSharedGroupIds = groupDocs.map { it.id }.toSet()
+            val activeGroupIds = albumDocs.map { it.id }.toSet()
+            val chatPhotoCount = countOwnedChatPhotos(db, userProfile.uid)
+            val stats = StoredPhotoStats.from(
+                flicks = flicks,
+                activeAlbumIds = activeGroupIds,
+                validSharedGroupIds = validSharedGroupIds,
+                chatPhotoCount = chatPhotoCount
+            )
+            if (stats.orphanedGroup > 0) {
+                when (val cleanupResult = flickRepository.cleanupOrphanedGroupFlicks(userProfile.uid, activeGroupIds)) {
+                    is Result.Success -> {
+                        if (cleanupResult.data > 0) {
+                            refreshNonce++
+                            return@LaunchedEffect
+                        }
+                    }
+                    is Result.Error -> android.util.Log.w("ManageStorageScreen", "Failed to clean orphaned album photos", cleanupResult.exception)
+                    is Result.Loading -> Unit
+                }
+            }
+            storedPhotoStats = stats
         } catch (_: Exception) {
             // Fallback to profile count if query fails
-            actualPhotoCount = userProfile.totalPhotos
+            storedPhotoStats = StoredPhotoStats(total = userProfile.totalPhotos)
         } finally {
             isRefreshing = false
         }
@@ -239,6 +278,7 @@ fun ManageStorageScreen(
                     isFounder = userProfile.isFounder,
                     subscriptionDateLabel = getSubscriptionDateLabel(userProfile),
                     photosCount = actualPhotoCount,
+                    storedPhotoBreakdown = storedPhotoStats.breakdownLabel,
                     dailyUploads = userProfile.dailyUploadsToday,
                     dailyLimit = tier.getDailyUploadLimit(),
                     isDarkMode = isDarkMode
@@ -422,6 +462,7 @@ private fun CurrentTierCard(
     isFounder: Boolean,
     subscriptionDateLabel: String?,
     photosCount: Int,
+    storedPhotoBreakdown: String,
     dailyUploads: Int,
     dailyLimit: Int,
     isDarkMode: Boolean
@@ -531,6 +572,93 @@ private fun CurrentTierCard(
                 value = "$photosCount stored",
                 isHighlighted = false,
                 isDarkMode = isDarkMode
+            )
+            if (storedPhotoBreakdown.isNotBlank()) {
+                Text(
+                    text = storedPhotoBreakdown,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 52.dp, top = 4.dp),
+                    fontSize = 12.sp,
+                    color = if (isDarkMode) Color(0xFF9CA3AF) else Color(0xFF6B7280)
+                )
+            }
+        }
+    }
+}
+
+private suspend fun countOwnedChatPhotos(db: FirebaseFirestore, userId: String): Int {
+    val sessions = db.collection("chatSessions")
+        .whereArrayContains("participants", userId)
+        .get()
+        .await()
+        .documents
+        .filter { doc ->
+            val deletedFor = (doc.get("deletedForUserIds") as? List<*>)?.filterIsInstance<String>().orEmpty()
+            userId !in deletedFor
+        }
+
+    var count = 0
+    sessions.forEach { sessionDoc ->
+        val messages = db.collection("chatSessions")
+            .document(sessionDoc.id)
+            .collection("messages")
+            .whereEqualTo("senderId", userId)
+            .get()
+            .await()
+            .documents
+        count += messages.count { messageDoc ->
+            val deletedFor = (messageDoc.get("deletedForUserIds") as? List<*>)?.filterIsInstance<String>().orEmpty()
+            userId !in deletedFor && messageDoc.getString("imageUrl").orEmpty().isNotBlank()
+        }
+    }
+
+    return count
+}
+
+private data class StoredPhotoStats(
+    val total: Int = 0,
+    val profileVisible: Int = 0,
+    val albumOrGroup: Int = 0,
+    val chatPhotos: Int = 0,
+    val orphanedGroup: Int = 0,
+    val hidden: Int = 0,
+    val missingImage: Int = 0
+) {
+    val breakdownLabel: String
+        get() {
+            if (total <= 0) return ""
+            val parts = buildList {
+                if (profileVisible > 0) add("$profileVisible profile")
+                if (albumOrGroup > 0) add("$albumOrGroup albums")
+                if (chatPhotos > 0) add("$chatPhotos chat")
+                if (orphanedGroup > 0) add("$orphanedGroup orphaned")
+                if (hidden > 0) add("$hidden hidden")
+                if (missingImage > 0) add("$missingImage missing image")
+            }
+            return parts.takeIf { it.isNotEmpty() }?.joinToString(" • ").orEmpty()
+        }
+
+    companion object {
+        fun from(
+            flicks: List<Flick>,
+            activeAlbumIds: Set<String> = emptySet(),
+            validSharedGroupIds: Set<String> = emptySet(),
+            chatPhotoCount: Int = 0
+        ): StoredPhotoStats {
+            val hidden = flicks.count { it.autoHiddenByReports }
+            val missingImage = flicks.count { it.imageUrl.isBlank() }
+            val visibleAlbumFlicks = flicks.filter {
+                !it.autoHiddenByReports && it.sharedGroupId.isNotBlank() && it.sharedGroupId in activeAlbumIds
+            }
+            return StoredPhotoStats(
+                total = flicks.size + chatPhotoCount,
+                profileVisible = flicks.count { !it.autoHiddenByReports && it.sharedGroupId.isBlank() },
+                albumOrGroup = visibleAlbumFlicks.size,
+                chatPhotos = chatPhotoCount,
+                orphanedGroup = flicks.count { !it.autoHiddenByReports && it.sharedGroupId.isNotBlank() && it.sharedGroupId !in validSharedGroupIds },
+                hidden = hidden,
+                missingImage = missingImage
             )
         }
     }
@@ -697,8 +825,63 @@ private data class ManageStorageCalculationResult(
 )
 
 private suspend fun calculateStorageUsedBytesFromFiles(userId: String): ManageStorageCalculationResult {
-    val root = FirebaseStorage.getInstance().reference.child("photos").child(userId)
-    return calculateFolderBytesRecursive(root)
+    val storage = FirebaseStorage.getInstance().reference
+    val photoResult = calculateFolderBytesRecursive(storage.child("photos").child(userId))
+    val chatResult = calculateOwnedChatImageBytes(userId)
+    return ManageStorageCalculationResult(
+        totalBytes = photoResult.totalBytes + chatResult.totalBytes,
+        hadErrors = photoResult.hadErrors || chatResult.hadErrors
+    )
+}
+
+private suspend fun calculateOwnedChatImageBytes(userId: String): ManageStorageCalculationResult {
+    val db = FirebaseFirestore.getInstance()
+    val sessions = runCatching {
+        db.collection("chatSessions")
+            .whereArrayContains("participants", userId)
+            .get()
+            .await()
+            .documents
+            .filter { doc ->
+                val deletedFor = (doc.get("deletedForUserIds") as? List<*>)?.filterIsInstance<String>().orEmpty()
+                userId !in deletedFor
+            }
+    }.getOrElse {
+        return ManageStorageCalculationResult(totalBytes = 0L, hadErrors = true)
+    }
+
+    var total = 0L
+    var hadErrors = false
+    sessions.forEach { sessionDoc ->
+        val messageDocs = runCatching {
+            db.collection("chatSessions")
+                .document(sessionDoc.id)
+                .collection("messages")
+                .whereEqualTo("senderId", userId)
+                .get()
+                .await()
+                .documents
+        }.getOrElse {
+            hadErrors = true
+            emptyList()
+        }
+
+        messageDocs.forEach { messageDoc ->
+            val deletedFor = (messageDoc.get("deletedForUserIds") as? List<*>)?.filterIsInstance<String>().orEmpty()
+            val imageUrl = messageDoc.getString("imageUrl").orEmpty()
+            if (userId in deletedFor || imageUrl.isBlank()) return@forEach
+
+            val bytes = runCatching {
+                FirebaseStorage.getInstance().getReferenceFromUrl(imageUrl).metadata.await().sizeBytes
+            }.getOrElse {
+                hadErrors = true
+                0L
+            }
+            total += bytes
+        }
+    }
+
+    return ManageStorageCalculationResult(totalBytes = total, hadErrors = hadErrors)
 }
 
 private suspend fun calculateFolderBytesRecursive(folderRef: StorageReference): ManageStorageCalculationResult {
