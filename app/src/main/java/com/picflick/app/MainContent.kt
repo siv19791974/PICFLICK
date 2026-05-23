@@ -278,7 +278,8 @@ fun AuthenticatedContent(
             chatViewModel = chatViewModel,
             onSetSelectedChat = onSetSelectedChat,
             onScreenChange = onScreenChange,
-            onOpenUploadSourceDialog = onOpenUploadSourceDialog
+            onOpenUploadSourceDialog = onOpenUploadSourceDialog,
+            onRequestOpenGroupsManager = onRequestOpenGroupsManager
         )
 
         is Screen.Settings -> SettingsScreenContent(
@@ -1197,7 +1198,8 @@ private fun NotificationsScreenContent(
     chatViewModel: ChatViewModel,
     onSetSelectedChat: (ChatSession, String) -> Unit,
     onScreenChange: (Screen) -> Unit,
-    onOpenUploadSourceDialog: () -> Unit
+    onOpenUploadSourceDialog: () -> Unit,
+    onRequestOpenGroupsManager: () -> Unit
 ) {
     var selectedNotificationPhoto by remember { mutableStateOf<Flick?>(null) }
     var notificationOpenComments by remember { mutableStateOf(false) }
