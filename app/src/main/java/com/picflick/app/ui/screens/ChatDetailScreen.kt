@@ -876,19 +876,20 @@ Column(modifier = Modifier.fillMaxSize()) {
     val deleteForEveryoneWindowMs = 10 * 60 * 1000L
     val nowForDeleteDialog = System.currentTimeMillis()
     val selectedMessagesForDelete = viewModel.messages.filter { it.id in selectedMessageIds }
-    val olderThanWindowCount = selectedMessagesForDelete.count {
-        (nowForDeleteDialog - it.timestamp) > deleteForEveryoneWindowMs
+    val deleteForMeCount = selectedMessagesForDelete.count {
+        it.senderId != currentUser.uid || (nowForDeleteDialog - it.timestamp) > deleteForEveryoneWindowMs
     }
+    val deleteForEveryoneCount = selectedMessagesForDelete.size - deleteForMeCount
     val deleteDialogText = when {
         selectedMessagesForDelete.isEmpty() -> "No messages selected."
-        olderThanWindowCount == selectedMessagesForDelete.size ->
-            "These messages are older than 10 minutes and will be deleted only for you."
-        olderThanWindowCount > 0 ->
-            "$olderThanWindowCount selected message(s) are older than 10 minutes and will be deleted only for you. Newer ones will be deleted for everyone."
-        else ->
+        deleteForEveryoneCount == 0 ->
+            "These message(s) will be deleted only for you."
+        deleteForMeCount == 0 ->
             "These selected message(s) will be deleted for everyone."
+        else ->
+            "$deleteForMeCount selected message(s) will be deleted only for you. $deleteForEveryoneCount recent message(s) you sent will be deleted for everyone."
     }
-    val deleteConfirmLabel = if (olderThanWindowCount > 0) "Delete only for you" else "Delete"
+    val deleteConfirmLabel = if (deleteForEveryoneCount == 0) "Delete only for you" else "Delete"
 
     if (showMyFlickPicker) {
         Dialog(

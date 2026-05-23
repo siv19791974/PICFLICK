@@ -105,7 +105,84 @@ class ChatRepository {
             .filter { notification -> notification.getString("messageId") == messageId }
             .forEach { notification ->
                 runCatching { notification.reference.delete().await() }
+                    .onFailure { e ->
+                        android.util.Log.w(
+                            "ChatRepository",
+                            "Failed to delete notification=${notification.id} for message=$messageId",
+                            e
+                        )
+                    }
             }
+    }
+
+    private suspend fun clearRepliesToDeletedMessage(chatId: String, deletedMessageId: String) {
+        val replySnapshots = db.collection("chatSessions")
+            .document(chatId)
+            .collection("messages")
+            .whereEqualTo("replyToMessageId", deletedMessageId)
+            .get()
+            .await()
+
+        replySnapshots.documents.forEach { replyDoc ->
+            runCatching {
+                replyDoc.reference.update(
+                    mapOf(
+                        "replyToMessageId" to FieldValue.delete(),
+                        "quotedText" to "Original message deleted",
+                        "quotedSenderName" to "",
+                        "quotedImageUrl" to FieldValue.delete()
+                    )
+                ).await()
+            }.onFailure { e ->
+                android.util.Log.w(
+                    "ChatRepository",
+                    "Failed to clear reply reference in message=${replyDoc.id} for deleted message=$deletedMessageId",
+                    e
+                )
+            }
+        }
+    }
+
+    private suspend fun updateChatSummaryFromLatestVisibleMessage(chatId: String) {
+        val sessionRef = db.collection("chatSessions").document(chatId)
+        val sessionSnapshot = sessionRef.get().await()
+        val participants = (sessionSnapshot.get("participants") as? List<*>)
+            ?.filterIsInstance<String>()
+            .orEmpty()
+
+        val latestMessageSnapshot = sessionRef.collection("messages")
+            .orderBy("timestamp", Query.Direction.DESCENDING)
+            .limit(25)
+            .get()
+            .await()
+
+        val latestDoc = latestMessageSnapshot.documents.firstOrNull { doc ->
+            val deletedFor = (doc.get("deletedForUserIds") as? List<*>)
+                ?.filterIsInstance<String>()
+                .orEmpty()
+            participants.isEmpty() || !participants.all { it in deletedFor }
+        }
+
+        if (latestDoc != null) {
+            val latestText = latestDoc.getString("text").orEmpty()
+            val latestImage = latestDoc.getString("imageUrl").orEmpty()
+            val lastMessagePreview = if (latestText.isBlank() && latestImage.isNotBlank()) "📷 Photo" else latestText
+            sessionRef.update(
+                mapOf(
+                    "lastMessage" to lastMessagePreview,
+                    "lastTimestamp" to (latestDoc.getLong("timestamp") ?: System.currentTimeMillis()),
+                    "lastSenderId" to latestDoc.getString("senderId").orEmpty()
+                )
+            ).await()
+        } else {
+            sessionRef.update(
+                mapOf(
+                    "lastMessage" to "",
+                    "lastTimestamp" to System.currentTimeMillis(),
+                    "lastSenderId" to ""
+                )
+            ).await()
+        }
     }
 
     private fun com.google.firebase.firestore.DocumentSnapshot.toChatSessionSafe(userId: String): ChatSession {
@@ -845,59 +922,39 @@ class ChatRepository {
 
             val now = System.currentTimeMillis()
             val deleteForEveryoneWindowMs = 10 * 60 * 1000L
-            var hardDeleteCount = 0
+            var deletedAnyMessage = false
+            val hardDeletedMessageIds = mutableListOf<String>()
 
             messageIds.forEach { messageId ->
                 val messageRef = messagesCollection.document(messageId)
                 val messageDoc = messageRef.get().await()
+                if (!messageDoc.exists()) return@forEach
+
+                val senderId = messageDoc.getString("senderId").orEmpty()
                 val timestamp = messageDoc.getLong("timestamp") ?: 0L
                 val ageMs = now - timestamp
+                val canDeleteForEveryone = senderId == currentUserId && ageMs <= deleteForEveryoneWindowMs
 
-                if (ageMs <= deleteForEveryoneWindowMs) {
+                if (canDeleteForEveryone) {
                     deleteMessageStorageIfOwned(messageDoc, currentUserId)
                     deleteMessageNotifications(chatId, messageId)
+                    hardDeletedMessageIds += messageId
                     batch.delete(messageRef)
-                    hardDeleteCount++
+                    deletedAnyMessage = true
                 } else {
                     batch.update(messageRef, "deletedForUserIds", FieldValue.arrayUnion(currentUserId))
+                    deletedAnyMessage = true
                 }
             }
             batch.commit().await()
 
-            if (hardDeleteCount > 0) {
+            hardDeletedMessageIds.forEach { messageId ->
+                clearRepliesToDeletedMessage(chatId, messageId)
+            }
+
+            if (deletedAnyMessage) {
                 recalculateUnreadCounters(chatId)
-
-                // Update chat summary with latest remaining message (if any)
-                val latestMessageSnapshot = messagesCollection
-                    .orderBy("timestamp", Query.Direction.DESCENDING)
-                    .limit(1)
-                    .get()
-                    .await()
-
-                val latestDoc = latestMessageSnapshot.documents.firstOrNull()
-                if (latestDoc != null) {
-                    val latestText = latestDoc.getString("text").orEmpty()
-                    val latestImage = latestDoc.getString("imageUrl").orEmpty()
-                    val lastMessagePreview = if (latestText.isBlank() && latestImage.isNotBlank()) "📷 Photo" else latestText
-
-                    db.collection("chatSessions").document(chatId)
-                        .update(
-                            mapOf(
-                                "lastMessage" to lastMessagePreview,
-                                "lastTimestamp" to (latestDoc.getLong("timestamp") ?: System.currentTimeMillis()),
-                                "lastSenderId" to (latestDoc.getString("senderId") ?: "")
-                            )
-                        ).await()
-                } else {
-                    db.collection("chatSessions").document(chatId)
-                        .update(
-                            mapOf(
-                                "lastMessage" to "",
-                                "lastTimestamp" to System.currentTimeMillis(),
-                                "lastSenderId" to ""
-                            )
-                        ).await()
-                }
+                updateChatSummaryFromLatestVisibleMessage(chatId)
             }
 
             Result.Success(Unit)

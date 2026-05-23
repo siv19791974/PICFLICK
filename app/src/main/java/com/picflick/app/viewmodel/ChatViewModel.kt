@@ -552,12 +552,12 @@ class ChatViewModel : ViewModel() {
     ) {
         viewModelScope.launch {
             val deletableIds = messages
-                .filter { it.id in messageIds && it.senderId == currentUserId }
+                .filter { it.id in messageIds }
                 .map { it.id }
                 .toSet()
 
             if (deletableIds.isEmpty()) {
-                errorMessage = "You can only delete your own messages"
+                errorMessage = "No messages selected"
                 onComplete(false)
                 return@launch
             }
