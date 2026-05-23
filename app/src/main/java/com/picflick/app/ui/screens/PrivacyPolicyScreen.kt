@@ -271,7 +271,7 @@ private fun PolicySection(
                 text = title,
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Bold,
-                color = Color(0xFF1565C0),
+                color = Color(0xFF2A4A73),
                 modifier = Modifier.padding(bottom = 8.dp)
             )
             Text(

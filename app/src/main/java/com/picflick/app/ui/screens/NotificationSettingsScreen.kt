@@ -343,7 +343,7 @@ private fun MasterToggle(
             Icon(
                 imageVector = Icons.Default.Notifications,
                 contentDescription = null,
-                tint = if (checked) Color(0xFF1565C0) else if (isDarkMode) Color.Gray else Color.DarkGray,
+                tint = if (checked) Color(0xFF2A4A73) else if (isDarkMode) Color.Gray else Color.DarkGray,
                 modifier = Modifier.size(32.dp)
             )
 
@@ -371,8 +371,8 @@ private fun MasterToggle(
                 checked = checked,
                 onCheckedChange = onCheckedChange,
                 colors = SwitchDefaults.colors(
-                    checkedThumbColor = Color(0xFF1565C0),
-                    checkedTrackColor = Color(0xFF1565C0).copy(alpha = 0.5f)
+                    checkedThumbColor = Color(0xFF2A4A73),
+                    checkedTrackColor = Color(0xFF2A4A73).copy(alpha = 0.5f)
                 )
             )
         }
@@ -409,7 +409,7 @@ private fun NotificationToggle(
                     .size(40.dp)
                     .background(
                         if (checked) {
-                            if (isDarkMode) Color(0xFF1565C0).copy(alpha = 0.2f) else Color(0xFFE3F2FD)
+                            if (isDarkMode) Color(0xFF2A4A73).copy(alpha = 0.2f) else Color(0xFFE3F2FD)
                         } else {
                             if (isDarkMode) Color(0xFF2C2C2E) else Color(0xFFE0E0E0)
                         },
@@ -420,7 +420,7 @@ private fun NotificationToggle(
                 Icon(
                     imageVector = icon,
                     contentDescription = null,
-                    tint = if (checked) Color(0xFF1565C0) else if (isDarkMode) Color.Gray else Color.DarkGray,
+                    tint = if (checked) Color(0xFF2A4A73) else if (isDarkMode) Color.Gray else Color.DarkGray,
                     modifier = Modifier.size(20.dp)
                 )
             }
@@ -445,8 +445,8 @@ private fun NotificationToggle(
                 checked = checked,
                 onCheckedChange = onCheckedChange,
                 colors = SwitchDefaults.colors(
-                    checkedThumbColor = Color(0xFF1565C0),
-                    checkedTrackColor = Color(0xFF1565C0).copy(alpha = 0.5f),
+                    checkedThumbColor = Color(0xFF2A4A73),
+                    checkedTrackColor = Color(0xFF2A4A73).copy(alpha = 0.5f),
                     uncheckedThumbColor = if (isDarkMode) Color.Gray else Color.Gray,
                     uncheckedTrackColor = if (isDarkMode) Color(0xFF2C2C2E) else Color.LightGray
                 )
@@ -642,7 +642,7 @@ private fun DisplayToggle(
             .padding(vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Icon(icon, null, tint = if (checked) Color(0xFF1565C0) else if (isDarkMode) Color.Gray else Color.DarkGray, modifier = Modifier.size(20.dp))
+        Icon(icon, null, tint = if (checked) Color(0xFF2A4A73) else if (isDarkMode) Color.Gray else Color.DarkGray, modifier = Modifier.size(20.dp))
         Spacer(modifier = Modifier.width(12.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(title, color = if (isDarkMode) Color.White else Color.Black, fontWeight = FontWeight.Medium)
@@ -652,7 +652,7 @@ private fun DisplayToggle(
             checked = checked,
             onCheckedChange = onCheckedChange,
             colors = SwitchDefaults.colors(
-                checkedThumbColor = Color(0xFF1565C0),
+                checkedThumbColor = Color(0xFF2A4A73),
                 checkedTrackColor = Color(0xFFD7ECFF).copy(alpha = 0.5f)
             )
         )
@@ -679,7 +679,7 @@ private fun EmailSection(
                     },
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(Icons.Default.Email, null, tint = if (preferences.emailNotificationsEnabled) Color(0xFF1565C0) else if (isDarkMode) Color.Gray else Color.DarkGray)
+                    Icon(Icons.Default.Email, null, tint = if (preferences.emailNotificationsEnabled) Color(0xFF2A4A73) else if (isDarkMode) Color.Gray else Color.DarkGray)
                     Spacer(modifier = Modifier.width(12.dp))
                     Column(modifier = Modifier.weight(1f)) {
                         Text("Enable Email Notifications", color = if (isDarkMode) Color.White else Color.Black, fontWeight = FontWeight.Medium)
@@ -691,8 +691,8 @@ private fun EmailSection(
                             onPreferencesChange(preferences.copy(emailNotificationsEnabled = it))
                         },
                         colors = SwitchDefaults.colors(
-                            checkedThumbColor = Color(0xFF1565C0),
-                            checkedTrackColor = Color(0xFF1565C0).copy(alpha = 0.5f)
+                            checkedThumbColor = Color(0xFF2A4A73),
+                            checkedTrackColor = Color(0xFF2A4A73).copy(alpha = 0.5f)
                         )
                     )
                 }
@@ -731,8 +731,8 @@ private fun EmailToggle(title: String, subtitle: String, checked: Boolean, isDar
             checked = checked,
             onCheckedChange = onCheckedChange,
             colors = SwitchDefaults.colors(
-                checkedThumbColor = Color(0xFF1565C0),
-                checkedTrackColor = Color(0xFF1565C0).copy(alpha = 0.5f)
+                checkedThumbColor = Color(0xFF2A4A73),
+                checkedTrackColor = Color(0xFF2A4A73).copy(alpha = 0.5f)
             )
         )
     }

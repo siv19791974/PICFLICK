@@ -174,7 +174,7 @@ fun PlanOptionsScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
             
-            val selectedToggleBlue = Color(0xFF1565C0)
+            val selectedToggleBlue = Color(0xFF2A4A73)
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)

@@ -9,6 +9,7 @@ import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 import com.google.firebase.firestore.SetOptions
+import com.google.firebase.storage.FirebaseStorage
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
@@ -20,6 +21,7 @@ import kotlinx.coroutines.tasks.await
  */
 class ChatRepository {
     private val db = FirebaseFirestore.getInstance()
+    private val storage = FirebaseStorage.getInstance()
 
     private fun Any?.toIntOrNullSafe(): Int? = when (this) {
         is Int -> this
@@ -43,6 +45,32 @@ class ChatRepository {
             }
             ?.toMap()
             ?: emptyMap()
+    }
+
+    private suspend fun deleteMessageStorageIfOwned(messageDoc: com.google.firebase.firestore.DocumentSnapshot, currentUserId: String) {
+        val senderId = messageDoc.getString("senderId").orEmpty()
+        if (senderId != currentUserId) return
+
+        val imageUrl = messageDoc.getString("imageUrl").orEmpty()
+        if (!imageUrl.startsWith("http", ignoreCase = true) || !imageUrl.contains("/chat_images")) return
+
+        runCatching {
+            storage.getReferenceFromUrl(imageUrl).delete().await()
+        }.onFailure { e ->
+            android.util.Log.w("ChatRepository", "Failed to delete chat image storage for message=${messageDoc.id}", e)
+        }
+    }
+
+    private suspend fun deleteMessageNotifications(chatId: String, messageId: String) {
+        val notifications = db.collection(Constants.FirebaseCollections.NOTIFICATIONS)
+            .whereEqualTo("chatId", chatId)
+            .get()
+            .await()
+        notifications.documents
+            .filter { notification -> notification.getString("messageId") == messageId }
+            .forEach { notification ->
+                runCatching { notification.reference.delete().await() }
+            }
     }
 
     private fun com.google.firebase.firestore.DocumentSnapshot.toChatSessionSafe(userId: String): ChatSession {
@@ -295,6 +323,7 @@ class ChatRepository {
                 "senderName" to message.senderName,
                 "senderPhotoUrl" to message.senderPhotoUrl,
                 "chatId" to chatId,
+                "messageId" to messageWithId.id,
                 "timestamp" to System.currentTimeMillis(),
                 "isRead" to false
             )
@@ -500,6 +529,7 @@ class ChatRepository {
                         "senderName" to message.senderName,
                         "senderPhotoUrl" to message.senderPhotoUrl,
                         "chatId" to chatId,
+                        "messageId" to messageWithId.id,
                         "groupName" to groupDisplayName,
                         "groupIcon" to groupDisplayIcon,
                         "timestamp" to System.currentTimeMillis(),
@@ -798,6 +828,8 @@ class ChatRepository {
                 val ageMs = now - timestamp
 
                 if (ageMs <= deleteForEveryoneWindowMs) {
+                    deleteMessageStorageIfOwned(messageDoc, currentUserId)
+                    deleteMessageNotifications(chatId, messageId)
                     batch.delete(messageRef)
                     hardDeleteCount++
                 } else {

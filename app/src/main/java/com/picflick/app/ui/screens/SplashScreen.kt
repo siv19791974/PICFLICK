@@ -117,7 +117,7 @@ private fun LoadingDots(modifier: Modifier = Modifier) {
                     .size(12.dp)
                     .scale(scale)
                     .background(
-                        color = Color(0xFF1976D2),
+                        color = Color(0xFF2A4A73),
                         shape = CircleShape
                     )
             )
@@ -139,7 +139,7 @@ fun SplashScreenPreview() {
         Box(
             modifier = Modifier
                 .size(48.dp)
-                .background(Color(0xFF1976D2), CircleShape),
+                .background(Color(0xFF2A4A73), CircleShape),
             contentAlignment = Alignment.Center
         ) {
             // PF text representing logo

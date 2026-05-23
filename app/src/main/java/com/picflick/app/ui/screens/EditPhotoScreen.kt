@@ -330,7 +330,7 @@ fun EditPhotoScreen(
                                 .size(36.dp)
                                 .background(
                                     if (canSave) {
-                                        if (isDarkMode) Color(0xFF4CAF50) else Color(0xFF1565C0)
+                                        if (isDarkMode) Color(0xFF4CAF50) else Color(0xFF2A4A73)
                                     } else Color.Gray,
                                     RoundedCornerShape(20.dp)
                                 ),
@@ -366,7 +366,7 @@ fun EditPhotoScreen(
             if (isLoading) {
                 CircularProgressIndicator(
                     modifier = Modifier.align(Alignment.Center),
-                    color = if (isDarkMode) Color.White else Color(0xFF1565C0)
+                    color = if (isDarkMode) Color.White else Color(0xFF2A4A73)
                 )
             } else {
                 bitmap?.let { bmp ->
@@ -385,7 +385,7 @@ fun EditPhotoScreen(
                                     horizontalAlignment = Alignment.CenterHorizontally
                                 ) {
                                     CircularProgressIndicator(
-                                        color = if (isDarkMode) Color(0xFF87CEEB) else Color(0xFF1565C0),
+                                        color = if (isDarkMode) Color(0xFF2A4A73) else Color(0xFF2A4A73),
                                         strokeWidth = 3.dp,
                                         modifier = Modifier.size(48.dp)
                                     )
@@ -639,7 +639,7 @@ private fun EditTaggedFriendChip(
     Box(
         modifier = Modifier
             .clip(RoundedCornerShape(16.dp))
-            .background(if (isDarkMode) Color(0xFF87CEEB) else Color(0xFF1565C0))
+            .background(if (isDarkMode) Color(0xFF2A4A73) else Color(0xFF2A4A73))
             .padding(start = 6.dp, end = 4.dp, top = 4.dp, bottom = 4.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -735,7 +735,7 @@ private fun EditFriendPickerItem(
             Icon(
                 imageVector = Icons.Default.Check,
                 contentDescription = null,
-                tint = Color(0xFF87CEEB)
+                tint = Color(0xFF2A4A73)
             )
         }
     }
@@ -763,7 +763,7 @@ filter: PhotoFilter,
                 .border(
                     width = if (isSelected) 4.dp else 2.dp,
                     color = if (isSelected) {
-                        if (isDarkMode) Color(0xFF87CEEB) else Color(0xFF1565C0)
+                        if (isDarkMode) Color(0xFF2A4A73) else Color(0xFF2A4A73)
                     } else {
                         if (isDarkMode) Color.White.copy(alpha = 0.3f) else Color.Black.copy(alpha = 0.3f)
                     },
@@ -797,7 +797,7 @@ filter: PhotoFilter,
         Text(
             text = filter.displayName,
             color = if (isSelected) {
-                if (isDarkMode) Color(0xFF87CEEB) else Color(0xFF1565C0)
+                if (isDarkMode) Color(0xFF2A4A73) else Color(0xFF2A4A73)
             } else {
                 if (isDarkMode) Color.White.copy(alpha = 0.7f) else Color.Black.copy(alpha = 0.7f)
             },

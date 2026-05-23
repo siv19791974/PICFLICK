@@ -60,7 +60,7 @@ fun PrivacyScreen(
     var showUnmuteDialog by remember { mutableStateOf<UserProfile?>(null) }
 
     // Theme-aware colors
-    val accentColor = Color(0xFF1565C0) // Blue for light mode
+    val accentColor = Color(0xFF2A4A73) // Blue for light mode
     val textColor = if (isDarkMode) Color.White else Color.Black
     val subtitleColor = if (isDarkMode) Color.Gray else Color.DarkGray
     val cardBackground = isDarkModeSurface(isDarkMode)
@@ -406,7 +406,7 @@ fun PrivacyScreen(
                 Text("They will be able to see your public content and interact with you again.", color = Color(0xFFB7BDC9), fontSize = 14.sp, modifier = Modifier.padding(bottom = 16.dp))
                 ActionSheetRow(icon = Icons.Default.Close, title = "Keep Blocked", accentColor = Color.Gray, onClick = { showUnblockDialog = null })
                 Spacer(Modifier.height(12.dp))
-                ActionSheetRow(icon = Icons.Default.LockOpen, title = "Unblock", accentColor = Color(0xFF1565C0), onClick = {
+                ActionSheetRow(icon = Icons.Default.LockOpen, title = "Unblock", accentColor = Color(0xFF2A4A73), onClick = {
                     repository.unblockUser(userProfile.uid, user.uid) { result ->
                         if (result is com.picflick.app.data.Result.Success) {
                             blockedUsers = blockedUsers.filter { it.uid != user.uid }
@@ -422,7 +422,7 @@ fun PrivacyScreen(
 
 @Composable
 private fun PrivacyBanner(isDarkMode: Boolean) {
-    val accentColor = Color(0xFF1565C0)
+    val accentColor = Color(0xFF2A4A73)
     val textColor = if (isDarkMode) Color.White else Color.Black
     val subtitleColor = if (isDarkMode) Color.Gray else Color.DarkGray
     val cardBackground = if (isDarkMode) Color(0xFF1C1C1E) else Color.White
@@ -474,7 +474,7 @@ private fun DefaultPrivacySetting(
     val textColor = if (isDarkMode) Color.White else Color.Black
     val subtitleColor = if (isDarkMode) Color.Gray else Color.DarkGray
     val cardBackground = if (isDarkMode) Color(0xFF1C1C1E) else Color.White
-    val accentColor = Color(0xFF1565C0)
+    val accentColor = Color(0xFF2A4A73)
     val dividerColor = if (isDarkMode) Color(0xFF2C2C2E) else Color.LightGray
 
     Column(
@@ -544,7 +544,7 @@ private fun PrivacyOption(
 ) {
     val textColor = if (isDarkMode) Color.White else Color.Black
     val subtitleColor = if (isDarkMode) Color.Gray else Color.DarkGray
-    val accentColor = Color(0xFF1565C0)
+    val accentColor = Color(0xFF2A4A73)
 
     Row(
         modifier = Modifier
@@ -593,7 +593,7 @@ private fun PrivacyPolicyLink(
 ) {
     val textColor = if (isDarkMode) Color.White else Color.Black
     val subtitleColor = if (isDarkMode) Color.Gray else Color.DarkGray
-    val accentColor = Color(0xFF1565C0)
+    val accentColor = Color(0xFF2A4A73)
 
     Column(
         modifier = Modifier.fillMaxWidth()
@@ -808,7 +808,7 @@ private fun MutedChatItem(
                     modifier = Modifier
                         .size(48.dp)
                         .clip(CircleShape)
-                        .background(if (isGroup) Color(0xFF1565C0) else subtitleColor),
+                        .background(if (isGroup) Color(0xFF2A4A73) else subtitleColor),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
@@ -1115,7 +1115,7 @@ private fun BlockedUserItem(
             OutlinedButton(
                 onClick = onUnblock,
                 border = ButtonDefaults.outlinedButtonBorder.copy(
-                    brush = androidx.compose.ui.graphics.SolidColor(Color(0xFF1565C0))
+                    brush = androidx.compose.ui.graphics.SolidColor(Color(0xFF2A4A73))
                 ),
                 colors = ButtonDefaults.outlinedButtonColors(
                     contentColor = Color(0xFF2A4A73)

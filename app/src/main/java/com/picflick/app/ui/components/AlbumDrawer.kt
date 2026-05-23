@@ -155,7 +155,7 @@ fun AlbumDrawer(
                             Text(
                                 text = "Edit",
                                 fontSize = 14.sp,
-                                color = Color(0xFF4FC3F7)
+                                color = Color(0xFF2A4A73)
                             )
                         }
                     }
@@ -224,7 +224,7 @@ fun AlbumDrawer(
                             .fillMaxWidth()
                             .padding(vertical = 16.dp),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = Color(0xFF4FC3F7)
+                            containerColor = Color(0xFF2A4A73)
                         )
                     ) {
                         Icon(
@@ -253,7 +253,7 @@ private fun AlbumItem(
     accentColor: Color? = null
 ) {
     val backgroundColor = when {
-        isSelected -> accentColor ?: Color(0xFF4FC3F7)
+        isSelected -> accentColor ?: Color(0xFF2A4A73)
         isDarkMode -> Color(0xFF2D2D2D)
         else -> Color(0xFFF5F5F5)
     }

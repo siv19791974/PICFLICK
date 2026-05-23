@@ -548,7 +548,7 @@ fun ChatsScreen(
                             icon = Icons.Default.Check,
                             title = "Mark selected as read",
                             subtitle = "Clear unread count for ${selectedCount} chat${if (selectedCount > 1) "s" else ""}",
-                            accentColor = Color(0xFF2E86DE),
+                            accentColor = Color(0xFF2A4A73),
                             onClick = {
                                 selectedChatIds.toList().forEach { chatId ->
                                     viewModel.markAsRead(chatId, userProfile.uid)
@@ -1157,7 +1157,7 @@ private fun ChatListItem(
                         .fillMaxSize()
                         .clip(CircleShape)
                         .border(2.dp, Color.Black, CircleShape)
-                        .background(Color(0xFF1565C0).copy(alpha = 0.15f)),
+                        .background(Color(0xFF2A4A73).copy(alpha = 0.15f)),
                     contentAlignment = Alignment.Center
                 ) {
                     if (groupIcon.startsWith("http")) {
@@ -1247,7 +1247,7 @@ private fun ChatListItem(
                     Text(
                         text = formatChatTime(session.lastTimestamp),
                         fontSize = 12.sp,
-                        color = if (hasUnread) Color(0xFF1565C0) else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                        color = if (hasUnread) Color(0xFF2A4A73) else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
                         fontWeight = if (hasUnread) FontWeight.Bold else FontWeight.Normal
                     )
                 }
@@ -1285,7 +1285,7 @@ private fun ChatListItem(
                             .size(20.dp)
                             .offset(y = (-1).dp)
                             .clip(CircleShape)
-                            .background(Color(0xFF1565C0)),
+                            .background(Color(0xFF2A4A73)),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(

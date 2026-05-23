@@ -704,7 +704,7 @@ private fun TierFeatureRow(
         Icon(
             imageVector = icon,
             contentDescription = stringResource(R.string.content_desc_check),
-            tint = if (isHighlighted) Color(0xFF1565C0) else if (isDarkMode) Color.Gray else Color.DarkGray,
+            tint = if (isHighlighted) Color(0xFF2A4A73) else if (isDarkMode) Color.Gray else Color.DarkGray,
             modifier = Modifier.size(20.dp)
         )
         
@@ -723,7 +723,7 @@ private fun TierFeatureRow(
             fontWeight = FontWeight.Medium,
             color = when {
                 isUnlimited -> Color(0xFF00C853)
-                isHighlighted -> Color(0xFF1565C0)
+                isHighlighted -> Color(0xFF2A4A73)
                 else -> if (isDarkMode) Color.Gray else Color.DarkGray
             }
         )
@@ -761,7 +761,7 @@ private fun UpgradeOptionsCard(
                 Icon(
                     imageVector = Icons.Default.Upgrade,
                     contentDescription = stringResource(R.string.content_desc_upgrade),
-                    tint = if (isDarkMode) Color(0xFFFF8F00) else Color(0xFF1565C0),
+                    tint = if (isDarkMode) Color(0xFFFF8F00) else Color(0xFF2A4A73),
                     modifier = Modifier.size(32.dp)
                 )
                 
@@ -789,7 +789,7 @@ private fun UpgradeOptionsCard(
                         text = priceText,
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Bold,
-                        color = Color(0xFF1565C0)
+                        color = Color(0xFF2A4A73)
                     )
                     Text(
                         text = "/month",
@@ -803,7 +803,7 @@ private fun UpgradeOptionsCard(
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
                     contentDescription = stringResource(R.string.content_desc_next),
-                    tint = Color(0xFF1565C0)
+                    tint = Color(0xFF2A4A73)
                 )
             }
         }

@@ -31,7 +31,7 @@ val PicFlickLightOnBackground = Color.Black
 val PicFlickLightOnSurface = Color(0xFF1C1B1F)
 
 /** Accent color - Light blue */
-val PicFlickAccent = Color(0xFF87CEEB)
+val PicFlickAccent = Color(0xFF2A4A73)
 
 /** Secondary text - Gray */
 val PicFlickLightSecondaryText = Color.Gray

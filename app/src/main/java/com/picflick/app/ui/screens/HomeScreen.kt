@@ -43,7 +43,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
-import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.snapshots.SnapshotStateMap
@@ -139,7 +138,6 @@ fun HomeScreen(
     var showCreateChatGroupDialog by remember { mutableStateOf(false) }
     var editingGroup by remember { mutableStateOf<FriendGroup?>(null) }
     var viewingGroup by remember { mutableStateOf<FriendGroup?>(null) }
-    var inviteTargetGroup by remember { mutableStateOf<FriendGroup?>(null) }
     var adminTargetGroup by remember { mutableStateOf<FriendGroup?>(null) }
     var pendingGroupIconSourceUri by remember { mutableStateOf<Uri?>(null) }
     var showGroupIconCropDialog by remember { mutableStateOf(false) }
@@ -480,33 +478,24 @@ fun HomeScreen(
         showCreateChatGroupDialog = false
     }
 
-    BackHandler(enabled = editingGroup != null && !showGroupIconCropDialog && !showCreateGroupDialog) {
-        editingGroup = null
-        editDialogIconOverride = null
-    }
-
     BackHandler(enabled = viewingGroup != null && !showGroupIconCropDialog && !showCreateGroupDialog && editingGroup == null) {
         viewingGroup = null
     }
 
-    BackHandler(enabled = inviteTargetGroup != null && !showGroupIconCropDialog && !showCreateGroupDialog && editingGroup == null && viewingGroup == null) {
-        inviteTargetGroup = null
-    }
-
-    BackHandler(enabled = adminTargetGroup != null && !showGroupIconCropDialog && !showCreateGroupDialog && editingGroup == null && viewingGroup == null && inviteTargetGroup == null) {
+    BackHandler(enabled = adminTargetGroup != null && !showGroupIconCropDialog && !showCreateGroupDialog && editingGroup == null && viewingGroup == null) {
         adminTargetGroup = null
     }
 
-    BackHandler(enabled = showGroupsManager && !showGroupIconCropDialog && !showCreateGroupDialog && editingGroup == null && viewingGroup == null && inviteTargetGroup == null && adminTargetGroup == null) {
+    BackHandler(enabled = showGroupsManager && !showGroupIconCropDialog && !showCreateGroupDialog && editingGroup == null && viewingGroup == null && adminTargetGroup == null) {
         showGroupsManager = false
     }
 
-    BackHandler(enabled = showShareToChatDialog && flickToShare != null && !isSharingPhoto && !showGroupIconCropDialog && !showCreateGroupDialog && editingGroup == null && inviteTargetGroup == null && adminTargetGroup == null && !showGroupsManager) {
+    BackHandler(enabled = showShareToChatDialog && flickToShare != null && !isSharingPhoto && !showGroupIconCropDialog && !showCreateGroupDialog && editingGroup == null && adminTargetGroup == null && !showGroupsManager) {
         showShareToChatDialog = false
         flickToShare = null
     }
 
-    BackHandler(enabled = showReactionPicker && !showGroupIconCropDialog && !showCreateGroupDialog && editingGroup == null && inviteTargetGroup == null && adminTargetGroup == null && !showGroupsManager && !(showShareToChatDialog && flickToShare != null)) {
+    BackHandler(enabled = showReactionPicker && !showGroupIconCropDialog && !showCreateGroupDialog && editingGroup == null && adminTargetGroup == null && !showGroupsManager && !(showShareToChatDialog && flickToShare != null)) {
         showReactionPicker = false
         flickForReaction = null
     }
@@ -618,7 +607,6 @@ fun HomeScreen(
             onCreateGroup = { showCreateGroupDialog = true },
             onEditGroup = { group -> editingGroup = group },
             onViewGroup = { group -> viewingGroup = group },
-            onInviteToGroup = { group -> inviteTargetGroup = group },
             onManageAdmins = { group -> adminTargetGroup = group },
             onDeleteGroup = { group -> viewModel.deleteFriendGroup(userProfile.uid, group.id) },
             onExitGroup = { group -> viewModel.leaveFriendGroup(userProfile.uid, group.id) },
@@ -635,7 +623,7 @@ fun HomeScreen(
             isDarkMode = isDarkMode,
             initialName = "",
             initialIcon = createDialogIconOverride ?: "👥",
-            initialColor = "#4FC3F7",
+            initialColor = "#2A4A73",
             initialSelectedFriendIds = emptyList(),
             onDismiss = {
                 showCreateGroupDialog = false
@@ -652,7 +640,8 @@ fun HomeScreen(
                     name = name,
                     icon = icon,
                     friendIds = selectedFriendIds,
-                    color = color
+                    color = color,
+                    inviterName = userProfile.displayName
                 ) { success, createdGroup ->
                     if (success) {
                         if (createdGroup != null) {
@@ -728,13 +717,9 @@ fun HomeScreen(
                     name = name,
                     icon = icon,
                     friendIds = selectedFriendIds,
-                    color = color
-                ) { success ->
-                    if (success) {
-                        editingGroup = null
-                        editDialogIconOverride = null
-                    }
-                }
+                    color = color,
+                    inviterName = userProfile.displayName
+                ) { _ -> }
             },
             readOnly = false,
             onUserProfileClick = onUserProfileClick
@@ -952,199 +937,6 @@ fun HomeScreen(
                                             text = if (isAdminNow) "Admin" else "Make Admin",
                                             fontSize = 12.sp,
                                             color = if (isAdminNow) Color.White else addColor
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    if (inviteTargetGroup != null) {
-        val group = inviteTargetGroup!!
-        val isDarkMode = ThemeManager.isDarkMode.value
-        val eligibleFriends = friends
-            .filter { it.uid.isNotBlank() }
-            .filter { !group.effectiveMemberIds().contains(it.uid) }
-            .sortedBy { it.displayName.lowercase(Locale.getDefault()) }
-        val addColor = Color(0xFF2A4A73)
-        val waitingColor = Color(0xFF2A4A73)
-        var processingInviteUserId by remember(group.id) { mutableStateOf<String?>(null) }
-        var invitedUserIds by remember(group.id) { mutableStateOf(setOf<String>()) }
-
-        Surface(
-            modifier = Modifier.fillMaxSize(),
-            color = isDarkModeBackground(isDarkMode)
-        ) {
-            Column(modifier = Modifier.fillMaxSize()) {
-                Surface(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(48.dp),
-                    color = Color.Black
-                ) {
-                    Box(modifier = Modifier.fillMaxSize()) {
-                        Text(
-                            text = "Invite friends to ${group.name}",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                            modifier = Modifier
-                                .align(Alignment.Center)
-                                .padding(horizontal = 56.dp)
-                        )
-                        IconButton(
-                            onClick = { inviteTargetGroup = null },
-                            modifier = Modifier
-                                .align(Alignment.CenterStart)
-                                .size(48.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                                contentDescription = "Back",
-                                tint = Color.White
-                            )
-                        }
-                    }
-                }
-
-                if (eligibleFriends.isEmpty()) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .weight(1f),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = "All your friends are already in this album.",
-                            color = if (isDarkMode) Color.Gray else Color.DarkGray,
-                            style = MaterialTheme.typography.bodyLarge
-                        )
-                    }
-                } else {
-                    LazyColumn(modifier = Modifier.weight(1f)) {
-                        items(eligibleFriends, key = { it.uid }) { friend ->
-                            val isInvited = invitedUserIds.contains(friend.uid)
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 16.dp, vertical = 12.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Box(modifier = Modifier.size(56.dp)) {
-                                    if (friend.photoUrl.isNotBlank()) {
-                                        AsyncImage(
-                                            model = withCacheBust(friend.photoUrl, friend.uid),
-                                            contentDescription = friend.displayName,
-                                            modifier = Modifier
-                                                .fillMaxSize()
-                                                .clip(CircleShape),
-                                            contentScale = ContentScale.Crop
-                                        )
-                                    } else {
-                                        Box(
-                                            modifier = Modifier
-                                                .fillMaxSize()
-                                                .clip(CircleShape)
-                                                .background(if (isDarkMode) Color(0xFF3A3A3C) else Color(0xFFE0E0E0)),
-                                            contentAlignment = Alignment.Center
-                                        ) {
-                                            Icon(
-                                                imageVector = Icons.Default.Person,
-                                                contentDescription = null,
-                                                modifier = Modifier.size(28.dp),
-                                                tint = if (isDarkMode) Color.Gray else Color.DarkGray
-                                            )
-                                        }
-                                    }
-                                }
-
-                                Spacer(modifier = Modifier.width(16.dp))
-
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(
-                                        text = friend.displayName,
-                                        fontSize = 16.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = if (isDarkMode) Color.White else Color.Black,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis,
-                                        modifier = Modifier.fillMaxWidth()
-                                    )
-                                    Spacer(modifier = Modifier.height(4.dp))
-                                    Text(
-                                        text = "${friend.followers.size} followers",
-                                        fontSize = 14.sp,
-                                        color = if (isDarkMode) Color.Gray else Color.DarkGray,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis,
-                                        modifier = Modifier.fillMaxWidth()
-                                    )
-                                }
-
-                                if (processingInviteUserId == friend.uid) {
-                                    CircularProgressIndicator(
-                                        modifier = Modifier.size(24.dp),
-                                        strokeWidth = 2.dp
-                                    )
-                                } else {
-                                    OutlinedButton(
-                                        onClick = {
-                                            processingInviteUserId = friend.uid
-                                            if (isInvited) {
-                                                viewModel.cancelGroupInvite(
-                                                    inviterId = userProfile.uid,
-                                                    groupId = group.id,
-                                                    inviteeId = friend.uid
-                                                ) { success, message ->
-                                                    processingInviteUserId = null
-                                                    if (success) invitedUserIds = invitedUserIds - friend.uid
-                                                    Toast.makeText(
-                                                        context,
-                                                        if (success) "Invite canceled for ${friend.displayName}" else (message ?: "Failed to cancel invite"),
-                                                        Toast.LENGTH_SHORT
-                                                    ).show()
-                                                }
-                                            } else {
-                                                viewModel.inviteFriendToGroup(
-                                                    inviterId = userProfile.uid,
-                                                    inviterName = userProfile.displayName,
-                                                    groupId = group.id,
-                                                    inviteeId = friend.uid
-                                                ) { success, message ->
-                                                    processingInviteUserId = null
-                                                    if (success) invitedUserIds = invitedUserIds + friend.uid
-                                                    Toast.makeText(
-                                                        context,
-                                                        if (success) "Invite sent to ${friend.displayName}" else (message ?: "Failed to send invite"),
-                                                        Toast.LENGTH_SHORT
-                                                    ).show()
-                                                }
-                                            }
-                                        },
-                                        shape = RoundedCornerShape(20.dp),
-                                        modifier = Modifier.wrapContentWidth(),
-                                        colors = ButtonDefaults.outlinedButtonColors(
-                                            containerColor = if (isInvited) waitingColor else Color.Transparent,
-                                            contentColor = if (isInvited) Color.White else addColor,
-                                            disabledContainerColor = if (isInvited) waitingColor else Color.Transparent,
-                                            disabledContentColor = Color.White
-                                        ),
-                                        border = androidx.compose.foundation.BorderStroke(
-                                            1.dp,
-                                            if (isInvited) waitingColor else addColor
-                                        )
-                                    ) {
-                                        Text(
-                                            text = if (isInvited) "Invited" else "Invite",
-                                            fontSize = 12.sp,
-                                            color = if (isInvited) Color.White else addColor
                                         )
                                     }
                                 }
@@ -1510,7 +1302,6 @@ private fun GroupManagerSheet(
     onCreateGroup: () -> Unit,
     onEditGroup: (FriendGroup) -> Unit,
     onViewGroup: (FriendGroup) -> Unit,
-    onInviteToGroup: (FriendGroup) -> Unit,
     onManageAdmins: (FriendGroup) -> Unit,
     onDeleteGroup: (FriendGroup) -> Unit,
     onExitGroup: (FriendGroup) -> Unit,
@@ -1589,7 +1380,7 @@ private fun GroupManagerSheet(
                         icon = Icons.Default.Chat,
                         title = "View album",
                         subtitle = "Open this album's photo feed",
-                        accentColor = Color(0xFF2E86DE),
+                        accentColor = Color(0xFF2A4A73),
                         onClick = {
                             menuTargetGroup = null
                             onSelectGroup(FeedFilter.ByGroup(group))
@@ -1599,22 +1390,10 @@ private fun GroupManagerSheet(
                 if (isOwner) {
                     add(
                         ActionSheetOption(
-                            icon = Icons.AutoMirrored.Filled.Send,
-                            title = "Invite",
-                            subtitle = "Add friends to this album",
-                            accentColor = Color(0xFF2E86DE),
-                            onClick = {
-                                menuTargetGroup = null
-                                onInviteToGroup(group)
-                            }
-                        )
-                    )
-                    add(
-                        ActionSheetOption(
                             icon = Icons.Default.AdminPanelSettings,
                             title = "Admins",
                             subtitle = "Manage album administrators",
-                            accentColor = Color(0xFF2E86DE),
+                            accentColor = Color(0xFF2A4A73),
                             onClick = {
                                 menuTargetGroup = null
                                 onManageAdmins(group)
@@ -1627,7 +1406,7 @@ private fun GroupManagerSheet(
                         icon = if (isAdmin) Icons.Default.Edit else Icons.Default.Group,
                         title = if (isAdmin) "Edit album" else "View members",
                         subtitle = if (isAdmin) "Change album name, icon, members" else "See who's in this album",
-                        accentColor = Color(0xFF2E86DE),
+                        accentColor = Color(0xFF2A4A73),
                         onClick = {
                             menuTargetGroup = null
                             if (isAdmin) onEditGroup(group) else onViewGroup(group)
@@ -1639,7 +1418,7 @@ private fun GroupManagerSheet(
                         icon = Icons.Default.ChatBubble,
                         title = "Open chat",
                         subtitle = "Chat with album members",
-                        accentColor = Color(0xFF2E86DE),
+                        accentColor = Color(0xFF2A4A73),
                         onClick = {
                             menuTargetGroup = null
                             onOpenGroupChat(group)
@@ -1651,7 +1430,7 @@ private fun GroupManagerSheet(
                         icon = Icons.Default.PushPin,
                         title = "Pin to top",
                         subtitle = "Move this album to the top of your list",
-                        accentColor = Color(0xFF2E86DE),
+                        accentColor = Color(0xFF2A4A73),
                         onClick = {
                             menuTargetGroup = null
                             val currentIndex = orderedGroupIdsState.indexOf(group.id)
@@ -1779,7 +1558,7 @@ private fun GroupManagerSheet(
                             title = "All friends",
                             subtitle = "$allFriendsCount friends",
                             icon = allFriendsAvatarUrl.ifBlank { "🏠" },
-                            colour = "#4FC3F7",
+                            colour = "#2A4A73",
                             selected = isSelected,
                             onClick = { onSelectGroup(FeedFilter.AllFriends) },
                             textColor = textColor,
@@ -1797,7 +1576,7 @@ private fun GroupManagerSheet(
                                         icon = Icons.Default.Edit,
                                         title = "Change Avatar",
                                         subtitle = "Update the All friends album icon",
-                                        accentColor = Color(0xFF2E86DE),
+                                        accentColor = Color(0xFF2A4A73),
                                         onClick = {
                                             showAllFriendsMenu = false
                                             onChangeAllFriendsAvatar()
@@ -2008,7 +1787,7 @@ private fun GroupRowCard(
 @Composable
 internal fun CreateOrEditGroupDialog(
     title: String,
-    submitLabel: String,
+    @Suppress("UNUSED_PARAMETER") submitLabel: String,
     friends: List<UserProfile>,
     isDarkMode: Boolean,
     initialName: String,
@@ -2022,8 +1801,6 @@ internal fun CreateOrEditGroupDialog(
     readOnly: Boolean = false,
     onUserProfileClick: (String) -> Unit = {}
 ) {
-    BackHandler(onBack = onDismiss)
-
     var groupName by remember(initialName) { mutableStateOf(initialName) }
     var selectedIcon by remember(initialIcon) { mutableStateOf(initialIcon) }
     var selectedColor by remember(initialColor) { mutableStateOf(initialColor) }
@@ -2034,16 +1811,30 @@ internal fun CreateOrEditGroupDialog(
     val textColor = if (isDarkMode) Color.White else Color.Black
     val pageBackground = if (isDarkMode) Color.Black else PicFlickLightBackground
     val isCreateMode = onCreateAlbum != null
-
-    val sortedFriends = remember(friends) {
-        friends.sortedWith(
-            compareBy<UserProfile>(
-                { it.displayName.trim().substringAfterLast(" ").lowercase(Locale.getDefault()) },
-                { it.displayName.trim().substringBeforeLast(" ").lowercase(Locale.getDefault()) },
-                { it.displayName.lowercase(Locale.getDefault()) }
-            )
-        )
+    val shouldSaveOnExit = !isCreateMode && !readOnly
+    val saveAndDismiss = {
+        if (shouldSaveOnExit) {
+            val trimmedName = groupName.trim()
+            val hasChanges = trimmedName != initialName.trim() ||
+                selectedIcon != initialIcon ||
+                selectedColor != initialColor ||
+                selectedFriends != initialSelectedFriendIds.toSet()
+            if (hasChanges && trimmedName.isNotBlank()) {
+                onSubmit(trimmedName, selectedIcon, selectedFriends.toList(), selectedColor)
+            }
+        }
+        onDismiss()
     }
+
+    BackHandler(onBack = saveAndDismiss)
+
+    val sortedFriends = friends.sortedWith(
+        compareBy<UserProfile>(
+            { it.displayName.trim().substringAfterLast(" ").lowercase(Locale.getDefault()) },
+            { it.displayName.trim().substringBeforeLast(" ").lowercase(Locale.getDefault()) },
+            { it.displayName.lowercase(Locale.getDefault()) }
+        )
+    )
 
     Surface(
         modifier = Modifier.fillMaxSize(),
@@ -2070,7 +1861,7 @@ internal fun CreateOrEditGroupDialog(
                             .padding(horizontal = 56.dp)
                     )
                     IconButton(
-                        onClick = onDismiss,
+                        onClick = saveAndDismiss,
                         modifier = Modifier
                             .align(Alignment.CenterStart)
                             .size(48.dp)
@@ -2080,29 +1871,6 @@ internal fun CreateOrEditGroupDialog(
                             contentDescription = "Back",
                             tint = Color.White
                         )
-                    }
-                    if (!isCreateMode && !readOnly) {
-                        Button(
-                            onClick = {
-                                onSubmit(groupName.trim(), selectedIcon, selectedFriends.toList(), selectedColor)
-                            },
-                            enabled = groupName.isNotBlank(),
-                            modifier = Modifier
-                                .align(Alignment.CenterEnd)
-                                .padding(end = 12.dp),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = waitingColor,
-                                contentColor = Color.White
-                            ),
-                            shape = RoundedCornerShape(18.dp),
-                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)
-                        ) {
-                            Text(
-                                text = submitLabel,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 13.sp
-                            )
-                        }
                     }
                 }
             }
@@ -2284,7 +2052,7 @@ internal fun CreateOrEditGroupDialog(
             if (isCreateMode) {
                 Button(
                     onClick = {
-                        onCreateAlbum?.invoke(groupName.trim(), selectedIcon, selectedFriends.toList(), selectedColor)
+                        onCreateAlbum.invoke(groupName.trim(), selectedIcon, selectedFriends.toList(), selectedColor)
                     },
                     enabled = groupName.isNotBlank(),
                     modifier = Modifier
@@ -3058,7 +2826,7 @@ private fun EmptyState(
     onNavigate: (String) -> Unit = {},
     onOpenGroupManager: () -> Unit = {}
 ) {
-    val accentColor = Color(0xFF1565C0)
+    val accentColor = Color(0xFF2A4A73)
     Column(
         modifier = Modifier
             .fillMaxSize()

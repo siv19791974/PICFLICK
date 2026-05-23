@@ -130,7 +130,7 @@ class HomeViewModel : ViewModel() {
                         recentDays = Constants.Pagination.HOME_FEED_DAYS
                     )) {
                         is Result.Success -> {
-                            val merged = mergeWithOptimistic(result.data)
+                            val merged = mergeWithOptimistic(result.data) { it.sharedGroupId.isBlank() }
                             flicks.clear()
                             flicks.addAll(merged)
                             paginationCursorTimestamp = result.data.lastOrNull()?.timestamp
@@ -153,7 +153,7 @@ class HomeViewModel : ViewModel() {
                     repository.getFlicksForFriendGroup(userId, filter.group.id) { result ->
                         when (result) {
                             is Result.Success -> {
-                                val merged = mergeWithOptimistic(result.data)
+                                val merged = mergeWithOptimistic(result.data) { it.sharedGroupId == filter.group.id }
                                 flicks.clear()
                                 flicks.addAll(merged)
                                 isLoading = false
@@ -277,14 +277,15 @@ class HomeViewModel : ViewModel() {
         name: String,
         icon: String,
         friendIds: List<String>,
-        color: String = "#4FC3F7",
+        color: String = "#2A4A73",
         eventAt: Long? = null,
         isChatGroup: Boolean = false,
+        inviterName: String = "Someone",
         onComplete: (Boolean, FriendGroup?) -> Unit = { _, _ -> }
     ) {
         viewModelScope.launch {
             isLoading = true
-            when (val result = repository.createFriendGroup(userId, name, friendIds, icon, color, eventAt, isChatGroup)) {
+            when (val result = repository.createFriendGroup(userId, name, friendIds, icon, color, eventAt, isChatGroup, inviterName)) {
                 is Result.Success -> {
                     friendGroups.add(result.data)
                     isLoading = false
@@ -305,7 +306,7 @@ class HomeViewModel : ViewModel() {
         name: String,
         icon: String,
         friendIds: List<String>,
-        color: String = "#4FC3F7",
+        color: String = "#2A4A73",
         eventAt: Long? = null,
         onComplete: (Boolean, FriendGroup?) -> Unit = { _, _ -> }
     ) {
@@ -338,6 +339,7 @@ class HomeViewModel : ViewModel() {
         friendIds: List<String>,
         color: String,
         eventAt: Long? = null,
+        inviterName: String = "Someone",
         onComplete: (Boolean) -> Unit = {}
     ) {
         viewModelScope.launch {
@@ -349,7 +351,8 @@ class HomeViewModel : ViewModel() {
                 friendIds = friendIds,
                 icon = icon,
                 color = color,
-                eventAt = eventAt
+                eventAt = eventAt,
+                inviterName = inviterName
             )) {
                 is Result.Success -> {
                     val index = friendGroups.indexOfFirst { it.id == groupId }
@@ -744,8 +747,12 @@ class HomeViewModel : ViewModel() {
         }
     }
 
-    private fun mergeWithOptimistic(serverFlicks: List<Flick>): List<Flick> {
-        if (optimisticFlicks.isEmpty()) return serverFlicks
+    private fun mergeWithOptimistic(
+        serverFlicks: List<Flick>,
+        optimisticFilter: (Flick) -> Boolean = { true }
+    ): List<Flick> {
+        val eligibleOptimisticFlicks = optimisticFlicks.filter(optimisticFilter)
+        if (eligibleOptimisticFlicks.isEmpty()) return serverFlicks
 
         // Keep optimistic rows as visual owner even after server row exists,
         // and sync them in-place with server data to prevent tile handoff blink.
@@ -753,7 +760,7 @@ class HomeViewModel : ViewModel() {
             .filter { it.clientUploadId.isNotBlank() }
             .associateBy { it.clientUploadId }
 
-        val syncedOptimistic = optimisticFlicks.map { optimistic ->
+        val syncedOptimistic = eligibleOptimisticFlicks.map { optimistic ->
             val clientId = optimistic.clientUploadId.takeIf { it.isNotBlank() }
             val serverMatch = if (clientId != null) serverByClientUploadId[clientId] else null
 
@@ -769,15 +776,17 @@ class HomeViewModel : ViewModel() {
                     userPhotoUrl = serverMatch.userPhotoUrl,
                     taggedFriends = serverMatch.taggedFriends,
                     imageSizeBytes = serverMatch.imageSizeBytes,
-                    privacy = serverMatch.privacy
+                    privacy = serverMatch.privacy,
+                    sharedGroupId = serverMatch.sharedGroupId
                 )
             } else {
                 optimistic
             }
         }
 
+        val ineligibleOptimisticFlicks = optimisticFlicks.filterNot(optimisticFilter)
         optimisticFlicks.clear()
-        optimisticFlicks.addAll(syncedOptimistic)
+        optimisticFlicks.addAll(syncedOptimistic + ineligibleOptimisticFlicks)
 
         val serverIdsCoveredByOptimistic = syncedOptimistic
             .mapNotNull { it.clientUploadId.takeIf { id -> id.isNotBlank() } }

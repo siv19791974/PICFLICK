@@ -2,8 +2,6 @@ package com.picflick.app.ui.screens
 
 import com.picflick.app.Constants
 import android.app.Activity
-import android.content.Intent
-import android.content.pm.PackageManager
 import android.os.Build
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -33,8 +31,6 @@ import androidx.compose.material.icons.filled.DeveloperMode
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Upgrade
 import androidx.compose.material.icons.filled.Warning
-import androidx.compose.material.icons.outlined.Add
-import androidx.compose.material.icons.outlined.Menu
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -47,8 +43,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.res.stringResource
 import coil3.compose.AsyncImage
-import com.picflick.app.MainActivity
+import com.picflick.app.R
 import com.picflick.app.data.UserProfile
 import com.picflick.app.data.getColor
 import com.picflick.app.data.getDarkColor
@@ -57,7 +54,6 @@ import com.picflick.app.data.getLightColor
 import com.picflick.app.repository.FlickRepository
 import com.picflick.app.ui.theme.ThemeManager
 import com.picflick.app.ui.theme.isDarkModeBackground
-import com.picflick.app.ui.components.ActionSheetRow
 import com.picflick.app.ui.components.AddPhotoStyleActionSheet
 import com.picflick.app.ui.components.ActionSheetOption
 import com.picflick.app.data.getStorageLimitBytes
@@ -164,7 +160,8 @@ fun SettingsScreen(
     
     var cacheSize by remember { mutableStateOf(calculateCacheSize()) }
     
-    // Language state
+    // Language state - kept for future localization rollout, hidden until hardcoded English screens are converted
+    val languageSettingsEnabled = LocaleHelper.LANGUAGE_SWITCHING_ENABLED
     var currentLanguage by remember { mutableStateOf(LocaleHelper.getSavedLanguage(context)) }
     
     // Get display info for current language
@@ -185,6 +182,14 @@ fun SettingsScreen(
         }
     }
     val (currentFlag, currentLangName) = getLanguageDisplayInfo(currentLanguage)
+
+    fun selectLanguage(languageCode: String) {
+        LocaleHelper.saveLanguage(context, languageCode)
+        LocaleHelper.setLocale(context, languageCode)
+        currentLanguage = languageCode
+        showLanguageDialog = false
+        (context as? Activity)?.let(LocaleHelper::restartActivity)
+    }
     
     // Refresh cache size when dialog is shown
     LaunchedEffect(showClearCacheDialog) {
@@ -218,7 +223,7 @@ fun SettingsScreen(
                         )
                     }
                     Text(
-                        text = "Settings",
+                        text = stringResource(R.string.settings_title),
                         modifier = Modifier.weight(1f),
                         color = Color.White,
                         fontWeight = FontWeight.Bold,
@@ -258,7 +263,7 @@ fun SettingsScreen(
                 )
                 SettingsItem(
                     icon = Icons.Default.Notifications,
-                    title = "Notifications Settings",
+                    title = stringResource(R.string.settings_notifications),
                     subtitle = "Push, email preferences",
                     onClick = onNotificationsSettings
                 )
@@ -279,7 +284,14 @@ fun SettingsScreen(
                     onClick = { showAppearanceDialog = true },
                     showArrow = false
                 )
-                // Language option removed - app uses device default language
+                if (languageSettingsEnabled) {
+                    SettingsItem(
+                        icon = Icons.Default.Menu,
+                        title = "Language",
+                        subtitle = "$currentFlag $currentLangName",
+                        onClick = { showLanguageDialog = true }
+                    )
+                }
                 SettingsItem(
                     icon = Icons.Default.Edit,
                     title = "Storage & Data",
@@ -316,7 +328,7 @@ fun SettingsScreen(
                 )
                 SettingsItem(
                     icon = Icons.Default.Lock,
-                    title = "Privacy",
+                    title = stringResource(R.string.settings_privacy),
                     subtitle = "Your data, your control",
                     onClick = onPrivacySettings
                 )
@@ -332,7 +344,7 @@ fun SettingsScreen(
                 )
                 SettingsItem(
                     icon = Icons.Default.Info,
-                    title = "Version",
+                    title = stringResource(R.string.settings_about),
                     subtitle = appVersionName,
                     onClick = onAbout
                 )
@@ -358,14 +370,14 @@ fun SettingsScreen(
             SettingsSection(title = "DANGER ZONE", isDarkMode = isDarkMode) {
                 SettingsItem(
                     icon = Icons.Default.Close,
-                    title = "Sign Out",
+                    title = stringResource(R.string.settings_sign_out),
                     titleColor = Color.Red,
                     onClick = { showSignOutDialog = true },
                     showArrow = false
                 )
                 SettingsItem(
                     icon = Icons.Default.Delete,
-                    title = "Delete Account",
+                    title = stringResource(R.string.settings_delete_account),
                     titleColor = Color.Red,
                     subtitle = "Permanently remove your data",
                     onClick = { showDeleteAccountDialog = true },
@@ -521,8 +533,8 @@ fun SettingsScreen(
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedTextColor = Color.White,
                         unfocusedTextColor = Color.White,
-                        focusedBorderColor = Color(0xFF2E86DE),
-                        unfocusedBorderColor = Color(0xFF2E86DE).copy(alpha = 0.45f),
+                        focusedBorderColor = Color(0xFF2A4A73),
+                        unfocusedBorderColor = Color(0xFF2A4A73).copy(alpha = 0.45f),
                         focusedLabelColor = Color(0xFFB7BDC9),
                         unfocusedLabelColor = Color(0xFFB7BDC9)
                     )
@@ -540,8 +552,8 @@ fun SettingsScreen(
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedTextColor = Color.White,
                         unfocusedTextColor = Color.White,
-                        focusedBorderColor = Color(0xFF2E86DE),
-                        unfocusedBorderColor = Color(0xFF2E86DE).copy(alpha = 0.45f),
+                        focusedBorderColor = Color(0xFF2A4A73),
+                        unfocusedBorderColor = Color(0xFF2A4A73).copy(alpha = 0.45f),
                         focusedLabelColor = Color(0xFFB7BDC9),
                         unfocusedLabelColor = Color(0xFFB7BDC9)
                     )
@@ -562,8 +574,8 @@ fun SettingsScreen(
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedTextColor = Color.White,
                         unfocusedTextColor = Color.White,
-                        focusedBorderColor = Color(0xFF2E86DE),
-                        unfocusedBorderColor = Color(0xFF2E86DE).copy(alpha = 0.45f),
+                        focusedBorderColor = Color(0xFF2A4A73),
+                        unfocusedBorderColor = Color(0xFF2A4A73).copy(alpha = 0.45f),
                         focusedLabelColor = Color(0xFFB7BDC9),
                         unfocusedLabelColor = Color(0xFFB7BDC9)
                     )
@@ -657,7 +669,7 @@ fun SettingsScreen(
                     icon = Icons.Default.Edit,
                     title = label,
                     subtitle = if (value == contactCategory) "Currently selected" else "Use for this message",
-                    accentColor = Color(0xFF2E86DE),
+                    accentColor = Color(0xFF2A4A73),
                     onClick = {
                         contactCategory = value
                         showContactCategoryPopup = false
@@ -679,7 +691,7 @@ fun SettingsScreen(
                     icon = Icons.Default.WbSunny,
                     title = "Light Mode",
                     subtitle = if (ThemeManager.themeMode.value == ThemeManager.ThemeMode.LIGHT) "Always use light theme · Active" else "Always use light theme",
-                    accentColor = Color(0xFF2E86DE),
+                    accentColor = Color(0xFF2A4A73),
                     onClick = {
                         ThemeManager.setThemeMode(context, ThemeManager.ThemeMode.LIGHT)
                         showAppearanceDialog = false
@@ -689,7 +701,7 @@ fun SettingsScreen(
                     icon = Icons.Default.DarkMode,
                     title = "Dark Mode",
                     subtitle = if (ThemeManager.themeMode.value == ThemeManager.ThemeMode.DARK) "Always use dark theme · Active" else "Always use dark theme",
-                    accentColor = Color(0xFF2E86DE),
+                    accentColor = Color(0xFF2A4A73),
                     onClick = {
                         ThemeManager.setThemeMode(context, ThemeManager.ThemeMode.DARK)
                         showAppearanceDialog = false
@@ -699,7 +711,7 @@ fun SettingsScreen(
                     icon = Icons.Default.Smartphone,
                     title = "Use Phone Theme",
                     subtitle = if (ThemeManager.themeMode.value == ThemeManager.ThemeMode.SYSTEM) "Follow your device setting · Active" else "Follow your device setting",
-                    accentColor = Color(0xFF2E86DE),
+                    accentColor = Color(0xFF2A4A73),
                     onClick = {
                         ThemeManager.setThemeMode(context, ThemeManager.ThemeMode.SYSTEM)
                         showAppearanceDialog = false
@@ -711,68 +723,40 @@ fun SettingsScreen(
         )
     }
 
-    // Language Settings Dialog
+    // Language Settings Dialog - standard PicFlick action sheet style
     if (showLanguageDialog) {
-        ModalBottomSheet(
-            onDismissRequest = { showLanguageDialog = false },
-            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-            containerColor = Color(0xFF121212),
-            contentColor = Color.White,
-            dragHandle = { Surface(modifier = Modifier.padding(top = 8.dp).size(width = 44.dp, height = 5.dp), shape = RoundedCornerShape(50), color = Color.White.copy(alpha = 0.28f)) {} }
-        ) {
-            Column(Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 20.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("Language", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 20.dp))
-                LanguageOption(flag = "🇬🇧", name = "English", isSelected = currentLanguage.isEmpty(), isDarkMode = true, onClick = {
-                    LocaleHelper.saveLanguage(context, ""); LocaleHelper.setLocale(context, ""); currentLanguage = ""; showLanguageDialog = false; LocaleHelper.restartActivity(context as Activity)
-                })
-                HorizontalDivider(color = Color(0xFF2C2C2E))
-                LanguageOption(flag = "🇸🇦", name = "العربية (Arabic)", isSelected = currentLanguage == "ar", isDarkMode = true, onClick = {
-                    LocaleHelper.saveLanguage(context, "ar"); LocaleHelper.setLocale(context, "ar"); currentLanguage = "ar"; showLanguageDialog = false; LocaleHelper.restartActivity(context as Activity)
-                })
-                HorizontalDivider(color = Color(0xFF2C2C2E))
-                LanguageOption(flag = "🇪🇸", name = "Español (Spanish)", isSelected = currentLanguage == "es", isDarkMode = true, onClick = {
-                    LocaleHelper.saveLanguage(context, "es"); LocaleHelper.setLocale(context, "es"); currentLanguage = "es"; showLanguageDialog = false; LocaleHelper.restartActivity(context as Activity)
-                })
-                HorizontalDivider(color = Color(0xFF2C2C2E))
-                LanguageOption(flag = "🇫🇷", name = "Français (French)", isSelected = currentLanguage == "fr", isDarkMode = true, onClick = {
-                    LocaleHelper.saveLanguage(context, "fr"); LocaleHelper.setLocale(context, "fr"); currentLanguage = "fr"; showLanguageDialog = false; LocaleHelper.restartActivity(context as Activity)
-                })
-                HorizontalDivider(color = Color(0xFF2C2C2E))
-                LanguageOption(flag = "🇩🇪", name = "Deutsch (German)", isSelected = currentLanguage == "de", isDarkMode = true, onClick = {
-                    LocaleHelper.saveLanguage(context, "de"); LocaleHelper.setLocale(context, "de"); currentLanguage = "de"; showLanguageDialog = false; LocaleHelper.restartActivity(context as Activity)
-                })
-                HorizontalDivider(color = Color(0xFF2C2C2E))
-                LanguageOption(flag = "🇨🇳", name = "中文 (Chinese)", isSelected = currentLanguage == "zh", isDarkMode = true, onClick = {
-                    LocaleHelper.saveLanguage(context, "zh"); LocaleHelper.setLocale(context, "zh"); currentLanguage = "zh"; showLanguageDialog = false; LocaleHelper.restartActivity(context as Activity)
-                })
-                HorizontalDivider(color = Color(0xFF2C2C2E))
-                LanguageOption(flag = "🇯🇵", name = "日本語 (Japanese)", isSelected = currentLanguage == "ja", isDarkMode = true, onClick = {
-                    LocaleHelper.saveLanguage(context, "ja"); LocaleHelper.setLocale(context, "ja"); currentLanguage = "ja"; showLanguageDialog = false; LocaleHelper.restartActivity(context as Activity)
-                })
-                HorizontalDivider(color = Color(0xFF2C2C2E))
-                LanguageOption(flag = "🇰🇷", name = "한국어 (Korean)", isSelected = currentLanguage == "ko", isDarkMode = true, onClick = {
-                    LocaleHelper.saveLanguage(context, "ko"); LocaleHelper.setLocale(context, "ko"); currentLanguage = "ko"; showLanguageDialog = false; LocaleHelper.restartActivity(context as Activity)
-                })
-                HorizontalDivider(color = Color(0xFF2C2C2E))
-                LanguageOption(flag = "🇵🇹", name = "Português (Portuguese)", isSelected = currentLanguage == "pt", isDarkMode = true, onClick = {
-                    LocaleHelper.saveLanguage(context, "pt"); LocaleHelper.setLocale(context, "pt"); currentLanguage = "pt"; showLanguageDialog = false; LocaleHelper.restartActivity(context as Activity)
-                })
-                HorizontalDivider(color = Color(0xFF2C2C2E))
-                LanguageOption(flag = "🇦🇱", name = "Shqip (Albanian)", isSelected = currentLanguage == "sq", isDarkMode = true, onClick = {
-                    LocaleHelper.saveLanguage(context, "sq"); LocaleHelper.setLocale(context, "sq"); currentLanguage = "sq"; showLanguageDialog = false; LocaleHelper.restartActivity(context as Activity)
-                })
-                HorizontalDivider(color = Color(0xFF2C2C2E))
-                LanguageOption(flag = "🇮🇳", name = "हिन्दी (Hindi)", isSelected = currentLanguage == "hi", isDarkMode = true, onClick = {
-                    LocaleHelper.saveLanguage(context, "hi"); LocaleHelper.setLocale(context, "hi"); currentLanguage = "hi"; showLanguageDialog = false; LocaleHelper.restartActivity(context as Activity)
-                })
-                HorizontalDivider(color = Color(0xFF2C2C2E))
-                LanguageOption(flag = "🇬🇷", name = "Ελληνικά (Greek)", isSelected = currentLanguage == "el", isDarkMode = true, onClick = {
-                    LocaleHelper.saveLanguage(context, "el"); LocaleHelper.setLocale(context, "el"); currentLanguage = "el"; showLanguageDialog = false; LocaleHelper.restartActivity(context as Activity)
-                })
-                Text(text = "More languages coming soon", fontSize = 12.sp, color = Color.Gray, modifier = Modifier.padding(top = 12.dp))
-                Spacer(Modifier.height(12.dp))
-            }
-        }
+        val languageOptions = listOf(
+            "" to ("🇬🇧" to "English"),
+            "ar" to ("🇸🇦" to "العربية (Arabic)"),
+            "es" to ("🇪🇸" to "Español (Spanish)"),
+            "fr" to ("🇫🇷" to "Français (French)"),
+            "de" to ("🇩🇪" to "Deutsch (German)"),
+            "zh" to ("🇨🇳" to "中文 (Chinese)"),
+            "ja" to ("🇯🇵" to "日本語 (Japanese)"),
+            "ko" to ("🇰🇷" to "한국어 (Korean)"),
+            "pt" to ("🇵🇹" to "Português (Portuguese)"),
+            "sq" to ("🇦🇱" to "Shqip (Albanian)"),
+            "hi" to ("🇮🇳" to "हिन्दी (Hindi)"),
+            "el" to ("🇬🇷" to "Ελληνικά (Greek)")
+        )
+
+        AddPhotoStyleActionSheet(
+            title = "Language",
+            options = languageOptions.map { (code, display) ->
+                val (flag, name) = display
+                val isSelected = currentLanguage == code
+                ActionSheetOption(
+                    icon = Icons.Default.Menu,
+                    title = "$flag $name",
+                    subtitle = if (isSelected) "Currently selected" else "Switch app language",
+                    accentColor = if (isSelected) Color(0xFF00D09C) else Color(0xFF2A4A73),
+                    onClick = { selectLanguage(code) }
+                )
+            },
+            onDismiss = { showLanguageDialog = false },
+            cancelTitle = "Close",
+            cancelSubtitle = "Keep current language"
+        )
     }
 }
 
@@ -1159,13 +1143,13 @@ private fun ManageStorageButton(
                 modifier = Modifier
                     .size(36.dp)
                     .clip(CircleShape)
-                    .background(Color(0xFF1565C0).copy(alpha = 0.15f)),
+                    .background(Color(0xFF2A4A73).copy(alpha = 0.15f)),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = Icons.Default.Cloud,
                     contentDescription = null,
-                    tint = Color(0xFF1565C0),
+                    tint = Color(0xFF2A4A73),
                     modifier = Modifier.size(22.dp)
                 )
             }
@@ -1222,7 +1206,7 @@ private fun SettingsItem(
     isDarkMode: Boolean = true,
     titleColor: Color = if (isDarkMode) Color.White else Color.Black,
     iconBackgroundColor: Color = if (isDarkMode) Color(0xFF2C2C2E) else Color(0xFFE3F2FD),
-    iconColor: Color = if (titleColor == Color.Red) Color.Red else if (isDarkMode) Color.White else Color(0xFF1565C0)
+    iconColor: Color = if (titleColor == Color.Red) Color.Red else if (isDarkMode) Color.White else Color(0xFF2A4A73)
 ) {
     Row(
         modifier = Modifier
@@ -1317,7 +1301,7 @@ private fun SettingsItem(
             Icon(
                 imageVector = icon,
                 contentDescription = null,
-                tint = if (titleColor == Color.Red) Color.Red else if (ThemeManager.isDarkMode.value) Color.White else Color(0xFF1565C0),
+                tint = if (titleColor == Color.Red) Color.Red else if (ThemeManager.isDarkMode.value) Color.White else Color(0xFF2A4A73),
                 modifier = Modifier.size(18.dp)
             )
         }
@@ -1360,42 +1344,6 @@ private fun getStorageSubtitle(userProfile: UserProfile): String {
     val usedGB = userProfile.calculateStorageUsedGB()
     val totalGB = userProfile.getEffectiveTier().getStorageLimitGB()
     return "$usedGB GB / $totalGB GB used"
-}
-
-@Composable
-private fun LanguageOption(
-    flag: String,
-    name: String,
-    isSelected: Boolean,
-    isDarkMode: Boolean,
-    onClick: () -> Unit
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { onClick() }
-            .padding(vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        // Flag emoji
-        Text(
-            text = flag,
-            fontSize = 24.sp,
-            modifier = Modifier.padding(end = 12.dp)
-        )
-
-        // Language name
-        Text(
-            text = name,
-            modifier = Modifier.weight(1f),
-            color = if (isDarkMode) Color.White else Color.Black
-        )
-
-        // Checkmark if selected
-        if (isSelected) {
-            Text("✓", color = Color(0xFF00D09C))
-        }
-    }
 }
 
 private fun DocumentSnapshot.getNumericLong(field: String): Long? {

@@ -382,14 +382,14 @@ private fun CurrentSubscriptionCard(
                     Text(
                         text = "Manage",
                         fontSize = 14.sp,
-                        color = Color(0xFF1565C0),
+                        color = Color(0xFF2A4A73),
                         fontWeight = FontWeight.Medium
                     )
                     
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
                         contentDescription = null,
-                        tint = Color(0xFF1565C0)
+                        tint = Color(0xFF2A4A73)
                     )
                 }
             }

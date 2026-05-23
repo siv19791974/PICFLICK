@@ -923,7 +923,7 @@ Column(modifier = Modifier.fillMaxSize()) {
                             if (selectedMyFlickIds.isNotEmpty()) {
                                 Text(
                                     text = "${selectedMyFlickIds.size} selected",
-                                    color = Color(0xFF87CEEB),
+                                    color = Color(0xFF2A4A73),
                                     fontSize = 12.sp,
                                     fontWeight = FontWeight.SemiBold
                                 )
@@ -947,7 +947,7 @@ Column(modifier = Modifier.fillMaxSize()) {
                                     .padding(vertical = 24.dp),
                                 contentAlignment = Alignment.Center
                             ) {
-                                CircularProgressIndicator(color = Color(0xFF87CEEB))
+                                CircularProgressIndicator(color = Color(0xFF2A4A73))
                             }
                         }
 
@@ -1250,7 +1250,7 @@ Column(modifier = Modifier.fillMaxSize()) {
                             icon = Icons.Default.Group,
                             title = "View group",
                             subtitle = "View album info and members",
-                            accentColor = Color(0xFF2E86DE),
+                            accentColor = Color(0xFF2A4A73),
                             onClick = {
                                 showHeaderMenu = false
                                 onViewGroupInfo(
@@ -1267,7 +1267,7 @@ Column(modifier = Modifier.fillMaxSize()) {
                             icon = Icons.Default.Person,
                             title = "View profile",
                             subtitle = "See this user's profile",
-                            accentColor = Color(0xFF2E86DE),
+                            accentColor = Color(0xFF2A4A73),
                             onClick = {
                                 showHeaderMenu = false
                                 onUserProfileClick(otherUserId)
@@ -1280,7 +1280,7 @@ Column(modifier = Modifier.fillMaxSize()) {
                         icon = Icons.Default.Edit,
                         title = "Select messages",
                         subtitle = "Select multiple messages to delete",
-                        accentColor = Color(0xFF2E86DE),
+                        accentColor = Color(0xFF2A4A73),
                         onClick = {
                             showHeaderMenu = false
                             isSelectionMode = true
@@ -1507,9 +1507,9 @@ Column(modifier = Modifier.fillMaxSize()) {
                             colors = OutlinedTextFieldDefaults.colors(
                                 focusedTextColor = Color.White,
                                 unfocusedTextColor = Color.White,
-                                focusedBorderColor = Color(0xFF4FC3F7),
+                                focusedBorderColor = Color(0xFF2A4A73),
                                 unfocusedBorderColor = Color.White.copy(alpha = 0.35f),
-                                focusedLabelColor = Color(0xFF4FC3F7),
+                                focusedLabelColor = Color(0xFF2A4A73),
                                 unfocusedLabelColor = Color.White.copy(alpha = 0.75f)
                             )
                         )
@@ -1525,9 +1525,9 @@ Column(modifier = Modifier.fillMaxSize()) {
                             colors = OutlinedTextFieldDefaults.colors(
                                 focusedTextColor = Color.White,
                                 unfocusedTextColor = Color.White,
-                                focusedBorderColor = Color(0xFF4FC3F7),
+                                focusedBorderColor = Color(0xFF2A4A73),
                                 unfocusedBorderColor = Color.White.copy(alpha = 0.35f),
-                                focusedLabelColor = Color(0xFF4FC3F7),
+                                focusedLabelColor = Color(0xFF2A4A73),
                                 unfocusedLabelColor = Color.White.copy(alpha = 0.75f)
                             )
                         )
@@ -1544,7 +1544,7 @@ Column(modifier = Modifier.fillMaxSize()) {
                                     name = cleanName,
                                     icon = cleanIcon,
                                     friendIds = groupModel.membersExcludingOwner(),
-                                    color = "#4FC3F7"
+                                    color = "#2A4A73"
                                 ) { success ->
                                     Toast.makeText(
                                         context,
@@ -1600,7 +1600,7 @@ Column(modifier = Modifier.fillMaxSize()) {
                                         modifier = Modifier.weight(1f)
                                     )
                                     if (selected) {
-                                        Icon(Icons.Default.Check, contentDescription = null, tint = Color(0xFF4FC3F7))
+                                        Icon(Icons.Default.Check, contentDescription = null, tint = Color(0xFF2A4A73))
                                     }
                                 }
                             }
@@ -1742,7 +1742,7 @@ Column(modifier = Modifier.fillMaxSize()) {
                                     name = editableGroupName.ifBlank { "Group" },
                                     icon = editableGroupIcon.ifBlank { "👥" },
                                     friendIds = newFriendIds,
-                                    color = "#4FC3F7"
+                                    color = "#2A4A73"
                                 ) { success ->
                                     Toast.makeText(
                                         context,
@@ -2396,7 +2396,7 @@ private fun QuickSwitchChatBar(
                         userId = item.otherUserId,
                         fallbackPhotoUrl = item.otherUserPhoto
                     )
-                    val avatarTierRingColor = if (isGroupItem) Color(0xFF4FC3F7) else rememberLiveUserTierColor(item.otherUserId)
+                    val avatarTierRingColor = if (isGroupItem) Color(0xFF2A4A73) else rememberLiveUserTierColor(item.otherUserId)
                     Box(
                         modifier = Modifier
                             .size(avatarSize)

@@ -1346,6 +1346,7 @@ fun MainScreen(
                     homeResetVersion = forceHomeResetVersion,
                     openGroupsManager = openHomeGroupsManager,
                     onOpenGroupsManagerConsumed = { openHomeGroupsManager = false },
+                    onRequestOpenGroupsManager = { openHomeGroupsManager = true },
                     openCreateGroupDialog = openHomeCreateGroupDialog,
                     onOpenCreateGroupDialogConsumed = { openHomeCreateGroupDialog = false },
                     onRequestOpenCreateGroupDialog = { openHomeCreateGroupDialog = true },
@@ -1463,7 +1464,7 @@ fun MainScreen(
                             icon = Icons.Outlined.PhotoCamera,
                             title = "Take Photo",
                             subtitle = "Capture with camera",
-                            accentColor = Color(0xFF2E86DE),
+                            accentColor = Color(0xFF2A4A73),
                             onClick = {
                                 showUploadSourceDialog = false
                                 cameraPermissionLauncher.launch(android.Manifest.permission.CAMERA)
@@ -1473,7 +1474,7 @@ fun MainScreen(
                             icon = Icons.Outlined.PhotoLibrary,
                             title = "Choose from Gallery",
                             subtitle = "Select from your photos",
-                            accentColor = Color(0xFF2E86DE),
+                            accentColor = Color(0xFF2A4A73),
                             onClick = {
                                 showUploadSourceDialog = false
                                 photoPickerLauncher.launch("image/*")
@@ -1496,7 +1497,7 @@ fun MainScreen(
                                 icon = Icons.Outlined.PhotoLibrary,
                                 title = "My Feed",
                                 subtitle = "Upload to your public/friends feed",
-                                accentColor = Color(0xFF2E86DE),
+                                accentColor = Color(0xFF2A4A73),
                                 onClick = {
                                     showBatchAlbumDialog = false
                                     Toast.makeText(
@@ -1523,7 +1524,7 @@ fun MainScreen(
                             )
                         )
                         adminGroups.forEach { group ->
-                            val albumColor = try { Color(android.graphics.Color.parseColor(group.color)) } catch (_: Exception) { Color(0xFF4FC3F7) }
+                            val albumColor = try { Color(android.graphics.Color.parseColor(group.color)) } catch (_: Exception) { Color(0xFF2A4A73) }
                             add(
                                 ActionSheetOption(
                                     icon = Icons.Default.Groups,
@@ -1895,7 +1896,7 @@ private fun SelectionListScreen(
                     Icon(
                         imageVector = entry.icon,
                         contentDescription = null,
-                        tint = Color(0xFF2E86DE)
+                        tint = Color(0xFF2A4A73)
                     )
                     Spacer(modifier = Modifier.width(12.dp))
                     Column(modifier = Modifier.weight(1f)) {

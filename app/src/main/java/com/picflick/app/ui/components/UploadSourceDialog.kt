@@ -4,7 +4,9 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.PhotoLibrary
@@ -61,6 +63,7 @@ fun AddPhotoStyleActionSheet(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
                 .padding(horizontal = 24.dp, vertical = 20.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
@@ -114,14 +117,14 @@ fun UploadSourceDialog(
                 icon = Icons.Default.CameraAlt,
                 title = "Take Photo",
                 subtitle = "Use your camera",
-                accentColor = Color(0xFF2E86DE),
+                accentColor = Color(0xFF2A4A73),
                 onClick = onCameraClick
             ),
             ActionSheetOption(
                 icon = Icons.Default.PhotoLibrary,
                 title = "Choose from Gallery",
                 subtitle = "Select existing photo",
-                accentColor = Color(0xFF2E86DE),
+                accentColor = Color(0xFF2A4A73),
                 onClick = onGalleryClick
             ),
 

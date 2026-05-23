@@ -85,7 +85,7 @@ fun ContactScreen(
                         icon = Icons.Default.Email,
                         title = label,
                         subtitle = if (value == selectedCategory) "Currently selected" else "Use for this message",
-                        accentColor = Color(0xFF2E86DE),
+                        accentColor = Color(0xFF2A4A73),
                         onClick = {
                             selectedCategory = value
                             showCategoryPopup = false

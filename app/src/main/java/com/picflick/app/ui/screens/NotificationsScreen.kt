@@ -102,7 +102,7 @@ fun NotificationsScreen(
                             icon = Icons.Default.Email,
                             title = "Mark all read",
                             subtitle = "Clear $unreadCount unread notifications",
-                            accentColor = Color(0xFF2E86DE),
+                            accentColor = Color(0xFF2A4A73),
                             onClick = {
                                 viewModel.markAllAsRead(userProfile.uid)
                                 showHeaderMenu = false
@@ -559,7 +559,7 @@ private fun NotificationItem(
     }
 
     val tierRingColor = if (isGroupMessageNotification) {
-        Color(0xFF4FC3F7)
+        Color(0xFF2A4A73)
     } else {
         rememberLiveUserTierColor(notification.senderId)
     }
@@ -933,18 +933,18 @@ private fun getNotificationIcon(type: NotificationType) = when (type) {
 private fun getNotificationColor(type: NotificationType) = when (type) {
     NotificationType.LIKE -> Color(0xFFE91E63) // Pink
     NotificationType.REACTION -> Color(0xFFE91E63) // Pink (same as LIKE)
-    NotificationType.COMMENT -> Color(0xFF4FC3F7) // Light Blue
-    NotificationType.COMMENT_REPLY -> Color(0xFF4FC3F7) // Light Blue
+    NotificationType.COMMENT -> Color(0xFF2A4A73) // Light Blue
+    NotificationType.COMMENT_REPLY -> Color(0xFF2A4A73) // Light Blue
     NotificationType.FOLLOW -> Color(0xFF4CAF50) // Green
     NotificationType.FOLLOW_ACCEPTED -> Color(0xFF4CAF50) // Green
     NotificationType.FRIEND_REQUEST -> Color(0xFF9C27B0) // Purple
     NotificationType.MESSAGE -> Color(0xFFFF9800) // Orange
-    NotificationType.PHOTO_ADDED -> Color(0xFF00BCD4) // Cyan
+    NotificationType.PHOTO_ADDED -> Color(0xFF2A4A73) // Cyan
     NotificationType.PROFILE_PHOTO_UPDATED -> Color(0xFF3F51B5) // Indigo
     NotificationType.MENTION -> Color(0xFFFF5722) // Deep Orange
     NotificationType.STREAK_REMINDER -> Color(0xFFFFD700) // Gold
     NotificationType.ACHIEVEMENT -> Color(0xFFFFD700) // Gold
-    NotificationType.GROUP_INVITE -> Color(0xFF1565C0) // PicFlick blue
+    NotificationType.GROUP_INVITE -> Color(0xFF2A4A73) // PicFlick blue
     NotificationType.SYSTEM -> Color(0xFF607D8B) // Blue Grey
 }
 

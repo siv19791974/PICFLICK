@@ -517,7 +517,7 @@ fun ProfileScreen(
             Text(
                 text = displayBio,
                 fontSize = 14.sp,
-                color = if (isDarkMode) Color(0xFF87CEEB) else Color.Black,
+                color = if (isDarkMode) Color(0xFF2A4A73) else Color.Black,
                 modifier = Modifier
                     .padding(horizontal = 32.dp)
                     .clickable {
@@ -530,7 +530,7 @@ fun ProfileScreen(
             Text(
                 text = "$countryFlag ${if (countryFlag.isNotEmpty()) "Add a bio..." else "✏️ Add a bio to tell people about yourself"}",
                 fontSize = 14.sp,
-                color = if (isDarkMode) Color(0xFF87CEEB) else Color.DarkGray,
+                color = if (isDarkMode) Color(0xFF2A4A73) else Color.DarkGray,
                 modifier = Modifier
                     .padding(horizontal = 32.dp)
                     .clickable {
@@ -647,7 +647,7 @@ fun ProfileScreen(
                 }
             } else {
                 item(key = "create_album") {
-                    val createColor = Color(0xFF1565C0)
+                    val createColor = if (isDarkMode) Color.White else Color.Black
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         modifier = Modifier.clickable { onCreateAlbum() }

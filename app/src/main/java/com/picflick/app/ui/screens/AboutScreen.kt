@@ -38,7 +38,7 @@ fun AboutScreen(
     val textColor = if (isDarkMode) Color.White else Color.Black
     val subtitleColor = if (isDarkMode) Color.Gray else Color.DarkGray
     val cardBackground = if (isDarkMode) Color(0xFF1C1C1E) else Color.White
-    val accentColor = Color(0xFF1565C0)
+    val accentColor = Color(0xFF2A4A73)
 
     Scaffold(
         topBar = {

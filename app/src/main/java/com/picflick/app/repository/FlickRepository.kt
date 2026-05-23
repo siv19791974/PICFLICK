@@ -442,13 +442,8 @@ class FlickRepository private constructor() {
             android.util.Log.d("FlickRepository", "DEBUG: activeMuted=$activeMutedUserIds blocked=$blockedUserIds")
 
             // Merge, remove duplicates, filter muted/blocked users, and sort by timestamp DESC (client-side sorting)
-            val visibleAlbumTargetGroupIds = runCatching {
-                val groupsSnapshot = db.collection("groups")
-                    .whereArrayContains("memberIds", userId)
-                    .get()
-                    .await()
-                groupsSnapshot.documents.map { it.id }.toSet()
-            }.getOrElse { emptySet() }
+            // Album-targeted photos are intentionally excluded from the general Home feed.
+            // They should only appear when the matching album filter is selected.
 
             // Deduplicate: prefer items with real Firestore id over optimistic uploads (id="") that share the same clientUploadId.
             var allFlicks = (ownFlicks + friendsFlicks)
@@ -469,22 +464,16 @@ class FlickRepository private constructor() {
             }
             android.util.Log.d("FlickRepository", "After mute/block filter: ${allFlicks.size} photos")
 
-            val filteredByGroup = allFlicks.filterNot { flick ->
-                flick.sharedGroupId.isBlank() ||
-                    flick.userId == userId ||
-                    visibleAlbumTargetGroupIds.contains(flick.sharedGroupId)
-            }
-            if (filteredByGroup.isNotEmpty()) {
-                android.util.Log.d("FlickRepository", "sharedGroupId HIDDEN ${filteredByGroup.size} photos (groups=$visibleAlbumTargetGroupIds): ${filteredByGroup.map { "id=${it.id.take(8)} user=${it.userId.take(8)} group=${it.sharedGroupId.take(8)}" }}"
+            val albumTargetedFlicks = allFlicks.filter { it.sharedGroupId.isNotBlank() }
+            if (albumTargetedFlicks.isNotEmpty()) {
+                android.util.Log.d(
+                    "FlickRepository",
+                    "Home feed hiding ${albumTargetedFlicks.size} album-targeted photos: ${albumTargetedFlicks.map { "id=${it.id.take(8)} user=${it.userId.take(8)} group=${it.sharedGroupId.take(8)}" }}"
                 )
             }
 
-            allFlicks = allFlicks.filter { flick ->
-                flick.sharedGroupId.isBlank() ||
-                    flick.userId == userId ||
-                    visibleAlbumTargetGroupIds.contains(flick.sharedGroupId)
-            }
-            android.util.Log.d("FlickRepository", "After sharedGroupId filter: ${allFlicks.size} photos")
+            allFlicks = allFlicks.filter { flick -> flick.sharedGroupId.isBlank() }
+            android.util.Log.d("FlickRepository", "After album-target exclusion: ${allFlicks.size} photos")
 
             // Filter out photos auto-hidden by community reporting (3+ unique reporters).
             // The photo owner can still see their own photo for context/appeal.
@@ -770,6 +759,13 @@ class FlickRepository private constructor() {
         val ownerId = flick?.userId.orEmpty()
         val imageUrl = flick?.imageUrl.orEmpty()
 
+        runCatching { deleteFlickComments(flickId) }
+            .onFailure { e -> android.util.Log.w("FlickRepository", "Failed optional comment cleanup for flick=$flickId", e) }
+        runCatching { deleteFlickNotifications(flickId) }
+            .onFailure { e -> android.util.Log.w("FlickRepository", "Failed optional notification cleanup for flick=$flickId", e) }
+        runCatching { clearFlickReferencesFromChatMessages(flickId) }
+            .onFailure { e -> android.util.Log.w("FlickRepository", "Failed optional chat-reference cleanup for flick=$flickId", e) }
+
         if (imageUrl.isNotBlank()) {
             try {
                 storage.getReferenceFromUrl(imageUrl).delete().await()
@@ -800,6 +796,62 @@ class FlickRepository private constructor() {
 
         if (ownerId.isNotBlank()) {
             decrementStorageUsedBytes(ownerId, flick?.imageSizeBytes ?: 0L)
+        }
+    }
+
+    private suspend fun deleteFlickComments(flickId: String) {
+        val comments = db.collection("comments")
+            .whereEqualTo("flickId", flickId)
+            .get()
+            .await()
+        comments.documents.forEach { comment ->
+            runCatching { comment.reference.delete().await() }
+                .onFailure { e -> android.util.Log.w("FlickRepository", "Failed to delete comment=${comment.id} for flick=$flickId", e) }
+        }
+    }
+
+    private suspend fun deleteFlickNotifications(flickId: String) {
+        val notifications = db.collection(Constants.FirebaseCollections.NOTIFICATIONS)
+            .whereEqualTo("flickId", flickId)
+            .get()
+            .await()
+        notifications.documents.forEach { notification ->
+            runCatching { notification.reference.delete().await() }
+                .onFailure { e -> android.util.Log.w("FlickRepository", "Failed to delete notification=${notification.id} for flick=$flickId", e) }
+        }
+    }
+
+    private suspend fun clearFlickReferencesFromChatMessages(flickId: String) {
+        val chatSessions = db.collection(Constants.FirebaseCollections.CHAT_SESSIONS).get().await()
+        chatSessions.documents.forEach { chatSession ->
+            val messages = chatSession.reference.collection("messages")
+                .whereEqualTo("flickId", flickId)
+                .get()
+                .await()
+            messages.documents.forEach { message ->
+                runCatching {
+                    message.reference.update(
+                        mapOf(
+                            "flickId" to "",
+                            "imageUrl" to "",
+                            "text" to "Photo unavailable"
+                        )
+                    ).await()
+                }.onFailure { e ->
+                    android.util.Log.w("FlickRepository", "Failed to clear chat message=${message.id} for flick=$flickId", e)
+                }
+            }
+        }
+    }
+
+    private suspend fun deleteDocumentSubcollection(
+        parent: com.google.firebase.firestore.DocumentReference,
+        subcollection: String
+    ) {
+        val snapshot = parent.collection(subcollection).get().await()
+        snapshot.documents.forEach { document ->
+            runCatching { document.reference.delete().await() }
+                .onFailure { e -> android.util.Log.w("FlickRepository", "Failed to delete $subcollection/${document.id}", e) }
         }
     }
 
@@ -3257,7 +3309,7 @@ android.util.Log.e("FlickRepository", "Failed to submit feedback", e)
                 .get()
                 .await()
             flicksSnapshot.documents.forEach { doc ->
-                safeDelete { doc.reference.delete().await() }
+                safeDelete { deleteFlickSnapshotCompletely(doc) }
             }
 
             // 2) Delete/cleanup chats that include this user
@@ -3336,7 +3388,7 @@ android.util.Log.e("FlickRepository", "Failed to submit feedback", e)
         name: String,
         friendIds: List<String>,
         icon: String = "👥",
-        color: String = "#4FC3F7",
+        color: String = "#2A4A73",
         eventAt: Long? = null
     ): Result<FriendGroup> {
         return try {
@@ -3381,9 +3433,10 @@ android.util.Log.e("FlickRepository", "Failed to submit feedback", e)
         name: String,
         friendIds: List<String>,
         icon: String = "👥",
-        color: String = "#4FC3F7",
+        color: String = "#2A4A73",
         eventAt: Long? = null,
-        isChatGroup: Boolean = false
+        isChatGroup: Boolean = false,
+        inviterName: String = "Someone"
     ): Result<FriendGroup> {
         return try {
             val groupId = UUID.randomUUID().toString()
@@ -3431,6 +3484,19 @@ android.util.Log.e("FlickRepository", "Failed to submit feedback", e)
                     )
                     .await()
             }
+
+            friendIds
+                .filter { it.isNotBlank() && it != userId }
+                .distinct()
+                .forEach { inviteeId ->
+                    createGroupInviteNotification(
+                        inviterId = userId,
+                        inviterName = inviterName.ifBlank { "Someone" },
+                        group = canonicalGroup,
+                        inviteeId = inviteeId,
+                        now = now
+                    )
+                }
 
             Result.Success(canonicalGroup)
         } catch (e: Exception) {
@@ -3488,7 +3554,8 @@ android.util.Log.e("FlickRepository", "Failed to submit feedback", e)
         friendIds: List<String>? = null,
         icon: String? = null,
         color: String? = null,
-        eventAt: Long? = null
+        eventAt: Long? = null,
+        inviterName: String = "Someone"
     ): Result<Unit> {
         return try {
             val sharedRef = db.collection("groups").document(groupId)
@@ -3508,13 +3575,50 @@ android.util.Log.e("FlickRepository", "Failed to submit feedback", e)
                     return Result.Error(Exception("Permission denied"), "Only owner/admin can edit this group")
                 }
 
-                friendIds?.let {
+                val newlyAddedMemberIds = friendIds?.let {
                     val ownerId = group.effectiveOwnerId().ifBlank { userId }
+                    val previousMemberIds = group.effectiveMemberIds().toSet()
                     val memberIds = (it + ownerId).filter { id -> id.isNotBlank() }.distinct()
                     updates["memberIds"] = memberIds
-                }
+                    val memberCollection = sharedRef.collection("members")
+                    val now = System.currentTimeMillis()
+                    memberIds.forEach { memberId ->
+                        memberCollection.document(memberId).set(
+                            mapOf(
+                                "userId" to memberId,
+                                "groupId" to groupId,
+                                "role" to when {
+                                    memberId == ownerId -> GroupRole.OWNER.name
+                                    group.effectiveAdminIds().contains(memberId) -> GroupRole.ADMIN.name
+                                    else -> GroupRole.MEMBER.name
+                                },
+                                "status" to "active",
+                                "joinedAt" to now,
+                                "updatedAt" to now
+                            )
+                        ).await()
+                    }
+                    previousMemberIds
+                        .filter { previousMemberId -> previousMemberId !in memberIds }
+                        .forEach { removedMemberId -> memberCollection.document(removedMemberId).delete().await() }
+                    memberIds.filter { id -> id != ownerId && id !in previousMemberIds }
+                }.orEmpty()
 
                 sharedRef.update(updates).await()
+
+                newlyAddedMemberIds.forEach { inviteeId ->
+                    createGroupInviteNotification(
+                        inviterId = userId,
+                        inviterName = inviterName.ifBlank { "Someone" },
+                        group = group.copy(
+                            name = name ?: group.name,
+                            icon = icon ?: group.icon,
+                            color = color ?: group.color
+                        ),
+                        inviteeId = inviteeId,
+                        now = System.currentTimeMillis()
+                    )
+                }
 
                 // Keep group chat metadata in sync with album edits
                 if (name != null || icon != null) {
@@ -3626,8 +3730,18 @@ android.util.Log.e("FlickRepository", "Failed to submit feedback", e)
                     .get()
                     .await()
                 groupFlicks.documents.forEach { flickSnapshot ->
-                    deleteFlickSnapshotCompletely(flickSnapshot)
+                    runCatching { deleteFlickSnapshotCompletely(flickSnapshot) }
+                        .onFailure { e -> android.util.Log.w("FlickRepository", "Failed optional flick cleanup for group=$groupId flick=${flickSnapshot.id}", e) }
                 }
+
+                runCatching { deleteDocumentSubcollection(groupRef, "members") }
+                    .onFailure { e -> android.util.Log.w("FlickRepository", "Failed optional members cleanup for group=$groupId", e) }
+                runCatching { deleteDocumentSubcollection(groupRef, "invites") }
+                    .onFailure { e -> android.util.Log.w("FlickRepository", "Failed optional invites cleanup for group=$groupId", e) }
+                runCatching { deleteGroupChatSessions(groupId) }
+                    .onFailure { e -> android.util.Log.w("FlickRepository", "Failed optional chat cleanup for group=$groupId", e) }
+                runCatching { deleteGroupNotifications(groupId) }
+                    .onFailure { e -> android.util.Log.w("FlickRepository", "Failed optional notification cleanup for group=$groupId", e) }
 
                 groupRef.delete().await()
                 return Result.Success(Unit)
@@ -3635,7 +3749,32 @@ android.util.Log.e("FlickRepository", "Failed to submit feedback", e)
 
             Result.Error(Exception("Group not found"), "Group not found")
         } catch (e: Exception) {
-            Result.Error(e, "Failed to delete friend group")
+            android.util.Log.e("FlickRepository", "Failed to delete friend group=$groupId", e)
+            Result.Error(e, "Failed to delete album: ${e.message ?: "Unknown error"}")
+        }
+    }
+
+    private suspend fun deleteGroupChatSessions(groupId: String) {
+        val chatSessions = db.collection(Constants.FirebaseCollections.CHAT_SESSIONS)
+            .whereEqualTo("groupId", groupId)
+            .get()
+            .await()
+        chatSessions.documents.forEach { chatSession ->
+            deleteDocumentSubcollection(chatSession.reference, "messages")
+            deleteDocumentSubcollection(chatSession.reference, "typing")
+            runCatching { chatSession.reference.delete().await() }
+                .onFailure { e -> android.util.Log.w("FlickRepository", "Failed to delete group chat session=${chatSession.id}", e) }
+        }
+    }
+
+    private suspend fun deleteGroupNotifications(groupId: String) {
+        val notifications = db.collection(Constants.FirebaseCollections.NOTIFICATIONS)
+            .whereEqualTo("groupId", groupId)
+            .get()
+            .await()
+        notifications.documents.forEach { notification ->
+            runCatching { notification.reference.delete().await() }
+                .onFailure { e -> android.util.Log.w("FlickRepository", "Failed to delete group notification=${notification.id}", e) }
         }
     }
 
@@ -3699,58 +3838,76 @@ android.util.Log.e("FlickRepository", "Failed to submit feedback", e)
                 return Result.Error(Exception("Already a member"), "User is already in the group")
             }
 
-            val invitesCollection = db.collection("groups").document(groupId).collection("invites")
-            val existingPending = invitesCollection
-                .whereEqualTo("inviteeId", inviteeId)
-                .whereEqualTo("status", GroupInviteStatus.PENDING.name)
-                .limit(1)
-                .get()
-                .await()
-                .documents
-                .firstOrNull()
-
-            if (existingPending != null) {
-                val existing = existingPending.toObject(GroupInvite::class.java)
-                if (existing != null) return Result.Success(existing)
-            }
-
-            val inviteId = UUID.randomUUID().toString()
-            val now = System.currentTimeMillis()
-            val invite = GroupInvite(
-                id = inviteId,
-                groupId = group.id,
-                groupName = group.name,
+            val invite = createGroupInviteNotification(
                 inviterId = inviterId,
                 inviterName = inviterName,
+                group = group,
                 inviteeId = inviteeId,
-                status = GroupInviteStatus.PENDING,
-                createdAt = now,
-                updatedAt = now
+                now = System.currentTimeMillis()
             )
-
-            invitesCollection.document(inviteId).set(invite).await()
-
-            db.collection("notifications").add(
-                mapOf(
-                    "userId" to inviteeId,
-                    "type" to "GROUP_INVITE",
-                    "title" to "Group invite",
-                    "message" to "$inviterName invited you to ${group.name}",
-                    "senderId" to inviterId,
-                    "senderName" to inviterName,
-                    "chatId" to group.id,
-                    "timestamp" to now,
-                    "isRead" to false,
-                    "groupId" to group.id,
-                    "groupName" to group.name,
-                    "inviteId" to inviteId
-                )
-            ).await()
 
             Result.Success(invite)
         } catch (e: Exception) {
             Result.Error(e, "Failed to invite friend: ${e.message ?: "Unknown error"}")
         }
+    }
+
+    private suspend fun createGroupInviteNotification(
+        inviterId: String,
+        inviterName: String,
+        group: FriendGroup,
+        inviteeId: String,
+        now: Long = System.currentTimeMillis()
+    ): GroupInvite {
+        val invitesCollection = db.collection("groups").document(group.id).collection("invites")
+        val existingPending = invitesCollection
+            .whereEqualTo("inviteeId", inviteeId)
+            .whereEqualTo("status", GroupInviteStatus.PENDING.name)
+            .limit(1)
+            .get()
+            .await()
+            .documents
+            .firstOrNull()
+
+        if (existingPending != null) {
+            val existing = existingPending.toObject(GroupInvite::class.java)
+            if (existing != null) return existing
+        }
+
+        val safeInviterName = inviterName.ifBlank { "Someone" }
+        val inviteId = UUID.randomUUID().toString()
+        val invite = GroupInvite(
+            id = inviteId,
+            groupId = group.id,
+            groupName = group.name,
+            inviterId = inviterId,
+            inviterName = safeInviterName,
+            inviteeId = inviteeId,
+            status = GroupInviteStatus.PENDING,
+            createdAt = now,
+            updatedAt = now
+        )
+
+        invitesCollection.document(inviteId).set(invite).await()
+
+        db.collection("notifications").add(
+            mapOf(
+                "userId" to inviteeId,
+                "type" to "GROUP_INVITE",
+                "title" to "Album invite",
+                "message" to "$safeInviterName invited you to ${group.name}",
+                "senderId" to inviterId,
+                "senderName" to safeInviterName,
+                "chatId" to group.id,
+                "timestamp" to now,
+                "isRead" to false,
+                "groupId" to group.id,
+                "groupName" to group.name,
+                "inviteId" to inviteId
+            )
+        ).await()
+
+        return invite
     }
 
     /**

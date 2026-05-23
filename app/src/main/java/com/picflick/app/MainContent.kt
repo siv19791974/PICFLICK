@@ -98,6 +98,7 @@ fun AuthenticatedContent(
     homeResetVersion: Int = 0,
     openGroupsManager: Boolean = false,
     onOpenGroupsManagerConsumed: () -> Unit = {},
+    onRequestOpenGroupsManager: () -> Unit = {},
     openCreateGroupDialog: Boolean = false,
     onOpenCreateGroupDialogConsumed: () -> Unit = {},
     onRequestOpenCreateGroupDialog: () -> Unit = {},
@@ -173,6 +174,7 @@ fun AuthenticatedContent(
             onPhotoSelected = onPhotoSelected,
             onCreateAlbum = {
                 onScreenChange(Screen.Home)
+                onRequestOpenGroupsManager()
                 onRequestOpenCreateGroupDialog()
             }
         )
@@ -944,6 +946,7 @@ private fun ChatsScreenContent(
                 icon = icon,
                 friendIds = selectedFriendIds,
                 isChatGroup = true,
+                inviterName = userProfile.displayName,
                 onComplete = onComplete
             )
         },
@@ -1309,15 +1312,10 @@ private fun NotificationsScreenContent(
         onOpenAchievements = {
             onScreenChange(Screen.StreakAchievements)
         },
-        onGroupInviteAccepted = { groupId, groupName ->
-            val group = homeViewModel.friendGroups.firstOrNull { it.id == groupId }
-            onScreenChange(
-                Screen.GroupAlbumInfo(
-                    groupId = groupId,
-                    groupName = groupName.ifBlank { group?.name ?: "Group" },
-                    groupIcon = group?.icon ?: "👥"
-                )
-            )
+        onGroupInviteAccepted = { _, _ ->
+            homeViewModel.loadFriendGroups(userProfile.uid)
+            onScreenChange(Screen.Home)
+            onRequestOpenGroupsManager()
         }
     )
 

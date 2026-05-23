@@ -15,7 +15,7 @@ data class FriendGroup(
     val memberIds: List<String> = emptyList(), // All members including owner
     val adminIds: List<String> = emptyList(), // Admin users (owner always implied)
     val icon: String = "👥", // Emoji icon for the group
-    val color: String = "#4FC3F7", // Color hex for the group chip
+    val color: String = "#2A4A73", // Color hex for the group chip
     val eventAt: Long? = null, // Optional event date-time
     val isChatGroup: Boolean = false, // True for groups created from Chats (not albums)
     val orderIndex: Long = Long.MAX_VALUE, // Manual group ordering in manager sheet

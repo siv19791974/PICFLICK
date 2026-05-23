@@ -3132,7 +3132,7 @@ private fun ShareFriendsDialog(
                             contentAlignment = Alignment.Center
                         ) {
                             CircularProgressIndicator(
-                                color = Color(0xFF87CEEB)
+                                color = Color(0xFF2A4A73)
                             )
                         }
                     }

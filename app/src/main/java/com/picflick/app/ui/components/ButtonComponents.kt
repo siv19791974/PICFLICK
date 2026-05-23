@@ -232,8 +232,8 @@ fun MythicProgressRing(
 /** Interpolates through the PicFlick logo rainbow based on 0..1 progress. */
 private fun mythicSpectrumColor(progress: Float): Color {
     val colors = listOf(
-        Color(0xFF1565C0), // P  – Dark Blue
-        Color(0xFF42A5F5), // i  – Light Blue
+        Color(0xFF2A4A73), // P  – Dark Blue
+        Color(0xFF2A4A73), // i  – Light Blue
         Color(0xFF4CAF50), // c  – Green
         Color(0xFFFFC107), // F  – Yellow
         Color(0xFFFF9800), // l  – Orange

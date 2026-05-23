@@ -234,7 +234,7 @@ modifier = Modifier
                         icon = Icons.Default.Person,
                         title = "View profile",
                         subtitle = "Open ${friend.displayName}'s profile",
-                        accentColor = Color(0xFF2E86DE),
+                        accentColor = Color(0xFF2A4A73),
                         onClick = {
                             menuTargetFriend = null
                             onProfilePhotoClick(friend)

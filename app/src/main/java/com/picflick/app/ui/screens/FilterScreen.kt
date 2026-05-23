@@ -357,7 +357,7 @@ fun FilterScreen(
                                 showCountdownAnimation -> Color.White
                                 isLimitReached -> Color.White
                                 isDarkMode -> Color.White
-                                else -> Color(0xFF1565C0)
+                                else -> Color(0xFF2A4A73)
                             },
                             animationSpec = androidx.compose.animation.core.tween(300),
                             label = "textColor"
@@ -371,7 +371,7 @@ fun FilterScreen(
                                 )
                                 .border(
                                     width = if (showCountdownAnimation) 0.dp else if (isLimitReached) 0.dp else 2.dp,
-                                    color = if (showCountdownAnimation) Color.Transparent else if (isLimitReached) Color.Transparent else if (isDarkMode) Color.Gray else Color(0xFF1565C0),
+                                    color = if (showCountdownAnimation) Color.Transparent else if (isLimitReached) Color.Transparent else if (isDarkMode) Color.Gray else Color(0xFF2A4A73),
                                     shape = RoundedCornerShape(20.dp)
                                 )
                                 .padding(horizontal = 12.dp, vertical = 6.dp)
@@ -419,7 +419,7 @@ fun FilterScreen(
                                 .size(36.dp)
                                 .background(
                                     if (canUpload && !isLoading && bitmap != null) {
-                                        if (isDarkMode) Color(0xFF4CAF50) else Color(0xFF1565C0)
+                                        if (isDarkMode) Color(0xFF4CAF50) else Color(0xFF2A4A73)
                                     } else Color.Gray,
                                     CircleShape
                                 ),
@@ -455,7 +455,7 @@ fun FilterScreen(
             if (isLoading) {
                 CircularProgressIndicator(
                     modifier = Modifier.align(Alignment.Center),
-                    color = if (isDarkMode) Color.White else Color(0xFF1565C0)
+                    color = if (isDarkMode) Color.White else Color(0xFF2A4A73)
                 )
             } else {
                 bitmap?.let { bmp ->
@@ -474,7 +474,7 @@ fun FilterScreen(
                                     horizontalAlignment = Alignment.CenterHorizontally
                                 ) {
                                     CircularProgressIndicator(
-                                        color = if (isDarkMode) Color(0xFF87CEEB) else Color(0xFF1565C0),
+                                        color = if (isDarkMode) Color(0xFF2A4A73) else Color(0xFF2A4A73),
                                         strokeWidth = 3.dp,
                                         modifier = Modifier.size(48.dp)
                                     )
@@ -887,7 +887,7 @@ fun FilterScreen(
                     enabled = selectedDestinationFriends.isNotEmpty(),
                     modifier = Modifier.fillMaxWidth(),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFF2E86DE),
+                        containerColor = Color(0xFF2A4A73),
                         contentColor = Color.White
                     )
                 ) {
@@ -1149,7 +1149,7 @@ private fun DestinationEntityRow(
                 onClick = onActionClick,
                 enabled = actionEnabled,
                 colors = ButtonDefaults.textButtonColors(
-                    contentColor = if (actionEnabled) Color(0xFF1565C0) else Color(0xFF6B7280)
+                    contentColor = if (actionEnabled) Color(0xFF2A4A73) else Color(0xFF6B7280)
                 )
             ) {
                 Icon(
@@ -1193,7 +1193,7 @@ private fun FilterIcon(
                 .border(
                     width = if (isSelected) 4.dp else 2.dp,
                     color = if (isSelected) {
-                        if (isDarkMode) Color(0xFF87CEEB) else Color(0xFF1565C0)
+                        if (isDarkMode) Color(0xFF2A4A73) else Color(0xFF2A4A73)
                     } else {
                         if (isDarkMode) Color.White.copy(alpha = 0.3f) else Color.Black.copy(alpha = 0.3f)
                     },
@@ -1230,7 +1230,7 @@ private fun FilterIcon(
         Text(
             text = filter.displayName,
             color = if (isSelected) {
-                if (isDarkMode) Color(0xFF87CEEB) else Color(0xFF1565C0)
+                if (isDarkMode) Color(0xFF2A4A73) else Color(0xFF2A4A73)
             } else {
                 if (isDarkMode) Color.White.copy(alpha = 0.7f) else Color.Black.copy(alpha = 0.7f)
             },
@@ -1252,7 +1252,7 @@ private fun TaggedFriendChip(
     Box(
         modifier = Modifier
             .clip(RoundedCornerShape(16.dp))
-            .background(if (isDarkMode) Color(0xFF87CEEB) else Color(0xFF1565C0))
+            .background(if (isDarkMode) Color(0xFF2A4A73) else Color(0xFF2A4A73))
             .padding(start = 6.dp, end = 4.dp, top = 4.dp, bottom = 4.dp)
     ) {
         Row(

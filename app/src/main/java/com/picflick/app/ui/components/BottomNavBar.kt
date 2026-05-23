@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AddCircle
 import androidx.compose.material.icons.filled.ChatBubble
+import androidx.compose.material.icons.filled.PhotoAlbum
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.outlined.ChatBubbleOutline
@@ -65,7 +66,7 @@ fun BottomNavBar(
                     album != null && iconValue.isNotBlank() -> {
                         Surface(
                             shape = androidx.compose.foundation.shape.CircleShape,
-                            color = Color(0xFF1565C0).copy(alpha = 0.25f),
+                            color = Color(0xFF2A4A73).copy(alpha = 0.25f),
                             modifier = Modifier.padding(horizontal = 2.dp, vertical = 2.dp)
                         ) {
                             Text(
@@ -77,8 +78,8 @@ fun BottomNavBar(
                     }
                     else -> {
                         Icon(
-                            imageVector = Icons.Outlined.Home,
-                            contentDescription = "Home",
+                            imageVector = if (currentRoute == "home") Icons.Filled.PhotoAlbum else Icons.Outlined.Home,
+                            contentDescription = if (currentRoute == "home") "Albums" else "Home",
                             tint = Color.LightGray
                         )
                     }
@@ -100,7 +101,7 @@ fun BottomNavBar(
                     badge = {
                         if (unreadMessages > 0) {
                             Badge(
-                                containerColor = Color(0xFF1565C0),
+                                containerColor = Color(0xFF2A4A73),
                                 contentColor = Color.White
                             ) {
                                 Text(
@@ -122,7 +123,7 @@ fun BottomNavBar(
             alwaysShowLabel = false,
             selected = currentRoute == "chats",
             onClick = { onNavigate("chats") },
-            colors = NavigationBarItemDefaults.colors(indicatorColor = Color(0xFF1565C0))
+            colors = NavigationBarItemDefaults.colors(indicatorColor = Color(0xFF2A4A73))
         )
 
         NavigationBarItem(
@@ -153,7 +154,7 @@ fun BottomNavBar(
             alwaysShowLabel = false,
             selected = currentRoute == "friends",
             onClick = { onNavigate("friends") },
-            colors = NavigationBarItemDefaults.colors(indicatorColor = Color(0xFF1565C0))
+            colors = NavigationBarItemDefaults.colors(indicatorColor = Color(0xFF2A4A73))
         )
 
         NavigationBarItem(
@@ -168,7 +169,7 @@ fun BottomNavBar(
             alwaysShowLabel = false,
             selected = currentRoute == "profile",
             onClick = { onNavigate("profile") },
-            colors = NavigationBarItemDefaults.colors(indicatorColor = Color(0xFF1565C0))
+            colors = NavigationBarItemDefaults.colors(indicatorColor = Color(0xFF2A4A73))
         )
     }
 }

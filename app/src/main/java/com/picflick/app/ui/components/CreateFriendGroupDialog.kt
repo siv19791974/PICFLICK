@@ -43,7 +43,7 @@ fun CreateFriendGroupDialog(
 
     val icons = listOf("👥", "👨‍👩‍👧‍👦", "💼", "🎓", "⭐", "✈️", "⚽", "🎨", "🏠", "🎵", "📚", "🎮")
     val colors = listOf(
-        "#4FC3F7", // Light Blue
+        "#2A4A73", // Light Blue
         "#FF6B6B", // Red
         "#4CAF50", // Green
         "#FFD93D", // Yellow
@@ -280,7 +280,7 @@ private fun IconGrid(
                         .clickable { onItemSelected(item) },
                     shape = CircleShape,
                     color = if (isSelected) 
-                        Color(0xFF4FC3F7)
+                        Color(0xFF2A4A73)
                     else 
                         if (isDarkMode) Color(0xFF2D2D2D) else Color(0xFFF0F0F0)
                 ) {
