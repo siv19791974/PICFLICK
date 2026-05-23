@@ -185,6 +185,53 @@ class ChatRepository {
         }
     }
 
+    private suspend fun countActualUnreadVisibleMessages(chatId: String, userId: String): Int {
+        if (chatId.isBlank() || userId.isBlank()) return 0
+
+        val unreadSnapshot = db.collection("chatSessions")
+            .document(chatId)
+            .collection("messages")
+            .whereEqualTo("read", false)
+            .get()
+            .await()
+
+        return unreadSnapshot.documents.count { messageDoc ->
+            val senderId = messageDoc.getString("senderId").orEmpty()
+            val deletedFor = (messageDoc.get("deletedForUserIds") as? List<*>)
+                ?.filterIsInstance<String>()
+                .orEmpty()
+            senderId != userId && userId !in deletedFor
+        }
+    }
+
+    private suspend fun reconcileSessionUnreadCount(session: ChatSession, userId: String): ChatSession {
+        if (session.unreadCount <= 0) return session
+
+        val actualUnreadCount = runCatching { countActualUnreadVisibleMessages(session.id, userId) }
+            .onFailure { e ->
+                android.util.Log.w(
+                    "ChatRepository",
+                    "Failed to reconcile unread count for session=${session.id}",
+                    e
+                )
+            }
+            .getOrElse { session.unreadCount }
+
+        if (actualUnreadCount != session.unreadCount) {
+            db.collection("chatSessions")
+                .document(session.id)
+                .update(
+                    mapOf(
+                        "unreadCount.$userId" to actualUnreadCount,
+                        "unreadCount_$userId" to actualUnreadCount
+                    )
+                )
+                .await()
+        }
+
+        return session.copy(unreadCount = actualUnreadCount)
+    }
+
     private fun com.google.firebase.firestore.DocumentSnapshot.toChatSessionSafe(userId: String): ChatSession {
         val participants = (get("participants") as? List<*>)
             ?.filterIsInstance<String>()
@@ -240,7 +287,9 @@ class ChatRepository {
                             ?.filterIsInstance<String>()
                             ?: emptyList()
                         if (deletedFor.contains(userId)) return@mapNotNull null
-                        runCatching { doc.toChatSessionSafe(userId) }.getOrNull()
+                        runCatching { doc.toChatSessionSafe(userId) }
+                            .getOrNull()
+                            ?.let { session -> reconcileSessionUnreadCount(session, userId) }
                     } ?: emptyList()
 
                     // Include both 1:1 and group sessions.
@@ -1040,19 +1089,25 @@ class ChatRepository {
                 val docCount = snapshot?.documents?.size ?: 0
                 android.util.Log.d("ChatRepository", "getUnreadMessageCount: snapshot has $docCount sessions")
 
-                // Count unread messages from the session data
-                var count = 0
-                snapshot?.documents?.forEach { doc ->
-                    val unreadFromMap = (doc.get("unreadCount") as? Map<*, *>)
-                        ?.get(userId)
-                        .toIntOrNullSafe()
-                    val unreadFromDirectField = doc.getIntFromAny("unreadCount_$userId")
-                    val sessionUnread = unreadFromMap ?: unreadFromDirectField ?: 0
-                    android.util.Log.d("ChatRepository", "getUnreadMessageCount: session=${doc.id} direct=$unreadFromDirectField map=$unreadFromMap resolved=$sessionUnread")
-                    count += sessionUnread
+                launch {
+                    var count = 0
+                    snapshot?.documents?.forEach { doc ->
+                        val deletedFor = (doc.get("deletedForUserIds") as? List<*>)
+                            ?.filterIsInstance<String>()
+                            .orEmpty()
+                        if (userId in deletedFor) return@forEach
+
+                        val session = runCatching { doc.toChatSessionSafe(userId) }.getOrNull() ?: return@forEach
+                        val reconciledSession = reconcileSessionUnreadCount(session, userId)
+                        android.util.Log.d(
+                            "ChatRepository",
+                            "getUnreadMessageCount: session=${doc.id} stored=${session.unreadCount} actual=${reconciledSession.unreadCount}"
+                        )
+                        count += reconciledSession.unreadCount
+                    }
+                    android.util.Log.d("ChatRepository", "getUnreadMessageCount: total=$count")
+                    trySend(count)
                 }
-                android.util.Log.d("ChatRepository", "getUnreadMessageCount: total=$count")
-                trySend(count)
             }
         awaitClose {
             android.util.Log.d("ChatRepository", "getUnreadMessageCount: listener removed")
