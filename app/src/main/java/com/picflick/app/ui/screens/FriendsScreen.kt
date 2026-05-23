@@ -196,6 +196,7 @@ modifier = Modifier
                                 isOwnFriendsList = isOwnFriendsList,
                                 isAlreadyFriend = isAlreadyFriend,
                                 hasSentRequest = hasSentRequest,
+                                currentUserProfile = userProfile,
                                 currentUserId = currentUserId,
                                 onMenuClick = {
                                     menuTargetFriend = friend
@@ -404,6 +405,7 @@ private fun FriendListItem(
     isOwnFriendsList: Boolean = true,
     isAlreadyFriend: Boolean = false,
     hasSentRequest: Boolean = false,
+    currentUserProfile: UserProfile,
     currentUserId: String,
     onMenuClick: () -> Unit = {},
     onAddFriend: () -> Unit = {},
@@ -475,9 +477,10 @@ private fun FriendListItem(
 
                 Spacer(modifier = Modifier.height(4.dp))
 
-                // Followers count - 14sp like message preview
+                // Mutual friends count - 14sp like message preview
+                val mutualFriendCount = currentUserProfile.getMutualFriends(friend)
                 Text(
-                    text = "${friend.followers.size} followers",
+                    text = "$mutualFriendCount ${if (mutualFriendCount == 1) "mutual friend" else "mutual friends"}",
                     fontSize = 14.sp,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
                     maxLines = 1,

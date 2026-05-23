@@ -332,7 +332,8 @@ fun NotificationsScreen(
                                                 NotificationType.FOLLOW,
                                                 NotificationType.FOLLOW_ACCEPTED,
                                                 NotificationType.PROFILE_PHOTO_UPDATED -> onUserProfileClick(notification.senderId)
-                                                NotificationType.MESSAGE -> onChatClick(notification.chatId.orEmpty(), notification.senderId, notification.senderName, notification.senderPhotoUrl)
+                                                NotificationType.MESSAGE,
+                                                NotificationType.GROUP_CHAT_ADDED -> onChatClick(notification.chatId.orEmpty(), notification.senderId, notification.senderName, notification.senderPhotoUrl)
                                                 NotificationType.SYSTEM -> {
                                                     val target = notification.targetScreen?.lowercase().orEmpty()
                                                     val hint = "${notification.title} ${notification.message}".lowercase()
@@ -431,7 +432,8 @@ fun NotificationsScreen(
                                                 NotificationType.FOLLOW,
                                                 NotificationType.FOLLOW_ACCEPTED,
                                                 NotificationType.PROFILE_PHOTO_UPDATED -> onUserProfileClick(notification.senderId)
-                                                NotificationType.MESSAGE -> onChatClick(notification.chatId.orEmpty(), notification.senderId, notification.senderName, notification.senderPhotoUrl)
+                                                NotificationType.MESSAGE,
+                                                NotificationType.GROUP_CHAT_ADDED -> onChatClick(notification.chatId.orEmpty(), notification.senderId, notification.senderName, notification.senderPhotoUrl)
                                                 NotificationType.SYSTEM -> {
                                                     val target = notification.targetScreen?.lowercase().orEmpty()
                                                     val hint = "${notification.title} ${notification.message}".lowercase()
@@ -644,7 +646,8 @@ private fun NotificationItem(
         notification.type == NotificationType.PROFILE_PHOTO_UPDATED -> "$senderName updated their profile photo"
         notification.type == NotificationType.MENTION -> "You're tagged in a photo"
         notification.type == NotificationType.FRIEND_REQUEST -> "$senderName has requested to be your friend"
-        notification.type == NotificationType.GROUP_INVITE -> notification.message.ifBlank { "$senderName invited you to a group" }
+        notification.type == NotificationType.GROUP_INVITE -> notification.message.ifBlank { "$senderName invited you to an album" }
+        notification.type == NotificationType.GROUP_CHAT_ADDED -> notification.message.ifBlank { "$senderName added you to a group chat" }
         isCommentHeartNotification -> {
             if (!commentPreview.isNullOrBlank()) {
                 "your comment \"$commentPreview\" \u2192 $commentReactionEmoji"
@@ -704,12 +707,21 @@ private fun NotificationItem(
                 }
             }
 
+            val badgeColor = getNotificationColor(notification.type)
+            val badgeIconTint = when (notification.type) {
+                NotificationType.COMMENT,
+                NotificationType.COMMENT_REPLY,
+                NotificationType.PHOTO_ADDED,
+                NotificationType.GROUP_INVITE -> Color.White
+                else -> if (isDarkMode) Color.White else Color.Black
+            }
+
             Box(
                 modifier = Modifier
                     .size(20.dp)
                     .align(Alignment.BottomEnd)
                     .background(
-                        color = getNotificationColor(notification.type),
+                        color = badgeColor,
                         shape = CircleShape
                     ),
                 contentAlignment = Alignment.Center
@@ -718,7 +730,7 @@ private fun NotificationItem(
                     imageVector = getNotificationIcon(notification.type),
                     contentDescription = null,
                     modifier = Modifier.size(12.dp),
-                    tint = if (isDarkMode) Color.White else Color.Black
+                    tint = badgeIconTint
                 )
             }
         }
@@ -920,6 +932,7 @@ private fun getNotificationIcon(type: NotificationType) = when (type) {
     NotificationType.FOLLOW_ACCEPTED -> Icons.Default.Person
     NotificationType.FRIEND_REQUEST -> Icons.Default.Person
     NotificationType.MESSAGE -> Icons.Default.Email
+    NotificationType.GROUP_CHAT_ADDED -> Icons.Default.Email
     NotificationType.PHOTO_ADDED -> Icons.Default.Info
     NotificationType.PROFILE_PHOTO_UPDATED -> Icons.Default.Person
     NotificationType.MENTION -> Icons.Default.Email
@@ -939,6 +952,7 @@ private fun getNotificationColor(type: NotificationType) = when (type) {
     NotificationType.FOLLOW_ACCEPTED -> Color(0xFF4CAF50) // Green
     NotificationType.FRIEND_REQUEST -> Color(0xFF9C27B0) // Purple
     NotificationType.MESSAGE -> Color(0xFFFF9800) // Orange
+    NotificationType.GROUP_CHAT_ADDED -> Color(0xFFFF9800) // Orange
     NotificationType.PHOTO_ADDED -> Color(0xFF2A4A73) // Cyan
     NotificationType.PROFILE_PHOTO_UPDATED -> Color(0xFF3F51B5) // Indigo
     NotificationType.MENTION -> Color(0xFFFF5722) // Deep Orange

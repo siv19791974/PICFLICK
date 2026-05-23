@@ -341,12 +341,11 @@ private fun DiscoverTab(
             }
 
             // Sort by mutual friends (high -> low), while keeping priority requester pinned first when applicable
-            val orderedSuggestedUsers = remember(filteredSuggestedUsers, priorityRequesterId, userProfile.following) {
-                val followingSet = userProfile.following.toSet()
+            val orderedSuggestedUsers = remember(filteredSuggestedUsers, priorityRequesterId, userProfile.followers, userProfile.following) {
                 filteredSuggestedUsers
                     .sortedWith(
                         compareByDescending<UserProfile> { user ->
-                            (user.followers intersect followingSet).size
+                            userProfile.getMutualFriends(user)
                         }.thenBy { it.displayName.lowercase() }
                     )
                     .let { sortedByMutuals ->
@@ -387,8 +386,7 @@ private fun DiscoverTab(
                                 viewModel.declineFollowRequest(userProfile.uid, user.uid)
                             },
                             onUserClick = { onUserClick(user.uid) },
-                            showMutualFriends = true,
-                            mutualCount = (user.followers intersect userProfile.following.toSet()).size
+                            currentUserProfile = userProfile
                         )
                     }
                     
@@ -508,7 +506,8 @@ private fun DiscoverTab(
                                 onDeclineRequest = {
                                     viewModel.declineFollowRequest(userProfile.uid, user.uid)
                                 },
-                                onUserClick = { onUserClick(user.uid) }
+                                onUserClick = { onUserClick(user.uid) },
+                                currentUserProfile = userProfile
                             )
                         }
                     }
@@ -664,7 +663,7 @@ private fun ContactsTab(
                                         viewModel.declineFollowRequest(userProfile.uid, user.uid)
                                     },
                                     onUserClick = { onUserClick(user.uid) },
-                                    subtitle = "From your contacts"
+                                    currentUserProfile = userProfile
                                 )
                             }
                             
@@ -936,9 +935,7 @@ private fun UserResultItem(
     onCancelRequest: () -> Unit = {},
     onDeclineRequest: () -> Unit = {},
     onUserClick: () -> Unit,
-    showMutualFriends: Boolean = false,
-    mutualCount: Int = 0,
-    subtitle: String? = null
+    currentUserProfile: UserProfile
 ) {
     val isDarkMode = ThemeManager.isDarkMode.value
     val liveUserPhoto = rememberLiveUserPhotoUrl(user.uid, user.photoUrl)
@@ -996,31 +993,14 @@ private fun UserResultItem(
                     overflow = TextOverflow.Ellipsis
                 )
 
-                if (showMutualFriends && mutualCount > 0) {
-                    Text(
-                        text = "$mutualCount mutual followers",
-                        fontSize = 14.sp,
-                        color = if (isDarkMode) Color.Gray else Color.DarkGray,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                } else if (subtitle != null) {
-                    Text(
-                        text = subtitle,
-                        fontSize = 14.sp,
-                        color = if (isDarkMode) Color.Gray else Color.DarkGray,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                } else {
-                    Text(
-                        text = "${user.followers.size} followers",
-                        fontSize = 14.sp,
-                        color = if (isDarkMode) Color.Gray else Color.DarkGray,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
+                val mutualFriendCount = currentUserProfile.getMutualFriends(user)
+                Text(
+                    text = "$mutualFriendCount ${if (mutualFriendCount == 1) "mutual friend" else "mutual friends"}",
+                    fontSize = 14.sp,
+                    color = if (isDarkMode) Color.Gray else Color.DarkGray,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
             }
 
             // Action button - unchanged behavior

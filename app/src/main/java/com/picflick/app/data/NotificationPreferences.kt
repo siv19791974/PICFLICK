@@ -76,6 +76,7 @@ data class NotificationPreferences(
             NotificationType.STREAK_REMINDER -> pushStreakReminders
             NotificationType.ACHIEVEMENT -> pushAchievements
             NotificationType.GROUP_INVITE -> pushFollows
+            NotificationType.GROUP_CHAT_ADDED -> pushMessages
             NotificationType.SYSTEM -> pushSystemAnnouncements
         }
     }
@@ -101,6 +102,7 @@ data class NotificationPreferences(
             NotificationType.STREAK_REMINDER -> streakReminders
             NotificationType.ACHIEVEMENT -> achievements
             NotificationType.GROUP_INVITE -> follows
+            NotificationType.GROUP_CHAT_ADDED -> messages
             NotificationType.SYSTEM -> systemAnnouncements
         }
     }

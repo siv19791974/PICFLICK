@@ -139,8 +139,9 @@ fun GroupAlbumInfoScreen(
                                     fontSize = 20.sp
                                 )
                                 Spacer(modifier = Modifier.height(4.dp))
+                                val memberCount = group.effectiveMemberIds().size
                                 Text(
-                                    text = "${group.membersExcludingOwner().size} member(s)",
+                                    text = "$memberCount ${if (memberCount == 1) "member" else "members"}",
                                     color = if (isDarkMode) Color.LightGray else Color(0xFF4B5563),
                                     fontSize = 14.sp
                                 )

@@ -3488,14 +3488,24 @@ android.util.Log.e("FlickRepository", "Failed to submit feedback", e)
             friendIds
                 .filter { it.isNotBlank() && it != userId }
                 .distinct()
-                .forEach { inviteeId ->
-                    createGroupInviteNotification(
-                        inviterId = userId,
-                        inviterName = inviterName.ifBlank { "Someone" },
-                        group = canonicalGroup,
-                        inviteeId = inviteeId,
-                        now = now
-                    )
+                .forEach { memberId ->
+                    if (isChatGroup) {
+                        createGroupChatAddedNotification(
+                            adderId = userId,
+                            adderName = inviterName.ifBlank { "Someone" },
+                            group = canonicalGroup,
+                            memberId = memberId,
+                            now = now
+                        )
+                    } else {
+                        createGroupInviteNotification(
+                            inviterId = userId,
+                            inviterName = inviterName.ifBlank { "Someone" },
+                            group = canonicalGroup,
+                            inviteeId = memberId,
+                            now = now
+                        )
+                    }
                 }
 
             Result.Success(canonicalGroup)
@@ -3606,18 +3616,29 @@ android.util.Log.e("FlickRepository", "Failed to submit feedback", e)
 
                 sharedRef.update(updates).await()
 
-                newlyAddedMemberIds.forEach { inviteeId ->
-                    createGroupInviteNotification(
-                        inviterId = userId,
-                        inviterName = inviterName.ifBlank { "Someone" },
-                        group = group.copy(
-                            name = name ?: group.name,
-                            icon = icon ?: group.icon,
-                            color = color ?: group.color
-                        ),
-                        inviteeId = inviteeId,
-                        now = System.currentTimeMillis()
+                newlyAddedMemberIds.forEach { memberId ->
+                    val updatedGroupForNotification = group.copy(
+                        name = name ?: group.name,
+                        icon = icon ?: group.icon,
+                        color = color ?: group.color
                     )
+                    if (group.isChatGroup) {
+                        createGroupChatAddedNotification(
+                            adderId = userId,
+                            adderName = inviterName.ifBlank { "Someone" },
+                            group = updatedGroupForNotification,
+                            memberId = memberId,
+                            now = System.currentTimeMillis()
+                        )
+                    } else {
+                        createGroupInviteNotification(
+                            inviterId = userId,
+                            inviterName = inviterName.ifBlank { "Someone" },
+                            group = updatedGroupForNotification,
+                            inviteeId = memberId,
+                            now = System.currentTimeMillis()
+                        )
+                    }
                 }
 
                 // Keep group chat metadata in sync with album edits
@@ -3852,6 +3873,36 @@ android.util.Log.e("FlickRepository", "Failed to submit feedback", e)
         }
     }
 
+    private suspend fun createGroupChatAddedNotification(
+        adderId: String,
+        adderName: String,
+        group: FriendGroup,
+        memberId: String,
+        now: Long = System.currentTimeMillis()
+    ) {
+        val safeAdderName = adderName.ifBlank { "Someone" }
+        val deterministicChatId = "group_${group.id}"
+        db.collection("notifications").add(
+            mapOf(
+                "userId" to memberId,
+                "type" to NotificationType.GROUP_CHAT_ADDED.name,
+                "title" to "Added to group chat",
+                "message" to "$safeAdderName added you to the group chat ${group.name}",
+                "senderId" to adderId,
+                "senderName" to safeAdderName,
+                "chatId" to deterministicChatId,
+                "timestamp" to now,
+                "isRead" to false,
+                "groupId" to group.id,
+                "groupName" to group.name,
+                "groupIcon" to group.icon,
+                "groupType" to "chat",
+                "source" to "chat",
+                "targetScreen" to "chat"
+            )
+        ).await()
+    }
+
     private suspend fun createGroupInviteNotification(
         inviterId: String,
         inviterName: String,
@@ -3893,16 +3944,19 @@ android.util.Log.e("FlickRepository", "Failed to submit feedback", e)
         db.collection("notifications").add(
             mapOf(
                 "userId" to inviteeId,
-                "type" to "GROUP_INVITE",
+                "type" to NotificationType.GROUP_INVITE.name,
                 "title" to "Album invite",
-                "message" to "$safeInviterName invited you to ${group.name}",
+                "message" to "$safeInviterName invited you to the album ${group.name}",
                 "senderId" to inviterId,
                 "senderName" to safeInviterName,
-                "chatId" to group.id,
                 "timestamp" to now,
                 "isRead" to false,
                 "groupId" to group.id,
                 "groupName" to group.name,
+                "groupIcon" to group.icon,
+                "groupType" to "album",
+                "source" to "album",
+                "targetScreen" to "notifications",
                 "inviteId" to inviteId
             )
         ).await()

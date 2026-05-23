@@ -762,6 +762,7 @@ fun ChatsScreen(
             onAddPhoto = {
                 photoPickerLauncher.launch("image/*")
             },
+            currentUserProfile = userProfile,
             onCreateSharedGroup = { name, icon, selectedFriendIds, onDone ->
                 onCreateSharedGroup(name, icon, selectedFriendIds) { success, createdGroup ->
                     if (success && createdGroup != null) {
@@ -811,6 +812,7 @@ fun ChatsScreen(
                 pendingChatGroupIconTarget = "edit_chat"
                 photoPickerLauncher.launch("image/*")
             },
+            currentUserProfile = userProfile,
             onSubmit = { name, icon, selectedFriendIds, color ->
                 homeViewModel?.updateFriendGroup(
                     userId = userProfile.uid,
@@ -844,6 +846,7 @@ fun ChatsScreen(
             onDismiss = { viewingChatGroup = null },
             onAddPhoto = {},
             onSubmit = { _, _, _, _ -> },
+            currentUserProfile = userProfile,
             readOnly = true,
             onUserProfileClick = onUserProfileClick
         )
@@ -859,6 +862,7 @@ private fun NewGroupFromComposeDialog(
     initialIcon: String,
     onDismiss: () -> Unit,
     onAddPhoto: () -> Unit,
+    currentUserProfile: com.picflick.app.data.UserProfile,
     onCreateSharedGroup: (String, String, List<String>, (Boolean, FriendGroup?) -> Unit) -> Unit,
     onUserProfileClick: (String) -> Unit
 ) {
@@ -1040,8 +1044,9 @@ private fun NewGroupFromComposeDialog(
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis
                                 )
+                                val mutualFriendCount = currentUserProfile.getMutualFriends(friend)
                                 Text(
-                                    text = "${friend.followers.size} followers",
+                                    text = "$mutualFriendCount ${if (mutualFriendCount == 1) "mutual friend" else "mutual friends"}",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = if (isDarkMode) Color.Gray else Color.DarkGray
                                 )

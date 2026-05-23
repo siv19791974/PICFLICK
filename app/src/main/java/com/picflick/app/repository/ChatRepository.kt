@@ -430,10 +430,8 @@ class ChatRepository {
                 }
             }
 
-            val unreadMap = participants.associateWith { 0 }
             val now = System.currentTimeMillis()
             val docRef = db.collection("chatSessions").document(deterministicChatId)
-            val existingSession = docRef.get().await()
             val sessionUpdates = hashMapOf<String, Any>(
                 "id" to deterministicChatId,
                 "participants" to participants,
@@ -445,13 +443,6 @@ class ChatRepository {
                 "groupIcon" to groupIcon,
                 "updatedAt" to now
             )
-
-            if (!existingSession.exists()) {
-                sessionUpdates["unreadCount"] = unreadMap
-                sessionUpdates["lastMessage"] = ""
-                sessionUpdates["lastTimestamp"] = now
-                sessionUpdates["createdAt"] = now
-            }
 
             docRef.set(sessionUpdates, SetOptions.merge()).await()
             Result.Success(deterministicChatId)

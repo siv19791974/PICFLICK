@@ -41,7 +41,8 @@ enum class NotificationType {
     MENTION,        // Someone mentioned you in comment
     STREAK_REMINDER,// Reminder to maintain streak
     ACHIEVEMENT,    // Achievement unlocked
-    GROUP_INVITE,   // Invitation to join a shared group
+    GROUP_INVITE,   // Invitation to join a shared album/group
+    GROUP_CHAT_ADDED, // Added directly to a group chat
     SYSTEM          // System announcements
 }
 

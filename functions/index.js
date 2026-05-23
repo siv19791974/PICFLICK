@@ -84,7 +84,7 @@ exports.sendPushNotification = functions
     }
     
     // ONLY send push for IMPORTANT notification types
-    const IMPORTANT_TYPES = ['FRIEND_REQUEST', 'GROUP_INVITE', 'MESSAGE', 'FOLLOW_ACCEPTED', 'MENTION', 'COMMENT'];
+    const IMPORTANT_TYPES = ['FRIEND_REQUEST', 'GROUP_INVITE', 'GROUP_CHAT_ADDED', 'MESSAGE', 'FOLLOW_ACCEPTED', 'MENTION', 'COMMENT'];
 
     if (!IMPORTANT_TYPES.includes(notification.type)) {
       console.log('Skipping push - type not important enough:', notification.type,
@@ -171,7 +171,7 @@ exports.sendPushNotification = functions
       let targetScreen = explicitTarget || 'notifications'; // Default
 
       if (!explicitTarget) {
-        if (type === 'MESSAGE') {
+        if (type === 'MESSAGE' || type === 'GROUP_CHAT_ADDED') {
           targetScreen = 'chat'; // Opens message thread
         } else if (
           type === 'MENTION' ||
@@ -210,7 +210,12 @@ exports.sendPushNotification = functions
           type: notification.type || 'GENERIC',
           senderId: notification.senderId || '',
           senderName: notification.senderName || '',
+          groupId: notification.groupId || '',
           groupName: notification.groupName || '',
+          groupIcon: notification.groupIcon || '',
+          groupType: notification.groupType || notification.source || '',
+          chatId: notification.chatId || '',
+          inviteId: notification.inviteId || '',
           flickId: notification.flickId || '',
           targetScreen: targetScreen,
           click_action: 'FLUTTER_NOTIFICATION_CLICK',

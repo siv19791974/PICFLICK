@@ -86,7 +86,21 @@ data class UserProfile(
     fun getMutualFollowers(otherUser: UserProfile): Int {
         return followers.intersect(otherUser.followers.toSet()).size
     }
-    
+
+    /**
+     * Get mutual friend count with another user.
+     * Treats friendship as shared social connections from followers/following, excluding the two users themselves.
+     */
+    fun getMutualFriends(otherUser: UserProfile): Int {
+        val myConnections = (followers + following)
+            .filter { it != uid && it != otherUser.uid }
+            .toSet()
+        val otherConnections = (otherUser.followers + otherUser.following)
+            .filter { it != uid && it != otherUser.uid }
+            .toSet()
+        return myConnections.intersect(otherConnections).size
+    }
+
     /**
      * Check if this user is following another user
      */

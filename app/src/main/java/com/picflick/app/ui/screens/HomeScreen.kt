@@ -634,6 +634,7 @@ fun HomeScreen(
                 groupIconPhotoPickerLauncher.launch("image/*")
             },
             onSubmit = { _, _, _, _ -> },
+            currentUserProfile = userProfile,
             onCreateAlbum = { name, icon, selectedFriendIds, color ->
                 viewModel.createFriendGroup(
                     userId = userProfile.uid,
@@ -673,18 +674,36 @@ fun HomeScreen(
                 pendingGroupIconTarget = "chat_group"
                 groupIconPhotoPickerLauncher.launch("image/*")
             },
+            currentUserProfile = userProfile,
             onCreateGroup = { name, icon, selectedFriendIds ->
-                chatViewModel?.startGroupChat(
-                    ownerUserId = userProfile.uid,
-                    ownerName = userProfile.displayName,
-                    ownerPhoto = userProfile.photoUrl,
-                    groupId = "",
-                    groupName = name,
-                    groupIcon = icon,
-                    memberIds = selectedFriendIds + userProfile.uid
-                ) { chatId: String ->
-                    showCreateChatGroupDialog = false
-                    onOpenGroupChatFromChatGroup?.invoke(chatId)
+                viewModel.createFriendGroup(
+                    userId = userProfile.uid,
+                    name = name,
+                    icon = icon,
+                    friendIds = selectedFriendIds,
+                    isChatGroup = true,
+                    inviterName = userProfile.displayName
+                ) { success, createdGroup ->
+                    if (success && createdGroup != null) {
+                        chatViewModel?.startGroupChat(
+                            ownerUserId = userProfile.uid,
+                            ownerName = userProfile.displayName,
+                            ownerPhoto = userProfile.photoUrl,
+                            groupId = createdGroup.id,
+                            groupName = createdGroup.name,
+                            groupIcon = createdGroup.icon,
+                            memberIds = createdGroup.effectiveMemberIds()
+                        ) { chatId: String ->
+                            showCreateChatGroupDialog = false
+                            onOpenGroupChatFromChatGroup?.invoke(chatId)
+                        }
+                    } else {
+                        Toast.makeText(
+                            context,
+                            viewModel.errorMessage ?: "Failed to create group chat",
+                            Toast.LENGTH_LONG
+                        ).show()
+                    }
                 }
             },
             selectedIcon = createDialogIconOverride ?: "👥",
@@ -694,7 +713,7 @@ fun HomeScreen(
 
     editingGroup?.let { group ->
         CreateOrEditGroupDialog(
-            title = "Edit album",
+            title = "View/Add Album Members",
             submitLabel = "Save",
             friends = friends,
             isDarkMode = isDarkMode,
@@ -710,6 +729,7 @@ fun HomeScreen(
                 pendingGroupIconTarget = "edit"
                 groupIconPhotoPickerLauncher.launch("image/*")
             },
+            currentUserProfile = userProfile,
             onSubmit = { name, icon, selectedFriendIds, color ->
                 viewModel.updateFriendGroup(
                     userId = userProfile.uid,
@@ -728,17 +748,18 @@ fun HomeScreen(
 
     viewingGroup?.let { group ->
         CreateOrEditGroupDialog(
-            title = "View album",
+            title = "View Album Members",
             submitLabel = "Save",
             friends = friends,
             isDarkMode = isDarkMode,
             initialName = group.name,
             initialIcon = group.icon,
             initialColor = group.color,
-            initialSelectedFriendIds = group.membersExcludingOwner(),
+            initialSelectedFriendIds = group.effectiveMemberIds(),
             onDismiss = { viewingGroup = null },
             onAddPhoto = {},
             onSubmit = { _, _, _, _ -> },
+            currentUserProfile = userProfile,
             readOnly = true,
             onUserProfileClick = onUserProfileClick
         )
@@ -1404,8 +1425,8 @@ private fun GroupManagerSheet(
                 add(
                     ActionSheetOption(
                         icon = if (isAdmin) Icons.Default.Edit else Icons.Default.Group,
-                        title = if (isAdmin) "Edit album" else "View members",
-                        subtitle = if (isAdmin) "Change album name, icon, members" else "See who's in this album",
+                        title = if (isAdmin) "View/Add Album Members" else "View Album Members",
+                        subtitle = if (isAdmin) "See current members and add friends" else "See who's in this album",
                         accentColor = Color(0xFF2A4A73),
                         onClick = {
                             menuTargetGroup = null
@@ -1598,11 +1619,11 @@ private fun GroupManagerSheet(
                     val isSelected = selectedFilter is FeedFilter.ByGroup && selectedFilter.group.id == group.id
                     var dragDeltaY by remember(group.id) { mutableStateOf(0f) }
 
-                    val friendCount = group.membersExcludingOwner().size
+                    val memberCount = group.effectiveMemberIds().size
                     val photoCount = albumPhotoCounts[group.id] ?: 0
                     GroupRowCard(
                         title = group.name,
-                        subtitle = "${friendCount.toCountLabel("friend")} • ${photoCount.toCountLabel("photo")}",
+                        subtitle = "${memberCount.toCountLabel("member")} • ${photoCount.toCountLabel("photo")}",
                         icon = group.icon,
                         colour = group.color,
                         selected = isSelected,
@@ -1797,6 +1818,7 @@ internal fun CreateOrEditGroupDialog(
     onDismiss: () -> Unit,
     onAddPhoto: () -> Unit,
     onSubmit: (name: String, icon: String, selectedFriendIds: List<String>, color: String) -> Unit,
+    currentUserProfile: UserProfile,
     onCreateAlbum: ((name: String, icon: String, selectedFriendIds: List<String>, color: String) -> Unit)? = null,
     readOnly: Boolean = false,
     onUserProfileClick: (String) -> Unit = {}
@@ -1828,11 +1850,44 @@ internal fun CreateOrEditGroupDialog(
 
     BackHandler(onBack = saveAndDismiss)
 
-    val sortedFriends = friends.sortedWith(
+    val repository = remember { com.picflick.app.repository.FlickRepository.getInstance() }
+    val loadedMemberProfiles = remember { mutableStateMapOf<String, UserProfile>() }
+    val memberIds = selectedFriends.filter { it.isNotBlank() }
+    val knownProfilesById = remember(friends, currentUserProfile) {
+        (friends + currentUserProfile).associateBy { it.uid }
+    }
+
+    LaunchedEffect(readOnly, memberIds) {
+        if (readOnly) {
+            memberIds
+                .filter { memberId -> knownProfilesById[memberId] == null && loadedMemberProfiles[memberId] == null }
+                .forEach { memberId ->
+                    repository.getUserProfile(memberId) { result ->
+                        if (result is com.picflick.app.data.Result.Success) {
+                            loadedMemberProfiles[memberId] = result.data
+                        }
+                    }
+                }
+        }
+    }
+
+    val displayMembers = if (readOnly) {
+        memberIds.map { memberId ->
+            knownProfilesById[memberId]
+                ?: loadedMemberProfiles[memberId]
+                ?: UserProfile(uid = memberId, displayName = "Member")
+        }
+    } else {
+        friends
+    }
+
+    val sortedFriends = displayMembers.sortedWith(
         compareBy<UserProfile>(
+            { if (selectedFriends.contains(it.uid)) 0 else 1 },
             { it.displayName.trim().substringAfterLast(" ").lowercase(Locale.getDefault()) },
             { it.displayName.trim().substringBeforeLast(" ").lowercase(Locale.getDefault()) },
-            { it.displayName.lowercase(Locale.getDefault()) }
+            { it.displayName.lowercase(Locale.getDefault()) },
+            { it.uid }
         )
     )
 
@@ -1953,101 +2008,99 @@ internal fun CreateOrEditGroupDialog(
                 modifier = Modifier.weight(1f)
             ) {
                 items(sortedFriends, key = { it.uid }) { friend ->
-                    val isSelected = selectedFriends.contains(friend.uid)
-                    val tierRingColor = rememberLiveUserTierColor(friend.uid)
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 12.dp, vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        if (friend.photoUrl.isNotBlank()) {
-                            AsyncImage(
-                                model = withCacheBust(friend.photoUrl, friend.uid),
-                                contentDescription = null,
-                                modifier = Modifier
-                                    .size(56.dp)
-                                    .clip(CircleShape)
-                                    .border(2.dp, tierRingColor, CircleShape)
-                                    .clickable { onUserProfileClick(friend.uid) },
-                                contentScale = ContentScale.Crop
-                            )
-                        } else {
-                            Box(
-                                modifier = Modifier
-                                    .size(56.dp)
-                                    .clip(CircleShape)
-                                    .border(2.dp, tierRingColor, CircleShape)
-                                    .background(if (isDarkMode) Color(0xFF3A3A3C) else Color(0xFFE0E0E0))
-                                    .clickable { onUserProfileClick(friend.uid) },
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Person,
+                        val isSelected = selectedFriends.contains(friend.uid)
+                        val tierRingColor = rememberLiveUserTierColor(friend.uid)
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 12.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            if (friend.photoUrl.isNotBlank()) {
+                                AsyncImage(
+                                    model = withCacheBust(friend.photoUrl, friend.uid),
                                     contentDescription = null,
-                                    modifier = Modifier.size(32.dp),
-                                    tint = if (isDarkMode) Color.Gray else Color.DarkGray
+                                    modifier = Modifier
+                                        .size(56.dp)
+                                        .clip(CircleShape)
+                                        .border(2.dp, tierRingColor, CircleShape)
+                                        .clickable { onUserProfileClick(friend.uid) },
+                                    contentScale = ContentScale.Crop
+                                )
+                            } else {
+                                Box(
+                                    modifier = Modifier
+                                        .size(56.dp)
+                                        .clip(CircleShape)
+                                        .border(2.dp, tierRingColor, CircleShape)
+                                        .background(if (isDarkMode) Color(0xFF3A3A3C) else Color(0xFFE0E0E0))
+                                        .clickable { onUserProfileClick(friend.uid) },
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Person,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(32.dp),
+                                        tint = if (isDarkMode) Color.Gray else Color.DarkGray
+                                    )
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.width(12.dp))
+
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = friend.displayName,
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = textColor
+                                )
+                                val mutualFriendCount = currentUserProfile.getMutualFriends(friend)
+                                Text(
+                                    text = "$mutualFriendCount ${if (mutualFriendCount == 1) "mutual friend" else "mutual friends"}",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = if (isDarkMode) Color.Gray else Color.DarkGray
                                 )
                             }
-                        }
 
-                        Spacer(modifier = Modifier.width(12.dp))
-
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = friend.displayName,
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.SemiBold,
-                                color = textColor
-                            )
-                            Text(
-                                text = "${friend.followers.size} followers",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = if (isDarkMode) Color.Gray else Color.DarkGray
-                            )
-                        }
-
-                        if (isSelected) {
-                            OutlinedButton(
-                                onClick = {
-                                    if (!readOnly) {
-                                        selectedFriends = selectedFriends - friend.uid
-                                    }
-                                },
-                                enabled = !readOnly,
-                                shape = RoundedCornerShape(20.dp),
-                                colors = ButtonDefaults.outlinedButtonColors(
-                                    containerColor = waitingColor,
-                                    contentColor = Color.White,
-                                    disabledContainerColor = waitingColor,
-                                    disabledContentColor = Color.White
-                                ),
-                                border = androidx.compose.foundation.BorderStroke(1.dp, waitingColor)
-                            ) {
-                                Text("Added", fontSize = 12.sp, color = Color.White)
-                            }
-                        } else {
-                            OutlinedButton(
-                                onClick = {
-                                    if (!readOnly) {
+                            if (isSelected) {
+                                OutlinedButton(
+                                    onClick = {
+                                        if (!readOnly) {
+                                            selectedFriends = selectedFriends - friend.uid
+                                        }
+                                    },
+                                    enabled = !readOnly,
+                                    shape = RoundedCornerShape(20.dp),
+                                    colors = ButtonDefaults.outlinedButtonColors(
+                                        containerColor = waitingColor,
+                                        contentColor = Color.White,
+                                        disabledContainerColor = waitingColor,
+                                        disabledContentColor = Color.White
+                                    ),
+                                    border = androidx.compose.foundation.BorderStroke(1.dp, waitingColor)
+                                ) {
+                                    Text("Added", fontSize = 12.sp, color = Color.White)
+                                }
+                            } else if (!readOnly) {
+                                OutlinedButton(
+                                    onClick = {
                                         selectedFriends = selectedFriends + friend.uid
-                                    }
-                                },
-                                enabled = !readOnly,
-                                shape = RoundedCornerShape(20.dp),
-                                colors = ButtonDefaults.outlinedButtonColors(
-                                    containerColor = Color.Transparent,
-                                    contentColor = addColor
-                                ),
-                                border = androidx.compose.foundation.BorderStroke(1.dp, addColor)
-                            ) {
-                                Text("Add", fontSize = 12.sp, color = addColor)
+                                    },
+                                    shape = RoundedCornerShape(20.dp),
+                                    colors = ButtonDefaults.outlinedButtonColors(
+                                        containerColor = Color.Transparent,
+                                        contentColor = addColor
+                                    ),
+                                    border = androidx.compose.foundation.BorderStroke(1.dp, addColor)
+                                ) {
+                                    Text("Add", fontSize = 12.sp, color = addColor)
+                                }
                             }
                         }
+                        HorizontalDivider(color = if (isDarkMode) Color(0xFF222222) else Color(0x22000000))
                     }
-                    HorizontalDivider(color = if (isDarkMode) Color(0xFF222222) else Color(0x22000000))
                 }
-            }
 
             if (isCreateMode) {
                 Button(
@@ -2077,6 +2130,7 @@ private fun CreateChatGroupDialog(
     isDarkMode: Boolean,
     onDismiss: () -> Unit,
     onAddPhoto: () -> Unit,
+    currentUserProfile: UserProfile,
     onCreateGroup: (name: String, icon: String, selectedFriendIds: List<String>) -> Unit,
     selectedIcon: String,
     onUserProfileClick: (String) -> Unit = {}
@@ -2288,8 +2342,9 @@ private fun CreateChatGroupDialog(
                                 fontWeight = FontWeight.SemiBold,
                                 color = textColor
                             )
+                            val mutualFriendCount = currentUserProfile.getMutualFriends(friend)
                             Text(
-                                text = "${friend.followers.size} followers",
+                                text = "$mutualFriendCount ${if (mutualFriendCount == 1) "mutual friend" else "mutual friends"}",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = if (isDarkMode) Color.Gray else Color.DarkGray
                             )
