@@ -1796,20 +1796,25 @@ private fun MythicDrawAnimation(
     }
 }
 
-/** PicFlick logo rainbow spectrum: interpolates Blue→Green→Yellow→Orange→Red based on 0..1 progress. */
+/** PicFlick/Mythic rainbow spectrum with visible 5% colour steps. */
 private fun mythicSpectrumColor(progress: Float): Color {
-    val colors = listOf(
-        Color(0xFF2A4A73), // P  – Dark Blue
-        Color(0xFF2A4A73), // i  – Light Blue
-        Color(0xFF4CAF50), // c  – Green
-        Color(0xFFFFC107), // F  – Yellow
-        Color(0xFFFF9800), // l  – Orange
-        Color(0xFFF44336)  // c/k – Red
+    val steppedProgress = ((progress.coerceIn(0f, 0.999f) * 100).toInt() / 5 * 5) / 100f
+    val stops = listOf(
+        0.00f to Color(0xFF2A4A73), // Mid blue
+        0.20f to Color(0xFF3E6A9F), // Brighter blue transition
+        0.40f to Color(0xFF4CAF50), // Green
+        0.60f to Color(0xFFFFC107), // Yellow
+        0.80f to Color(0xFFFF9800), // Orange
+        0.99f to Color(0xFFF44336)  // Red just before gold achievement
     )
-    val scaled = progress * (colors.size - 1)
-    val index = scaled.toInt().coerceIn(0, colors.size - 2)
-    val fraction = (scaled - index).coerceIn(0f, 1f)
-    return androidx.compose.ui.graphics.lerp(colors[index], colors[index + 1], fraction)
+
+    val upperIndex = stops.indexOfFirst { steppedProgress <= it.first }
+        .takeIf { it > 0 }
+        ?: stops.lastIndex
+    val (startProgress, startColor) = stops[upperIndex - 1]
+    val (endProgress, endColor) = stops[upperIndex]
+    val fraction = ((steppedProgress - startProgress) / (endProgress - startProgress)).coerceIn(0f, 1f)
+    return androidx.compose.ui.graphics.lerp(startColor, endColor, fraction)
 }
 
 // ─── PREVIEWS ───

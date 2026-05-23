@@ -27,6 +27,7 @@ import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import com.picflick.app.data.Flick
 import com.picflick.app.data.UserProfile
+import com.picflick.app.util.rememberLiveUserDisplayName
 import com.picflick.app.util.withCacheBust
 import com.picflick.app.viewmodel.HomeViewModel
 
@@ -363,6 +364,8 @@ private fun FeaturedPhotoCard(
     onPhotoClick: (Flick) -> Unit,
     onUserClick: (String) -> Unit
 ) {
+    val displayName = rememberLiveUserDisplayName(flick.userId, flick.userName)
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -397,7 +400,7 @@ private fun FeaturedPhotoCard(
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = flick.userName.firstOrNull()?.uppercase() ?: "?",
+                        text = displayName.firstOrNull()?.uppercase() ?: "?",
                         color = Color.White,
                         fontWeight = FontWeight.Bold
                     )
@@ -407,7 +410,7 @@ private fun FeaturedPhotoCard(
 
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = flick.userName,
+                        text = displayName,
                         color = Color.White,
                         fontWeight = FontWeight.Medium
                     )
@@ -486,6 +489,8 @@ private fun PopularPhotoRow(
     onPhotoClick: (Flick) -> Unit,
     onUserClick: (String) -> Unit
 ) {
+    val displayName = rememberLiveUserDisplayName(flick.userId, flick.userName)
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -522,7 +527,7 @@ private fun PopularPhotoRow(
         // Info
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = flick.userName,
+                text = displayName,
                 color = Color.White,
                 fontWeight = FontWeight.Medium
             )
@@ -555,6 +560,8 @@ private fun NewPhotoCard(
     onPhotoClick: (Flick) -> Unit,
     onUserClick: (String) -> Unit
 ) {
+    val displayName = rememberLiveUserDisplayName(flick.userId, flick.userName)
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -580,7 +587,7 @@ private fun NewPhotoCard(
 
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = flick.userName,
+                    text = displayName,
                     color = Color.White,
                     fontWeight = FontWeight.Medium
                 )

@@ -218,31 +218,18 @@ class AuthViewModel : ViewModel() {
                         // Profile exists - preserve user-edited profile data (especially custom profile photo).
                         val existingProfile = existingResult.data
 
-                        // Only update display name from Firebase when changed.
-                        val needsDisplayNameUpdate =
-                            (user.displayName != null && user.displayName != existingProfile.displayName)
-
-                        // Only seed photo from Firebase if app profile photo is currently empty.
+                        // Firestore/app profile is the source of truth for display name.
+                        // Do not overwrite an edited PicFlick name from the older Firebase Auth displayName.
                         val shouldSeedPhoto =
                             existingProfile.photoUrl.isBlank() && user.photoUrl != null
 
-                        if (needsDisplayNameUpdate || shouldSeedPhoto) {
-                            val patch = mutableMapOf<String, Any?>()
-                            if (needsDisplayNameUpdate) {
-                                patch["displayName"] = user.displayName
-                                patch["displayNameLower"] = user.displayName!!.trim().lowercase()
-                            }
-                            if (shouldSeedPhoto) {
-                                patch["photoUrl"] = user.photoUrl.toString()
-                            }
-                            repository.patchUserProfile(user.uid, patch) { result ->
-                                if (result is Result.Success) {
-                                    userProfile = existingProfile.copy(
-                                        displayName = user.displayName ?: existingProfile.displayName,
-                                        photoUrl = if (shouldSeedPhoto) user.photoUrl.toString() else existingProfile.photoUrl
-                                    )
+                        if (shouldSeedPhoto) {
+                            val seededPhotoUrl = user.photoUrl.toString()
+                            repository.patchUserProfile(user.uid, mapOf("photoUrl" to seededPhotoUrl)) { result ->
+                                userProfile = if (result is Result.Success) {
+                                    existingProfile.copy(photoUrl = seededPhotoUrl)
                                 } else {
-                                    userProfile = existingProfile
+                                    existingProfile
                                 }
                             }
                         } else {

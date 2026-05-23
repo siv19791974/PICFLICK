@@ -47,6 +47,41 @@ class ChatRepository {
             ?: emptyMap()
     }
 
+    private suspend fun recalculateUnreadCounters(chatId: String) {
+        val sessionRef = db.collection("chatSessions").document(chatId)
+        val sessionSnapshot = sessionRef.get().await()
+        val participants = (sessionSnapshot.get("participants") as? List<*>)
+            ?.filterIsInstance<String>()
+            .orEmpty()
+
+        if (participants.isEmpty()) return
+
+        val unreadByUser = participants.associateWith { 0 }.toMutableMap()
+        val unreadMessages = sessionRef.collection("messages")
+            .whereEqualTo("read", false)
+            .get()
+            .await()
+
+        unreadMessages.documents.forEach { messageDoc ->
+            val senderId = messageDoc.getString("senderId").orEmpty()
+            val deletedFor = (messageDoc.get("deletedForUserIds") as? List<*>)
+                ?.filterIsInstance<String>()
+                .orEmpty()
+
+            participants.forEach { participantId ->
+                if (participantId != senderId && participantId !in deletedFor) {
+                    unreadByUser[participantId] = (unreadByUser[participantId] ?: 0) + 1
+                }
+            }
+        }
+
+        val updates = mutableMapOf<String, Any>("unreadCount" to unreadByUser)
+        participants.forEach { participantId ->
+            updates["unreadCount_$participantId"] = unreadByUser[participantId] ?: 0
+        }
+        sessionRef.update(updates).await()
+    }
+
     private suspend fun deleteMessageStorageIfOwned(messageDoc: com.google.firebase.firestore.DocumentSnapshot, currentUserId: String) {
         val senderId = messageDoc.getString("senderId").orEmpty()
         if (senderId != currentUserId) return
@@ -830,6 +865,8 @@ class ChatRepository {
             batch.commit().await()
 
             if (hardDeleteCount > 0) {
+                recalculateUnreadCounters(chatId)
+
                 // Update chat summary with latest remaining message (if any)
                 val latestMessageSnapshot = messagesCollection
                     .orderBy("timestamp", Query.Direction.DESCENDING)

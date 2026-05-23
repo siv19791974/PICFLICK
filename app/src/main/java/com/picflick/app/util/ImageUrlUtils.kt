@@ -85,6 +85,28 @@ fun rememberLiveUserPhotoUrl(userId: String, fallbackPhotoUrl: String?): String 
 }
 
 @Composable
+fun rememberLiveUserDisplayName(userId: String, fallbackDisplayName: String?): String {
+    var resolvedDisplayName by remember(userId, fallbackDisplayName) {
+        mutableStateOf(fallbackDisplayName.orEmpty())
+    }
+
+    LaunchedEffect(userId) {
+        if (userId.isBlank()) return@LaunchedEffect
+        // One-time fetch keeps photo thumbnails from showing stale upload-time names.
+        FlickRepository.getInstance().getUserProfile(userId) { result ->
+            if (result is Result.Success) {
+                val fetchedName = result.data.displayName.trim()
+                if (fetchedName.isNotBlank()) {
+                    resolvedDisplayName = fetchedName
+                }
+            }
+        }
+    }
+
+    return resolvedDisplayName.ifBlank { fallbackDisplayName.orEmpty() }
+}
+
+@Composable
 fun rememberLiveUserTierColor(userId: String): Color {
     var tierColor by remember(userId) {
         mutableStateOf(SubscriptionTier.FREE.getColor())

@@ -88,6 +88,7 @@ import com.picflick.app.ui.components.PhotoGridShimmer
 import com.picflick.app.ui.theme.PicFlickLightBackground
 import com.picflick.app.ui.theme.isDarkModeBackground
 import com.picflick.app.ui.theme.ThemeManager
+import com.picflick.app.util.rememberLiveUserDisplayName
 import com.picflick.app.util.rememberLiveUserPhotoUrl
 import com.picflick.app.util.rememberLiveUserTierColor
 import com.picflick.app.util.withCacheBust
@@ -2748,6 +2749,7 @@ private fun FlickGrid(
                     ?: flick.id.takeIf { it.isNotBlank() }
                     ?: "flick_${flick.timestamp}"
 
+                val displayName = rememberLiveUserDisplayName(flick.userId, flick.userName)
                 val gridImageUrl = flick.thumbnailUrl512.ifBlank { flick.imageUrl }
                 val cacheBusted = withCacheBust(gridImageUrl, stableIdentity)
                 val imageModel = remember(stableIdentity, cacheBusted) {
@@ -2821,7 +2823,7 @@ private fun FlickGrid(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = flick.userName,
+                            text = displayName,
                             color = Color.White,
                             fontSize = 11.sp,
                             fontWeight = FontWeight.SemiBold,

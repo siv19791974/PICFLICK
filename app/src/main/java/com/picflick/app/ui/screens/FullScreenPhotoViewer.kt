@@ -75,21 +75,19 @@ import com.picflick.app.repository.FlickRepository
 import com.picflick.app.ui.components.AnimatedReactionPicker
 import com.picflick.app.ui.components.ReactionPicker
 import com.picflick.app.ui.theme.PicFlickLightBackground
+import com.picflick.app.util.rememberLiveUserDisplayName
 import com.picflick.app.util.withCacheBust
 import android.app.Activity
-import android.content.ContentValues
 import android.content.Context
 import android.content.ContextWrapper
+import android.content.Intent
 import android.content.SharedPreferences
 import android.content.pm.ActivityInfo
-import android.graphics.Bitmap
-import android.graphics.BitmapFactory
-import android.os.Build
 import android.os.Handler
 import android.os.Looper
-import android.provider.MediaStore
 import android.widget.Toast
 import android.view.LayoutInflater
+import androidx.core.content.FileProvider
 import android.widget.TextView
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
@@ -100,6 +98,7 @@ import kotlinx.coroutines.delay
 import java.util.concurrent.TimeUnit
 import java.net.URL
 import java.net.HttpURLConnection
+import java.io.File
 
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
@@ -315,6 +314,8 @@ val canDeleteCurrent = currentFlick.userId == currentUser.uid
     var isUnlikeAnimation by remember { mutableStateOf(false) }
     val isLiked = userReaction != null
     
+    val liveOwnerDisplayName = rememberLiveUserDisplayName(currentFlick.userId, currentFlick.userName)
+
     // Fetch User B's profile photo if not available
     var fetchedUserPhotoUrl by remember(currentFlick.userId) { mutableStateOf<String?>(null) }
 
@@ -1075,7 +1076,30 @@ if (canDeleteCurrent) {
                                     )
                                 }
                                 
-                                // 4. EDIT PHOTO/CAPTION BUTTON - Navigates to Edit Photo screen
+                                // 4. EXPORT BUTTON - Share owned photo externally as an image file
+                                Box(
+                                    modifier = Modifier
+                                        .size(44.dp)
+                                        .background(
+                                            Color.Black.copy(alpha = 0.4f),
+                                            CircleShape
+                                        )
+                                        .clickable {
+                                            coroutineScope.launch {
+                                                exportOwnedImageExternally(context, currentFlick.imageUrl, currentFlick.id)
+                                            }
+                                        },
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Share,
+                                        contentDescription = "Export photo",
+                                        tint = Color.White,
+                                        modifier = Modifier.size(28.dp)
+                                    )
+                                }
+
+                                // 5. EDIT PHOTO/CAPTION BUTTON - Navigates to Edit Photo screen
                                 Box(
                                     modifier = Modifier
                                         .size(44.dp)
@@ -1094,7 +1118,7 @@ if (canDeleteCurrent) {
                                     )
                                 }
                                 
-                                // 5. DELETE BUTTON
+                                // 6. DELETE BUTTON
                                 Box(
                                     modifier = Modifier
                                         .size(44.dp)
@@ -1209,30 +1233,6 @@ if (canDeleteCurrent) {
                                     Icon(
                                         imageVector = Icons.AutoMirrored.Filled.Send,
                                         contentDescription = "Share to friends",
-                                        tint = Color.White,
-                                        modifier = Modifier.size(28.dp)
-                                    )
-                                }
-                                
-                                // SAVE/DOWNLOAD BUTTON - Actually downloads the image
-                                Box(
-                                    modifier = Modifier
-                                        .size(44.dp)
-                                        .background(
-                                            Color.Black.copy(alpha = 0.4f),
-                                            CircleShape
-                                        )
-                                        .clickable {
-                                            // Launch download in coroutine
-                                            coroutineScope.launch {
-                                                downloadImageToGallery(context, currentFlick.imageUrl, currentFlick.id)
-                                            }
-                                        },
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Download,
-                                        contentDescription = "Save to device",
                                         tint = Color.White,
                                         modifier = Modifier.size(28.dp)
                                     )
@@ -2143,14 +2143,14 @@ if (canDeleteCurrent) {
                                             if (profilePhotoUrl.isNotBlank()) {
                                                 AsyncImage(
                                                     model = profilePhotoUrl,
-                                                    contentDescription = "View ${currentFlick.userName}'s profile",
+                                                    contentDescription = "View ${liveOwnerDisplayName}'s profile",
                                                     modifier = Modifier.fillMaxSize(),
                                                     contentScale = ContentScale.Crop
                                                 )
                                             } else {
                                                 // Fallback - show initial
                                                 Text(
-                                                    text = currentFlick.userName.take(1).uppercase(),
+                                                    text = liveOwnerDisplayName.take(1).uppercase(),
                                                     color = Color.White,
                                                     fontSize = 20.sp,
                                                     fontWeight = FontWeight.Bold
@@ -2177,7 +2177,7 @@ if (canDeleteCurrent) {
                                                 ) {
                                                     // Username
                                                     Text(
-                                                        text = currentFlick.userName,
+                                                        text = liveOwnerDisplayName,
                                                         color = Color.White,
                                                         fontSize = 16.sp,
                                                         fontWeight = FontWeight.Bold
@@ -3593,58 +3593,49 @@ private fun TagFriendsDialog(
 /**
  * Download image from URL and save to gallery
  */
-private suspend fun downloadImageToGallery(context: Context, imageUrl: String, flickId: String) {
-withContext(Dispatchers.IO) {
+private suspend fun exportOwnedImageExternally(context: Context, imageUrl: String, flickId: String) {
+    withContext(Dispatchers.IO) {
         try {
+            if (imageUrl.isBlank()) throw IllegalArgumentException("Photo URL is missing")
+
             val url = URL(imageUrl)
             val connection = url.openConnection() as HttpURLConnection
             connection.doInput = true
+            connection.connectTimeout = 15_000
+            connection.readTimeout = 30_000
             connection.connect()
-            
-            val inputStream = connection.inputStream
-            val bitmap = BitmapFactory.decodeStream(inputStream)
-            inputStream.close()
-            
+
+            val exportDir = File(context.cacheDir, "exports").apply { mkdirs() }
+            val exportFile = File(exportDir, "PicFlick_$flickId.jpg")
+            connection.inputStream.use { input ->
+                exportFile.outputStream().use { output -> input.copyTo(output) }
+            }
+            connection.disconnect()
+
+            val uri = FileProvider.getUriForFile(
+                context,
+                "${context.packageName}.fileprovider",
+                exportFile
+            )
+            val exportIntent = Intent(Intent.ACTION_SEND).apply {
+                type = "image/jpeg"
+                putExtra(Intent.EXTRA_STREAM, uri)
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
+            val chooser = Intent.createChooser(exportIntent, "Export Photo").apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
+
             withContext(Dispatchers.Main) {
-                if (bitmap != null) {
-                    saveBitmapToGallery(context, bitmap, "PicFlick_$flickId")
-                    Toast.makeText(context, "Saved to gallery!", Toast.LENGTH_SHORT).show()
-                } else {
-                    Toast.makeText(context, "Failed to download image", Toast.LENGTH_SHORT).show()
-                }
+                context.startActivity(chooser)
             }
         } catch (e: Exception) {
             withContext(Dispatchers.Main) {
-                Toast.makeText(context, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, "Export failed: ${e.message ?: "Unknown error"}", Toast.LENGTH_SHORT).show()
             }
         }
     }
 }
 
-/**
- * Save bitmap to device gallery
- */
-private fun saveBitmapToGallery(context: Context, bitmap: Bitmap, filename: String) {
-    val contentValues = ContentValues().apply {
-        put(MediaStore.Images.Media.DISPLAY_NAME, "$filename.jpg")
-        put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            put(MediaStore.Images.Media.IS_PENDING, 1)
-        }
-    }
-    
-    val uri = context.contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, contentValues)
-    
-    uri?.let { imageUri ->
-        context.contentResolver.openOutputStream(imageUri)?.use { outputStream ->
-            bitmap.compress(Bitmap.CompressFormat.JPEG, 95, outputStream)
-            
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                contentValues.clear()
-                contentValues.put(MediaStore.Images.Media.IS_PENDING, 0)
-                context.contentResolver.update(imageUri, contentValues, null, null)
-            }
-        }
-    }
-}
 // REFRESH
