@@ -85,10 +85,12 @@ import com.picflick.app.ui.components.AddPhotoStyleActionSheet
 import com.picflick.app.ui.components.AnimatedReactionPicker
 import com.picflick.app.ui.components.ErrorMessage
 import com.picflick.app.ui.components.PhotoGridShimmer
+import com.picflick.app.ui.components.OnlineStatusBadge
 import com.picflick.app.ui.theme.PicFlickLightBackground
 import com.picflick.app.ui.theme.isDarkModeBackground
 import com.picflick.app.ui.theme.ThemeManager
 import com.picflick.app.util.rememberLiveUserDisplayName
+import com.picflick.app.util.rememberLiveUserOnline
 import com.picflick.app.util.rememberLiveUserPhotoUrl
 import com.picflick.app.util.rememberLiveUserTierColor
 import com.picflick.app.util.withCacheBust
@@ -2011,40 +2013,51 @@ internal fun CreateOrEditGroupDialog(
                 items(sortedFriends, key = { it.uid }) { friend ->
                         val isSelected = selectedFriends.contains(friend.uid)
                         val tierRingColor = rememberLiveUserTierColor(friend.uid)
+                        val isFriendOnline = rememberLiveUserOnline(friend.uid)
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(horizontal = 12.dp, vertical = 8.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            if (friend.photoUrl.isNotBlank()) {
-                                AsyncImage(
-                                    model = withCacheBust(friend.photoUrl, friend.uid),
-                                    contentDescription = null,
-                                    modifier = Modifier
-                                        .size(56.dp)
-                                        .clip(CircleShape)
-                                        .border(2.dp, tierRingColor, CircleShape)
-                                        .clickable { onUserProfileClick(friend.uid) },
-                                    contentScale = ContentScale.Crop
-                                )
-                            } else {
-                                Box(
-                                    modifier = Modifier
-                                        .size(56.dp)
-                                        .clip(CircleShape)
-                                        .border(2.dp, tierRingColor, CircleShape)
-                                        .background(if (isDarkMode) Color(0xFF3A3A3C) else Color(0xFFE0E0E0))
-                                        .clickable { onUserProfileClick(friend.uid) },
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Person,
+                            Box(modifier = Modifier.size(56.dp)) {
+                                if (friend.photoUrl.isNotBlank()) {
+                                    AsyncImage(
+                                        model = withCacheBust(friend.photoUrl, friend.uid),
                                         contentDescription = null,
-                                        modifier = Modifier.size(32.dp),
-                                        tint = if (isDarkMode) Color.Gray else Color.DarkGray
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .clip(CircleShape)
+                                            .border(2.dp, tierRingColor, CircleShape)
+                                            .clickable { onUserProfileClick(friend.uid) },
+                                        contentScale = ContentScale.Crop
                                     )
+                                } else {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .clip(CircleShape)
+                                            .border(2.dp, tierRingColor, CircleShape)
+                                            .background(if (isDarkMode) Color(0xFF3A3A3C) else Color(0xFFE0E0E0))
+                                            .clickable { onUserProfileClick(friend.uid) },
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Person,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(32.dp),
+                                            tint = if (isDarkMode) Color.Gray else Color.DarkGray
+                                        )
+                                    }
                                 }
+
+                                OnlineStatusBadge(
+                                    isOnline = isFriendOnline,
+                                    modifier = Modifier
+                                        .align(Alignment.TopStart)
+                                        .offset(x = 4.dp, y = 4.dp),
+                                    size = 10.dp
+                                )
                             }
 
                             Spacer(modifier = Modifier.width(12.dp))

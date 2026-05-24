@@ -55,8 +55,10 @@ import com.picflick.app.data.NotificationType
 import com.picflick.app.data.UserProfile
 import com.picflick.app.ui.components.ActionSheetOption
 import com.picflick.app.ui.components.AddPhotoStyleActionSheet
+import com.picflick.app.ui.components.OnlineStatusBadge
 import com.picflick.app.ui.theme.isDarkModeBackground
 import com.picflick.app.ui.theme.ThemeManager
+import com.picflick.app.util.rememberLiveUserOnline
 import com.picflick.app.util.rememberLiveUserPhotoUrl
 import com.picflick.app.util.rememberLiveUserTierColor
 import com.picflick.app.viewmodel.NotificationViewModel
@@ -565,6 +567,7 @@ private fun NotificationItem(
     } else {
         rememberLiveUserTierColor(notification.senderId)
     }
+    val isSenderOnline = !isGroupMessageNotification && notification.senderId.isNotBlank() && rememberLiveUserOnline(notification.senderId)
 
     LaunchedEffect(notification.id, notification.senderId, notification.chatId, notification.groupName, notification.groupIcon) {
         if (notification.type == NotificationType.MESSAGE && !notification.chatId.isNullOrBlank()) {
@@ -705,6 +708,14 @@ private fun NotificationItem(
                     )
                 }
             }
+
+            OnlineStatusBadge(
+                isOnline = isSenderOnline,
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .offset(x = 4.dp, y = 4.dp),
+                size = 9.dp
+            )
 
             val badgeColor = getNotificationColor(notification.type)
             val badgeIconTint = when (notification.type) {

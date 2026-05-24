@@ -42,8 +42,10 @@ import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import com.picflick.app.data.UserProfile
 import com.picflick.app.ui.components.FullScreenLoading
+import com.picflick.app.ui.components.OnlineStatusBadge
 import com.picflick.app.ui.theme.isDarkModeBackground
 import com.picflick.app.ui.theme.ThemeManager
+import com.picflick.app.util.rememberLiveUserOnline
 import com.picflick.app.util.rememberLiveUserPhotoUrl
 import com.picflick.app.util.rememberLiveUserTierColor
 import com.picflick.app.viewmodel.FriendsViewModel
@@ -940,6 +942,7 @@ private fun UserResultItem(
     val isDarkMode = ThemeManager.isDarkMode.value
     val liveUserPhoto = rememberLiveUserPhotoUrl(user.uid, user.photoUrl)
     val tierRingColor = rememberLiveUserTierColor(user.uid)
+    val isUserOnline = rememberLiveUserOnline(user.uid)
 
     Column(modifier = Modifier.fillMaxWidth()) {
         Row(
@@ -949,35 +952,45 @@ private fun UserResultItem(
             verticalAlignment = Alignment.CenterVertically
         ) {
             // Profile photo - clickable
-            if (liveUserPhoto.isNotEmpty()) {
-                AsyncImage(
-                    model = liveUserPhoto,
-                    contentDescription = null,
-                    modifier = Modifier
-                        .size(56.dp)
-                        .clip(CircleShape)
-                        .border(2.dp, tierRingColor, CircleShape)
-                        .clickable { onUserClick() },
-                    contentScale = androidx.compose.ui.layout.ContentScale.Crop,
-                    error = painterResource(id = android.R.drawable.ic_menu_myplaces)
-                )
-            } else {
-                Box(
-                    modifier = Modifier
-                        .size(56.dp)
-                        .clip(CircleShape)
-                        .border(2.dp, tierRingColor, CircleShape)
-                        .background(if (isDarkMode) Color(0xFF3A3A3C) else Color(0xFFE0E0E0))
-                        .clickable { onUserClick() },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Person,
+            Box(modifier = Modifier.size(56.dp)) {
+                if (liveUserPhoto.isNotEmpty()) {
+                    AsyncImage(
+                        model = liveUserPhoto,
                         contentDescription = null,
-                        modifier = Modifier.size(28.dp),
-                        tint = if (isDarkMode) Color.Gray else Color.DarkGray
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .clip(CircleShape)
+                            .border(2.dp, tierRingColor, CircleShape)
+                            .clickable { onUserClick() },
+                        contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                        error = painterResource(id = android.R.drawable.ic_menu_myplaces)
                     )
+                } else {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .clip(CircleShape)
+                            .border(2.dp, tierRingColor, CircleShape)
+                            .background(if (isDarkMode) Color(0xFF3A3A3C) else Color(0xFFE0E0E0))
+                            .clickable { onUserClick() },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Person,
+                            contentDescription = null,
+                            modifier = Modifier.size(28.dp),
+                            tint = if (isDarkMode) Color.Gray else Color.DarkGray
+                        )
+                    }
                 }
+
+                OnlineStatusBadge(
+                    isOnline = isUserOnline,
+                    modifier = Modifier
+                        .align(Alignment.TopStart)
+                        .offset(x = 4.dp, y = 4.dp),
+                    size = 10.dp
+                )
             }
 
             Spacer(modifier = Modifier.width(16.dp))

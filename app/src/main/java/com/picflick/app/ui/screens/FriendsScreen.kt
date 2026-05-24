@@ -40,8 +40,10 @@ import com.picflick.app.data.UserProfile
 import com.picflick.app.ui.components.ActionSheetOption
 import com.picflick.app.ui.components.AddPhotoStyleActionSheet
 import com.picflick.app.ui.components.ListItemShimmer
+import com.picflick.app.ui.components.OnlineStatusBadge
 import com.picflick.app.ui.theme.isDarkModeBackground
 import com.picflick.app.ui.theme.ThemeManager
+import com.picflick.app.util.rememberLiveUserOnline
 import com.picflick.app.util.rememberLiveUserPhotoUrl
 import com.picflick.app.util.rememberLiveUserTierColor
 import com.picflick.app.viewmodel.FriendsViewModel
@@ -413,6 +415,7 @@ private fun FriendListItem(
 ) {
     val liveFriendPhoto = rememberLiveUserPhotoUrl(friend.uid, friend.photoUrl)
     val tierRingColor = rememberLiveUserTierColor(friend.uid)
+    val isFriendOnline = rememberLiveUserOnline(friend.uid)
 
     Column(modifier = Modifier.fillMaxWidth()) {
         // Use Row like ChatListItem - no card
@@ -456,6 +459,14 @@ private fun FriendListItem(
                         )
                     }
                 }
+
+                OnlineStatusBadge(
+                    isOnline = isFriendOnline,
+                    modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .offset(x = 4.dp, y = 4.dp),
+                    size = 10.dp
+                )
             }
 
             Spacer(modifier = Modifier.width(16.dp))

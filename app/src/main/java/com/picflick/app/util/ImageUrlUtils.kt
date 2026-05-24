@@ -1,6 +1,7 @@
 package com.picflick.app.util
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -10,6 +11,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import coil3.request.CachePolicy
 import coil3.request.ImageRequest
+import com.google.firebase.Timestamp
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.ListenerRegistration
 import com.picflick.app.data.Result
 import com.picflick.app.data.SubscriptionTier
 import com.picflick.app.data.getColor
@@ -119,6 +123,41 @@ fun rememberLiveUserDisplayName(
         showFallbackWhileLoading || hasLoadedProfile -> fallbackDisplayName.orEmpty()
         else -> ""
     }
+}
+
+@Composable
+fun rememberLiveUserOnline(userId: String): Boolean {
+    var isOnline by remember(userId) { mutableStateOf(false) }
+
+    DisposableEffect(userId) {
+        if (userId.isBlank()) {
+            isOnline = false
+            return@DisposableEffect onDispose { }
+        }
+
+        var registration: ListenerRegistration? = FirebaseFirestore.getInstance()
+            .collection("users")
+            .document(userId)
+            .addSnapshotListener { snapshot, _ ->
+                val online = snapshot?.getBoolean("isOnline") ?: false
+                val lastSeenAt = when (val value = snapshot?.get("lastSeenAt")) {
+                    is Long -> value
+                    is Number -> value.toLong()
+                    is Timestamp -> value.toDate().time
+                    else -> 0L
+                }
+                val recentlySeen = lastSeenAt > 0L &&
+                    System.currentTimeMillis() - lastSeenAt <= TimeUnit.MINUTES.toMillis(2)
+                isOnline = online || recentlySeen
+            }
+
+        onDispose {
+            registration?.remove()
+            registration = null
+        }
+    }
+
+    return isOnline
 }
 
 @Composable

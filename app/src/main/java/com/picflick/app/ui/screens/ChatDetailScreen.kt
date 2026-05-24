@@ -71,11 +71,13 @@ import com.picflick.app.repository.FlickRepository
 import com.picflick.app.ui.components.ActionSheetOption
 import com.picflick.app.ui.components.ActionSheetRow
 import com.picflick.app.ui.components.AddPhotoStyleActionSheet
+import com.picflick.app.ui.components.OnlineStatusBadge
 import com.picflick.app.ui.theme.PicFlickBannerBackground
 import com.picflick.app.ui.theme.ThemeManager
 import com.picflick.app.ui.theme.isDarkModeBackground
 import com.picflick.app.util.rememberChatImageModel
 import com.picflick.app.util.rememberLiveUserDisplayName
+import com.picflick.app.util.rememberLiveUserOnline
 import com.picflick.app.util.rememberLiveUserPhotoUrl
 import com.picflick.app.util.rememberLiveUserTierColor
 import com.picflick.app.viewmodel.ChatViewModel
@@ -2400,9 +2402,10 @@ private fun QuickSwitchChatBar(
                         fallbackPhotoUrl = item.otherUserPhoto
                     )
                     val avatarTierRingColor = if (isGroupItem) Color(0xFF2A4A73) else rememberLiveUserTierColor(item.otherUserId)
+                    val isUserOnline = !isGroupItem && rememberLiveUserOnline(item.otherUserId)
                     val hasUnreadMessages = item.chatSession.unreadCount > 0
                     Box(
-                        modifier = Modifier.size(avatarSize + 8.dp),
+                        modifier = Modifier.size(38.dp),
                         contentAlignment = Alignment.Center
                     ) {
                         Box(
@@ -2445,10 +2448,19 @@ private fun QuickSwitchChatBar(
                             }
                         }
 
+                        OnlineStatusBadge(
+                            isOnline = isUserOnline,
+                            modifier = Modifier
+                                .align(Alignment.TopStart)
+                                .offset(x = 3.dp, y = 3.dp),
+                            size = if (isCenter) 10.dp else 8.dp
+                        )
+
                         if (hasUnreadMessages) {
                             Box(
                                 modifier = Modifier
                                     .align(Alignment.TopEnd)
+                                    .offset(x = (-3).dp, y = 3.dp)
                                     .size(if (isCenter) 10.dp else 8.dp)
                                     .background(Color(0xFF2A4A73), CircleShape)
                                     .border(1.dp, Color.White, CircleShape)

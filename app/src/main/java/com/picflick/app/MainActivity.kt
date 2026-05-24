@@ -85,6 +85,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import com.google.firebase.firestore.FieldValue
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.SetOptions
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
@@ -531,6 +534,63 @@ fun MainScreen(
     LaunchedEffect(userProfile?.streakRecoveryAvailable) {
         if (userProfile?.streakRecoveryAvailable == true) {
             showStreakRecovery = true
+        }
+    }
+
+    // Track lightweight user presence for online badges.
+    DisposableEffect(lifecycleOwner, currentUser?.uid) {
+        val uid = currentUser?.uid
+        val observer = LifecycleEventObserver { _, event ->
+            if (uid != null && event == Lifecycle.Event.ON_START) {
+                FirebaseFirestore.getInstance()
+                    .collection("users")
+                    .document(uid)
+                    .set(
+                        mapOf(
+                            "isOnline" to true,
+                            "lastSeenAt" to System.currentTimeMillis()
+                        ),
+                        SetOptions.merge()
+                    )
+            } else if (uid != null && event == Lifecycle.Event.ON_STOP) {
+                FirebaseFirestore.getInstance()
+                    .collection("users")
+                    .document(uid)
+                    .set(
+                        mapOf(
+                            "isOnline" to false,
+                            "lastSeenAt" to FieldValue.serverTimestamp()
+                        ),
+                        SetOptions.merge()
+                    )
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        if (uid != null && lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) {
+            FirebaseFirestore.getInstance()
+                .collection("users")
+                .document(uid)
+                .update(
+                    mapOf(
+                        "isOnline" to true,
+                        "lastSeenAt" to System.currentTimeMillis()
+                    )
+                )
+        }
+        onDispose {
+            if (uid != null) {
+                FirebaseFirestore.getInstance()
+                    .collection("users")
+                    .document(uid)
+                    .set(
+                        mapOf(
+                            "isOnline" to false,
+                            "lastSeenAt" to FieldValue.serverTimestamp()
+                        ),
+                        SetOptions.merge()
+                    )
+            }
+            lifecycleOwner.lifecycle.removeObserver(observer)
         }
     }
 

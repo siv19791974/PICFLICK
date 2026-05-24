@@ -61,10 +61,12 @@ import com.picflick.app.ui.components.ActionSheetRow
 import com.picflick.app.ui.components.AddPhotoStyleActionSheet
 import com.picflick.app.ui.components.BottomNavBar
 import com.picflick.app.ui.components.LogoImage
+import com.picflick.app.ui.components.OnlineStatusBadge
 import com.picflick.app.ui.theme.PicFlickBannerBackground
 import com.picflick.app.repository.FlickRepository
 import com.picflick.app.ui.theme.PicFlickLightBackground
 import com.picflick.app.util.rememberLiveUserDisplayName
+import com.picflick.app.util.rememberLiveUserOnline
 import com.picflick.app.util.rememberLiveUserPhotoUrl
 import com.picflick.app.util.rememberLiveUserTierColor
 import com.picflick.app.ui.theme.ThemeManager
@@ -1147,6 +1149,7 @@ private fun ChatListItem(
     }
     val hasUnread = unreadDisplayCount > 0
     val tierRingColor = rememberLiveUserTierColor(otherUserId)
+    val isOtherUserOnline = !session.isGroup && rememberLiveUserOnline(otherUserId)
 
     Row(
         modifier = Modifier
@@ -1216,6 +1219,14 @@ private fun ChatListItem(
                     )
                 }
             }
+
+            OnlineStatusBadge(
+                isOnline = isOtherUserOnline,
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .offset(x = 4.dp, y = 4.dp),
+                size = 10.dp
+            )
         }
 
         Spacer(modifier = Modifier.width(16.dp))
@@ -1549,6 +1560,7 @@ private fun FullScreenFriendItem(
 ) {
     val liveFriendPhoto = rememberLiveUserPhotoUrl(friend.uid, friend.photoUrl)
     val tierRingColor = rememberLiveUserTierColor(friend.uid)
+    val isFriendOnline = rememberLiveUserOnline(friend.uid)
 
     Row(
         modifier = Modifier
@@ -1590,6 +1602,14 @@ private fun FullScreenFriendItem(
                     )
                 }
             }
+
+            OnlineStatusBadge(
+                isOnline = isFriendOnline,
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .offset(x = 4.dp, y = 4.dp),
+                size = 10.dp
+            )
         }
 
         Spacer(modifier = Modifier.width(16.dp))
@@ -1645,6 +1665,7 @@ private fun FriendListItem(
 ) {
     val liveFriendPhoto = rememberLiveUserPhotoUrl(friend.uid, friend.photoUrl)
     val tierRingColor = rememberLiveUserTierColor(friend.uid)
+    val isFriendOnline = rememberLiveUserOnline(friend.uid)
 
     Row(
         modifier = Modifier
@@ -1655,17 +1676,27 @@ private fun FriendListItem(
     ) {
         // Profile photo
         Box(
-            modifier = Modifier.clickable { onProfilePhotoClick() }
+            modifier = Modifier
+                .size(50.dp)
+                .clickable { onProfilePhotoClick() }
         ) {
             AsyncImage(
                 model = liveFriendPhoto,
                 contentDescription = null,
                 modifier = Modifier
-                    .size(50.dp)
+                    .fillMaxSize()
                     .clip(CircleShape)
                     .border(2.dp, tierRingColor, CircleShape)
                     .background(MaterialTheme.colorScheme.surface),
                 contentScale = ContentScale.Crop
+            )
+
+            OnlineStatusBadge(
+                isOnline = isFriendOnline,
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .offset(x = 4.dp, y = 4.dp),
+                size = 9.dp
             )
         }
 
