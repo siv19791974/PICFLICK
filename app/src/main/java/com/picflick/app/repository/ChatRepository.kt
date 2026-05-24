@@ -998,12 +998,21 @@ class ChatRepository {
             batch.commit().await()
 
             hardDeletedMessageIds.forEach { messageId ->
-                clearRepliesToDeletedMessage(chatId, messageId)
+                runCatching { clearRepliesToDeletedMessage(chatId, messageId) }
+                    .onFailure { e ->
+                        android.util.Log.w("ChatRepository", "Optional reply cleanup failed for message=$messageId", e)
+                    }
             }
 
             if (deletedAnyMessage) {
-                recalculateUnreadCounters(chatId)
-                updateChatSummaryFromLatestVisibleMessage(chatId)
+                runCatching { recalculateUnreadCounters(chatId) }
+                    .onFailure { e ->
+                        android.util.Log.w("ChatRepository", "Optional unread counter cleanup failed for chat=$chatId", e)
+                    }
+                runCatching { updateChatSummaryFromLatestVisibleMessage(chatId) }
+                    .onFailure { e ->
+                        android.util.Log.w("ChatRepository", "Optional chat summary cleanup failed for chat=$chatId", e)
+                    }
             }
 
             Result.Success(Unit)
