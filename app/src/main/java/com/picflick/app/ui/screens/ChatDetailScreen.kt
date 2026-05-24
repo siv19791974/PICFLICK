@@ -2402,41 +2402,46 @@ private fun QuickSwitchChatBar(
                     val avatarTierRingColor = if (isGroupItem) Color(0xFF2A4A73) else rememberLiveUserTierColor(item.otherUserId)
                     val hasUnreadMessages = item.chatSession.unreadCount > 0
                     Box(
-                        modifier = Modifier
-                            .size(avatarSize)
-                            .clip(CircleShape)
-                            .border(2.dp, avatarTierRingColor, CircleShape)
-                            .background(Color.White.copy(alpha = if (isCenter) 0.35f else 0.2f))
-                            .clickable {
-                                if (!isCenter) {
-                                    onSwitchChat(item.chatSession, item.otherUserId)
-                                }
-                            },
+                        modifier = Modifier.size(avatarSize + 8.dp),
                         contentAlignment = Alignment.Center
                     ) {
-                        if (quickSwitchPhoto.isNotBlank()) {
-                            AsyncImage(
-                                model = quickSwitchPhoto,
-                                contentDescription = displayName.ifBlank { item.otherUserName },
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .clip(CircleShape)
-                                    .border(2.dp, avatarTierRingColor, CircleShape),
-                                contentScale = ContentScale.Crop
-                            )
-                        } else {
-                            Text(
-                                text = if (isGroupItem) item.chatSession.groupIcon.takeIf { !it.startsWith("http", ignoreCase = true) }?.ifBlank { "👥" } ?: "👥" else "",
-                                fontSize = if (isCenter) 18.sp else 14.sp,
-                                color = Color.White
-                            )
-                            if (!isGroupItem) {
-                                Icon(
-                                    imageVector = Icons.Default.Person,
-                                    contentDescription = null,
-                                    tint = Color.White,
-                                    modifier = Modifier.size(if (isCenter) 22.dp else 18.dp)
+                        Box(
+                            modifier = Modifier
+                                .size(avatarSize)
+                                .clip(CircleShape)
+                                .border(2.dp, avatarTierRingColor, CircleShape)
+                                .background(Color.White.copy(alpha = if (isCenter) 0.35f else 0.2f))
+                                .clickable {
+                                    if (!isCenter) {
+                                        onSwitchChat(item.chatSession, item.otherUserId)
+                                    }
+                                },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            if (quickSwitchPhoto.isNotBlank()) {
+                                AsyncImage(
+                                    model = quickSwitchPhoto,
+                                    contentDescription = displayName.ifBlank { item.otherUserName },
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .clip(CircleShape)
+                                        .border(2.dp, avatarTierRingColor, CircleShape),
+                                    contentScale = ContentScale.Crop
                                 )
+                            } else {
+                                Text(
+                                    text = if (isGroupItem) item.chatSession.groupIcon.takeIf { !it.startsWith("http", ignoreCase = true) }?.ifBlank { "👥" } ?: "👥" else "",
+                                    fontSize = if (isCenter) 18.sp else 14.sp,
+                                    color = Color.White
+                                )
+                                if (!isGroupItem) {
+                                    Icon(
+                                        imageVector = Icons.Default.Person,
+                                        contentDescription = null,
+                                        tint = Color.White,
+                                        modifier = Modifier.size(if (isCenter) 22.dp else 18.dp)
+                                    )
+                                }
                             }
                         }
 
@@ -2444,7 +2449,7 @@ private fun QuickSwitchChatBar(
                             Box(
                                 modifier = Modifier
                                     .align(Alignment.TopEnd)
-                                    .size(if (isCenter) 9.dp else 7.dp)
+                                    .size(if (isCenter) 10.dp else 8.dp)
                                     .background(Color(0xFF2A4A73), CircleShape)
                                     .border(1.dp, Color.White, CircleShape)
                             )

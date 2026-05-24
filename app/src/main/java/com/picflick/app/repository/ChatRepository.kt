@@ -205,8 +205,6 @@ class ChatRepository {
     }
 
     private suspend fun reconcileSessionUnreadCount(session: ChatSession, userId: String): ChatSession {
-        if (session.unreadCount <= 0) return session
-
         val actualUnreadCount = runCatching { countActualUnreadVisibleMessages(session.id, userId) }
             .onFailure { e ->
                 android.util.Log.w(
@@ -218,15 +216,23 @@ class ChatRepository {
             .getOrElse { session.unreadCount }
 
         if (actualUnreadCount != session.unreadCount) {
-            db.collection("chatSessions")
-                .document(session.id)
-                .update(
-                    mapOf(
-                        "unreadCount.$userId" to actualUnreadCount,
-                        "unreadCount_$userId" to actualUnreadCount
+            runCatching {
+                db.collection("chatSessions")
+                    .document(session.id)
+                    .update(
+                        mapOf(
+                            "unreadCount.$userId" to actualUnreadCount,
+                            "unreadCount_$userId" to actualUnreadCount
+                        )
                     )
+                    .await()
+            }.onFailure { e ->
+                android.util.Log.w(
+                    "ChatRepository",
+                    "Failed to persist reconciled unread count for session=${session.id}",
+                    e
                 )
-                .await()
+            }
         }
 
         return session.copy(unreadCount = actualUnreadCount)
