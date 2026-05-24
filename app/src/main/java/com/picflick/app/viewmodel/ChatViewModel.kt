@@ -390,9 +390,10 @@ class ChatViewModel : ViewModel() {
             when (val result = repository.markMessagesAsRead(chatId, userId)) {
                 is Result.Success -> {
                     android.util.Log.d("ChatViewModel", "markAsRead success, updating local session state")
-                    // Optimistically clear unread locally so badges/chats update instantly.
+                    // Optimistically clear only this user's unread counter locally.
+                    // Do not change lastMessageRead here: that belongs to the other user's read state for our sent messages.
                     chatSessions = chatSessions.map { session ->
-                        if (session.id == chatId) session.copy(unreadCount = 0, lastMessageRead = true) else session
+                        if (session.id == chatId) session.copy(unreadCount = 0) else session
                     }
                     unreadCount = chatSessions.sumOf { it.unreadCount }
                     // Reload messages to refresh per-message read status.
@@ -569,6 +570,29 @@ class ChatViewModel : ViewModel() {
                 }
                 is Result.Error -> {
                     errorMessage = "Failed to delete messages: ${result.message}"
+                    onComplete(false)
+                }
+                is Result.Loading -> Unit
+            }
+        }
+    }
+
+    /**
+     * Clear all currently visible messages in a chat for current user only.
+     */
+    fun clearConversation(chatId: String, currentUserId: String, onComplete: (Boolean) -> Unit = {}) {
+        viewModelScope.launch {
+            when (val result = repository.clearConversationForUser(chatId, currentUserId)) {
+                is Result.Success -> {
+                    messages = emptyList()
+                    chatSessions = chatSessions.map { session ->
+                        if (session.id == chatId) session.copy(unreadCount = 0) else session
+                    }
+                    unreadCount = chatSessions.sumOf { it.unreadCount }
+                    onComplete(true)
+                }
+                is Result.Error -> {
+                    errorMessage = "Failed to clear conversation: ${result.message}"
                     onComplete(false)
                 }
                 is Result.Loading -> Unit

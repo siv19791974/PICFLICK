@@ -36,7 +36,6 @@ import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.NotificationsOff
 import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.window.Dialog
@@ -1137,70 +1136,32 @@ Column(modifier = Modifier.fillMaxSize()) {
     }
 
     if (showClearChatConfirm) {
-        Dialog(
-            onDismissRequest = { showClearChatConfirm = false },
-            properties = DialogProperties(usePlatformDefaultWidth = false)
-        ) {
-            Surface(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 22.dp),
-                shape = RoundedCornerShape(24.dp),
-                tonalElevation = 10.dp,
-                shadowElevation = 18.dp,
-                color = if (isDarkMode) Color(0xFF151922) else Color.White
-            ) {
-                Column(
-                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 18.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Text(
-                        text = if (isGroupChat) "Exit group conversation?" else "Delete conversation?",
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.ExtraBold,
-                        color = if (isDarkMode) Color.White else Color.Black
-                    )
-                    Text(
-                        text = if (isGroupChat) {
-                            "This removes this group conversation from your inbox only. Other members will still see it."
-                        } else {
-                            "This removes this conversation from your inbox only. Other participants will still see it."
-                        },
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = if (isDarkMode) Color(0xFFBFC7D9) else Color(0xFF475569)
-                    )
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.End,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        TextButton(onClick = { showClearChatConfirm = false }) {
-                            Text("Cancel")
-                        }
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Button(
-                            onClick = {
-                                showClearChatConfirm = false
-                                viewModel.deleteChat(chatId, currentUser.uid)
-                                Toast.makeText(
-                                    context,
-                                    if (isGroupChat) "Group conversation removed from your inbox" else "Conversation removed from your inbox",
-                                    Toast.LENGTH_SHORT
-                                ).show()
-                                onBack()
-                            },
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = Color(0xFF2A4A73),
-                                contentColor = Color.White
-                            ),
-                            shape = RoundedCornerShape(14.dp)
-                        ) {
-                            Text("Delete")
+        AddPhotoStyleActionSheet(
+            title = "Clear current conversation?",
+            options = listOf(
+                ActionSheetOption(
+                    icon = Icons.Default.Delete,
+                    title = "Clear current conversation",
+                    subtitle = "This clears the messages from your view only. This action can not be undone.",
+                    accentColor = Color(0xFFD84343),
+                    onClick = {
+                        showClearChatConfirm = false
+                        viewModel.clearConversation(chatId, currentUser.uid) { success ->
+                            Toast.makeText(
+                                context,
+                                if (success) "Conversation contents cleared" else "Failed to clear conversation",
+                                Toast.LENGTH_SHORT
+                            ).show()
                         }
                     }
-                }
-            }
-        }
+                )
+            ),
+            onDismiss = { showClearChatConfirm = false },
+            cancelTitle = "Cancel",
+            cancelSubtitle = "Keep conversation contents",
+            cancelIcon = Icons.Default.Close,
+            cancelAccentColor = Color(0xFF6B7280)
+        )
     }
 
     if (showHeaderMenu) {
@@ -1240,18 +1201,6 @@ Column(modifier = Modifier.fillMaxSize()) {
                 }
                 add(
                     ActionSheetOption(
-                        icon = Icons.Default.Edit,
-                        title = "Select messages",
-                        subtitle = "Select multiple messages to delete",
-                        accentColor = Color(0xFF2A4A73),
-                        onClick = {
-                            showHeaderMenu = false
-                            isSelectionMode = true
-                        }
-                    )
-                )
-                add(
-                    ActionSheetOption(
                         icon = Icons.Default.NotificationsOff,
                         title = if (isGroupChat) "Mute group chat" else "Mute conversation",
                         subtitle = "Choose how long to silence notifications",
@@ -1264,9 +1213,9 @@ Column(modifier = Modifier.fillMaxSize()) {
                 )
                 add(
                     ActionSheetOption(
-                        icon = if (isGroupChat) Icons.AutoMirrored.Filled.ExitToApp else Icons.Default.Delete,
-                        title = if (isGroupChat) "Exit group conversation" else "Delete conversation",
-                        subtitle = if (isGroupChat) "Leave this group chat" else "Remove this conversation from your inbox",
+                        icon = Icons.Default.Delete,
+                        title = "Clear current conversation",
+                        subtitle = "This action can not be undone",
                         accentColor = Color(0xFFD84343),
                         onClick = {
                             showHeaderMenu = false

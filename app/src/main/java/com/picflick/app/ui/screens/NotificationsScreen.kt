@@ -24,6 +24,7 @@ import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material3.SwipeToDismissBox
 import androidx.compose.material3.SwipeToDismissBoxValue
@@ -614,7 +615,7 @@ private fun NotificationItem(
                 if (!chatName.isNullOrBlank()) senderName = chatName
             }
 
-            if (senderName == "Someone") {
+            if (!isGroupMessageNotification) {
                 val userDoc = FirebaseFirestore.getInstance()
                     .collection("users")
                     .document(notification.senderId)
@@ -660,21 +661,40 @@ private fun NotificationItem(
         else -> notification.message.ifBlank { notification.title.ifBlank { "Notification" } }
     }
 
+    val unreadAccentColor = Color(0xFF2A7DFF)
+    val rowBackground = when {
+        isSelected -> Color.White.copy(alpha = if (isDarkMode) 0.18f else 0.35f)
+        !notification.isRead && isDarkMode -> Color(0xFF10233F)
+        !notification.isRead -> Color(0xFFEAF4FF)
+        isDarkMode -> isDarkModeBackground(true)
+        else -> isDarkModeBackground(false)
+    }
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .background(
-                if (isSelected) Color.White.copy(alpha = if (isDarkMode) 0.18f else 0.35f)
-                else if (isDarkMode) isDarkModeBackground(true)
-                else isDarkModeBackground(false)
-            )
+            .background(rowBackground)
             .combinedClickable(
                 onClick = onClick,
                 onLongClick = onLongClick
             )
-            .padding(horizontal = 16.dp, vertical = 12.dp),
+            .padding(horizontal = 10.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
+        if (!notification.isRead) {
+            Box(
+                modifier = Modifier
+                    .width(4.dp)
+                    .height(56.dp)
+                    .clip(RoundedCornerShape(999.dp))
+                    .background(unreadAccentColor)
+            )
+        } else {
+            Spacer(modifier = Modifier.width(4.dp))
+        }
+
+        Spacer(modifier = Modifier.width(10.dp))
+
         Box(
             modifier = Modifier
                 .size(52.dp)
@@ -764,6 +784,15 @@ private fun NotificationItem(
                     color = if (isDarkMode) Color.White.copy(alpha = 0.6f) else Color.Black.copy(alpha = 0.6f),
                     maxLines = 1
                 )
+                if (!notification.isRead) {
+                    Spacer(modifier = Modifier.width(7.dp))
+                    Box(
+                        modifier = Modifier
+                            .size(8.dp)
+                            .clip(CircleShape)
+                            .background(unreadAccentColor)
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.height(2.dp))
@@ -771,8 +800,12 @@ private fun NotificationItem(
             Text(
                 text = displayMessage,
                 fontSize = 14.sp,
-                fontWeight = if (notification.isRead) FontWeight.Normal else FontWeight.Medium,
-                color = if (isDarkMode) Color.White.copy(alpha = 0.82f) else Color.Black.copy(alpha = 0.75f),
+                fontWeight = if (notification.isRead) FontWeight.Normal else FontWeight.Bold,
+                color = if (!notification.isRead) {
+                    if (isDarkMode) Color.White else Color.Black.copy(alpha = 0.9f)
+                } else {
+                    if (isDarkMode) Color.White.copy(alpha = 0.82f) else Color.Black.copy(alpha = 0.75f)
+                },
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis
             )
@@ -943,7 +976,7 @@ private fun getNotificationIcon(type: NotificationType) = when (type) {
     NotificationType.FRIEND_REQUEST -> Icons.Default.Person
     NotificationType.MESSAGE -> Icons.Default.Email
     NotificationType.GROUP_CHAT_ADDED -> Icons.Default.Email
-    NotificationType.PHOTO_ADDED -> Icons.Default.Info
+    NotificationType.PHOTO_ADDED -> Icons.Default.PhotoCamera
     NotificationType.PROFILE_PHOTO_UPDATED -> Icons.Default.Person
     NotificationType.MENTION -> Icons.Default.Email
     NotificationType.STREAK_REMINDER -> Icons.Default.Notifications

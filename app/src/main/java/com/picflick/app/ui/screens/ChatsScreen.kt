@@ -153,6 +153,11 @@ fun ChatsScreen(
             ?.participants
             ?.firstOrNull { it != userProfile.uid }
     }
+    val selectedUnreadReceivedChatIds = remember(selectedChatIds.toList(), viewModel.chatSessions) {
+        viewModel.chatSessions
+            .filter { session -> session.id in selectedChatIds && session.unreadCount > 0 }
+            .map { it.id }
+    }
 
     val inboxChatSessions = remember(viewModel.chatSessions, userProfile.uid) {
         fun ChatSession.isGroupLike(): Boolean = isGroup || groupId.isNotBlank() || id.startsWith("group_")
@@ -299,7 +304,8 @@ fun ChatsScreen(
                         fontWeight = FontWeight.Bold,
                         textAlign = androidx.compose.ui.text.style.TextAlign.Center
                     )
-                                            IconButton(
+                    if (isSelectionMode) {
+                        IconButton(
                             onClick = { showHeaderMenu = true },
                             modifier = Modifier.size(48.dp)
                         ) {
@@ -310,6 +316,9 @@ fun ChatsScreen(
                                 fontWeight = FontWeight.Bold
                             )
                         }
+                    } else {
+                        Spacer(modifier = Modifier.size(48.dp))
+                    }
                 }
             }
 
@@ -540,27 +549,31 @@ fun ChatsScreen(
     if (showHeaderMenu) {
         val hasSelection = selectedChatIds.isNotEmpty()
         val selectedCount = selectedChatIds.size
+        val unreadReceivedCount = selectedUnreadReceivedChatIds.size
+        val canMarkAsRead = unreadReceivedCount > 0
         val canBlock = selectedChatIds.size == 1 && !selectedOtherUserId.isNullOrBlank()
         val canMute = selectedChatIds.size == 1 && selectedSession != null
         AddPhotoStyleActionSheet(
             title = if (isSelectionMode) "$selectedCount selected" else "Message options",
             options = buildList {
                 if (hasSelection) {
-                    add(
-                        ActionSheetOption(
-                            icon = Icons.Default.Check,
-                            title = "Mark selected as read",
-                            subtitle = "Clear unread count for ${selectedCount} chat${if (selectedCount > 1) "s" else ""}",
-                            accentColor = Color(0xFF2A4A73),
-                            onClick = {
-                                selectedChatIds.toList().forEach { chatId ->
-                                    viewModel.markAsRead(chatId, userProfile.uid)
+                    if (canMarkAsRead) {
+                        add(
+                            ActionSheetOption(
+                                icon = Icons.Default.Check,
+                                title = "Mark selected as read",
+                                subtitle = "Clear unread count for $unreadReceivedCount chat${if (unreadReceivedCount > 1) "s" else ""}",
+                                accentColor = Color(0xFF2A4A73),
+                                onClick = {
+                                    selectedUnreadReceivedChatIds.forEach { chatId ->
+                                        viewModel.markAsRead(chatId, userProfile.uid)
+                                    }
+                                    selectedChatIds.clear()
+                                    showHeaderMenu = false
                                 }
-                                selectedChatIds.clear()
-                                showHeaderMenu = false
-                            }
+                            )
                         )
-                    )
+                    }
                     if (canMute) {
                         add(
                             ActionSheetOption(

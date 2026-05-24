@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -33,10 +32,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -60,7 +56,8 @@ import com.google.firebase.firestore.FieldPath
 import com.google.firebase.firestore.FirebaseFirestore
 import com.picflick.app.data.Flick
 import com.picflick.app.repository.FlickRepository
-import com.picflick.app.ui.components.ActionSheetRow
+import com.picflick.app.ui.components.ActionSheetOption
+import com.picflick.app.ui.components.AddPhotoStyleActionSheet
 import com.picflick.app.ui.theme.PicFlickDarkSurface
 import com.picflick.app.ui.theme.ThemeManager
 import com.picflick.app.ui.theme.isDarkModeBackground
@@ -534,95 +531,51 @@ fun StreakAchievementsScreen(
             }
         }
 
-        // ─── STREAK RECOVERY BOTTOM SHEET ───
+        // ─── STREAK RECOVERY ACTION SHEET ───
         if (showRecoverySheet) {
-            val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-            ModalBottomSheet(
-                onDismissRequest = { showRecoverySheet = false },
-                sheetState = sheetState,
-                containerColor = if (isDarkMode) Color(0xFF0D0D1E) else Color(0xFFFFFFFF),
-                dragHandle = {
-                    Surface(
-                        modifier = Modifier.padding(top = 8.dp).size(width = 44.dp, height = 5.dp),
-                        shape = RoundedCornerShape(50),
-                        color = Color.White.copy(alpha = 0.28f)
-                    ) {}
-                }
-            ) {
-                Column(
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 24.dp, vertical = 20.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    if (streakRecoveryAvailable) {
-                        Text(
-                            text = "🔥 Streak Broken!",
-                            color = textPrimary,
-                            fontSize = 20.sp,
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier.padding(bottom = 20.dp)
-                        )
-                        Text(
-                            text = "Your streak broke yesterday. You can recover your $streakRecoveryValue-day streak once this month for free.",
-                            color = textSecondary,
-                            fontSize = 14.sp,
-                            textAlign = TextAlign.Center,
-                            modifier = Modifier.padding(bottom = 16.dp)
-                        )
-                        Spacer(modifier = Modifier.height(12.dp))
-                        Row(
-                            Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            ActionSheetRow(
-                                icon = Icons.Default.Close,
-                                title = "Skip",
-                                accentColor = textSecondary,
-                                onClick = { showRecoverySheet = false }
-                            )
-                            ActionSheetRow(
-                                icon = Icons.Default.Check,
-                                title = if (isRecovering) "Recovering..." else "Recover Streak",
-                                accentColor = Color(0xFF4CAF50),
-                                onClick = {
-                                    if (currentUserId.isBlank() || isRecovering) return@ActionSheetRow
-                                    isRecovering = true
-                                    scope.launch {
-                                        val result = FlickRepository.getInstance().recoverStreak(currentUserId, streakRecoveryValue)
-                                        if (result is com.picflick.app.data.Result.Success) {
-                                            streakRecoveryAvailable = false
-                                            showRecoverySheet = false
-                                        }
-                                        isRecovering = false
+            if (streakRecoveryAvailable) {
+                AddPhotoStyleActionSheet(
+                    title = "🔥 Streak Broken!",
+                    options = listOf(
+                        ActionSheetOption(
+                            icon = Icons.Default.Check,
+                            title = if (isRecovering) "Recovering..." else "Recover Streak",
+                            subtitle = "Restore your $streakRecoveryValue-day streak for free this month",
+                            accentColor = Color(0xFF4CAF50),
+                            onClick = {
+                                if (currentUserId.isBlank() || isRecovering) return@ActionSheetOption
+                                isRecovering = true
+                                scope.launch {
+                                    val result = FlickRepository.getInstance().recoverStreak(currentUserId, streakRecoveryValue)
+                                    if (result is com.picflick.app.data.Result.Success) {
+                                        streakRecoveryAvailable = false
+                                        showRecoverySheet = false
                                     }
+                                    isRecovering = false
                                 }
-                            )
-                        }
+                            }
+                        )
+                    ),
+                    onDismiss = { showRecoverySheet = false },
+                    cancelTitle = "Skip",
+                    cancelSubtitle = "Leave streak recovery unused for now",
+                    cancelIcon = Icons.Default.Close,
+                    cancelAccentColor = Color(0xFF6B7280)
+                )
+            } else {
+                AddPhotoStyleActionSheet(
+                    title = "🛡️ Streak Saver",
+                    options = emptyList(),
+                    onDismiss = { showRecoverySheet = false },
+                    cancelTitle = "Close",
+                    cancelSubtitle = if (streakRecoveryValue > 0) {
+                        "You already used your free streak recovery this month"
                     } else {
-                        Text(
-                            text = "🛡️ Streak Saver",
-                            color = textPrimary,
-                            fontSize = 20.sp,
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier.padding(bottom = 20.dp)
-                        )
-                        Text(
-                            text = if (streakRecoveryValue > 0) "You already used your free streak recovery this month." else "Your streak is active — no recovery needed right now!",
-                            color = textSecondary,
-                            fontSize = 14.sp,
-                            textAlign = TextAlign.Center
-                        )
-                        Spacer(modifier = Modifier.height(16.dp))
-                        ActionSheetRow(
-                            icon = Icons.Default.Close,
-                            title = "Close",
-                            accentColor = textSecondary,
-                            onClick = { showRecoverySheet = false }
-                        )
-                    }
-                    Spacer(modifier = Modifier.height(12.dp))
-                }
+                        "Your streak is active — no recovery needed right now"
+                    },
+                    cancelIcon = Icons.Default.Close,
+                    cancelAccentColor = Color(0xFF6B7280)
+                )
             }
         }
     }

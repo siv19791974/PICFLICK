@@ -22,8 +22,10 @@ import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.picflick.app.data.ChatMessage
 import com.picflick.app.data.Flick
+import com.picflick.app.data.FriendGroup
 import com.picflick.app.data.UserProfile
 import com.picflick.app.repository.ChatRepository
+import com.picflick.app.repository.FlickRepository
 import com.picflick.app.ui.components.*
 import com.picflick.app.ui.theme.isDarkModeBackground
 import com.picflick.app.ui.theme.ThemeManager
@@ -47,10 +49,19 @@ fun MyPhotosScreen(
     var selectedPhoto by remember { mutableStateOf<Flick?>(null) }
     val scope = rememberCoroutineScope()
     val chatRepository = remember { ChatRepository() }
+    val flickRepository = remember { FlickRepository.getInstance() }
+    var albumGroups by remember { mutableStateOf<List<FriendGroup>>(emptyList()) }
 
     // Load user photos
     LaunchedEffect(userId) {
         viewModel.loadUserPhotos(userId)
+    }
+
+    LaunchedEffect(currentUser.uid) {
+        when (val result = flickRepository.getFriendGroups(currentUser.uid)) {
+            is com.picflick.app.data.Result.Success -> albumGroups = result.data.filter { !it.isChatGroup }
+            else -> Unit
+        }
     }
 
     // Modern PullRefresh state
@@ -158,6 +169,11 @@ fun MyPhotosScreen(
                         }
                     }
                 }
+            },
+            albumGroups = albumGroups,
+            onPhotoMovedToAlbum = { movedFlick ->
+                viewModel.removePhotoLocally(movedFlick.id)
+                if (selectedPhoto?.id == movedFlick.id) selectedPhoto = null
             },
             onEditPhotoClick = { flick ->
                 // Navigate to edit photo screen

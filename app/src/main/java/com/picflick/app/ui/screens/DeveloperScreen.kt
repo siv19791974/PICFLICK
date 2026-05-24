@@ -172,12 +172,13 @@ fun DeveloperScreen(
                     }.awaitAll().flatten()
                 }
 
-                // Deduplicate by document ID in case of overlap
+                // Deduplicate by document ID in case of overlap and hide resolved/closed items from the inbox.
                 feedbackItems = allDocs
                     .distinctBy { it.id }
                     .mapNotNull { doc ->
                         doc.toObject(Feedback::class.java)?.copy(id = doc.getString("id") ?: doc.id)
                     }
+                    .filterNot { it.status == "RESOLVED" || it.status == "CLOSED" }
                     .sortedByDescending { it.timestamp }
                     .take(80)
                 devLogs.add(0, "Feedback inbox loaded (${feedbackItems.size})")
@@ -190,27 +191,33 @@ fun DeveloperScreen(
         }
     }
 
-    fun markFeedbackResolved(feedback: Feedback) {
+    fun markFeedbackResolvedAndHide(feedback: Feedback) {
         scope.launch {
             try {
-                withContext(Dispatchers.IO) {
-                    FirebaseFirestore.getInstance()
+                val deletedFromServer = withContext(Dispatchers.IO) {
+                    val feedbackRef = FirebaseFirestore.getInstance()
                         .collection("feedback")
                         .document(feedback.id)
-                        .update(
+
+                    runCatching {
+                        feedbackRef.delete().await()
+                        true
+                    }.getOrElse { deleteError ->
+                        android.util.Log.w("DeveloperScreen", "Feedback delete denied; falling back to RESOLVED update", deleteError)
+                        feedbackRef.update(
                             mapOf(
                                 "status" to "RESOLVED",
                                 "updatedAt" to System.currentTimeMillis()
                             )
-                        )
-                        .await()
+                        ).await()
+                        false
+                    }
                 }
-                feedbackItems = feedbackItems.map {
-                    if (it.id == feedback.id) it.copy(status = "RESOLVED") else it
-                }
-                selectedFeedback = selectedFeedback?.takeIf { it.id != feedback.id } ?: feedback.copy(status = "RESOLVED")
-                devLogs.add(0, "Feedback marked RESOLVED: ${feedback.id}")
-                Toast.makeText(context, "Marked resolved", Toast.LENGTH_SHORT).show()
+                feedbackItems = feedbackItems.filterNot { it.id == feedback.id }
+                selectedFeedback = null
+                feedbackReplyText = ""
+                devLogs.add(0, if (deletedFromServer) "Feedback deleted: ${feedback.id}" else "Feedback marked RESOLVED and hidden: ${feedback.id}")
+                Toast.makeText(context, "Resolved and removed from inbox", Toast.LENGTH_SHORT).show()
             } catch (e: Exception) {
                 Toast.makeText(context, "Failed: ${e.message}", Toast.LENGTH_SHORT).show()
             }
@@ -1189,7 +1196,7 @@ fun DeveloperScreen(
                                 feedbackReplyText = ""
                             }
                         } else {
-                            markFeedbackResolved(feedback)
+                            markFeedbackResolvedAndHide(feedback)
                         }
                     }
                 ) {

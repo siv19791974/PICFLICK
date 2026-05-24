@@ -189,10 +189,15 @@ class AuthViewModel : ViewModel() {
     }
 
     /**
-     * Phone number is user-provided only (policy-safe).
+     * Phone number can only be captured when Firebase Auth provides it (for example phone sign-in
+     * or a linked phone provider). We never read the device/SIM phone number automatically.
      */
-    private fun getDevicePhoneNumber(@Suppress("UNUSED_PARAMETER") context: Context): String {
-        return ""
+    private fun getAuthPhoneNumber(user: FirebaseUser): String {
+        val authPhone = user.phoneNumber
+            ?: user.providerData.firstNotNullOfOrNull { provider -> provider.phoneNumber }
+            ?: return ""
+
+        return authPhone.replace("[^0-9]".toRegex(), "").takeIf { it.length >= 10 }.orEmpty()
     }
 
     private fun enforceDeveloperDisplayName(profile: UserProfile): UserProfile {
@@ -209,7 +214,7 @@ class AuthViewModel : ViewModel() {
      * Save user to Firestore after successful sign in
      * BUT only if profile doesn't already exist (preserves existing bio, photo, etc.)
      */
-    fun saveUserToFirestore(user: FirebaseUser, context: Context) {
+    fun saveUserToFirestore(user: FirebaseUser) {
         viewModelScope.launch {
             // First check if profile already exists
             repository.getUserProfile(user.uid) { existingResult ->
@@ -220,14 +225,24 @@ class AuthViewModel : ViewModel() {
 
                         // Firestore/app profile is the source of truth for display name.
                         // Do not overwrite an edited PicFlick name from the older Firebase Auth displayName.
+                        val authPhoneNumber = getAuthPhoneNumber(user)
                         val shouldSeedPhoto =
                             existingProfile.photoUrl.isBlank() && user.photoUrl != null
+                        val shouldSeedPhone =
+                            existingProfile.phoneNumber.isBlank() && authPhoneNumber.isNotBlank()
 
-                        if (shouldSeedPhoto) {
-                            val seededPhotoUrl = user.photoUrl.toString()
-                            repository.patchUserProfile(user.uid, mapOf("photoUrl" to seededPhotoUrl)) { result ->
+                        val profileUpdates = buildMap<String, Any> {
+                            if (shouldSeedPhoto) put("photoUrl", user.photoUrl.toString())
+                            if (shouldSeedPhone) put("phoneNumber", authPhoneNumber)
+                        }
+
+                        if (profileUpdates.isNotEmpty()) {
+                            repository.patchUserProfile(user.uid, profileUpdates) { result ->
                                 userProfile = if (result is Result.Success) {
-                                    existingProfile.copy(photoUrl = seededPhotoUrl)
+                                    existingProfile.copy(
+                                        photoUrl = profileUpdates["photoUrl"] as? String ?: existingProfile.photoUrl,
+                                        phoneNumber = profileUpdates["phoneNumber"] as? String ?: existingProfile.phoneNumber
+                                    )
                                 } else {
                                     existingProfile
                                 }
@@ -241,7 +256,7 @@ class AuthViewModel : ViewModel() {
                         // Only create a new profile when truly missing; don't overwrite on transient read errors.
                         val msg = existingResult.message.lowercase()
                         if (msg.contains("not found")) {
-                            createNewProfile(user, context)
+                            createNewProfile(user)
                         } else {
                             errorMessage = existingResult.message
                             loadUserProfile(user.uid)
@@ -253,9 +268,9 @@ class AuthViewModel : ViewModel() {
         }
     }
     
-    private fun createNewProfile(user: FirebaseUser, context: Context) {
-        val phoneNumber = getDevicePhoneNumber(context)
-        
+    private fun createNewProfile(user: FirebaseUser) {
+        val phoneNumber = getAuthPhoneNumber(user)
+
         val profile = UserProfile(
             uid = user.uid,
             email = user.email ?: "",
@@ -395,7 +410,7 @@ class AuthViewModel : ViewModel() {
             .addOnCompleteListener { task ->
                 if (task.isSuccessful) {
                     auth.currentUser?.let { user ->
-                        saveUserToFirestore(user, context)
+                        saveUserToFirestore(user)
                         onResult(true, null)
                     } ?: onResult(false, "Signed in but user not available")
                 } else {
@@ -440,11 +455,11 @@ class AuthViewModel : ViewModel() {
                             .build()
                         user.updateProfile(profileUpdates)
                             .addOnCompleteListener {
-                                saveUserToFirestore(user, context)
+                                saveUserToFirestore(user)
                                 onResult(true, null)
                             }
                     } else {
-                        saveUserToFirestore(user, context)
+                        saveUserToFirestore(user)
                         onResult(true, null)
                     }
                 } else {

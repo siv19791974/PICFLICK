@@ -20,6 +20,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Chat
+import androidx.compose.material.icons.automirrored.filled.DriveFileMove
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.*
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -68,6 +69,7 @@ import net.engawapg.lib.zoomable.rememberZoomState
 import net.engawapg.lib.zoomable.zoomable
 import com.picflick.app.data.Comment
 import com.picflick.app.data.Flick
+import com.picflick.app.data.FriendGroup
 import com.picflick.app.data.ReactionType
 import com.picflick.app.data.UserProfile
 import com.picflick.app.data.toEmoji
@@ -134,6 +136,8 @@ fun FullScreenPhotoViewer(
     onNavigateToFindFriends: () -> Unit = {},
     onEditPhotoClick: (Flick) -> Unit = {},
     friendProfiles: Map<String, UserProfile> = emptyMap(), // Map of userId -> UserProfile for looking up profile pics
+    albumGroups: List<FriendGroup> = emptyList(),
+    onPhotoMovedToAlbum: (Flick) -> Unit = {},
     openCommentPanelInitially: Boolean = false,
 ) {
     val context = LocalContext.current
@@ -363,6 +367,8 @@ val canDeleteCurrent = currentFlick.userId == currentUser.uid
     
     // Tag friends dialog state
     var showTagFriendsDialog by remember { mutableStateOf(false) }
+    var showAddToAlbumSheet by remember { mutableStateOf(false) }
+    var selectedAlbumForAdd by remember { mutableStateOf<FriendGroup?>(null) }
     var taggedFriends by remember(currentFlick.id) { mutableStateOf<List<String>>(currentFlick.taggedFriends) }
     var isLoadingTagFriends by remember { mutableStateOf(false) }
     
@@ -370,6 +376,8 @@ val canDeleteCurrent = currentFlick.userId == currentUser.uid
     LaunchedEffect(currentFlick.id) {
         showShareDialog = false
         showTagFriendsDialog = false
+        showAddToAlbumSheet = false
+        selectedAlbumForAdd = null
         showEditCaption = false
         showDeleteConfirmation = false
         showMoreMenu = false
@@ -1008,9 +1016,51 @@ val canDeleteCurrent = currentFlick.userId == currentUser.uid
                             verticalArrangement = Arrangement.spacedBy(if (isLandscape) 14.dp else 20.dp)
                         ) {
 if (canDeleteCurrent) {
-                                // MY PHOTOS MODE - Icons: Tag, Comment, Chat/Message, Edit, Delete
+                                // MY PHOTOS MODE - Icons: Add to Album, Tag, Comment, Chat/Message, Export, Edit, Delete
+
+                                // 1. ADD TO ALBUM BUTTON
+                                Box(
+                                    modifier = Modifier
+                                        .size(44.dp)
+                                        .background(
+                                            Color.Black.copy(alpha = 0.4f),
+                                            CircleShape
+                                        )
+                                        .clickable {
+                                            val isAlbumPhoto = currentFlick.sharedGroupId.isNotBlank()
+                                            val hasManageableAlbum = albumGroups.any { !it.isChatGroup && it.isAdmin(currentUser.uid) }
+                                            if (!isAlbumPhoto && !hasManageableAlbum) {
+                                                showPicFlickToast("Create an album first")
+                                            } else {
+                                                showAddToAlbumSheet = true
+                                            }
+                                        },
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.PhotoAlbum,
+                                        contentDescription = "Add to Album",
+                                        tint = Color.White,
+                                        modifier = Modifier.size(28.dp)
+                                    )
+                                    Box(
+                                        modifier = Modifier
+                                            .align(Alignment.TopEnd)
+                                            .offset(x = 4.dp, y = (-4).dp)
+                                            .size(16.dp)
+                                            .background(MidBlue, CircleShape),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Add,
+                                            contentDescription = null,
+                                            tint = Color.White,
+                                            modifier = Modifier.size(11.dp)
+                                        )
+                                    }
+                                }
                                 
-                                // 1. TAG FRIENDS BUTTON
+                                // 2. TAG FRIENDS BUTTON
                                 Box(
                                     modifier = Modifier
                                         .size(44.dp)
@@ -1659,6 +1709,137 @@ if (canDeleteCurrent) {
                     )
                 }
                 
+                if (showAddToAlbumSheet) {
+                    val isAlbumPhoto = currentFlick.sharedGroupId.isNotBlank()
+                    val currentAlbumName = albumGroups
+                        .firstOrNull { it.id == currentFlick.sharedGroupId }
+                        ?.name
+                        ?.ifBlank { "current album" }
+                        ?: "current album"
+                    val manageableAlbums = albumGroups
+                        .filter { !it.isChatGroup && it.isAdmin(currentUser.uid) }
+                        .filter { it.id != currentFlick.sharedGroupId }
+                    val selectedAlbum = selectedAlbumForAdd
+
+                    if (selectedAlbum == null) {
+                        val albumOptions = manageableAlbums.map { album ->
+                            ActionSheetOption(
+                                icon = Icons.Default.PhotoAlbum,
+                                title = album.name.ifBlank { "Untitled album" },
+                                subtitle = if (isAlbumPhoto) "Copy or move to this album" else "Choose this album",
+                                accentColor = Color(0xFF2A4A73),
+                                onClick = { selectedAlbumForAdd = album }
+                            )
+                        }
+                        val moveBackOption = if (isAlbumPhoto) {
+                            listOf(
+                                ActionSheetOption(
+                                    icon = Icons.Default.Home,
+                                    title = "Move back to My Photos",
+                                    subtitle = "Remove from $currentAlbumName and show in My Photos again",
+                                    accentColor = Color(0xFF2E7D32),
+                                    onClick = {
+                                        showAddToAlbumSheet = false
+                                        selectedAlbumForAdd = null
+                                        coroutineScope.launch {
+                                            when (repository.moveOwnedFlickBackToMyPhotos(currentFlick.id, currentUser.uid)) {
+                                                is com.picflick.app.data.Result.Success -> {
+                                                    showPicFlickToast("Moved back to My Photos")
+                                                    onPhotoMovedToAlbum(currentFlick)
+                                                }
+                                                is com.picflick.app.data.Result.Error -> showPicFlickToast("Could not move back to My Photos")
+                                                else -> Unit
+                                            }
+                                        }
+                                    }
+                                )
+                            )
+                        } else {
+                            emptyList()
+                        }
+
+                        AddPhotoStyleActionSheet(
+                            title = if (isAlbumPhoto) "Album options" else "Which album to copy to?",
+                            options = (moveBackOption + albumOptions).ifEmpty {
+                                listOf(
+                                    ActionSheetOption(
+                                        icon = Icons.Default.Add,
+                                        title = "No album available",
+                                        subtitle = "Create or manage an album first",
+                                        accentColor = Color(0xFF4B5563),
+                                        onClick = { showAddToAlbumSheet = false }
+                                    )
+                                )
+                            },
+                            onDismiss = {
+                                showAddToAlbumSheet = false
+                                selectedAlbumForAdd = null
+                            },
+                            cancelTitle = "Cancel",
+                            cancelSubtitle = "Close album picker",
+                            cancelIcon = Icons.Default.Close,
+                            cancelAccentColor = Color(0xFF4B5563)
+                        )
+                    } else {
+                        val selectedAlbumName = selectedAlbum.name.ifBlank { "this album" }
+                        AddPhotoStyleActionSheet(
+                            title = selectedAlbumName,
+                            options = listOf(
+                                ActionSheetOption(
+                                    icon = Icons.Default.ContentCopy,
+                                    title = if (isAlbumPhoto) "Copy to different album" else "Copy to album",
+                                    subtitle = if (isAlbumPhoto) {
+                                        "Keep in $currentAlbumName and create a copy in $selectedAlbumName"
+                                    } else {
+                                        "Keep in My Photos and create a copy in $selectedAlbumName"
+                                    },
+                                    accentColor = Color(0xFF2A4A73),
+                                    onClick = {
+                                        showAddToAlbumSheet = false
+                                        selectedAlbumForAdd = null
+                                        coroutineScope.launch {
+                                            when (repository.copyOwnedFlickToAlbum(currentFlick, currentUser.uid, selectedAlbum.id)) {
+                                                is com.picflick.app.data.Result.Success -> showPicFlickToast("Copied to $selectedAlbumName")
+                                                is com.picflick.app.data.Result.Error -> showPicFlickToast("Could not copy to album")
+                                                else -> Unit
+                                            }
+                                        }
+                                    }
+                                ),
+                                ActionSheetOption(
+                                    icon = Icons.AutoMirrored.Filled.DriveFileMove,
+                                    title = if (isAlbumPhoto) "Move to different album" else "Move to album",
+                                    subtitle = if (isAlbumPhoto) {
+                                        "Remove from $currentAlbumName and show only in $selectedAlbumName"
+                                    } else {
+                                        "Hide from My Photos and show only in $selectedAlbumName"
+                                    },
+                                    accentColor = Color(0xFFE08A24),
+                                    onClick = {
+                                        showAddToAlbumSheet = false
+                                        selectedAlbumForAdd = null
+                                        coroutineScope.launch {
+                                            when (repository.moveOwnedFlickToAlbum(currentFlick.id, currentUser.uid, selectedAlbum.id)) {
+                                                is com.picflick.app.data.Result.Success -> {
+                                                    showPicFlickToast("Moved to $selectedAlbumName")
+                                                    onPhotoMovedToAlbum(currentFlick)
+                                                }
+                                                is com.picflick.app.data.Result.Error -> showPicFlickToast("Could not move to album")
+                                                else -> Unit
+                                            }
+                                        }
+                                    }
+                                )
+                            ),
+                            onDismiss = { selectedAlbumForAdd = null },
+                            cancelTitle = "Back",
+                            cancelSubtitle = "Choose another album",
+                            cancelIcon = Icons.AutoMirrored.Filled.ArrowBack,
+                            cancelAccentColor = Color(0xFF4B5563)
+                        )
+                    }
+                }
+
                 // TAG FRIENDS DIALOG - Tag existing friends or go to Find Friends
                 AnimatedVisibility(
                     visible = showTagFriendsDialog,

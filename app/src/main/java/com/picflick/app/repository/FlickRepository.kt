@@ -4190,6 +4190,100 @@ android.util.Log.e("FlickRepository", "Failed to submit feedback", e)
     }
 
     /**
+     * Create an album-targeted copy of an existing owned flick.
+     * The original remains in My Photos; the copy appears only in the selected album.
+     */
+    suspend fun copyOwnedFlickToAlbum(
+        flick: Flick,
+        userId: String,
+        albumId: String
+    ): Result<String> {
+        return try {
+            if (flick.userId != userId) {
+                return Result.Error(Exception("Only the owner can copy this photo"), "Only the owner can copy this photo")
+            }
+            if (!canUploadToGroup(userId, albumId)) {
+                return Result.Error(Exception("You can only add photos to albums you manage"), "You can only add photos to albums you manage")
+            }
+
+            val copy = flick.copy(
+                id = "",
+                sharedGroupId = albumId,
+                timestamp = System.currentTimeMillis(),
+                reactions = emptyMap(),
+                reactionsCount = 0,
+                commentCount = 0,
+                taggedFriends = emptyList(),
+                reportCount = 0,
+                autoHiddenByReports = false,
+                clientUploadId = "album_copy_${flick.id}_${albumId}_${System.currentTimeMillis()}"
+            )
+            val docRef = db.collection(Constants.FirebaseCollections.FLICKS).add(copy).await()
+            docRef.update("id", docRef.id).await()
+            Result.Success(docRef.id)
+        } catch (e: Exception) {
+            Result.Error(e, "Failed to copy photo to album")
+        }
+    }
+
+    /**
+     * Move an owned flick into an album by targeting it to the album.
+     * This removes it from general My Photos/Home because those feeds hide sharedGroupId flicks.
+     */
+    suspend fun moveOwnedFlickToAlbum(
+        flickId: String,
+        userId: String,
+        albumId: String
+    ): Result<Unit> {
+        return try {
+            if (!canUploadToGroup(userId, albumId)) {
+                return Result.Error(Exception("You can only add photos to albums you manage"), "You can only add photos to albums you manage")
+            }
+            val docRef = db.collection(Constants.FirebaseCollections.FLICKS).document(flickId)
+            val snapshot = docRef.get().await()
+            val ownerId = snapshot.getString("userId").orEmpty()
+            if (ownerId != userId) {
+                return Result.Error(Exception("Only the owner can move this photo"), "Only the owner can move this photo")
+            }
+            docRef.update(
+                mapOf(
+                    "sharedGroupId" to albumId,
+                    "updatedAt" to System.currentTimeMillis()
+                )
+            ).await()
+            Result.Success(Unit)
+        } catch (e: Exception) {
+            Result.Error(e, "Failed to move photo to album")
+        }
+    }
+
+    /**
+     * Move an owned album-targeted flick back to My Photos by clearing its album target.
+     */
+    suspend fun moveOwnedFlickBackToMyPhotos(
+        flickId: String,
+        userId: String
+    ): Result<Unit> {
+        return try {
+            val docRef = db.collection(Constants.FirebaseCollections.FLICKS).document(flickId)
+            val snapshot = docRef.get().await()
+            val ownerId = snapshot.getString("userId").orEmpty()
+            if (ownerId != userId) {
+                return Result.Error(Exception("Only the owner can move this photo"), "Only the owner can move this photo")
+            }
+            docRef.update(
+                mapOf(
+                    "sharedGroupId" to "",
+                    "updatedAt" to System.currentTimeMillis()
+                )
+            ).await()
+            Result.Success(Unit)
+        } catch (e: Exception) {
+            Result.Error(e, "Failed to move photo back to My Photos")
+        }
+    }
+
+    /**
      * Check if a user is allowed to upload photos to a specific group album.
      * Only the owner and admins can add photos.
      */

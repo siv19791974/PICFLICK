@@ -151,6 +151,14 @@ class ProfileViewModel : ViewModel() {
         }
     }
     
+    fun removePhotoLocally(photoId: String) {
+        val removed = photos.removeIf { it.id == photoId }
+        if (removed) {
+            photoCount = photos.size
+            totalReactions = photos.sumOf { it.getTotalReactions() }
+        }
+    }
+
     /**
      * Delete a photo
      */

@@ -293,9 +293,22 @@ class ChatRepository {
                             ?.filterIsInstance<String>()
                             ?: emptyList()
                         if (deletedFor.contains(userId)) return@mapNotNull null
+                        val clearedAt = doc.getLong("clearedAt_$userId") ?: 0L
                         runCatching { doc.toChatSessionSafe(userId) }
                             .getOrNull()
                             ?.let { session -> reconcileSessionUnreadCount(session, userId) }
+                            ?.let { session ->
+                                if (clearedAt > 0L && session.lastTimestamp <= clearedAt) {
+                                    session.copy(
+                                        lastMessage = "",
+                                        lastSenderId = "",
+                                        lastMessageRead = true,
+                                        unreadCount = 0
+                                    )
+                                } else {
+                                    session
+                                }
+                            }
                     } ?: emptyList()
 
                     // Include both 1:1 and group sessions.
@@ -837,18 +850,16 @@ class ChatRepository {
                 android.util.Log.d("ChatRepository", "No messages to update")
             }
 
-            // Always clear unread counters for current user in session doc.
-            // Only set lastMessageRead=true when this call actually read at least one incoming message.
-            val sessionUpdates = mutableMapOf<String, Any>(
-                "unreadCount.$userId" to 0,
-                "unreadCount_$userId" to 0
-            )
-            if (messagesToUpdate.isNotEmpty()) {
-                sessionUpdates["lastMessageRead"] = true
-            }
-
+            // Clear only the current user's unread counters.
+            // Do not update lastMessageRead here: it represents whether the latest sent message
+            // has been read by its recipient, not whether this user cleared their inbox badge.
             db.collection("chatSessions").document(chatId)
-                .update(sessionUpdates)
+                .update(
+                    mapOf(
+                        "unreadCount.$userId" to 0,
+                        "unreadCount_$userId" to 0
+                    )
+                )
                 .await()
 
             Result.Success(Unit)
@@ -1024,6 +1035,50 @@ class ChatRepository {
             Result.Success(Unit)
         } catch (e: Exception) {
             Result.Error(e, e.message ?: "Failed to delete selected messages")
+        }
+    }
+
+    /**
+     * Clear all currently visible messages in a chat for the current user only.
+     * The chat session remains in the inbox; only message contents are hidden for this user.
+     */
+    suspend fun clearConversationForUser(chatId: String, userId: String): Result<Unit> {
+        return try {
+            if (chatId.isBlank() || userId.isBlank()) return Result.Success(Unit)
+
+            val sessionRef = db.collection("chatSessions").document(chatId)
+            val messageDocs = sessionRef
+                .collection("messages")
+                .get()
+                .await()
+                .documents
+                .filter { doc ->
+                    val deletedFor = (doc.get("deletedForUserIds") as? List<*>)
+                        ?.filterIsInstance<String>()
+                        .orEmpty()
+                    userId !in deletedFor
+                }
+
+            messageDocs.chunked(450).forEach { chunk ->
+                val batch = db.batch()
+                chunk.forEach { doc ->
+                    batch.update(doc.reference, "deletedForUserIds", FieldValue.arrayUnion(userId))
+                }
+                batch.commit().await()
+            }
+
+            val clearedAt = System.currentTimeMillis()
+            sessionRef.update(
+                mapOf(
+                    "unreadCount.$userId" to 0,
+                    "unreadCount_$userId" to 0,
+                    "clearedAt_$userId" to clearedAt
+                )
+            ).await()
+
+            Result.Success(Unit)
+        } catch (e: Exception) {
+            Result.Error(e, e.message ?: "Failed to clear conversation")
         }
     }
 

@@ -28,8 +28,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.DriveFileMove
 import androidx.compose.material.icons.filled.*
-import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.pullrefresh.PullRefreshIndicator
 import androidx.compose.material.pullrefresh.pullRefresh
 import androidx.compose.material.pullrefresh.rememberPullRefreshState
@@ -114,6 +115,7 @@ fun ProfileScreen(
     onReaction: (Flick, ReactionType?) -> Unit = { _, _ -> },
     isLoading: Boolean = false,
     onDeletePhotos: (Set<String>, (Boolean) -> Unit) -> Unit = { _, done -> done(false) },
+    onAddPhotosToAlbum: (photos: List<Flick>, album: FriendGroup, move: Boolean, onComplete: (Boolean) -> Unit) -> Unit = { _, _, _, done -> done(false) },
     albums: List<FriendGroup> = emptyList(),
     onAlbumClick: (FriendGroup) -> Unit = {},
     onCreateAlbum: () -> Unit = {}
@@ -169,13 +171,18 @@ fun ProfileScreen(
     val selectedPhotoIds = remember { mutableStateListOf<String>() }
     val isSelectionMode = selectedPhotoIds.isNotEmpty()
     var showBatchDeleteConfirm by remember { mutableStateOf(false) }
+    var showBatchAlbumPicker by remember { mutableStateOf(false) }
+    var selectedBatchAlbum by remember { mutableStateOf<FriendGroup?>(null) }
     var isDeletingSelection by remember { mutableStateOf(false) }
+    var isAddingSelectionToAlbum by remember { mutableStateOf(false) }
 
     LaunchedEffect(photos) {
         val existingPhotoIds = photos.map { it.id }.toSet()
         selectedPhotoIds.removeAll { it !in existingPhotoIds }
         if (selectedPhotoIds.isEmpty()) {
             showBatchDeleteConfirm = false
+            showBatchAlbumPicker = false
+            selectedBatchAlbum = null
         }
     }
 
@@ -703,37 +710,66 @@ fun ProfileScreen(
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Text(
-                        text = "${selectedPhotoIds.size} selected",
-                        color = if (isDarkMode) Color.White else Color.Black,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        TextButton(
-                            onClick = { selectedPhotoIds.clear() },
-                            enabled = !isDeletingSelection
+                    TextButton(
+                        onClick = { selectedPhotoIds.clear() },
+                        enabled = !isDeletingSelection && !isAddingSelectionToAlbum,
+                        modifier = Modifier.height(44.dp)
+                    ) {
+                        Text("Cancel")
+                    }
+                    if (selectedPhotoIds.isNotEmpty()) {
+                        Button(
+                            onClick = { showBatchAlbumPicker = true },
+                            enabled = !isDeletingSelection && !isAddingSelectionToAlbum,
+                            modifier = Modifier
+                                .height(44.dp)
+                                .weight(1f),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color(0xFF2A4A73),
+                                contentColor = Color.White,
+                                disabledContainerColor = Color(0xFF2A4A73).copy(alpha = 0.45f),
+                                disabledContentColor = Color.White.copy(alpha = 0.7f)
+                            ),
+                            contentPadding = PaddingValues(horizontal = 12.dp)
                         ) {
-                            Text("Cancel")
+                            Icon(
+                                imageVector = Icons.Default.Add,
+                                contentDescription = "Add selected to album",
+                                tint = Color.White,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = "Add ${selectedPhotoIds.size} to Album",
+                                maxLines = 1
+                            )
                         }
-                        if (selectedPhotoIds.isNotEmpty()) {
-                            OutlinedButton(
-                                onClick = { showBatchDeleteConfirm = true },
-                                enabled = !isDeletingSelection,
-                                colors = ButtonDefaults.outlinedButtonColors(
-                                    contentColor = Color(0xFFD32F2F)
-                                ),
-                                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFD32F2F))
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Outlined.Delete,
-                                    contentDescription = "Delete selected",
-                                    tint = Color(0xFFD32F2F)
-                                )
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Text("Delete")
-                            }
+                        Button(
+                            onClick = { showBatchDeleteConfirm = true },
+                            enabled = !isDeletingSelection && !isAddingSelectionToAlbum,
+                            modifier = Modifier.height(44.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color(0xFFD32F2F),
+                                contentColor = Color.White,
+                                disabledContainerColor = Color(0xFFD32F2F).copy(alpha = 0.45f),
+                                disabledContentColor = Color.White.copy(alpha = 0.7f)
+                            ),
+                            contentPadding = PaddingValues(horizontal = 14.dp)
+                        ) {
+                            Text(
+                                text = selectedPhotoIds.size.toString(),
+                                color = Color.White,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Icon(
+                                imageVector = Icons.Default.Delete,
+                                contentDescription = "Delete selected",
+                                tint = Color.White,
+                                modifier = Modifier.size(22.dp)
+                            )
                         }
                     }
                 }
@@ -878,6 +914,98 @@ fun ProfileScreen(
                 croppedUri?.let(onPhotoSelected)
             }
         )
+    }
+
+    if (showBatchAlbumPicker) {
+        val selectedPhotos = photos.filter { it.id in selectedPhotoIds }
+        val manageableAlbums = albums.filter { !it.isChatGroup && it.isAdmin(userProfile.uid) }
+        val chosenAlbum = selectedBatchAlbum
+
+        if (chosenAlbum == null) {
+            AddPhotoStyleActionSheet(
+                title = "Which album to copy to?",
+                options = if (manageableAlbums.isNotEmpty()) {
+                    manageableAlbums.map { album ->
+                        ActionSheetOption(
+                            icon = Icons.Default.PhotoAlbum,
+                            title = album.name.ifBlank { "Untitled album" },
+                            subtitle = "Choose this album for ${selectedPhotos.size} selected photos",
+                            accentColor = Color(0xFF2A4A73),
+                            onClick = { selectedBatchAlbum = album }
+                        )
+                    }
+                } else {
+                    listOf(
+                        ActionSheetOption(
+                            icon = Icons.Default.Add,
+                            title = "No album available",
+                            subtitle = "Create or manage an album first",
+                            accentColor = Color(0xFF4B5563),
+                            onClick = { showBatchAlbumPicker = false }
+                        )
+                    )
+                },
+                onDismiss = {
+                    if (!isAddingSelectionToAlbum) {
+                        showBatchAlbumPicker = false
+                        selectedBatchAlbum = null
+                    }
+                },
+                cancelTitle = "Cancel",
+                cancelSubtitle = "Keep selected photos",
+                cancelIcon = Icons.Default.Close,
+                cancelAccentColor = Color(0xFF4B5563)
+            )
+        } else {
+            AddPhotoStyleActionSheet(
+                title = chosenAlbum.name.ifBlank { "Selected album" },
+                options = listOf(
+                    ActionSheetOption(
+                        icon = Icons.Default.ContentCopy,
+                        title = if (isAddingSelectionToAlbum) "Copying..." else "Copy to album",
+                        subtitle = "Keep in My Photos and create copies in ${chosenAlbum.name.ifBlank { "this album" }}",
+                        accentColor = Color(0xFF2A4A73),
+                        onClick = {
+                            if (selectedPhotos.isEmpty() || isAddingSelectionToAlbum) return@ActionSheetOption
+                            isAddingSelectionToAlbum = true
+                            onAddPhotosToAlbum(selectedPhotos, chosenAlbum, false) { success ->
+                                isAddingSelectionToAlbum = false
+                                if (success) {
+                                    selectedPhotoIds.clear()
+                                    showBatchAlbumPicker = false
+                                    selectedBatchAlbum = null
+                                }
+                            }
+                        }
+                    ),
+                    ActionSheetOption(
+                        icon = Icons.AutoMirrored.Filled.DriveFileMove,
+                        title = if (isAddingSelectionToAlbum) "Moving..." else "Move to album",
+                        subtitle = "Hide from My Photos and show only in ${chosenAlbum.name.ifBlank { "this album" }}",
+                        accentColor = Color(0xFFE08A24),
+                        onClick = {
+                            if (selectedPhotos.isEmpty() || isAddingSelectionToAlbum) return@ActionSheetOption
+                            isAddingSelectionToAlbum = true
+                            onAddPhotosToAlbum(selectedPhotos, chosenAlbum, true) { success ->
+                                isAddingSelectionToAlbum = false
+                                if (success) {
+                                    selectedPhotoIds.clear()
+                                    showBatchAlbumPicker = false
+                                    selectedBatchAlbum = null
+                                }
+                            }
+                        }
+                    )
+                ),
+                onDismiss = {
+                    if (!isAddingSelectionToAlbum) selectedBatchAlbum = null
+                },
+                cancelTitle = "Back",
+                cancelSubtitle = "Choose another album",
+                cancelIcon = Icons.AutoMirrored.Filled.ArrowBack,
+                cancelAccentColor = Color(0xFF4B5563)
+            )
+        }
     }
 
     if (showBatchDeleteConfirm) {

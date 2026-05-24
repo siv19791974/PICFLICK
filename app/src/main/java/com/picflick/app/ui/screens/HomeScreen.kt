@@ -413,6 +413,11 @@ fun HomeScreen(
                 }
             },
             onUserProfileClick = { userId -> onUserProfileClick(userId) },
+            albumGroups = viewModel.friendGroups,
+            onPhotoMovedToAlbum = { movedFlick ->
+                viewModel.removeFlickFromFeed(movedFlick.id)
+                if (selectedFlick?.id == movedFlick.id) selectedFlick = null
+            },
             onShareToFriend = { flickId, friendId ->
                 val flickToSend = viewModel.flicks.firstOrNull { it.id == flickId } ?: flick
                 if (flickToSend.imageUrl.isBlank()) {

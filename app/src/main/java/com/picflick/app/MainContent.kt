@@ -30,6 +30,7 @@ import com.picflick.app.data.ChatMessage
 import com.picflick.app.data.ChatSession
 import com.picflick.app.data.FeedFilter
 import com.picflick.app.data.Flick
+import com.picflick.app.data.FriendGroup
 import com.picflick.app.data.ReactionType
 import com.picflick.app.data.SubscriptionTier
 import com.picflick.app.data.UserProfile
@@ -679,6 +680,8 @@ private fun ProfileScreenContent(
     onCreateAlbum: () -> Unit = {}
 ) {
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val repository = remember { FlickRepository.getInstance() }
 
     // Load photos when profile screen is shown
     LaunchedEffect(userProfile.uid) {
@@ -746,6 +749,37 @@ private fun ProfileScreenContent(
                 onComplete(success)
             }
         },
+        onAddPhotosToAlbum = { selectedPhotos, album, move, onComplete ->
+            scope.launch {
+                var successCount = 0
+                selectedPhotos.forEach { flick ->
+                    val result = if (move) {
+                        repository.moveOwnedFlickToAlbum(flick.id, userProfile.uid, album.id)
+                    } else {
+                        repository.copyOwnedFlickToAlbum(flick, userProfile.uid, album.id)
+                    }
+                    if (result is com.picflick.app.data.Result.Success) {
+                        successCount++
+                        if (move) {
+                            profileViewModel.removePhotoLocally(flick.id)
+                            homeViewModel.removeFlickFromFeed(flick.id)
+                            if (selectedPhoto?.id == flick.id) selectedPhoto = null
+                        }
+                    }
+                }
+                val albumName = album.name.ifBlank { "album" }
+                Toast.makeText(
+                    context,
+                    if (successCount == selectedPhotos.size) {
+                        if (move) "Moved $successCount photos to $albumName" else "Copied $successCount photos to $albumName"
+                    } else {
+                        "Added $successCount of ${selectedPhotos.size} photos"
+                    },
+                    Toast.LENGTH_SHORT
+                ).show()
+                onComplete(successCount > 0)
+            }
+        },
         albums = homeViewModel.friendGroups.filter { group ->
             group.isMember(userProfile.uid) && !group.isChatGroup
         },
@@ -809,6 +843,12 @@ private fun ProfileScreenContent(
             canDelete = true,
             onCaptionUpdated = { flick, newCaption ->
                 profileViewModel.updateCaption(flick.id, newCaption)
+            },
+            albumGroups = homeViewModel.friendGroups,
+            onPhotoMovedToAlbum = { movedFlick ->
+                profileViewModel.removePhotoLocally(movedFlick.id)
+                homeViewModel.removeFlickFromFeed(movedFlick.id)
+                if (selectedPhoto?.id == movedFlick.id) selectedPhoto = null
             },
             onEditPhotoClick = { flick ->
                 onScreenChange(Screen.EditPhoto(flick, returnTo = Screen.Profile))
@@ -1959,7 +1999,12 @@ private fun UserProfileScreenContent(
             friendProfiles = friendsViewModel.followingUsers.associateBy { it.uid } + mapOf(
                 target.uid to target,
                 userProfile.uid to userProfile
-            )
+            ),
+            albumGroups = homeViewModel.friendGroups,
+            onPhotoMovedToAlbum = { movedFlick ->
+                targetUserPhotos = targetUserPhotos.filterNot { it.id == movedFlick.id }
+                if (selectedUserPhoto?.id == movedFlick.id) selectedUserPhoto = null
+            }
         )
     } ?: run {
         Box(
@@ -2006,6 +2051,8 @@ selectedPhoto: Flick?,
     canDelete: Boolean,
     onCaptionUpdated: (Flick, String) -> Unit,
     friendProfiles: Map<String, UserProfile> = emptyMap(), // Map of userId -> UserProfile for looking up profile pics
+    albumGroups: List<FriendGroup> = emptyList(),
+    onPhotoMovedToAlbum: (Flick) -> Unit = {},
     onEditPhotoClick: (Flick) -> Unit = {}, // Navigate to edit photo screen
     openCommentPanelInitially: Boolean = false
 ) {
@@ -2048,6 +2095,8 @@ val isProfilePhoto = flick.id.startsWith("profile_")
             },
             onNavigateToFindFriends = onNavigateToFindFriends,
             onUserProfileClick = onUserProfileClick,
+            albumGroups = albumGroups,
+            onPhotoMovedToAlbum = onPhotoMovedToAlbum,
             onShareToFriend = { flickId, friendId ->
                 val flickToSend = allPhotos.firstOrNull { it.id == flickId } ?: flick
                 if (flickToSend.imageUrl.isBlank()) {
@@ -2120,7 +2169,9 @@ private fun UserProfilePhotoViewer(
     onNavigateToFindFriends: () -> Unit,
     onUserProfileClick: (String) -> Unit,
     onReaction: (Flick, ReactionType?) -> Unit,
-    friendProfiles: Map<String, UserProfile>
+    friendProfiles: Map<String, UserProfile>,
+    albumGroups: List<FriendGroup> = emptyList(),
+    onPhotoMovedToAlbum: (Flick) -> Unit = {}
 ) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
@@ -2157,6 +2208,8 @@ private fun UserProfilePhotoViewer(
             },
             onNavigateToFindFriends = onNavigateToFindFriends,
             onUserProfileClick = onUserProfileClick,
+            albumGroups = albumGroups,
+            onPhotoMovedToAlbum = onPhotoMovedToAlbum,
             onShareToFriend = { flickId, friendId ->
                 val flickToSend = targetUserPhotos.firstOrNull { it.id == flickId } ?: flick
                 if (flickToSend.imageUrl.isBlank()) {

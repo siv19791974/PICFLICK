@@ -313,8 +313,8 @@ service cloud.firestore {
       allow update: if isDevInboxUser() &&
         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updatedAt', 'reply', 'repliedAt']);
 
-      // No client-side deletes
-      allow delete: if false;
+      // Dev can delete resolved feedback from shared inbox
+      allow delete: if isDevInboxUser();
     }
 
     // REPORTS (photo/user reports)

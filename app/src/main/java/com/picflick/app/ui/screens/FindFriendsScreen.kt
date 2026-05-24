@@ -1,13 +1,8 @@
 package com.picflick.app.ui.screens
 
 import android.content.Intent
-import android.database.Cursor
-import android.net.Uri
 import java.io.File
 import java.io.FileOutputStream
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.ActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.pullrefresh.PullRefreshIndicator
 import androidx.compose.material.pullrefresh.pullRefresh
@@ -70,113 +65,12 @@ fun FindFriendsScreen(
     val isDarkMode = ThemeManager.isDarkMode.value
     var selectedTab by remember { mutableIntStateOf(0) }
 
-    fun extractPhoneNumbersFromResult(result: ActivityResult): List<String> {
-        if (result.resultCode != android.app.Activity.RESULT_OK) return emptyList()
-
-        val numbers = mutableListOf<String>()
-        val intent = result.data ?: return emptyList()
-
-        fun extractFromUri(uri: Uri?) {
-            if (uri == null) return
-
-            // Try direct phone-row URI first.
-            val directCursor: Cursor? = context.contentResolver.query(
-                uri,
-                arrayOf(android.provider.ContactsContract.CommonDataKinds.Phone.NUMBER),
-                null,
-                null,
-                null
-            )
-            var foundDirectNumber = false
-            directCursor?.use {
-                val numberIndex = it.getColumnIndex(android.provider.ContactsContract.CommonDataKinds.Phone.NUMBER)
-                while (it.moveToNext()) {
-                    val number = it.getString(numberIndex)
-                    if (!number.isNullOrBlank()) {
-                        numbers.add(number)
-                        foundDirectNumber = true
-                    }
-                }
-            }
-            if (foundDirectNumber) return
-
-            // Fallback: full contact URI -> resolve contactId then fetch all phone numbers.
-            val contactCursor = context.contentResolver.query(
-                uri,
-                arrayOf(android.provider.ContactsContract.Contacts._ID),
-                null,
-                null,
-                null
-            )
-            var contactId: String? = null
-            contactCursor?.use {
-                val idIndex = it.getColumnIndex(android.provider.ContactsContract.Contacts._ID)
-                if (it.moveToFirst() && idIndex >= 0) {
-                    contactId = it.getString(idIndex)
-                }
-            }
-
-            if (!contactId.isNullOrBlank()) {
-                val phonesCursor = context.contentResolver.query(
-                    android.provider.ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
-                    arrayOf(android.provider.ContactsContract.CommonDataKinds.Phone.NUMBER),
-                    "${android.provider.ContactsContract.CommonDataKinds.Phone.CONTACT_ID} = ?",
-                    arrayOf(contactId),
-                    null
-                )
-                phonesCursor?.use {
-                    val numberIndex = it.getColumnIndex(android.provider.ContactsContract.CommonDataKinds.Phone.NUMBER)
-                    while (it.moveToNext()) {
-                        val number = it.getString(numberIndex)
-                        if (!number.isNullOrBlank()) {
-                            numbers.add(number)
-                        }
-                    }
-                }
-            }
-        }
-
-        // Single selected contact URI
-        extractFromUri(intent.data)
-
-        // Multi-select clip data (if available on some pickers)
-        val clipData = intent.clipData
-        if (clipData != null) {
-            for (i in 0 until clipData.itemCount) {
-                extractFromUri(clipData.getItemAt(i).uri)
-            }
-        }
-
-        return numbers.distinct()
-    }
-
-    val contactPickerLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.StartActivityForResult()
-    ) { result ->
-        val numbers = extractPhoneNumbersFromResult(result)
-        if (numbers.isNotEmpty()) {
-            viewModel.syncSelectedPhoneNumbers(numbers, userProfile.uid)
-        } else {
-            android.widget.Toast.makeText(
-                context,
-                "No phone number selected",
-                android.widget.Toast.LENGTH_SHORT
-            ).show()
-        }
-    }
-
-    val openContactPicker: () -> Unit = {
-        // Use full contacts picker (not phone table) so users can see their full address book.
-        val intent = Intent(Intent.ACTION_PICK, android.provider.ContactsContract.Contacts.CONTENT_URI)
-        contactPickerLauncher.launch(intent)
-    }
-
     Column(
         modifier = Modifier
             .fillMaxSize()
             .background(isDarkModeBackground(isDarkMode))
     ) {
-        // Top bar with tabs - 3 TABS ONLY: Discover, Contacts, Invite
+        // Top bar with tabs - Contacts hidden for now while phone matching is unreliable.
         TabRow(
             selectedTabIndex = selectedTab,
             containerColor = Color.Black,
@@ -190,11 +84,6 @@ fun FindFriendsScreen(
             Tab(
                 selected = selectedTab == 1,
                 onClick = { selectedTab = 1 },
-                text = { Text("Contacts") }
-            )
-            Tab(
-                selected = selectedTab == 2,
-                onClick = { selectedTab = 2 },
                 text = { Text("Invite") }
             )
         }
@@ -229,37 +118,7 @@ fun FindFriendsScreen(
                 },
                 onUserClick = onNavigateToProfile
             )
-            1 -> ContactsTab(
-                viewModel = viewModel,
-                userProfile = userProfile,
-                priorityRequesterId = priorityRequesterId,
-                onPickContacts = openContactPicker,
-                onFollowClick = { user, action ->
-                    when (action) {
-                        "unfollow" -> {
-                            viewModel.unfollowUser(userProfile.uid, user.uid)
-                            onProfileRefresh() // Refresh to update button state
-                        }
-                        "accept" -> {
-                            viewModel.acceptFollowRequest(userProfile.uid, userProfile.displayName, user)
-                            onProfileRefresh() // Refresh to update button state
-                        }
-                        "send_request" -> {
-                            viewModel.sendFollowRequest(userProfile.uid, user, userProfile) { success ->
-                                if (success) {
-                                    android.widget.Toast.makeText(context, "Friend request sent to ${user.displayName}", android.widget.Toast.LENGTH_SHORT).show()
-                                    onProfileRefresh() // Refresh to update button state
-                                } else {
-                                    android.widget.Toast.makeText(context, "Failed to send request. Please try again.", android.widget.Toast.LENGTH_SHORT).show()
-                                }
-                            }
-                        }
-                    }
-                },
-                onUserClick = onNavigateToProfile,
-                onRefresh = openContactPicker
-            )
-            2 -> InviteTab(
+            1 -> InviteTab(
                 userProfile = userProfile
             )
         }
@@ -518,230 +377,6 @@ private fun DiscoverTab(
         }
 
         // PullRefreshIndicator
-        PullRefreshIndicator(
-            refreshing = viewModel.isLoading,
-            state = pullRefreshState,
-            modifier = Modifier.align(Alignment.TopCenter),
-            backgroundColor = Color(0xFF2A2A2A), // Dark gray background
-            contentColor = Color.White // White spinner
-        )
-    }
-}
-
-@OptIn(ExperimentalMaterialApi::class)
-@Composable
-private fun ContactsTab(
-    viewModel: FriendsViewModel,
-    userProfile: UserProfile,
-    priorityRequesterId: String? = null,
-    onPickContacts: () -> Unit,
-    onFollowClick: (UserProfile, String) -> Unit,
-    onUserClick: (String) -> Unit,
-    onRefresh: () -> Unit = {}
-) {
-    val isDarkMode = ThemeManager.isDarkMode.value
-    var isContactsSynced by remember { mutableStateOf(false) }
-    val midBlue = Color(0xFF2A4A73)
-    
-    // Pull-to-refresh state
-    val pullRefreshState = rememberPullRefreshState(
-        refreshing = viewModel.isLoading,
-        onRefresh = onRefresh
-    )
-
-    // Infinite scroll state
-    val listState = rememberLazyListState()
-
-    // Detect when scrolled to bottom for infinite scroll
-    val shouldLoadMore = remember {
-        derivedStateOf {
-            val layoutInfo = listState.layoutInfo
-            val totalItems = layoutInfo.totalItemsCount
-            val lastVisibleItem = layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
-            lastVisibleItem >= totalItems - 5 && totalItems > 0 && !viewModel.isLoading
-        }
-    }
-
-    // Trigger load more
-    LaunchedEffect(shouldLoadMore.value) {
-        if (shouldLoadMore.value && viewModel.canLoadMore) {
-            viewModel.loadMoreUsers()
-        }
-    }
-    
-    // Show selected contacts matches with pull-to-refresh
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .pullRefresh(pullRefreshState)
-    ) {
-        if (viewModel.isLoading && viewModel.contactsOnApp.isEmpty()) {
-                FullScreenLoading()
-            } else {
-                // Show contacts on the app - filter out already followed
-                val filteredContacts = viewModel.contactsOnApp.filter { user ->
-                    !userProfile.following.contains(user.uid) && user.uid != userProfile.uid
-                }
-
-                // Bring priority requester to top when arriving from friend-request notifications
-                val orderedContacts = remember(filteredContacts, priorityRequesterId) {
-                    if (priorityRequesterId.isNullOrBlank()) {
-                        filteredContacts
-                    } else {
-                        filteredContacts.sortedByDescending { it.uid == priorityRequesterId }
-                    }
-                }
-                
-                Column(modifier = Modifier.fillMaxSize()) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 10.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "Contacts on PicFlick (${orderedContacts.size})",
-                            style = MaterialTheme.typography.titleMedium,
-                            color = if (isDarkMode) Color.White else Color.Black
-                        )
-                        Button(
-                            onClick = {
-                                onPickContacts()
-                                isContactsSynced = true
-                            },
-                            shape = RoundedCornerShape(20.dp),
-                            colors = if (isContactsSynced) {
-                                ButtonDefaults.buttonColors(
-                                    containerColor = midBlue,
-                                    contentColor = Color.White
-                                )
-                            } else {
-                                ButtonDefaults.buttonColors(
-                                    containerColor = Color.Transparent,
-                                    contentColor = if (isDarkMode) Color.White else Color.Black
-                                )
-                            },
-                            border = if (isContactsSynced) null else androidx.compose.foundation.BorderStroke(
-                                1.dp,
-                                if (isDarkMode) Color.White.copy(alpha = 0.35f) else Color.Black.copy(alpha = 0.2f)
-                            ),
-                            contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp)
-                        ) {
-                            Text(
-                                if (isContactsSynced) "Contacts selected" else "Pick contacts",
-                                fontSize = 12.sp
-                            )
-                        }
-                    }
-
-                    // On the app section
-                    if (orderedContacts.isNotEmpty()) {
-                        LazyColumn(
-                            state = listState
-                        ) {
-                            items(
-                                items = orderedContacts,
-                                key = { it.uid },
-                                contentType = { "contact_user" }
-                            ) { user ->
-                                UserResultItem(
-                                    user = user,
-                                    isFollowing = false, // Already filtered
-                                    hasSentRequest = userProfile.sentFollowRequests.contains(user.uid),
-                                    hasReceivedRequest = userProfile.pendingFollowRequests.contains(user.uid),
-                                    isProcessing = viewModel.processingUserIds.contains(user.uid),
-                                    onFollowClick = {
-                                        val action = when {
-                                            userProfile.pendingFollowRequests.contains(user.uid) -> "accept"
-                                            else -> "send_request"
-                                        }
-                                        onFollowClick(user, action)
-                                    },
-                                    onCancelRequest = {
-                                        viewModel.cancelFollowRequest(userProfile.uid, user.uid)
-                                    },
-                                    onDeclineRequest = {
-                                        viewModel.declineFollowRequest(userProfile.uid, user.uid)
-                                    },
-                                    onUserClick = { onUserClick(user.uid) },
-                                    currentUserProfile = userProfile
-                                )
-                            }
-                            
-                            // Loading footer for infinite scroll
-                            if (viewModel.isLoadingMore) {
-                                item {
-                                    Box(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(16.dp),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        CircularProgressIndicator(
-                                            modifier = Modifier.size(24.dp),
-                                            color = MaterialTheme.colorScheme.primary
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    } else if (viewModel.contactsOnApp.isNotEmpty() && orderedContacts.isEmpty()) {
-                        // All contacts are already friends
-                        Box(
-                            modifier = Modifier.fillMaxSize(),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Icon(
-                                    imageVector = Icons.Default.CheckCircle,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(64.dp),
-                                    tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
-                                )
-                                Spacer(modifier = Modifier.height(16.dp))
-                                Text(
-                                    text = "You're following all your contacts!",
-                                    style = MaterialTheme.typography.bodyLarge
-                                )
-                                Spacer(modifier = Modifier.height(8.dp))
-                                Text(
-                                    text = "Invite more friends to join!",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.primary
-                                )
-                            }
-                        }
-                    } else {
-                        // No contacts on app
-                        Box(
-                            modifier = Modifier.fillMaxSize(),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Icon(
-                                    imageVector = Icons.Default.Person,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(64.dp),
-                                    tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
-                                )
-                                Spacer(modifier = Modifier.height(16.dp))
-                                Text(
-                                    text = "No selected contacts on PicFlick yet",
-                                    style = MaterialTheme.typography.bodyLarge
-                                )
-                                Spacer(modifier = Modifier.height(8.dp))
-                                Text(
-                                    text = "Tap Pick contacts to select different numbers",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.primary
-                                )
-                            }
-                        }
-                    }
-                }
-        }
-
         PullRefreshIndicator(
             refreshing = viewModel.isLoading,
             state = pullRefreshState,
