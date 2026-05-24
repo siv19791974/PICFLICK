@@ -399,12 +399,27 @@ service cloud.firestore {
         allow create: if canAccessParentChat() && 
           request.auth.uid == request.resource.data.senderId;
         
-        // Sender can update their own messages OR participants/group-members can update constrained delivery/reaction/backfill fields
+        function existingDeletedForUserIds() {
+          return ('deletedForUserIds' in resource.data) ? resource.data.deletedForUserIds : [];
+        }
+
+        function onlyAddsOwnDeletedMarker() {
+          return request.resource.data.diff(resource.data).affectedKeys().hasOnly(['deletedForUserIds']) &&
+            request.resource.data.deletedForUserIds is list &&
+            !(request.auth.uid in existingDeletedForUserIds()) &&
+            request.auth.uid in request.resource.data.deletedForUserIds &&
+            request.resource.data.deletedForUserIds.hasAll(existingDeletedForUserIds()) &&
+            request.resource.data.deletedForUserIds.size() == existingDeletedForUserIds().size() + 1;
+        }
+
+        // Sender can update their own messages OR participants/group-members can update constrained delivery/reaction/delete-for-me fields
         allow update: if canAccessParentChat() && (
           // Sender can update anything
           request.auth.uid == resource.data.senderId ||
           // Recipient can only update read/delivered fields (delivery receipts)
           request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read', 'delivered']) ||
+          // Participants can hide a message only for themselves
+          onlyAddsOwnDeletedMarker() ||
           // Participants can backfill canonical flickId for legacy chat-photo messages
           request.resource.data.diff(resource.data).affectedKeys().hasOnly(['flickId']) ||
           // Anyone can add reactions (reactions field or reactions.{userId} field)
