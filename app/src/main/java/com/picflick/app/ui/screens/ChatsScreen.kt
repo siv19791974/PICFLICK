@@ -64,6 +64,7 @@ import com.picflick.app.ui.components.LogoImage
 import com.picflick.app.ui.theme.PicFlickBannerBackground
 import com.picflick.app.repository.FlickRepository
 import com.picflick.app.ui.theme.PicFlickLightBackground
+import com.picflick.app.util.rememberLiveUserDisplayName
 import com.picflick.app.util.rememberLiveUserPhotoUrl
 import com.picflick.app.util.rememberLiveUserTierColor
 import com.picflick.app.ui.theme.ThemeManager
@@ -425,16 +426,16 @@ fun ChatsScreen(
                                 } else {
                                     session.participants.find { it != userProfile.uid } ?: ""
                                 }
-                                var otherUserName by remember(session.id, otherUserId) {
-                                    mutableStateOf(
-                                        if (isGroupSession) {
-                                            session.groupName.ifBlank { "Group chat" }
-                                        } else {
-                                            session.participantNames[otherUserId]
-                                                ?.takeIf { it.isNotBlank() }
-                                                ?: "Unknown"
-                                        }
-                                    )
+                                val otherUserName = if (isGroupSession) {
+                                    session.groupName.ifBlank { "Group chat" }
+                                } else {
+                                    rememberLiveUserDisplayName(
+                                        userId = otherUserId,
+                                        fallbackDisplayName = session.participantNames[otherUserId]
+                                            ?.takeIf { it.isNotBlank() }
+                                            ?: "Unknown",
+                                        showFallbackWhileLoading = false
+                                    ).ifBlank { "" }
                                 }
                                 val otherUserPhoto = if (isGroupSession) {
                                     ""
@@ -998,38 +999,47 @@ private fun NewGroupFromComposeDialog(
                     items(sortedFriends, key = { it.uid }) { friend ->
                         val isSelected = selectedIds.contains(friend.uid)
                         val livePhoto = rememberLiveUserPhotoUrl(friend.uid, friend.photoUrl)
+                        val tierRingColor = rememberLiveUserTierColor(friend.uid)
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(horizontal = 12.dp, vertical = 8.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            if (livePhoto.isNotEmpty()) {
-                                AsyncImage(
-                                    model = livePhoto,
-                                    contentDescription = null,
-                                    modifier = Modifier
-                                        .size(56.dp)
-                                        .clip(CircleShape)
-                                        .clickable { onUserProfileClick(friend.uid) },
-                                    contentScale = ContentScale.Crop,
-                                    error = painterResource(id = android.R.drawable.ic_menu_myplaces)
-                                )
-                            } else {
-                                Box(
-                                    modifier = Modifier
-                                        .size(56.dp)
-                                        .clip(CircleShape)
-                                        .background(if (isDarkMode) Color(0xFF3A3A3C) else Color(0xFFE0E0E0))
-                                        .clickable { onUserProfileClick(friend.uid) },
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Person,
+                            Box(
+                                modifier = Modifier
+                                    .size(60.dp)
+                                    .border(2.dp, tierRingColor, CircleShape)
+                                    .clip(CircleShape)
+                                    .clickable { onUserProfileClick(friend.uid) }
+                                    .padding(2.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                if (livePhoto.isNotEmpty()) {
+                                    AsyncImage(
+                                        model = livePhoto,
                                         contentDescription = null,
-                                        modifier = Modifier.size(32.dp),
-                                        tint = if (isDarkMode) Color.Gray else Color.DarkGray
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .clip(CircleShape),
+                                        contentScale = ContentScale.Crop,
+                                        error = painterResource(id = android.R.drawable.ic_menu_myplaces)
                                     )
+                                } else {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .clip(CircleShape)
+                                            .background(if (isDarkMode) Color(0xFF3A3A3C) else Color(0xFFE0E0E0)),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Person,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(32.dp),
+                                            tint = if (isDarkMode) Color.Gray else Color.DarkGray
+                                        )
+                                    }
                                 }
                             }
 

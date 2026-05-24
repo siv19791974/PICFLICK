@@ -30,6 +30,7 @@ import com.picflick.app.data.UserProfile
 import com.picflick.app.repository.PhotoRepository
 import com.picflick.app.repository.FlickRepository
 import com.picflick.app.ui.theme.ThemeManager
+import com.picflick.app.util.rememberLiveUserDisplayName
 import com.picflick.app.util.rememberLiveUserPhotoUrl
 import com.picflick.app.util.rememberLiveUserTierColor
 import kotlinx.coroutines.launch
@@ -52,6 +53,7 @@ fun CommentsScreen(
     val backgroundColor = if (isDarkMode) Color.Black else Color.White
     val textColor = if (isDarkMode) Color.White else Color.Black
     val subtitleColor = if (isDarkMode) Color.Gray else Color.DarkGray
+    val currentUserTierRingColor = rememberLiveUserTierColor(currentUser.uid)
 
     var comments by remember { mutableStateOf<List<Comment>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
@@ -132,25 +134,34 @@ fun CommentsScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     // User avatar
-                    if (currentUser.photoUrl.isNotEmpty()) {
-                        AsyncImage(
-                            model = currentUser.photoUrl,
-                            contentDescription = null,
-                            modifier = Modifier
-                                .size(36.dp)
-                                .clip(CircleShape)
-                        )
-                    } else {
-                        Icon(
-                            imageVector = Icons.Default.Person,
-                            contentDescription = null,
-                            modifier = Modifier
-                                .size(36.dp)
-                                .clip(CircleShape)
-                                .background(MaterialTheme.colorScheme.surfaceVariant)
-                                .padding(6.dp),
-                            tint = subtitleColor
-                        )
+                    Box(
+                        modifier = Modifier
+                            .size(40.dp)
+                            .border(2.dp, currentUserTierRingColor, CircleShape)
+                            .clip(CircleShape)
+                            .padding(2.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (currentUser.photoUrl.isNotEmpty()) {
+                            AsyncImage(
+                                model = currentUser.photoUrl,
+                                contentDescription = null,
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .clip(CircleShape)
+                            )
+                        } else {
+                            Icon(
+                                imageVector = Icons.Default.Person,
+                                contentDescription = null,
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .clip(CircleShape)
+                                    .background(MaterialTheme.colorScheme.surfaceVariant)
+                                    .padding(6.dp),
+                                tint = subtitleColor
+                            )
+                        }
                     }
 
                     Spacer(modifier = Modifier.width(12.dp))
@@ -354,6 +365,7 @@ private fun CommentItem(
         fallbackPhotoUrl = comment.userPhotoUrl
     )
     val tierRingColor = rememberLiveUserTierColor(comment.userId)
+    val liveCommentUserName = rememberLiveUserDisplayName(comment.userId, comment.userName).ifBlank { "Unknown" }
 
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -393,7 +405,7 @@ private fun CommentItem(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = comment.userName,
+                    text = liveCommentUserName,
                     fontWeight = FontWeight.Bold,
                     fontSize = 14.sp,
                     color = textColor,

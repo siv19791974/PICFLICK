@@ -85,25 +85,40 @@ fun rememberLiveUserPhotoUrl(userId: String, fallbackPhotoUrl: String?): String 
 }
 
 @Composable
-fun rememberLiveUserDisplayName(userId: String, fallbackDisplayName: String?): String {
-    var resolvedDisplayName by remember(userId, fallbackDisplayName) {
-        mutableStateOf(fallbackDisplayName.orEmpty())
+fun rememberLiveUserDisplayName(
+    userId: String,
+    fallbackDisplayName: String?,
+    showFallbackWhileLoading: Boolean = true
+): String {
+    var hasLoadedProfile by remember(userId) { mutableStateOf(false) }
+    var resolvedDisplayName by remember(userId, fallbackDisplayName, showFallbackWhileLoading) {
+        mutableStateOf(if (showFallbackWhileLoading) fallbackDisplayName.orEmpty() else "")
     }
 
     LaunchedEffect(userId) {
-        if (userId.isBlank()) return@LaunchedEffect
-        // One-time fetch keeps photo thumbnails from showing stale upload-time names.
+        hasLoadedProfile = false
+        if (userId.isBlank()) {
+            resolvedDisplayName = fallbackDisplayName.orEmpty()
+            hasLoadedProfile = true
+            return@LaunchedEffect
+        }
+        // One-time fetch keeps UI labels from showing stale upload-time names.
         FlickRepository.getInstance().getUserProfile(userId) { result ->
             if (result is Result.Success) {
                 val fetchedName = result.data.displayName.trim()
-                if (fetchedName.isNotBlank()) {
-                    resolvedDisplayName = fetchedName
-                }
+                resolvedDisplayName = fetchedName.ifBlank { fallbackDisplayName.orEmpty() }
+            } else if (showFallbackWhileLoading) {
+                resolvedDisplayName = fallbackDisplayName.orEmpty()
             }
+            hasLoadedProfile = true
         }
     }
 
-    return resolvedDisplayName.ifBlank { fallbackDisplayName.orEmpty() }
+    return when {
+        resolvedDisplayName.isNotBlank() -> resolvedDisplayName
+        showFallbackWhileLoading || hasLoadedProfile -> fallbackDisplayName.orEmpty()
+        else -> ""
+    }
 }
 
 @Composable

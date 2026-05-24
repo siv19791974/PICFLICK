@@ -121,8 +121,8 @@ fun UserProfileScreen(
         }
     }
 
-    // Mythic monthly threshold (starts low, ramps to 100)
-    var mythicThreshold by remember { mutableIntStateOf(10) } // Month 1 default = 10 days
+    // Mythic monthly threshold (starts low, ramps to 100). Keep null while loading so the ring stays blue instead of flashing a guessed colour.
+    var mythicThreshold by remember { mutableStateOf<Int?>(null) }
     LaunchedEffect(Unit) {
         try {
             val snap = FirebaseFirestore.getInstance()
@@ -131,7 +131,9 @@ fun UserProfileScreen(
                 .get()
                 .await()
             mythicThreshold = (snap.getLong("currentThreshold") ?: 10L).toInt()
-        } catch (_: Exception) { }
+        } catch (_: Exception) {
+            mythicThreshold = 10
+        }
     }
 
     // Dark mode state

@@ -597,7 +597,6 @@ private fun NotificationItem(
         }
 
         if (notification.senderId.isBlank()) return@LaunchedEffect
-        if (senderName != "Someone") return@LaunchedEffect
 
         try {
             if (notification.type == NotificationType.MESSAGE && !notification.chatId.isNullOrBlank()) {

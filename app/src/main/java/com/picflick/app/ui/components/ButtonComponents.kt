@@ -1,9 +1,12 @@
 package com.picflick.app.ui.components
 
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -24,10 +27,13 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -169,28 +175,45 @@ fun ActionSheetRow(
 @Composable
 fun MythicProgressRing(
     streak: Int,
-    threshold: Int,
+    threshold: Int?,
     isDarkMode: Boolean,
     modifier: Modifier = Modifier,
     onClick: () -> Unit = {}
 ) {
-    val progress = (streak.toFloat() / threshold).coerceIn(0f, 1f)
-    val achieved = streak >= threshold
+    val thresholdValue = threshold?.takeIf { it > 0 }
+    val progress = thresholdValue?.let { (streak.toFloat() / it).coerceIn(0f, 1f) } ?: 0f
+    val achieved = thresholdValue != null && streak >= thresholdValue
+    val isLoadingThreshold = thresholdValue == null
 
-    // PicFlick logo colour spectrum: P-i-c-F-l-(c/k)
-    val bgColor = if (achieved) {
-        Color(0xFFFFB300) // Gold when 100 % achieved
-    } else {
-        mythicSpectrumColor(progress)
+    // PicFlick logo colour spectrum: keep loading state blue so profile load never flashes orange.
+    val bgColor = when {
+        isLoadingThreshold -> Color(0xFF2A4A73)
+        achieved -> Color(0xFFFFB300) // Gold when 100 % achieved
+        else -> mythicSpectrumColor(progress)
     }
 
     val valueColor = if (isDarkMode) Color.White else Color(0xFF0D2A45)
     val labelColor = if (isDarkMode) Color(0xFFBFD6EA) else Color(0xFF1F4D74)
     val percentText = "${(progress * 100).toInt()}%"
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val pressScale by animateFloatAsState(
+        targetValue = if (isPressed) 0.94f else 1f,
+        label = "mythicPressScale"
+    )
 
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = modifier.clickable { onClick() }
+        modifier = modifier
+            .graphicsLayer {
+                scaleX = pressScale
+                scaleY = pressScale
+            }
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null,
+                onClick = onClick
+            )
     ) {
         Box(
             modifier = Modifier

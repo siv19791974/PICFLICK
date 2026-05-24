@@ -5,11 +5,14 @@ import android.graphics.Bitmap
 import android.net.Uri
 import android.os.Build
 import android.provider.MediaStore
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
@@ -133,8 +136,8 @@ fun ProfileScreen(
         }
     }
 
-    // Mythic monthly threshold (starts low, ramps to 100)
-    var mythicThreshold by remember { mutableIntStateOf(10) } // Month 1 default = 10 days
+    // Mythic monthly threshold (starts low, ramps to 100). Keep null while loading so the ring stays blue instead of flashing a guessed colour.
+    var mythicThreshold by remember { mutableStateOf<Int?>(null) }
     LaunchedEffect(Unit) {
         try {
             val snap = FirebaseFirestore.getInstance()
@@ -143,7 +146,9 @@ fun ProfileScreen(
                 .get()
                 .await()
             mythicThreshold = (snap.getLong("currentThreshold") ?: 10L).toInt()
-        } catch (_: Exception) { }
+        } catch (_: Exception) {
+            mythicThreshold = 10
+        }
     }
     
     // Use cached photo URL for display (falls back to userProfile.photoUrl if empty)
@@ -604,7 +609,7 @@ fun ProfileScreen(
                 ) { group ->
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
-                        modifier = Modifier.clickable { onAlbumClick(group) }
+                        modifier = Modifier.profilePressedClick { onAlbumClick(group) }
                     ) {
                         Box(
                             modifier = Modifier
@@ -650,7 +655,7 @@ fun ProfileScreen(
                     val createColor = if (isDarkMode) Color.White else Color.Black
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
-                        modifier = Modifier.clickable { onCreateAlbum() }
+                        modifier = Modifier.profilePressedClick { onCreateAlbum() }
                     ) {
                         Box(
                             modifier = Modifier
@@ -1484,6 +1489,26 @@ private fun ProfilePhotoGridItem(
 }
 
 @Composable
+private fun Modifier.profilePressedClick(onClick: () -> Unit): Modifier {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val pressScale by animateFloatAsState(
+        targetValue = if (isPressed) 0.94f else 1f,
+        label = "profilePressScale"
+    )
+    return this
+        .graphicsLayer {
+            scaleX = pressScale
+            scaleY = pressScale
+        }
+        .clickable(
+            interactionSource = interactionSource,
+            indication = null,
+            onClick = onClick
+        )
+}
+
+@Composable
 private fun ModernStatItem(
     value: String,
     label: String,
@@ -1496,7 +1521,7 @@ private fun ModernStatItem(
 
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier.clickable { onClick() }
+        modifier = Modifier.profilePressedClick(onClick)
     ) {
         Box(
             modifier = Modifier

@@ -76,6 +76,7 @@ import com.picflick.app.ui.components.AnimatedReactionPicker
 import com.picflick.app.ui.components.ReactionPicker
 import com.picflick.app.ui.theme.PicFlickLightBackground
 import com.picflick.app.util.rememberLiveUserDisplayName
+import com.picflick.app.util.rememberLiveUserTierColor
 import com.picflick.app.util.withCacheBust
 import android.app.Activity
 import android.content.Context
@@ -314,7 +315,11 @@ val canDeleteCurrent = currentFlick.userId == currentUser.uid
     var isUnlikeAnimation by remember { mutableStateOf(false) }
     val isLiked = userReaction != null
     
-    val liveOwnerDisplayName = rememberLiveUserDisplayName(currentFlick.userId, currentFlick.userName)
+    val liveOwnerDisplayName = rememberLiveUserDisplayName(
+        userId = currentFlick.userId,
+        fallbackDisplayName = currentFlick.userName,
+        showFallbackWhileLoading = currentFlick.userId.isBlank()
+    ).ifBlank { "" }
 
     // Fetch User B's profile photo if not available
     var fetchedUserPhotoUrl by remember(currentFlick.userId) { mutableStateOf<String?>(null) }
@@ -1473,6 +1478,10 @@ if (canDeleteCurrent) {
                             
                             // Reply indicator
                             if (replyingToComment != null) {
+                                val replyingToDisplayName = rememberLiveUserDisplayName(
+                                    replyingToComment?.userId.orEmpty(),
+                                    replyingToComment?.userName
+                                ).ifBlank { "Unknown" }
                                 Row(
                                     modifier = Modifier
                                         .fillMaxWidth()
@@ -1481,7 +1490,7 @@ if (canDeleteCurrent) {
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Text(
-                                        text = "Replying to ${replyingToComment?.userName}",
+                                        text = "Replying to $replyingToDisplayName",
                                         color = Color.Gray,
                                         fontSize = 12.sp
                                     )
@@ -2408,6 +2417,7 @@ if (canDeleteCurrent) {
                                         items = reactionUsers,
                                         key = { it.userId }
                                     ) { userReaction ->
+                                        val reactionUserTierRingColor = rememberLiveUserTierColor(userReaction.userId)
                                         Row(
                                             modifier = Modifier
                                                 .fillMaxWidth()
@@ -2417,12 +2427,16 @@ if (canDeleteCurrent) {
                                             Box(
                                                 modifier = Modifier
                                                     .size(56.dp)
+                                                    .border(2.dp, reactionUserTierRingColor, CircleShape)
+                                                    .clip(CircleShape)
                                                     .clickable {
                                                         showReactionTallySheet = false
                                                         if (userReaction.userId != currentUser.uid) {
                                                             onUserProfileClick(userReaction.userId)
                                                         }
                                                     }
+                                                    .padding(2.dp),
+                                                contentAlignment = Alignment.Center
                                             ) {
                                                 if (userReaction.photoUrl.isNotEmpty()) {
                                                     AsyncImage(
@@ -2507,6 +2521,8 @@ private fun CompactCommentItem(
 ) {
     var showReactionPicker by remember { mutableStateOf(false) }
     var isDeleting by remember { mutableStateOf(false) }
+    val commentTierRingColor = rememberLiveUserTierColor(comment.userId)
+    val commentDisplayName = rememberLiveUserDisplayName(comment.userId, comment.userName).ifBlank { "Unknown" }
     // Track reaction locally for optimistic update
     var localReactions by remember { mutableStateOf(comment.reactions) }
     
@@ -2535,14 +2551,23 @@ private fun CompactCommentItem(
                 verticalAlignment = Alignment.Top
             ) {
             // Profile pic on left
-            AsyncImage(
-                model = comment.userPhotoUrl,
-                contentDescription = null,
+            Box(
                 modifier = Modifier
-                    .size(36.dp)
-                    .clip(CircleShape),
-                contentScale = ContentScale.Crop
-            )
+                    .size(40.dp)
+                    .border(2.dp, commentTierRingColor, CircleShape)
+                    .clip(CircleShape)
+                    .padding(2.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                AsyncImage(
+                    model = comment.userPhotoUrl,
+                    contentDescription = null,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .clip(CircleShape),
+                    contentScale = ContentScale.Crop
+                )
+            }
             
             Spacer(modifier = Modifier.width(12.dp))
             
@@ -2554,7 +2579,7 @@ private fun CompactCommentItem(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = comment.userName,
+                        text = commentDisplayName,
                         color = Color.White,
                         fontWeight = FontWeight.Bold,
                         fontSize = 14.sp
@@ -2767,6 +2792,8 @@ private fun CompactReplyItem(
     currentUserName: String = ""  // NEW: Need for notifications
 ) {
     var showReactionPicker by remember { mutableStateOf(false) }
+    val replyTierRingColor = rememberLiveUserTierColor(reply.userId)
+    val replyDisplayName = rememberLiveUserDisplayName(reply.userId, reply.userName).ifBlank { "Unknown" }
     val coroutineScope = rememberCoroutineScope()
     // Track reaction locally for optimistic update
     var localReactions by remember { mutableStateOf(reply.reactions) }
@@ -2783,14 +2810,23 @@ private fun CompactReplyItem(
         verticalAlignment = Alignment.Top
     ) {
         // Profile pic
-        AsyncImage(
-            model = reply.userPhotoUrl,
-            contentDescription = null,
+        Box(
             modifier = Modifier
-                .size(28.dp)
-                .clip(CircleShape),
-            contentScale = ContentScale.Crop
-        )
+                .size(32.dp)
+                .border(2.dp, replyTierRingColor, CircleShape)
+                .clip(CircleShape)
+                .padding(2.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            AsyncImage(
+                model = reply.userPhotoUrl,
+                contentDescription = null,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clip(CircleShape),
+                contentScale = ContentScale.Crop
+            )
+        }
         
         Spacer(modifier = Modifier.width(8.dp))
         
@@ -2799,7 +2835,7 @@ private fun CompactReplyItem(
             // Name + Timestamp
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    text = reply.userName,
+                    text = replyDisplayName,
                     color = Color.White,
                     fontWeight = FontWeight.Bold,
                     fontSize = 13.sp

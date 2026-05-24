@@ -75,6 +75,7 @@ import com.picflick.app.ui.theme.PicFlickBannerBackground
 import com.picflick.app.ui.theme.ThemeManager
 import com.picflick.app.ui.theme.isDarkModeBackground
 import com.picflick.app.util.rememberChatImageModel
+import com.picflick.app.util.rememberLiveUserDisplayName
 import com.picflick.app.util.rememberLiveUserPhotoUrl
 import com.picflick.app.util.rememberLiveUserTierColor
 import com.picflick.app.viewmodel.ChatViewModel
@@ -1615,6 +1616,7 @@ Column(modifier = Modifier.fillMaxSize()) {
                                 userId = memberId,
                                 fallbackPhotoUrl = fallbackPhoto
                             )
+                            val memberTierRingColor = rememberLiveUserTierColor(memberId)
                             val canRemove = (isAdmin || isOwner) && memberId != currentUser.uid && memberId != groupModel.effectiveOwnerId()
                             val markedForRemoval = selectedRemovableIds.contains(memberId)
 
@@ -1627,28 +1629,37 @@ Column(modifier = Modifier.fillMaxSize()) {
                                     .padding(horizontal = 12.dp, vertical = 10.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                if (memberPhotoUrl.isNotBlank()) {
-                                    AsyncImage(
-                                        model = memberPhotoUrl,
-                                        contentDescription = memberName,
-                                        modifier = Modifier
-                                            .size(38.dp)
-                                            .clip(CircleShape),
-                                        contentScale = ContentScale.Crop
-                                    )
-                                } else {
-                                    Box(
-                                        modifier = Modifier
-                                            .size(38.dp)
-                                            .clip(CircleShape)
-                                            .background(Color(0xFF3A3A3A)),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Text(
-                                            text = memberName.firstOrNull()?.uppercase() ?: "?",
-                                            color = Color.White,
-                                            fontWeight = FontWeight.Bold
+                                Box(
+                                    modifier = Modifier
+                                        .size(42.dp)
+                                        .border(2.dp, memberTierRingColor, CircleShape)
+                                        .clip(CircleShape)
+                                        .padding(2.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    if (memberPhotoUrl.isNotBlank()) {
+                                        AsyncImage(
+                                            model = memberPhotoUrl,
+                                            contentDescription = memberName,
+                                            modifier = Modifier
+                                                .fillMaxSize()
+                                                .clip(CircleShape),
+                                            contentScale = ContentScale.Crop
                                         )
+                                    } else {
+                                        Box(
+                                            modifier = Modifier
+                                                .fillMaxSize()
+                                                .clip(CircleShape)
+                                                .background(Color(0xFF3A3A3A)),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Text(
+                                                text = memberName.firstOrNull()?.uppercase() ?: "?",
+                                                color = Color.White,
+                                                fontWeight = FontWeight.Bold
+                                            )
+                                        }
                                     }
                                 }
 
@@ -1985,15 +1996,25 @@ Box(
             // USER B (Left side)
             if (isGroupChat) {
                 val senderPhotoUrl = message.senderPhotoUrl.ifBlank { participantPhotos[message.senderId].orEmpty() }
-                AsyncImage(
-                    model = rememberChatImageModel(senderPhotoUrl, message.timestamp),
-                    contentDescription = "Sender avatar",
+                val senderTierRingColor = rememberLiveUserTierColor(message.senderId)
+                Box(
                     modifier = Modifier
                         .padding(start = 4.dp, top = 2.dp)
-                        .size(28.dp)
-                        .clip(CircleShape),
-                    contentScale = ContentScale.Crop
-                )
+                        .size(32.dp)
+                        .border(2.dp, senderTierRingColor, CircleShape)
+                        .clip(CircleShape)
+                        .padding(2.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    AsyncImage(
+                        model = rememberChatImageModel(senderPhotoUrl, message.timestamp),
+                        contentDescription = "Sender avatar",
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .clip(CircleShape),
+                        contentScale = ContentScale.Crop
+                    )
+                }
                 Spacer(modifier = Modifier.width(4.dp))
             }
             Box(
@@ -2022,7 +2043,10 @@ Box(
                                 verticalArrangement = Arrangement.Top
                             ) {
                                 if (isGroupChat) {
-                                    val senderName = message.senderName.ifBlank { participantNames[message.senderId] ?: "Unknown" }
+                                    val senderName = rememberLiveUserDisplayName(
+                                        userId = message.senderId,
+                                        fallbackDisplayName = message.senderName.ifBlank { participantNames[message.senderId] ?: "Unknown" }
+                                    ).ifBlank { "Unknown" }
                                     Text(
                                         text = senderName,
                                         fontSize = 13.sp,
@@ -2183,6 +2207,7 @@ private fun ReplyPreview(
     message: ChatMessage,
     onCancel: () -> Unit
 ) {
+    val replySenderName = rememberLiveUserDisplayName(message.senderId, message.senderName).ifBlank { "Unknown" }
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -2202,7 +2227,7 @@ private fun ReplyPreview(
         Spacer(modifier = Modifier.width(8.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = "Replying to ${message.senderName}",
+                text = "Replying to $replySenderName",
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Medium,
                 color = MaterialTheme.colorScheme.primary
@@ -2300,9 +2325,18 @@ private fun QuickSwitchChatBar(
     quickSwitchChats: List<QuickSwitchChatItem>,
     onSwitchChat: (ChatSession, String) -> Unit
 ) {
-    val currentName = currentChatSession.participantNames[currentOtherUserId]
+    val currentNameFallback = currentChatSession.participantNames[currentOtherUserId]
         ?.takeIf { it.isNotBlank() }
         ?: "Chat"
+    val currentName = if (currentChatSession.isGroup) {
+        currentChatSession.groupName.ifBlank { currentNameFallback }
+    } else {
+        rememberLiveUserDisplayName(
+            userId = currentOtherUserId,
+            fallbackDisplayName = currentNameFallback,
+            showFallbackWhileLoading = false
+        ).ifBlank { "" }
+    }
     val currentTierRingColor = rememberLiveUserTierColor(currentOtherUserId)
 
     val sortedOthers = quickSwitchChats
@@ -2316,7 +2350,7 @@ private fun QuickSwitchChatBar(
         QuickSwitchChatItem(
             chatSession = currentChatSession,
             otherUserId = currentOtherUserId,
-            otherUserName = if (currentChatSession.isGroup) currentChatSession.groupName.ifBlank { currentName } else currentName,
+            otherUserName = currentName,
             otherUserPhoto = if (currentChatSession.isGroup) "" else currentOtherUserPhoto
         ),
         sortedOthers.getOrNull(1),
@@ -2333,6 +2367,16 @@ private fun QuickSwitchChatBar(
         slots.forEachIndexed { index, item ->
             val isCenter = index == 2
             val avatarSize = if (isCenter) 40.dp else 30.dp
+            val isGroupItem = item?.let { it.chatSession.isGroup || it.otherUserId.startsWith("group:") } == true
+            val displayName = when {
+                item == null -> ""
+                isGroupItem -> item.otherUserName.ifBlank { item.chatSession.groupName.ifBlank { "Group" } }
+                else -> rememberLiveUserDisplayName(
+                    userId = item.otherUserId,
+                    fallbackDisplayName = item.otherUserName,
+                    showFallbackWhileLoading = false
+                )
+            }
 
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
@@ -2347,7 +2391,6 @@ private fun QuickSwitchChatBar(
                             .background(Color.White.copy(alpha = 0.15f))
                     )
                 } else {
-                    val isGroupItem = item.chatSession.isGroup || item.otherUserId.startsWith("group:")
                     val groupIcon = item.chatSession.groupIcon
                     val groupIconUrl = if (isGroupItem && groupIcon.startsWith("http", ignoreCase = true)) groupIcon else ""
                     val quickSwitchPhoto = if (isGroupItem) {
@@ -2357,6 +2400,7 @@ private fun QuickSwitchChatBar(
                         fallbackPhotoUrl = item.otherUserPhoto
                     )
                     val avatarTierRingColor = if (isGroupItem) Color(0xFF2A4A73) else rememberLiveUserTierColor(item.otherUserId)
+                    val hasUnreadMessages = item.chatSession.unreadCount > 0
                     Box(
                         modifier = Modifier
                             .size(avatarSize)
@@ -2373,7 +2417,7 @@ private fun QuickSwitchChatBar(
                         if (quickSwitchPhoto.isNotBlank()) {
                             AsyncImage(
                                 model = quickSwitchPhoto,
-                                contentDescription = item.otherUserName,
+                                contentDescription = displayName.ifBlank { item.otherUserName },
                                 modifier = Modifier
                                     .fillMaxSize()
                                     .clip(CircleShape)
@@ -2395,13 +2439,23 @@ private fun QuickSwitchChatBar(
                                 )
                             }
                         }
+
+                        if (hasUnreadMessages) {
+                            Box(
+                                modifier = Modifier
+                                    .align(Alignment.TopEnd)
+                                    .size(if (isCenter) 9.dp else 7.dp)
+                                    .background(Color(0xFF2A4A73), CircleShape)
+                                    .border(1.dp, Color.White, CircleShape)
+                            )
+                        }
                     }
                 }
 
-                val firstName = item?.otherUserName
-                    ?.trim()
-                    ?.split(" ")
-                    ?.firstOrNull()
+                val firstName = displayName
+                    .trim()
+                    .split(" ")
+                    .firstOrNull()
                     .orEmpty()
 
                 Text(
