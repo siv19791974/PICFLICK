@@ -185,9 +185,10 @@ fun MythicProgressRing(
     val achieved = thresholdValue != null && streak >= thresholdValue
     val isLoadingThreshold = thresholdValue == null
 
-    // PicFlick logo colour spectrum: keep loading state blue so profile load never flashes orange.
+    // PicFlick logo colour spectrum: keep loading and 0% states blue so empty progress never looks orange.
     val bgColor = when {
         isLoadingThreshold -> Color(0xFF2A4A73)
+        progress <= 0f -> Color(0xFF2A4A73)
         achieved -> Color(0xFFFFB300) // Gold when 100 % achieved
         else -> mythicSpectrumColor(progress)
     }
