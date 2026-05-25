@@ -319,11 +319,24 @@ val canDeleteCurrent = currentFlick.userId == currentUser.uid
     var isUnlikeAnimation by remember { mutableStateOf(false) }
     val isLiked = userReaction != null
     
+    val immediateOwnerDisplayName = remember(
+        currentFlick.userId,
+        currentFlick.userName,
+        currentUser.uid,
+        currentUser.displayName,
+        friendProfiles
+    ) {
+        when {
+            currentFlick.userId == currentUser.uid -> currentUser.displayName
+            else -> friendProfiles[currentFlick.userId]?.displayName.orEmpty()
+        }.ifBlank { currentFlick.userName }
+    }
+
     val liveOwnerDisplayName = rememberLiveUserDisplayName(
         userId = currentFlick.userId,
-        fallbackDisplayName = currentFlick.userName,
-        showFallbackWhileLoading = currentFlick.userId.isBlank()
-    ).ifBlank { "" }
+        fallbackDisplayName = immediateOwnerDisplayName,
+        showFallbackWhileLoading = true
+    ).ifBlank { immediateOwnerDisplayName }
 
     // Fetch User B's profile photo if not available
     var fetchedUserPhotoUrl by remember(currentFlick.userId) { mutableStateOf<String?>(null) }
@@ -332,7 +345,9 @@ val canDeleteCurrent = currentFlick.userId == currentUser.uid
         // Fetch latest user photo unless we already have a valid current profile photo for this user
         val friendProfile = friendProfiles[currentFlick.userId]
         val hasCurrentProfilePhoto = friendProfile?.photoUrl?.isNotBlank() == true
-        val needsFetch = currentFlick.userId != currentUser.uid && !hasCurrentProfilePhoto
+        val needsFetch = currentFlick.userId.isNotBlank() &&
+            currentFlick.userId != currentUser.uid &&
+            !hasCurrentProfilePhoto
 
         if (needsFetch) {
             try {
@@ -463,17 +478,32 @@ val canDeleteCurrent = currentFlick.userId == currentUser.uid
     }
     
     // Load tagged friends profiles when flick changes
-    LaunchedEffect(currentFlick.id) {
+    LaunchedEffect(currentFlick.id, currentFlick.taggedFriends, friendProfiles, currentUser.uid) {
         if (currentFlick.taggedFriends.isNotEmpty()) {
+            val cachedProfiles = currentFlick.taggedFriends.mapNotNull { userId ->
+                when {
+                    userId == currentUser.uid -> currentUser
+                    else -> friendProfiles[userId]
+                }
+            }
+            taggedFriendsProfiles = cachedProfiles.sortedBy { it.displayName }
             isLoadingTaggedFriends = true
-            val loadedProfiles = mutableListOf<UserProfile>()
+
+            val loadedProfiles = cachedProfiles.toMutableList()
+            val loadedProfileIds = cachedProfiles.mapTo(mutableSetOf()) { it.uid }
             var loadedCount = 0
             
             currentFlick.taggedFriends.forEach { userId ->
                 repository.getUserProfile(userId) { result ->
                     when (result) {
                         is com.picflick.app.data.Result.Success -> {
-                            loadedProfiles.add(result.data)
+                            if (loadedProfileIds.add(result.data.uid)) {
+                                loadedProfiles.add(result.data)
+                            } else {
+                                loadedProfiles.replaceAll { existing ->
+                                    if (existing.uid == result.data.uid) result.data else existing
+                                }
+                            }
                         }
                         else -> { /* Skip failed loads */ }
                     }
