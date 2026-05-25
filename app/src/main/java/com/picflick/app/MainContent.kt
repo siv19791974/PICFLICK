@@ -1773,7 +1773,9 @@ private fun UserProfileScreenContent(
                         repository.getUserFlicks(targetUserId) { photosResult ->
                             when (photosResult) {
                                 is com.picflick.app.data.Result.Success<List<Flick>> -> {
-                                    targetUserPhotos = photosResult.data
+                                    targetUserPhotos = photosResult.data.distinctBy { flick ->
+                                        flick.id.ifBlank { "${flick.userId}_${flick.timestamp}_${flick.imageUrl}" }
+                                    }
                                 }
                                 else -> targetUserPhotos = emptyList()
                             }
@@ -1817,7 +1819,9 @@ private fun UserProfileScreenContent(
                         targetUser = result.data
                         repository.getUserFlicks(target.uid) { photosResult ->
                             if (photosResult is com.picflick.app.data.Result.Success<List<Flick>>) {
-                                targetUserPhotos = photosResult.data
+                                targetUserPhotos = photosResult.data.distinctBy { flick ->
+                                        flick.id.ifBlank { "${flick.userId}_${flick.timestamp}_${flick.imageUrl}" }
+                                    }
                             }
                             scope.launch {
                                 when (val streakResult = repository.getUserStreak(target.uid)) {

@@ -376,9 +376,11 @@ fun ProfileScreen(
                 ) {
                     AsyncImage(
                         model = ImageRequest.Builder(LocalContext.current)
-                            .data(withCacheBust(displayPhotoUrl, userProfile.uid))
+                            .data(displayPhotoUrl)
                             .memoryCachePolicy(CachePolicy.ENABLED)
                             .diskCachePolicy(CachePolicy.ENABLED)
+                            .networkCachePolicy(CachePolicy.ENABLED)
+                            .crossfade(true)
                             .build(),
                         contentDescription = "Profile photo",
                         modifier = Modifier

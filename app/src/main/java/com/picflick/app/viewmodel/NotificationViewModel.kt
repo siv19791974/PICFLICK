@@ -140,6 +140,11 @@ class NotificationViewModel : ViewModel() {
                         }
                         val normalizedNotifications = newNotifications
                             .sortedByDescending { it.timestamp }
+                            .distinctBy { notification ->
+                                notification.id.ifBlank {
+                                    "${notification.userId}_${notification.type}_${notification.timestamp}_${notification.message}"
+                                }
+                            }
                             .dedupeLatestMessagePerConversation()
 
                         notifications.clear()

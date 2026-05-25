@@ -125,8 +125,11 @@ class ChatViewModel : ViewModel() {
             try {
                 android.util.Log.d("ChatViewModel", "Starting message collection for chat: $chatId")
                 repository.getMessages(chatId, currentUserId).collectLatest { msgs ->
-                    android.util.Log.d("ChatViewModel", "Received ${msgs.size} messages from repository")
-                    messages = msgs
+                    val uniqueMessages = msgs.distinctBy { message ->
+                        message.id.ifBlank { "${message.senderId}_${message.timestamp}_${message.text}" }
+                    }
+                    android.util.Log.d("ChatViewModel", "Received ${msgs.size} messages from repository (${uniqueMessages.size} unique)")
+                    messages = uniqueMessages
                 }
             } catch (e: Exception) {
                 // Don't log CancellationException as error - it's normal when leaving screen

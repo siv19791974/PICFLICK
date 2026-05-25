@@ -56,11 +56,14 @@ class ProfileViewModel : ViewModel() {
         photosListener = repository.getUserFlicks(userId) { result ->
             when (result) {
                 is Result.Success -> {
+                    val uniquePhotos = result.data.distinctBy { flick ->
+                        flick.id.ifBlank { "${flick.userId}_${flick.timestamp}_${flick.imageUrl}" }
+                    }
                     photos.clear()
-                    photos.addAll(result.data)
-                    photoCount = maxOf(photoCount, lifetimeUploadCount, result.data.size)
+                    photos.addAll(uniquePhotos)
+                    photoCount = maxOf(photoCount, lifetimeUploadCount, uniquePhotos.size)
                     // Calculate ALL reactions (likes, loves, fires, etc.)
-                    totalReactions = result.data.sumOf { it.getTotalReactions() }
+                    totalReactions = uniquePhotos.sumOf { it.getTotalReactions() }
                     isLoading = false
                 }
                 is Result.Error -> {
