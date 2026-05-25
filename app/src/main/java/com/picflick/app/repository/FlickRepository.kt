@@ -560,8 +560,12 @@ class FlickRepository private constructor() {
                 val flicks = flicksSnapshot.toObjects(Flick::class.java)
 
                 // Sort by timestamp first, then by reaction count (trending algorithm)
-                val userProfileDoc = db.collection("users").document(com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid ?: "").get().await()
-                val viewerProfile = userProfileDoc.toObject(UserProfile::class.java)
+                val currentUid = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid.orEmpty()
+                val viewerProfile = if (currentUid.isNotBlank()) {
+                    db.collection("users").document(currentUid).get().await().toObject(UserProfile::class.java)
+                } else {
+                    null
+                }
                 val mutedUsers = viewerProfile?.mutedUsers ?: emptyMap()
                 val activeMutedUserIds = mutedUsers
                     .filterValues { it == Long.MAX_VALUE || it > System.currentTimeMillis() }
@@ -978,6 +982,11 @@ class FlickRepository private constructor() {
      * Get user profile
      */
     fun getUserProfile(userId: String, onResult: (Result<UserProfile>) -> Unit) {
+        if (userId.isBlank()) {
+            onResult(Result.Error(Exception("Missing user id"), "Missing user id"))
+            return
+        }
+
         db.collection("users").document(userId).get()
             .addOnSuccessListener { doc ->
                 val profile = doc.toObject(UserProfile::class.java)
@@ -995,6 +1004,11 @@ class FlickRepository private constructor() {
      * Listen to user profile realtime updates
      */
     fun listenToUserProfile(userId: String, onResult: (Result<UserProfile>) -> Unit): ListenerRegistration {
+        if (userId.isBlank()) {
+            onResult(Result.Error(Exception("Missing user id"), "Missing user id"))
+            return ListenerRegistration { }
+        }
+
         if (CostControlManager.isEnabled(Constants.FeatureFlags.KILL_SNAPSHOT_LISTENERS)) {
             android.util.Log.w("FlickRepository", "listenToUserProfile snapshot listener blocked by cost kill-switch")
             onResult(Result.Error(Exception("Listeners disabled"), "Profile updates paused (cost control)"))
