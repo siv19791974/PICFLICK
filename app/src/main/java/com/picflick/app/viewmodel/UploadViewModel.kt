@@ -64,6 +64,12 @@ class UploadViewModel : ViewModel() {
      */
     fun loadDailyUploadCount(userProfile: UserProfile) {
         viewModelScope.launch {
+            if (userProfile.uid.isBlank()) {
+                isLoadingUploadCount = false
+                dailyUploadCount = userProfile.dailyUploadsToday
+                return@launch
+            }
+
             try {
                 isLoadingUploadCount = true
                 
@@ -101,6 +107,8 @@ class UploadViewModel : ViewModel() {
      * Call this after successful upload
      */
     private suspend fun incrementDailyUploadCount(userId: String) {
+        if (userId.isBlank()) return
+
         try {
             val calendar = Calendar.getInstance()
             val todayDate = "${calendar.get(Calendar.YEAR)}-${calendar.get(Calendar.MONTH) + 1}-${calendar.get(Calendar.DAY_OF_MONTH)}"
@@ -118,6 +126,8 @@ class UploadViewModel : ViewModel() {
     }
 
     fun consumeDailyUploadSlot(userId: String) {
+        if (userId.isBlank()) return
+
         viewModelScope.launch {
             incrementDailyUploadCount(userId)
             dailyUploadCount++
@@ -128,6 +138,8 @@ class UploadViewModel : ViewModel() {
      * Track a chat photo upload against both daily and total limits.
      */
     fun trackUploadUsage(userId: String) {
+        if (userId.isBlank()) return
+
         viewModelScope.launch {
             incrementDailyUploadCount(userId)
             incrementTotalPhotos(userId)
@@ -140,6 +152,8 @@ class UploadViewModel : ViewModel() {
      * This tracks lifetime photos uploaded (never decrements on delete)
      */
     private suspend fun incrementTotalPhotos(userId: String) {
+        if (userId.isBlank()) return
+
         try {
             firestore.collection("users").document(userId)
                 .update("totalPhotos", FieldValue.increment(1))

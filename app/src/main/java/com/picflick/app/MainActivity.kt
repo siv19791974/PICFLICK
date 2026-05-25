@@ -1389,8 +1389,8 @@ fun MainScreen(
                     authViewModel = authViewModel,
                     onLoginSuccess = {}
                 )
-            } else if (userProfile != null) {
-                // Authenticated - show main content with navigation
+            } else if (userProfile?.uid?.isNotBlank() == true) {
+                // Authenticated - show main content with navigation once profile uid is valid
                 AuthenticatedContent(
                     currentScreen = currentScreen,
                     onScreenChange = { target -> navigateTo(target) },

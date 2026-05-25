@@ -989,7 +989,7 @@ class FlickRepository private constructor() {
 
         db.collection("users").document(userId).get()
             .addOnSuccessListener { doc ->
-                val profile = doc.toObject(UserProfile::class.java)
+                val profile = doc.toObject(UserProfile::class.java)?.copy(uid = userId)
                 if (profile != null) {
                     _currentUserProfile.value = profile
                     onResult(Result.Success(profile))
@@ -1025,7 +1025,7 @@ class FlickRepository private constructor() {
                         onResult(Result.Error(Exception("Profile not found"), "Profile not found"))
                     }
                     else -> {
-                        val profile = snapshot.toObject(UserProfile::class.java)
+                        val profile = snapshot.toObject(UserProfile::class.java)?.copy(uid = userId)
                         if (profile != null) {
                             _currentUserProfile.value = profile
                             onResult(Result.Success(profile))
