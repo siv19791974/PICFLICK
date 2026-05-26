@@ -6,7 +6,7 @@
     
     <!-- ==================== LOGIN SCREEN ==================== -->
     <string name="login_welcome_title">Welcome to PicFlick</string>
-    <string name="login_welcome_subtitle">Share photos with friends</string>
+    <string name="login_welcome_subtitle">No ads, just simple social interactions</string>
     <string name="login_sign_in_button">Sign in with Google</string>
     <string name="login_logo_content_desc">PicFlick Logo</string>
     

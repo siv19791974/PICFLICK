@@ -78,10 +78,16 @@ service cloud.firestore {
       // Only authenticated users can read profiles. Public discoverability is handled by the app layer.
       allow read: if isAuth();
 
-      // Owner can write their own profile, but CANNOT tamper with server-managed subscription fields.
+      // Owner can create their own profile document at first login.
+      // On create there is no existing resource, so update-style diff checks cannot be used.
+      allow create: if isAuth() &&
+        isMine(userId) &&
+        request.resource.data.uid == userId;
+
+      // Owner can update their own profile, but CANNOT tamper with server-managed subscription fields.
       // Cross-user writes are limited strictly to social relationship fields used by friend requests.
       // Subscription fields are written only by Cloud Functions (admin SDK bypasses rules).
-      allow write: if isAuth() && (
+      allow update: if isAuth() && (
         (
           isMine(userId) &&
           !request.resource.data.diff(resource.data).affectedKeys()

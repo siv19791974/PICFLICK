@@ -214,7 +214,11 @@ class AuthViewModel : ViewModel() {
      * Save user to Firestore after successful sign in
      * BUT only if profile doesn't already exist (preserves existing bio, photo, etc.)
      */
-    fun saveUserToFirestore(user: FirebaseUser) {
+    fun saveUserToFirestore(
+        user: FirebaseUser,
+        preferredDisplayName: String? = null,
+        onComplete: ((Boolean, String?) -> Unit)? = null
+    ) {
         viewModelScope.launch {
             // First check if profile already exists
             repository.getUserProfile(user.uid) { existingResult ->
@@ -246,20 +250,23 @@ class AuthViewModel : ViewModel() {
                                 } else {
                                     existingProfile
                                 }
+                                onComplete?.invoke(result is Result.Success, (result as? Result.Error)?.message)
                             }
                         } else {
                             // Use existing profile as-is
                             userProfile = existingProfile
+                            onComplete?.invoke(true, null)
                         }
                     }
                     is Result.Error -> {
                         // Only create a new profile when truly missing; don't overwrite on transient read errors.
                         val msg = existingResult.message.lowercase()
                         if (msg.contains("not found")) {
-                            createNewProfile(user)
+                            createNewProfile(user, preferredDisplayName, onComplete)
                         } else {
                             errorMessage = existingResult.message
                             loadUserProfile(user.uid)
+                            onComplete?.invoke(false, existingResult.message)
                         }
                     }
                     is Result.Loading -> { }
@@ -268,13 +275,23 @@ class AuthViewModel : ViewModel() {
         }
     }
     
-    private fun createNewProfile(user: FirebaseUser) {
+    private fun createNewProfile(
+        user: FirebaseUser,
+        preferredDisplayName: String? = null,
+        onComplete: ((Boolean, String?) -> Unit)? = null
+    ) {
         val phoneNumber = getAuthPhoneNumber(user)
+        val resolvedDisplayName = preferredDisplayName
+            ?.trim()
+            ?.takeIf { it.isNotBlank() }
+            ?: user.displayName
+            ?: user.email?.substringBefore("@")
+            ?: "PicFlick User"
 
         val profile = UserProfile(
             uid = user.uid,
             email = user.email ?: "",
-            displayName = user.displayName ?: "",
+            displayName = resolvedDisplayName,
             photoUrl = user.photoUrl?.toString() ?: "",
             phoneNumber = phoneNumber
         )
@@ -284,9 +301,11 @@ class AuthViewModel : ViewModel() {
                     userProfile = profile
                     // Track signup for analytics
                     Analytics.trackSignUp()
+                    onComplete?.invoke(true, null)
                 }
                 is Result.Error -> {
                     errorMessage = result.message
+                    onComplete?.invoke(false, result.message)
                 }
                 is Result.Loading -> { }
             }
@@ -410,8 +429,9 @@ class AuthViewModel : ViewModel() {
             .addOnCompleteListener { task ->
                 if (task.isSuccessful) {
                     auth.currentUser?.let { user ->
-                        saveUserToFirestore(user)
-                        onResult(true, null)
+                        saveUserToFirestore(user) { success, message ->
+                            onResult(success, message)
+                        }
                     } ?: onResult(false, "Signed in but user not available")
                 } else {
                     val message = (task.exception as? FirebaseAuthException)?.localizedMessage
@@ -455,12 +475,14 @@ class AuthViewModel : ViewModel() {
                             .build()
                         user.updateProfile(profileUpdates)
                             .addOnCompleteListener {
-                                saveUserToFirestore(user)
-                                onResult(true, null)
+                                saveUserToFirestore(user, preferredDisplayName = normalizedName) { success, message ->
+                                    onResult(success, message)
+                                }
                             }
                     } else {
-                        saveUserToFirestore(user)
-                        onResult(true, null)
+                        saveUserToFirestore(user) { success, message ->
+                            onResult(success, message)
+                        }
                     }
                 } else {
                     val message = (task.exception as? FirebaseAuthException)?.localizedMessage

@@ -2,8 +2,10 @@ package com.picflick.app.ui.screens
 
 import android.app.Activity
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -11,11 +13,10 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AccountCircle
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -33,6 +34,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -42,6 +44,7 @@ import androidx.credentials.GetCredentialRequest
 import androidx.credentials.exceptions.GetCredentialCancellationException
 import androidx.credentials.exceptions.GetCredentialException
 import com.picflick.app.R
+import com.picflick.app.ui.theme.PicFlickAccent
 import com.picflick.app.viewmodel.AuthViewModel
 import com.google.android.libraries.identity.googleid.GetGoogleIdOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
@@ -119,13 +122,22 @@ fun LoginScreen(
                                 val firebaseCredential = GoogleAuthProvider.getCredential(idToken, null)
                                 auth.signInWithCredential(firebaseCredential)
                                     .addOnCompleteListener { task ->
-                                        isLoading = false
                                         if (task.isSuccessful) {
                                             auth.currentUser?.let { user ->
-                                                authViewModel.saveUserToFirestore(user)
-                                                onLoginSuccess()
+                                                authViewModel.saveUserToFirestore(user) { success, message ->
+                                                    isLoading = false
+                                                    if (success) {
+                                                        onLoginSuccess()
+                                                    } else {
+                                                        errorMessage = message ?: "Failed to create profile"
+                                                    }
+                                                }
+                                            } ?: run {
+                                                isLoading = false
+                                                errorMessage = "Signed in but user not available"
                                             }
                                         } else {
+                                            isLoading = false
                                             errorMessage = "Firebase auth failed: ${task.exception?.message}"
                                         }
                                     }
@@ -331,11 +343,34 @@ fun LoginScreen(
         Button(
             onClick = { signInWithGoogle() },
             modifier = Modifier.fillMaxWidth(),
-            enabled = !isLoading
+            enabled = !isLoading,
+            colors = ButtonDefaults.buttonColors(
+                containerColor = PicFlickAccent,
+                contentColor = Color.White,
+                disabledContainerColor = PicFlickAccent.copy(alpha = 0.45f),
+                disabledContentColor = Color.White.copy(alpha = 0.75f)
+            )
         ) {
-            Icon(Icons.Default.AccountCircle, contentDescription = null)
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(stringResource(R.string.login_sign_in_button))
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center
+            ) {
+                Image(
+                    painter = painterResource(id = R.drawable.ic_google_g),
+                    contentDescription = null,
+                    modifier = Modifier
+                        .size(30.dp)
+                        .clip(CircleShape)
+                        .background(Color.White)
+                        .padding(6.dp)
+                )
+                Spacer(modifier = Modifier.width(10.dp))
+                Text(
+                    text = "Sign in with Google",
+                    color = Color.White,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
         }
     }
 }
