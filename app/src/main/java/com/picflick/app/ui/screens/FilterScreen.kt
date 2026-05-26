@@ -80,6 +80,7 @@ fun FilterScreen(
     currentUser: UserProfile,
     friends: List<UserProfile>,
     albumGroups: List<FriendGroup> = emptyList(),
+    chatGroups: List<FriendGroup> = emptyList(),
     initialSharedGroupId: String = "",
     dailyUploadCount: Int,
     onBack: () -> Unit,
@@ -117,7 +118,16 @@ fun FilterScreen(
     var showDescriptionSheet by remember { mutableStateOf(false) }
 
     // Optional target album sharing state
-    val selectableAlbumGroups = remember(albumGroups) { albumGroups.filter { it.id.isNotBlank() } }
+    val selectableAlbumGroups = remember(albumGroups) {
+        albumGroups.filter { group ->
+            group.id.isNotBlank() && !group.isChatGroup
+        }
+    }
+    val selectableChatGroups = remember(chatGroups) {
+        chatGroups.filter { group ->
+            group.id.isNotBlank() && group.isChatGroup
+        }
+    }
     var selectedSharedGroupId by remember(initialSharedGroupId, selectableAlbumGroups) {
         mutableStateOf(initialSharedGroupId.takeIf { id -> id.isNotBlank() && selectableAlbumGroups.any { it.id == id } } ?: "")
     }
@@ -673,7 +683,7 @@ fun FilterScreen(
 
                                 TextButton(
                                     onClick = { showDestinationGroupPicker = true },
-                                    enabled = selectableAlbumGroups.isNotEmpty() && bitmap != null && !isCropping && !isUploading && canUpload,
+                                    enabled = selectableChatGroups.isNotEmpty() && bitmap != null && !isCropping && !isUploading && canUpload,
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .defaultMinSize(minHeight = 52.dp)
@@ -898,12 +908,12 @@ fun FilterScreen(
     }
 
     if (showDestinationGroupPicker) {
-        val filteredGroups = remember(selectableAlbumGroups, destinationGroupSearchQuery) {
+        val filteredGroups = remember(selectableChatGroups, destinationGroupSearchQuery) {
             if (destinationGroupSearchQuery.isBlank()) {
-                selectableAlbumGroups
+                selectableChatGroups
             } else {
                 val query = destinationGroupSearchQuery.trim().lowercase()
-                selectableAlbumGroups.filter { it.name.lowercase().contains(query) }
+                selectableChatGroups.filter { it.name.lowercase().contains(query) }
             }
         }
 

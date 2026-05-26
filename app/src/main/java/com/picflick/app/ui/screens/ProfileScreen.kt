@@ -57,6 +57,7 @@ import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil3.SingletonImageLoader
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.CachePolicy
@@ -190,6 +191,21 @@ fun ProfileScreen(
         userProfile.followers.intersect(userProfile.following.toSet()).size
     }
     val scope = rememberCoroutineScope()
+    val profileImageContext = LocalContext.current
+    val profilePhotoRequest = remember(displayPhotoUrl, profileImageContext) {
+        ImageRequest.Builder(profileImageContext)
+            .data(displayPhotoUrl)
+            .memoryCachePolicy(CachePolicy.ENABLED)
+            .diskCachePolicy(CachePolicy.ENABLED)
+            .networkCachePolicy(CachePolicy.ENABLED)
+            .crossfade(false)
+            .build()
+    }
+    LaunchedEffect(displayPhotoUrl, profileImageContext) {
+        if (displayPhotoUrl.isNotBlank()) {
+            SingletonImageLoader.get(profileImageContext).enqueue(profilePhotoRequest)
+        }
+    }
     val photosSectionBringIntoViewRequester = remember { BringIntoViewRequester() }
 
     // Keep bio stable - don't clear when profile temporarily reloads
@@ -375,13 +391,7 @@ fun ProfileScreen(
                     contentAlignment = Alignment.Center
                 ) {
                     AsyncImage(
-                        model = ImageRequest.Builder(LocalContext.current)
-                            .data(displayPhotoUrl)
-                            .memoryCachePolicy(CachePolicy.ENABLED)
-                            .diskCachePolicy(CachePolicy.ENABLED)
-                            .networkCachePolicy(CachePolicy.ENABLED)
-                            .crossfade(true)
-                            .build(),
+                        model = profilePhotoRequest,
                         contentDescription = "Profile photo",
                         modifier = Modifier
                             .fillMaxSize()

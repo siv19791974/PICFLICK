@@ -1051,6 +1051,43 @@ private fun ChatDetailScreenContent(
 ) {
     var selectedChatPhoto by remember { mutableStateOf<Flick?>(null) }
     val flickRepository = remember { FlickRepository.getInstance() }
+    val cachedProfiles = remember(userProfile, friendsViewModel.followingUsers.toList()) {
+        (friendsViewModel.followingUsers + userProfile)
+            .filter { it.uid.isNotBlank() }
+            .associateBy { it.uid }
+    }
+    val cachedGroups = remember(homeViewModel.friendGroups.toList()) {
+        homeViewModel.friendGroups.associateBy { it.id }
+    }
+
+    fun ChatSession.withCachedNamesAndAvatars(): ChatSession {
+        val enrichedNames = participantNames.toMutableMap()
+        val enrichedPhotos = participantPhotos.toMutableMap()
+
+        participants.forEach { participantId ->
+            val profile = cachedProfiles[participantId]
+            if (profile != null) {
+                if (profile.displayName.isNotBlank()) enrichedNames[participantId] = profile.displayName
+                if (profile.photoUrl.isNotBlank()) enrichedPhotos[participantId] = profile.photoUrl
+            }
+        }
+
+        if (!isGroup) {
+            return copy(
+                participantNames = enrichedNames,
+                participantPhotos = enrichedPhotos
+            )
+        }
+
+        val groupKey = groupId.ifBlank { id }
+        val cachedGroup = cachedGroups[groupKey]
+        return copy(
+            participantNames = enrichedNames,
+            participantPhotos = enrichedPhotos,
+            groupName = groupName.ifBlank { cachedGroup?.name.orEmpty() },
+            groupIcon = cachedGroup?.icon?.takeIf { it.isNotBlank() } ?: groupIcon
+        )
+    }
 
     // Clear chat when leaving this screen
     DisposableEffect(Unit) {
@@ -1064,12 +1101,17 @@ private fun ChatDetailScreenContent(
             chatViewModel.loadChatSessions(userProfile.uid)
         }
 
-        val quickSwitchChats = remember(chatViewModel.chatSessions, userProfile.uid) {
+        val enrichedSelectedChatSession = remember(selectedChatSession, cachedProfiles, cachedGroups) {
+            selectedChatSession.withCachedNamesAndAvatars()
+        }
+
+        val quickSwitchChats = remember(chatViewModel.chatSessions, userProfile.uid, cachedProfiles, cachedGroups) {
             chatViewModel.chatSessions
                 .asSequence()
                 .filter { session ->
                     session.participants.contains(userProfile.uid)
                 }
+                .map { it.withCachedNamesAndAvatars() }
                 .mapNotNull { session ->
                     if (session.isGroup) {
                         val groupKey = session.groupId.ifBlank { session.id }
@@ -1097,7 +1139,7 @@ private fun ChatDetailScreenContent(
         }
 
         ChatDetailScreen(
-            chatSession = selectedChatSession,
+            chatSession = enrichedSelectedChatSession,
             otherUserId = selectedOtherUserId,
             currentUser = userProfile,
             viewModel = chatViewModel,
@@ -1552,6 +1594,31 @@ private fun FilterScreenContent(
 
     LaunchedEffect(userProfile.uid) {
         homeViewModel.loadFriendGroups(userProfile.uid)
+        chatViewModel.loadChatSessions(userProfile.uid)
+    }
+
+    val visibleGroupChatTargets = remember(chatViewModel.chatSessions, userProfile.uid) {
+        chatViewModel.chatSessions
+            .filter { session ->
+                session.isGroup &&
+                    session.groupId.isNotBlank() &&
+                    session.participants.contains(userProfile.uid)
+            }
+            .distinctBy { it.groupId }
+            .map { session ->
+                FriendGroup(
+                    id = session.groupId,
+                    userId = userProfile.uid,
+                    ownerId = userProfile.uid,
+                    name = session.groupName.ifBlank { "Group chat" },
+                    friendIds = session.participants.filter { it != userProfile.uid },
+                    memberIds = session.participants,
+                    icon = session.groupIcon,
+                    isChatGroup = true,
+                    updatedAt = session.lastTimestamp
+                )
+            }
+            .sortedBy { it.name.lowercase() }
     }
 
     selectedPhotoUri?.let { uri ->
@@ -1562,6 +1629,7 @@ private fun FilterScreenContent(
             currentUser = userProfile,
             friends = friendsViewModel.followingUsers,
             albumGroups = homeViewModel.friendGroups,
+            chatGroups = visibleGroupChatTargets,
             initialSharedGroupId = if (homeViewModel.selectedFilter is com.picflick.app.data.FeedFilter.ByGroup) {
                 (homeViewModel.selectedFilter as com.picflick.app.data.FeedFilter.ByGroup).group.id
             } else {
@@ -1582,7 +1650,9 @@ private fun FilterScreenContent(
                     },
                     onOptimisticRemove = { flickId, uploadSucceeded ->
                         if (uploadSucceeded) {
-                            homeViewModel.requestDebouncedFeedRefresh(userProfile.uid)
+                            if (sharedGroupId.isBlank()) {
+                                homeViewModel.requestDebouncedFeedRefresh(userProfile.uid)
+                            }
                         } else {
                             homeViewModel.removeOptimisticFlick(flickId)
                         }

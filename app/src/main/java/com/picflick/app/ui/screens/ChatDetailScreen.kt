@@ -98,6 +98,8 @@ data class QuickSwitchChatItem(
     val otherUserPhoto: String
 )
 
+private val quickSwitchAvatarMemory = mutableMapOf<String, String>()
+
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class, androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 fun ChatDetailScreen(
@@ -2289,24 +2291,56 @@ private fun QuickSwitchChatBar(
         ).ifBlank { "" }
     }
     val currentTierRingColor = rememberLiveUserTierColor(currentOtherUserId)
+    val currentSwitcherItem = quickSwitchChats.firstOrNull { it.chatSession.id == currentChatSession.id }
+    val currentGroupIconUrl = listOf(
+        currentChatSession.groupIcon,
+        currentSwitcherItem?.otherUserPhoto.orEmpty(),
+        currentSwitcherItem?.chatSession?.groupIcon.orEmpty()
+    ).firstOrNull { currentChatSession.isGroup && it.startsWith("http", ignoreCase = true) }.orEmpty()
 
-    val sortedOthers = quickSwitchChats
-        .filter { it.otherUserId != currentOtherUserId }
-        .sortedByDescending { it.chatSession.lastTimestamp }
+    val currentItem = QuickSwitchChatItem(
+        chatSession = currentChatSession,
+        otherUserId = currentOtherUserId,
+        otherUserName = currentName,
+        otherUserPhoto = if (currentChatSession.isGroup) currentGroupIconUrl else currentOtherUserPhoto
+    )
+    val stableOrderedChats = (quickSwitchChats + currentItem)
+        .distinctBy { it.chatSession.id.ifBlank { it.otherUserId } }
+        .sortedWith(
+            compareBy<QuickSwitchChatItem> { item ->
+                if (item.chatSession.isGroup || item.otherUserId.startsWith("group:")) 0 else 1
+            }.thenBy { item ->
+                item.otherUserName.ifBlank { item.chatSession.groupName.ifBlank { item.otherUserId } }.lowercase(Locale.getDefault())
+            }.thenBy { item ->
+                item.chatSession.id.ifBlank { item.otherUserId }
+            }
+        )
+    val stableOthers = stableOrderedChats
+        .filter { it.chatSession.id != currentChatSession.id }
         .take(4)
 
     val slots = listOf(
-        sortedOthers.getOrNull(2),
-        sortedOthers.getOrNull(0),
-        QuickSwitchChatItem(
-            chatSession = currentChatSession,
-            otherUserId = currentOtherUserId,
-            otherUserName = currentName,
-            otherUserPhoto = if (currentChatSession.isGroup) "" else currentOtherUserPhoto
-        ),
-        sortedOthers.getOrNull(1),
-        sortedOthers.getOrNull(3)
+        stableOthers.getOrNull(0),
+        stableOthers.getOrNull(1),
+        currentItem,
+        stableOthers.getOrNull(2),
+        stableOthers.getOrNull(3)
     )
+
+    LaunchedEffect(slots) {
+        slots.filterNotNull().forEach { item ->
+            val itemKey = item.chatSession.id.ifBlank { item.otherUserId }
+            val bestKnownUrl = listOf(
+                item.otherUserPhoto,
+                item.chatSession.groupIcon.takeIf { item.chatSession.isGroup && it.startsWith("http", ignoreCase = true) }.orEmpty(),
+                item.chatSession.participantPhotos[item.otherUserId].orEmpty()
+            ).firstOrNull { it.isNotBlank() }.orEmpty()
+
+            if (bestKnownUrl.isNotBlank()) {
+                quickSwitchAvatarMemory[itemKey] = bestKnownUrl
+            }
+        }
+    }
 
     Row(
         modifier = modifier
@@ -2342,14 +2376,27 @@ private fun QuickSwitchChatBar(
                             .background(Color.White.copy(alpha = 0.15f))
                     )
                 } else {
+                    val itemKey = item.chatSession.id.ifBlank { item.otherUserId }
                     val groupIcon = item.chatSession.groupIcon
                     val groupIconUrl = if (isGroupItem && groupIcon.startsWith("http", ignoreCase = true)) groupIcon else ""
-                    val quickSwitchPhoto = if (isGroupItem) {
-                        if (groupIconUrl.isNotBlank()) groupIconUrl else item.otherUserPhoto
-                    } else rememberLiveUserPhotoUrl(
+                    val sessionPhoto = item.chatSession.participantPhotos[item.otherUserId].orEmpty()
+                    val liveUserPhoto = if (isGroupItem) "" else rememberLiveUserPhotoUrl(
                         userId = item.otherUserId,
-                        fallbackPhotoUrl = item.otherUserPhoto
+                        fallbackPhotoUrl = sessionPhoto.ifBlank { item.otherUserPhoto }
                     )
+                    val rawQuickSwitchPhoto = if (isGroupItem) {
+                        groupIconUrl.ifBlank { item.otherUserPhoto }
+                    } else {
+                        sessionPhoto.ifBlank { item.otherUserPhoto.ifBlank { liveUserPhoto } }
+                    }
+                    val quickSwitchPhoto = quickSwitchAvatarMemory[itemKey]
+                        .orEmpty()
+                        .ifBlank { rawQuickSwitchPhoto }
+                    LaunchedEffect(itemKey, rawQuickSwitchPhoto) {
+                        if (rawQuickSwitchPhoto.isNotBlank()) {
+                            quickSwitchAvatarMemory[itemKey] = rawQuickSwitchPhoto
+                        }
+                    }
                     val avatarTierRingColor = if (isGroupItem) Color(0xFF2A4A73) else rememberLiveUserTierColor(item.otherUserId)
                     val isUserOnline = !isGroupItem && rememberLiveUserOnline(item.otherUserId)
                     val hasUnreadMessages = item.chatSession.unreadCount > 0

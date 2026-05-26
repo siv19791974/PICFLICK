@@ -697,6 +697,10 @@ class HomeViewModel : ViewModel() {
         }
         optimisticFlicks.add(0, flick)
 
+        // Album-targeted uploads should never flash into Home/My Photos first.
+        // Album screens reconcile from their group feed instead.
+        if (flick.sharedGroupId.isNotBlank()) return
+
         val existingIndex = flicks.indexOfFirst {
             it.id == flick.id || (it.clientUploadId.isNotBlank() && it.clientUploadId == flick.clientUploadId)
         }

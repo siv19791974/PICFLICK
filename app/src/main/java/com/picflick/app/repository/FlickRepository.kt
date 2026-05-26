@@ -48,6 +48,13 @@ class FlickRepository private constructor() {
         }
 
         val data = data ?: emptyMap<String, Any>()
+        val status = (data["status"] as? String).orEmpty().lowercase(Locale.ROOT)
+        val isDeleted = status in setOf("deleted", "archived", "inactive") ||
+            data["deleted"] == true ||
+            data["archived"] == true ||
+            data["deletedAt"] != null
+        if (isDeleted) return null
+
         val rawIsChatGroup = data["isChatGroup"] ?: data["chatGroup"]
         val explicitIsChatGroup = when (rawIsChatGroup) {
             is Boolean -> rawIsChatGroup

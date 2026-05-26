@@ -1163,18 +1163,40 @@ private fun ChatListItem(
     val hasUnread = unreadDisplayCount > 0
     val tierRingColor = rememberLiveUserTierColor(otherUserId)
     val isOtherUserOnline = !session.isGroup && rememberLiveUserOnline(otherUserId)
+    val isDarkMode = ThemeManager.isDarkMode.value
+    val unreadAccentColor = Color(0xFF2A7DFF)
+    val rowBackground = when {
+        isSelected -> Color(0x221565C0)
+        hasUnread && isDarkMode -> Color(0xFF10233F)
+        hasUnread -> Color(0xFFEAF4FF)
+        else -> Color.Transparent
+    }
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .background(if (isSelected) Color(0x221565C0) else Color.Transparent)
+            .background(rowBackground)
             .combinedClickable(
                 onClick = onClick,
                 onLongClick = onLongClick
             )
-            .padding(horizontal = 16.dp, vertical = 12.dp),
+            .padding(horizontal = 10.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
+        if (hasUnread) {
+            Box(
+                modifier = Modifier
+                    .width(4.dp)
+                    .height(56.dp)
+                    .clip(RoundedCornerShape(999.dp))
+                    .background(unreadAccentColor)
+            )
+        } else {
+            Spacer(modifier = Modifier.width(4.dp))
+        }
+
+        Spacer(modifier = Modifier.width(10.dp))
+
         // Avatar / group badge
         Box(
             modifier = Modifier
@@ -1269,6 +1291,17 @@ private fun ChatListItem(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.End
                 ) {
+                    if (hasUnread && !isLastMessageFromMe) {
+                        Box(
+                            modifier = Modifier
+                                .size(8.dp)
+                                .clip(CircleShape)
+                                .background(unreadAccentColor)
+                                .align(Alignment.CenterVertically)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                    }
+
                     // If you SENT the last message, show red/green dot
                     if (isLastMessageFromMe) {
                         val isRead = session.lastMessageRead

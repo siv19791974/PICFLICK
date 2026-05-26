@@ -1608,7 +1608,7 @@ fun MainScreen(
                                                 if (!uploadSucceeded) homeViewModel.removeOptimisticFlick(flickId)
                                             },
                                             onBatchSuccess = {
-                                                homeViewModel.requestDebouncedFeedRefresh(profile.uid, 0L)
+                                                // Album-targeted batch uploads should not bounce through Home/My Photos.
                                             }
                                         )
                                         currentScreen = Screen.Home
@@ -1740,7 +1740,7 @@ fun MainScreen(
                                     }
                                 },
                                 onBatchSuccess = {
-                                    homeViewModel.requestDebouncedFeedRefresh(profile.uid, 0L)
+                                    // Album-targeted private share uploads should not bounce through Home/My Photos.
                                 }
                             )
                             Toast.makeText(context, "Posted to ${group.name} (${imageUris.size})", Toast.LENGTH_SHORT).show()
