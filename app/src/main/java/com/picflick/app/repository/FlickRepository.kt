@@ -32,6 +32,36 @@ class FlickRepository private constructor() {
     /** Active comment/reply listeners for safety-net cleanup */
     private val activeCommentListeners = mutableMapOf<String, ListenerRegistration>()
 
+    private fun com.google.firebase.firestore.DocumentSnapshot.toNormalizedUserProfile(): UserProfile? {
+        val parsed = toObject(UserProfile::class.java) ?: return null
+        val resolvedUid = parsed.uid.ifBlank { id }
+        val resolvedDisplayName = parsed.displayName
+            .trim()
+            .ifBlank { parsed.email.substringBefore("@").takeIf { it.isNotBlank() } ?: "PicFlick User" }
+        return parsed.copy(
+            uid = resolvedUid,
+            displayName = resolvedDisplayName,
+            displayNameLower = parsed.displayNameLower.ifBlank { resolvedDisplayName.lowercase(Locale.getDefault()) }
+        )
+    }
+
+    private fun com.google.firebase.firestore.QuerySnapshot.toNormalizedUserProfiles(): List<UserProfile> =
+        documents.mapNotNull { it.toNormalizedUserProfile() }
+
+    private fun repairSearchableProfileFields(doc: com.google.firebase.firestore.DocumentSnapshot, profile: UserProfile) {
+        val storedUid = doc.getString("uid").orEmpty()
+        val storedDisplayNameLower = doc.getString("displayNameLower").orEmpty()
+        val updates = buildMap<String, Any> {
+            if (storedUid.isBlank()) put("uid", profile.uid)
+            if (storedDisplayNameLower.isBlank() && profile.displayName.isNotBlank()) {
+                put("displayNameLower", profile.displayName.trim().lowercase(Locale.getDefault()))
+            }
+        }
+        if (updates.isNotEmpty()) {
+            db.collection(Constants.FirebaseCollections.USERS).document(profile.uid).update(updates)
+        }
+    }
+
     private fun com.google.firebase.firestore.DocumentSnapshot.toNormalizedFriendGroup(): FriendGroup? {
         val parsed = toObject(FriendGroup::class.java) ?: return null
         val resolvedId = parsed.id.ifBlank { id }
@@ -1067,8 +1097,9 @@ class FlickRepository private constructor() {
 
         db.collection("users").document(userId).get()
             .addOnSuccessListener { doc ->
-                val profile = doc.toObject(UserProfile::class.java)?.copy(uid = userId)
+                val profile = doc.toNormalizedUserProfile()?.copy(uid = userId)
                 if (profile != null) {
+                    repairSearchableProfileFields(doc, profile)
                     _currentUserProfile.value = profile
                     onResult(Result.Success(profile))
                 } else {
@@ -1103,8 +1134,9 @@ class FlickRepository private constructor() {
                         onResult(Result.Error(Exception("Profile not found"), "Profile not found"))
                     }
                     else -> {
-                        val profile = snapshot.toObject(UserProfile::class.java)?.copy(uid = userId)
+                        val profile = snapshot.toNormalizedUserProfile()?.copy(uid = userId)
                         if (profile != null) {
+                            repairSearchableProfileFields(snapshot, profile)
                             _currentUserProfile.value = profile
                             onResult(Result.Success(profile))
                         } else {
@@ -1251,7 +1283,7 @@ class FlickRepository private constructor() {
             .limit(Constants.Pagination.USERS_PER_PAGE.toLong())
             .get()
             .addOnSuccessListener { snapshot ->
-                val users = snapshot.toObjects(UserProfile::class.java)
+                val users = snapshot.toNormalizedUserProfiles()
                 onResult(Result.Success(users))
             }
             .addOnFailureListener { e ->
@@ -1289,7 +1321,7 @@ class FlickRepository private constructor() {
                     .whereIn("phoneNumber", batch)
                     .get()
                     .addOnSuccessListener { snapshot ->
-                        foundUsers.addAll(snapshot.toObjects(UserProfile::class.java))
+                        foundUsers.addAll(snapshot.toNormalizedUserProfiles())
                         fullNumberCompleted++
                         if (fullNumberCompleted == fullNumberBatches.size) {
                             completedQueries++
@@ -1325,7 +1357,7 @@ class FlickRepository private constructor() {
                     .whereIn("phoneNumber", batch)
                     .get()
                     .addOnSuccessListener { snapshot ->
-                        foundUsers.addAll(snapshot.toObjects(UserProfile::class.java))
+                        foundUsers.addAll(snapshot.toNormalizedUserProfiles())
                         last10Completed++
                         if (last10Completed == last10Batches.size) {
                             completedQueries++
@@ -1362,9 +1394,11 @@ class FlickRepository private constructor() {
 
         fun addFiltered(users: List<UserProfile>) {
             users.forEach { user ->
+                val displayNameLower = user.displayName.lowercase(Locale.getDefault())
+                val emailLower = user.email.lowercase(Locale.getDefault())
                 if (
                     user.uid != currentUserId &&
-                    user.displayName.lowercase(Locale.getDefault()).startsWith(searchLower)
+                    (displayNameLower.startsWith(searchLower) || emailLower.startsWith(searchLower))
                 ) {
                     resultMap[user.uid] = user
                 }
@@ -1378,7 +1412,7 @@ class FlickRepository private constructor() {
             searchRaw.replaceFirstChar { ch -> ch.titlecase(Locale.getDefault()) }
         ).distinct()
 
-        var pendingQueries = 1 + fallbackPrefixes.size
+        var pendingQueries = 2 + fallbackPrefixes.size
 
         fun finishIfDone() {
             pendingQueries--
@@ -1399,7 +1433,21 @@ class FlickRepository private constructor() {
             .limit(Constants.Pagination.SUGGESTED_USERS_LIMIT.toLong())
             .get()
             .addOnSuccessListener { snapshot ->
-                addFiltered(snapshot.toObjects(UserProfile::class.java))
+                addFiltered(snapshot.toNormalizedUserProfiles())
+                finishIfDone()
+            }
+            .addOnFailureListener {
+                finishIfDone()
+            }
+
+        db.collection(Constants.FirebaseCollections.USERS)
+            .orderBy("email")
+            .startAt(searchLower)
+            .endAt(searchLower + "\uf8ff")
+            .limit(Constants.Pagination.SUGGESTED_USERS_LIMIT.toLong())
+            .get()
+            .addOnSuccessListener { snapshot ->
+                addFiltered(snapshot.toNormalizedUserProfiles())
                 finishIfDone()
             }
             .addOnFailureListener {
@@ -1414,7 +1462,7 @@ class FlickRepository private constructor() {
                 .limit(Constants.Pagination.SUGGESTED_USERS_LIMIT.toLong())
                 .get()
                 .addOnSuccessListener { snapshot ->
-                    addFiltered(snapshot.toObjects(UserProfile::class.java))
+                    addFiltered(snapshot.toNormalizedUserProfiles())
                     finishIfDone()
                 }
                 .addOnFailureListener {
@@ -1487,18 +1535,49 @@ class FlickRepository private constructor() {
                 val userProfile = userDoc.toObject(UserProfile::class.java)
                 val following = userProfile?.following ?: emptyList()
 
-                // Get users not in following list
+                val mergedUsers = linkedMapOf<String, UserProfile>()
+                var completedQueries = 0
+                var lastError: Exception? = null
+
+                fun finishSuggestions() {
+                    completedQueries++
+                    if (completedQueries < 2) return
+
+                    val suggestions = mergedUsers.values
+                        .filter { it.uid != userId && it.uid !in following }
+                        .sortedByDescending { it.joinedAt }
+                        .take(Constants.Pagination.SUGGESTED_USERS_LIMIT / 2)
+                    if (suggestions.isNotEmpty() || lastError == null) {
+                        onResult(Result.Success(suggestions))
+                    } else {
+                        onResult(Result.Error(lastError ?: Exception("Failed to get suggestions"), "Failed to get suggestions"))
+                    }
+                }
+
                 db.collection(Constants.FirebaseCollections.USERS)
-                    .limit(Constants.Pagination.SUGGESTED_USERS_LIMIT.toLong())
+                    .orderBy("joinedAt", Query.Direction.DESCENDING)
+                    .limit(100)
                     .get()
                     .addOnSuccessListener { snapshot ->
-                        val allUsers = snapshot.toObjects(UserProfile::class.java)
-                        val suggestions = allUsers
-                            .filter { it.uid != userId && it.uid !in following }
-                            .take(Constants.Pagination.SUGGESTED_USERS_LIMIT / 2)
-                        onResult(Result.Success(suggestions))
+                        snapshot.toNormalizedUserProfiles().forEach { mergedUsers[it.uid] = it }
+                        finishSuggestions()
                     }
-                    .addOnFailureListener { e -> onResult(Result.Error(e, "Failed to get suggestions")) }
+                    .addOnFailureListener { e ->
+                        lastError = e
+                        finishSuggestions()
+                    }
+
+                db.collection(Constants.FirebaseCollections.USERS)
+                    .limit(250)
+                    .get()
+                    .addOnSuccessListener { snapshot ->
+                        snapshot.toNormalizedUserProfiles().forEach { mergedUsers[it.uid] = it }
+                        finishSuggestions()
+                    }
+                    .addOnFailureListener { e ->
+                        lastError = e
+                        finishSuggestions()
+                    }
             }
             .addOnFailureListener { e -> onResult(Result.Error(e, "Failed to get user profile")) }
     }
@@ -1507,16 +1586,48 @@ class FlickRepository private constructor() {
      * Get ALL users (not filtered - for Discover tab)
      */
     fun getAllUsers(currentUserId: String, onResult: (Result<List<UserProfile>>) -> Unit) {
+        val mergedUsers = linkedMapOf<String, UserProfile>()
+        var completedQueries = 0
+        var lastError: Exception? = null
+
+        fun finishAllUsers() {
+            completedQueries++
+            if (completedQueries < 2) return
+
+            val users = mergedUsers.values
+                .filter { it.uid != currentUserId }
+                .sortedByDescending { it.joinedAt }
+            if (users.isNotEmpty() || lastError == null) {
+                onResult(Result.Success(users))
+            } else {
+                onResult(Result.Error(lastError ?: Exception("Failed to get users"), "Failed to get users"))
+            }
+        }
+
         db.collection(Constants.FirebaseCollections.USERS)
-            .limit(50)
+            .orderBy("joinedAt", Query.Direction.DESCENDING)
+            .limit(100)
             .get()
             .addOnSuccessListener { snapshot ->
-                val allUsers = snapshot.toObjects(UserProfile::class.java)
-                // Only filter out the current user, show everyone else including followed
-                val users = allUsers.filter { it.uid != currentUserId }
-                onResult(Result.Success(users))
+                snapshot.toNormalizedUserProfiles().forEach { mergedUsers[it.uid] = it }
+                finishAllUsers()
             }
-            .addOnFailureListener { e -> onResult(Result.Error(e, "Failed to get users")) }
+            .addOnFailureListener { e ->
+                lastError = e
+                finishAllUsers()
+            }
+
+        db.collection(Constants.FirebaseCollections.USERS)
+            .limit(250)
+            .get()
+            .addOnSuccessListener { snapshot ->
+                snapshot.toNormalizedUserProfiles().forEach { mergedUsers[it.uid] = it }
+                finishAllUsers()
+            }
+            .addOnFailureListener { e ->
+                lastError = e
+                finishAllUsers()
+            }
     }
 
     /**
@@ -1846,8 +1957,9 @@ class FlickRepository private constructor() {
                 pendingIds.forEach { id ->
                     db.collection("users").document(id).get()
                         .addOnSuccessListener { userDoc ->
-                            val profile = userDoc.toObject(UserProfile::class.java)
+                            val profile = userDoc.toNormalizedUserProfile()
                             if (profile != null) {
+                                repairSearchableProfileFields(userDoc, profile)
                                 profiles.add(profile)
                             }
                             completed++
@@ -2009,8 +2121,9 @@ class FlickRepository private constructor() {
                 followingIds.forEach { id ->
                     db.collection("users").document(id).get()
                         .addOnSuccessListener { userDoc ->
-                            val profile = userDoc.toObject(UserProfile::class.java)
+                            val profile = userDoc.toNormalizedUserProfile()
                             if (profile != null) {
+                                repairSearchableProfileFields(userDoc, profile)
                                 profiles.add(profile)
                             }
                             completed++
@@ -2050,8 +2163,9 @@ class FlickRepository private constructor() {
                 followerIds.forEach { id ->
                     db.collection("users").document(id).get()
                         .addOnSuccessListener { userDoc ->
-                            val profile = userDoc.toObject(UserProfile::class.java)
+                            val profile = userDoc.toNormalizedUserProfile()
                             if (profile != null) {
+                                repairSearchableProfileFields(userDoc, profile)
                                 profiles.add(profile)
                             }
                             completed++
@@ -3345,7 +3459,7 @@ class FlickRepository private constructor() {
         return try {
             // Get all users
             val usersSnapshot = db.collection(Constants.FirebaseCollections.USERS).limit(Constants.Pagination.USERS_PER_PAGE.toLong()).get().await()
-            val users = usersSnapshot.toObjects(UserProfile::class.java)
+            val users = usersSnapshot.toNormalizedUserProfiles()
 
             // Calculate scores for each user
             val userScores = users.map { user ->

@@ -243,18 +243,31 @@ fun ContactScreen(
                             isSubmitting = false
                         }
                     },
-                    modifier = Modifier.fillMaxWidth(),
-                    enabled = subject.isNotBlank() && message.isNotBlank() && !isSubmitting
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(56.dp),
+                    enabled = subject.isNotBlank() && message.isNotBlank() && !isSubmitting,
+                    contentPadding = PaddingValues(horizontal = 24.dp, vertical = 0.dp)
                 ) {
-                    if (isSubmitting) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(24.dp),
-                            color = MaterialTheme.colorScheme.onPrimary
-                        )
-                    } else {
-                        Icon(Icons.AutoMirrored.Filled.Send, contentDescription = null)
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Submit Feedback")
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (isSubmitting) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(24.dp),
+                                color = MaterialTheme.colorScheme.onPrimary
+                            )
+                        } else {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.Center
+                            ) {
+                                Icon(Icons.AutoMirrored.Filled.Send, contentDescription = null)
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("Submit Feedback")
+                            }
+                        }
                     }
                 }
 

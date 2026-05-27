@@ -41,6 +41,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Groups
+import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.outlined.Menu
@@ -49,7 +50,6 @@ import androidx.compose.material.icons.outlined.PhotoLibrary
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Badge
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -1281,7 +1281,7 @@ fun MainScreen(
                         )
                     }
 
-                    // Notifications bell on right - RED when unread, clickable
+                    // Notifications bell on right - grey when empty, red with centered count when unread
                     IconButton(
                         onClick = { if (profileReady) navigateTo(Screen.Notifications) },
                         enabled = profileReady,
@@ -1289,28 +1289,29 @@ fun MainScreen(
                             .align(Alignment.BottomEnd)
                             .offset(y = 4.dp)
                     ) {
-                        Box {
+                        val hasUnreadNotifications = profileReady && unreadCount > 0
+                        Box(
+                            modifier = Modifier.size(32.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
                             Icon(
-                                imageVector = Icons.Outlined.Notifications,
+                                imageVector = if (hasUnreadNotifications) Icons.Filled.Notifications else Icons.Outlined.Notifications,
                                 contentDescription = "Notifications",
+                                modifier = Modifier.size(30.dp),
                                 tint = when {
                                     !profileReady -> Color.DarkGray
-                                    unreadCount > 0 -> Color.Red
+                                    hasUnreadNotifications -> Color.Red
                                     else -> Color.LightGray
                                 }
                             )
-                            // Red badge for unread notifications
-                            if (profileReady && unreadCount > 0) {
-                                Badge(
-                                    modifier = Modifier.align(Alignment.TopEnd),
-                                    containerColor = Color.Red,
-                                    contentColor = Color.White
-                                ) {
-                                    Text(
-                                        text = if (unreadCount > 99) "99+" else unreadCount.toString(),
-                                        style = MaterialTheme.typography.labelSmall
-                                    )
-                                }
+                            if (hasUnreadNotifications) {
+                                Text(
+                                    text = if (unreadCount > 99) "99+" else unreadCount.toString(),
+                                    color = Color.White,
+                                    fontSize = if (unreadCount > 99) 8.sp else 10.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.offset(y = (-1).dp)
+                                )
                             }
                         }
                     }

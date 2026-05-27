@@ -99,10 +99,10 @@ class AuthViewModel : ViewModel() {
         profileListener = repository.listenToUserProfile(uid) { result ->
             when (result) {
                 is Result.Success -> {
-                    val profile = enforceDeveloperDisplayName(result.data)
+                    val profile = repairCurrentUserProfileName(enforceDeveloperDisplayName(result.data))
                     userProfile = profile
                     recoverMissingProfilePhoto(profile)
-                    if (profile.displayName != result.data.displayName) {
+                    if (profile.displayName != result.data.displayName || profile.displayNameLower != result.data.displayNameLower) {
                         repository.patchUserProfile(
                             uid,
                             mapOf(
@@ -158,10 +158,10 @@ class AuthViewModel : ViewModel() {
             android.util.Log.d("AuthViewModel", "Profile load result: $result")
             when (result) {
                 is Result.Success -> {
-                    val profile = enforceDeveloperDisplayName(result.data)
+                    val profile = repairCurrentUserProfileName(enforceDeveloperDisplayName(result.data))
                     userProfile = profile
                     recoverMissingProfilePhoto(profile)
-                    if (profile.displayName != result.data.displayName) {
+                    if (profile.displayName != result.data.displayName || profile.displayNameLower != result.data.displayNameLower) {
                         repository.patchUserProfile(
                             uid,
                             mapOf(
@@ -213,6 +213,29 @@ class AuthViewModel : ViewModel() {
         )
     }
 
+    private fun isPlaceholderDisplayName(name: String): Boolean {
+        val normalized = name.trim().lowercase()
+        return normalized.isBlank() ||
+            normalized == "picflick user" ||
+            normalized == "unknown user" ||
+            normalized == "user"
+    }
+
+    private fun repairCurrentUserProfileName(profile: UserProfile): UserProfile {
+        val authName = currentUser
+            ?.displayName
+            ?.trim()
+            ?.takeIf { it.isNotBlank() && !isPlaceholderDisplayName(it) }
+            ?: return profile
+
+        if (!isPlaceholderDisplayName(profile.displayName)) return profile
+
+        return profile.copy(
+            displayName = authName,
+            displayNameLower = authName.lowercase()
+        )
+    }
+
     private fun recoverMissingProfilePhoto(profile: UserProfile) {
         if (profile.uid.isBlank() || profile.photoUrl.isNotBlank()) return
         if (!profilePhotoRecoveryAttempts.add(profile.uid)) return
@@ -252,12 +275,24 @@ class AuthViewModel : ViewModel() {
                         // Firestore/app profile is the source of truth for display name.
                         // Do not overwrite an edited PicFlick name from the older Firebase Auth displayName.
                         val authPhoneNumber = getAuthPhoneNumber(user)
+                        val resolvedPreferredName = preferredDisplayName
+                            ?.trim()
+                            ?.takeIf { it.isNotBlank() }
+                            ?: user.displayName
+                                ?.trim()
+                                ?.takeIf { it.isNotBlank() }
+                        val shouldSeedDisplayName =
+                            resolvedPreferredName != null && isPlaceholderDisplayName(existingProfile.displayName)
                         val shouldSeedPhoto =
                             existingProfile.photoUrl.isBlank() && user.photoUrl != null
                         val shouldSeedPhone =
                             existingProfile.phoneNumber.isBlank() && authPhoneNumber.isNotBlank()
 
                         val profileUpdates = buildMap<String, Any> {
+                            if (shouldSeedDisplayName && resolvedPreferredName != null) {
+                                put("displayName", resolvedPreferredName)
+                                put("displayNameLower", resolvedPreferredName.lowercase())
+                            }
                             if (shouldSeedPhoto) put("photoUrl", user.photoUrl.toString())
                             if (shouldSeedPhone) put("phoneNumber", authPhoneNumber)
                         }
@@ -266,6 +301,8 @@ class AuthViewModel : ViewModel() {
                             repository.patchUserProfile(user.uid, profileUpdates) { result ->
                                 userProfile = if (result is Result.Success) {
                                     existingProfile.copy(
+                                        displayName = profileUpdates["displayName"] as? String ?: existingProfile.displayName,
+                                        displayNameLower = profileUpdates["displayNameLower"] as? String ?: existingProfile.displayNameLower,
                                         photoUrl = profileUpdates["photoUrl"] as? String ?: existingProfile.photoUrl,
                                         phoneNumber = profileUpdates["phoneNumber"] as? String ?: existingProfile.phoneNumber
                                     )
@@ -475,6 +512,10 @@ class AuthViewModel : ViewModel() {
         val normalizedName = displayName.trim()
         if (normalizedEmail.isBlank() || password.isBlank()) {
             onResult(false, "Email and password are required")
+            return
+        }
+        if (normalizedName.isBlank()) {
+            onResult(false, "Display name is required")
             return
         }
         if (password.length < 6) {

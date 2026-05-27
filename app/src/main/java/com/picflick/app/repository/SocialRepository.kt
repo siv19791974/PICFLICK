@@ -1,10 +1,14 @@
 package com.picflick.app.repository
 
 import com.picflick.app.data.*
+import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.crashlytics.FirebaseCrashlytics
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.Query
+import com.google.firebase.firestore.SetOptions
 import kotlinx.coroutines.tasks.await
+import java.util.Locale
 import java.util.UUID
 
 /**
@@ -14,6 +18,100 @@ import java.util.UUID
 class SocialRepository private constructor() {
 
     private val db = FirebaseFirestore.getInstance()
+    private val auth = FirebaseAuth.getInstance()
+
+    private fun com.google.firebase.firestore.DocumentSnapshot.toNormalizedUserProfile(): UserProfile? {
+        val parsed = toObject(UserProfile::class.java) ?: return null
+        val resolvedUid = parsed.uid.ifBlank { id }
+        val resolvedDisplayName = parsed.displayName
+            .trim()
+            .ifBlank { parsed.email.substringBefore("@").takeIf { it.isNotBlank() } ?: "PicFlick User" }
+        return parsed.copy(
+            uid = resolvedUid,
+            displayName = resolvedDisplayName,
+            displayNameLower = parsed.displayNameLower.ifBlank { resolvedDisplayName.lowercase(Locale.getDefault()) }
+        )
+    }
+
+    private fun com.google.firebase.firestore.QuerySnapshot.toNormalizedUserProfiles(): List<UserProfile> =
+        documents.mapNotNull { it.toNormalizedUserProfile() }
+
+    private fun isPlaceholderDisplayName(name: String): Boolean {
+        val normalized = name.trim().lowercase(Locale.getDefault())
+        return normalized.isBlank() ||
+            normalized == "picflick user" ||
+            normalized == "unknown user" ||
+            normalized == "user"
+    }
+
+    private fun loadProfilesByDocumentIds(
+        userIds: List<String>,
+        onResult: (Result<List<UserProfile>>) -> Unit
+    ) {
+        val ids = userIds.filter { it.isNotBlank() }.distinct()
+        if (ids.isEmpty()) {
+            onResult(Result.Success(emptyList()))
+            return
+        }
+
+        val profiles = mutableListOf<UserProfile>()
+        var completed = 0
+        ids.forEach { id ->
+            db.collection("users").document(id).get()
+                .addOnSuccessListener { doc ->
+                    doc.toNormalizedUserProfile()?.let { profiles.add(it) }
+                    completed++
+                    if (completed == ids.size) onResult(Result.Success(profiles))
+                }
+                .addOnFailureListener {
+                    completed++
+                    if (completed == ids.size) onResult(Result.Success(profiles))
+                }
+        }
+    }
+
+    private suspend fun ensureCurrentUserProfileForSocialActions(
+        currentUserId: String,
+        currentUserName: String,
+        currentUserPhotoUrl: String
+    ) {
+        val firebaseUser = auth.currentUser
+        if (firebaseUser?.uid != currentUserId) return
+
+        val docRef = db.collection("users").document(currentUserId)
+        val snapshot = docRef.get().await()
+        val fallbackName = currentUserName
+            .trim()
+            .ifBlank { firebaseUser.displayName?.trim().orEmpty() }
+            .ifBlank { firebaseUser.email?.substringBefore("@").orEmpty() }
+            .ifBlank { "PicFlick User" }
+        val existingDisplayName = snapshot.getString("displayName").orEmpty()
+        val resolvedDisplayName = if (isPlaceholderDisplayName(existingDisplayName)) {
+            fallbackName
+        } else {
+            existingDisplayName
+        }
+        val existingPhotoUrl = snapshot.getString("photoUrl").orEmpty()
+        val resolvedPhotoUrl = existingPhotoUrl.ifBlank { currentUserPhotoUrl.ifBlank { firebaseUser.photoUrl?.toString().orEmpty() } }
+
+        val profileSeed = mutableMapOf<String, Any?>(
+            "uid" to currentUserId,
+            "email" to (snapshot.getString("email") ?: firebaseUser.email.orEmpty()),
+            "displayName" to resolvedDisplayName,
+            "displayNameLower" to resolvedDisplayName.lowercase(Locale.getDefault()),
+            "pendingFollowRequests" to (snapshot.get("pendingFollowRequests") ?: emptyList<String>()),
+            "sentFollowRequests" to (snapshot.get("sentFollowRequests") ?: emptyList<String>()),
+            "followers" to (snapshot.get("followers") ?: emptyList<String>()),
+            "following" to (snapshot.get("following") ?: emptyList<String>()),
+            "joinedAt" to (snapshot.getLong("joinedAt") ?: System.currentTimeMillis()),
+            "schemaVersion" to (snapshot.getLong("schemaVersion") ?: 2L)
+        )
+        if (resolvedPhotoUrl.isNotBlank()) {
+            profileSeed["photoUrl"] = resolvedPhotoUrl
+        }
+
+        docRef.set(profileSeed, SetOptions.merge()).await()
+    }
 
     companion object {
         @Volatile
@@ -67,8 +165,8 @@ class SocialRepository private constructor() {
             .addOnSuccessListener { currentDoc ->
                 db.collection("users").document(targetUserId).get()
                     .addOnSuccessListener { targetDoc ->
-                        val currentProfile = currentDoc.toObject(UserProfile::class.java)
-                        val targetProfile = targetDoc.toObject(UserProfile::class.java)
+                        val currentProfile = currentDoc.toNormalizedUserProfile()
+                        val targetProfile = targetDoc.toNormalizedUserProfile()
 
                         val status = mapOf(
                             "hasSentRequest" to (currentProfile?.sentFollowRequests?.contains(targetUserId) ?: false),
@@ -251,6 +349,12 @@ class SocialRepository private constructor() {
                 return Result.Error(Exception("Invalid request"), "You cannot send a friend request to yourself")
             }
 
+            ensureCurrentUserProfileForSocialActions(
+                currentUserId = currentUserId,
+                currentUserName = currentUserName,
+                currentUserPhotoUrl = currentUserPhotoUrl
+            )
+
             val batch = db.batch()
 
             val currentUserRef = db.collection("users").document(currentUserId)
@@ -400,14 +504,7 @@ class SocialRepository private constructor() {
                     return@addOnSuccessListener
                 }
 
-                db.collection("users")
-                    .whereIn("uid", pendingIds.take(10))
-                    .get()
-                    .addOnSuccessListener { snapshot ->
-                        val users = snapshot.toObjects(UserProfile::class.java)
-                        onResult(Result.Success(users))
-                    }
-                    .addOnFailureListener { e -> onResult(Result.Error(Exception(e.message), "Failed to get pending requests")) }
+                loadProfilesByDocumentIds(pendingIds, onResult = onResult)
             }
             .addOnFailureListener { e -> onResult(Result.Error(Exception(e.message), "Failed to get user data")) }
     }
@@ -430,14 +527,7 @@ class SocialRepository private constructor() {
                     return@addOnSuccessListener
                 }
 
-                db.collection("users")
-                    .whereIn("uid", followingIds.take(10))
-                    .get()
-                    .addOnSuccessListener { snapshot ->
-                        val users = snapshot.toObjects(UserProfile::class.java)
-                        onResult(Result.Success(users))
-                    }
-                    .addOnFailureListener { e -> onResult(Result.Error(Exception(e.message), "Failed to get following")) }
+                loadProfilesByDocumentIds(followingIds, onResult = onResult)
             }
             .addOnFailureListener { e -> onResult(Result.Error(Exception(e.message), "Failed to get user data")) }
     }
@@ -458,14 +548,7 @@ class SocialRepository private constructor() {
                     return@addOnSuccessListener
                 }
 
-                db.collection("users")
-                    .whereIn("uid", followerIds.take(10))
-                    .get()
-                    .addOnSuccessListener { snapshot ->
-                        val users = snapshot.toObjects(UserProfile::class.java)
-                        onResult(Result.Success(users))
-                    }
-                    .addOnFailureListener { e -> onResult(Result.Error(Exception(e.message), "Failed to get followers")) }
+                loadProfilesByDocumentIds(followerIds, onResult = onResult)
             }
             .addOnFailureListener { e -> onResult(Result.Error(Exception(e.message), "Failed to get user data")) }
     }
@@ -478,20 +561,52 @@ class SocialRepository private constructor() {
     fun getSuggestedUsers(userId: String, onResult: (Result<List<UserProfile>>) -> Unit) {
         db.collection("users").document(userId).get()
             .addOnSuccessListener { userDoc ->
-                val userProfile = userDoc.toObject(UserProfile::class.java)
+                val userProfile = userDoc.toNormalizedUserProfile()
                 val following = userProfile?.following ?: emptyList()
 
+                val mergedUsers = linkedMapOf<String, UserProfile>()
+                var completedQueries = 0
+                var lastError: Exception? = null
+
+                fun finishSuggestions() {
+                    completedQueries++
+                    if (completedQueries < 2) return
+
+                    val suggestions = mergedUsers.values
+                        .filter { it.uid != userId && it.uid !in following }
+                        .sortedByDescending { it.joinedAt }
+                        .take(10)
+                    if (suggestions.isNotEmpty() || lastError == null) {
+                        onResult(Result.Success(suggestions))
+                    } else {
+                        onResult(Result.Error(Exception(lastError?.message), "Failed to get suggestions"))
+                    }
+                }
+
                 db.collection("users")
-                    .limit(20)
+                    .orderBy("joinedAt", Query.Direction.DESCENDING)
+                    .limit(100)
                     .get()
                     .addOnSuccessListener { snapshot ->
-                        val allUsers = snapshot.toObjects(UserProfile::class.java)
-                        val suggestions = allUsers
-                            .filter { it.uid != userId && it.uid !in following }
-                            .take(10)
-                        onResult(Result.Success(suggestions))
+                        snapshot.toNormalizedUserProfiles().forEach { mergedUsers[it.uid] = it }
+                        finishSuggestions()
                     }
-                    .addOnFailureListener { e -> onResult(Result.Error(Exception(e.message), "Failed to get suggestions")) }
+                    .addOnFailureListener { e ->
+                        lastError = e
+                        finishSuggestions()
+                    }
+
+                db.collection("users")
+                    .limit(250)
+                    .get()
+                    .addOnSuccessListener { snapshot ->
+                        snapshot.toNormalizedUserProfiles().forEach { mergedUsers[it.uid] = it }
+                        finishSuggestions()
+                    }
+                    .addOnFailureListener { e ->
+                        lastError = e
+                        finishSuggestions()
+                    }
             }
             .addOnFailureListener { e -> onResult(Result.Error(Exception(e.message), "Failed to get user profile")) }
     }
@@ -502,15 +617,48 @@ class SocialRepository private constructor() {
      * @param onResult Callback with list of profiles
      */
     fun getAllUsers(currentUserId: String, onResult: (Result<List<UserProfile>>) -> Unit) {
+        val mergedUsers = linkedMapOf<String, UserProfile>()
+        var completedQueries = 0
+        var lastError: Exception? = null
+
+        fun finishAllUsers() {
+            completedQueries++
+            if (completedQueries < 2) return
+
+            val users = mergedUsers.values
+                .filter { it.uid != currentUserId }
+                .sortedByDescending { it.joinedAt }
+            if (users.isNotEmpty() || lastError == null) {
+                onResult(Result.Success(users))
+            } else {
+                onResult(Result.Error(Exception(lastError?.message), "Failed to get users"))
+            }
+        }
+
         db.collection("users")
+            .orderBy("joinedAt", Query.Direction.DESCENDING)
             .limit(100)
             .get()
             .addOnSuccessListener { snapshot ->
-                val allUsers = snapshot.toObjects(UserProfile::class.java)
-                val users = allUsers.filter { it.uid != currentUserId }
-                onResult(Result.Success(users))
+                snapshot.toNormalizedUserProfiles().forEach { mergedUsers[it.uid] = it }
+                finishAllUsers()
             }
-            .addOnFailureListener { e -> onResult(Result.Error(Exception(e.message), "Failed to get users")) }
+            .addOnFailureListener { e ->
+                lastError = e
+                finishAllUsers()
+            }
+
+        db.collection("users")
+            .limit(250)
+            .get()
+            .addOnSuccessListener { snapshot ->
+                snapshot.toNormalizedUserProfiles().forEach { mergedUsers[it.uid] = it }
+                finishAllUsers()
+            }
+            .addOnFailureListener { e ->
+                lastError = e
+                finishAllUsers()
+            }
     }
 
     private suspend fun deleteSharedChatSessions(userId1: String, userId2: String) {

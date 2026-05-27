@@ -1,6 +1,7 @@
 package com.picflick.app.ui.screens
 
 import android.widget.Toast
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -161,13 +162,18 @@ fun PlanOptionsScreen(
                 modifier = Modifier.padding(bottom = 12.dp)
             )
 
-            OutlinedButton(
+            val syncButtonBlue = Color(0xFF2A4A73)
+            Button(
                 onClick = onRestorePurchases,
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = if (isDarkMode) syncButtonBlue else Color.White,
+                    contentColor = if (isDarkMode) Color.White else Color.Black
+                ),
+                border = if (isDarkMode) null else BorderStroke(1.dp, Color(0xFF9CA3AF))
             ) {
                 Text(
                     text = "Check & sync subscription",
-                    color = Color.Black,
                     fontWeight = FontWeight.Bold
                 )
             }

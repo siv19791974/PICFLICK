@@ -429,27 +429,25 @@ fun ProfileScreen(
                         }
                     }
 
-                    // Edit icon overlay
-                    if (displayPhotoUrl.isNotEmpty()) {
-                        Box(
-                            modifier = Modifier
-                                .align(Alignment.BottomEnd)
-                                .offset((-8).dp, (-8).dp)
-                                .size(44.dp)
-                                .background(MaterialTheme.colorScheme.primary, CircleShape)
+                    // Edit icon overlay - always show so users without a profile photo can add one
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.BottomEnd)
+                            .offset((-8).dp, (-8).dp)
+                            .size(44.dp)
+                            .background(MaterialTheme.colorScheme.primary, CircleShape)
                             .border(3.dp, Color.Black, CircleShape)
                             .clickable {
                                 photoPickerLauncher.launch("image/*")
                             },
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Edit,
-                                contentDescription = "Change Photo",
-                                tint = Color.White,
-                                modifier = Modifier.size(22.dp)
-                            )
-                        }
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Edit,
+                            contentDescription = if (displayPhotoUrl.isNotEmpty()) "Change Photo" else "Add Photo",
+                            tint = Color.White,
+                            modifier = Modifier.size(22.dp)
+                        )
                     }
                 }
             }

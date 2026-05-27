@@ -310,7 +310,7 @@ fun LoginScreen(
                 if (isSignUpMode) signUpWithEmail() else signInWithEmail()
             },
             modifier = Modifier.fillMaxWidth(),
-            enabled = !isLoading && email.isNotBlank() && password.isNotBlank()
+            enabled = !isLoading && email.isNotBlank() && password.isNotBlank() && (!isSignUpMode || displayName.isNotBlank())
         ) {
             if (isLoading) {
                 CircularProgressIndicator(
