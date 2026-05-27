@@ -132,10 +132,17 @@ fun ProfileScreen(
     // Keep photo URL stable - don't clear when profile temporarily reloads
     var cachedPhotoUrl by remember { mutableStateOf(userProfile.photoUrl) }
     
+    val latestKnownPhotoUrlFromPosts = photos
+        .filter { it.userPhotoUrl.isNotBlank() }
+        .maxByOrNull { it.timestamp }
+        ?.userPhotoUrl
+        .orEmpty()
+
     // Update cached photo only when we get a valid new URL
-    LaunchedEffect(userProfile.photoUrl) {
-        if (userProfile.photoUrl.isNotEmpty()) {
-            cachedPhotoUrl = userProfile.photoUrl
+    LaunchedEffect(userProfile.photoUrl, latestKnownPhotoUrlFromPosts) {
+        when {
+            userProfile.photoUrl.isNotBlank() -> cachedPhotoUrl = userProfile.photoUrl
+            latestKnownPhotoUrlFromPosts.isNotBlank() -> cachedPhotoUrl = latestKnownPhotoUrlFromPosts
         }
     }
 
@@ -170,6 +177,12 @@ fun ProfileScreen(
     }
 
     val selectedPhotoIds = remember { mutableStateListOf<String>() }
+    val failedPhotoIds = remember { mutableStateListOf<String>() }
+    LaunchedEffect(photos) {
+        val currentPhotoIds = photos.map { it.id }.toSet()
+        failedPhotoIds.removeAll { it !in currentPhotoIds }
+    }
+    val visiblePhotos = photos.filterNot { failedPhotoIds.contains(it.id) }
     val isSelectionMode = selectedPhotoIds.isNotEmpty()
     var showBatchDeleteConfirm by remember { mutableStateOf(false) }
     var showBatchAlbumPicker by remember { mutableStateOf(false) }
@@ -178,7 +191,7 @@ fun ProfileScreen(
     var isAddingSelectionToAlbum by remember { mutableStateOf(false) }
 
     LaunchedEffect(photos) {
-        val existingPhotoIds = photos.map { it.id }.toSet()
+        val existingPhotoIds = visiblePhotos.map { it.id }.toSet()
         selectedPhotoIds.removeAll { it !in existingPhotoIds }
         if (selectedPhotoIds.isEmpty()) {
             showBatchDeleteConfirm = false
@@ -714,7 +727,7 @@ fun ProfileScreen(
                 .fillMaxWidth()
                 .bringIntoViewRequester(photosSectionBringIntoViewRequester)
         ) {
-        if (photos.isNotEmpty()) {
+        if (visiblePhotos.isNotEmpty()) {
             if (isSelectionMode) {
                 Spacer(modifier = Modifier.height(8.dp))
                 Row(
@@ -790,7 +803,7 @@ fun ProfileScreen(
             Spacer(modifier = Modifier.height(12.dp))
             
             // Photo grid - match Home Feed dynamic sizing
-            val rowCount = ((photos.size + 2) / 3).coerceAtLeast(1)
+            val rowCount = ((visiblePhotos.size + 2) / 3).coerceAtLeast(1)
             val homeLikeRowHeight = if (isLandscape) {
                 availableGridHeight / 1.09f
             } else {
@@ -817,7 +830,7 @@ fun ProfileScreen(
                     userScrollEnabled = false
                 ) {
                     items(
-                        items = photos,
+                        items = visiblePhotos,
                         key = { it.id },
                         contentType = { "photo" }
                     ) { flick ->
@@ -834,7 +847,7 @@ fun ProfileScreen(
                                         selectedPhotoIds.add(flick.id)
                                     }
                                 } else {
-                                    val index = photos.indexOf(flick)
+                                    val index = visiblePhotos.indexOf(flick)
                                     onPhotoClick(flick, index)
                                 }
                             },
@@ -843,7 +856,12 @@ fun ProfileScreen(
                                     selectedPhotoIds.add(flick.id)
                                 }
                             },
-                            rowHeight = homeLikeRowHeight
+                            rowHeight = homeLikeRowHeight,
+                            onImageLoadFailed = {
+                                if (flick.id.isNotBlank() && !failedPhotoIds.contains(flick.id)) {
+                                    failedPhotoIds.add(flick.id)
+                                }
+                            }
                         )
                     }
                 }
@@ -1797,12 +1815,30 @@ private fun MyPhotoCard(
     isSelectionMode: Boolean = false,
     onPhotoClick: () -> Unit,
     onLongPress: () -> Unit = {},
-    rowHeight: androidx.compose.ui.unit.Dp
+    rowHeight: androidx.compose.ui.unit.Dp,
+    onImageLoadFailed: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val density = LocalDensity.current
     val rowHeightPx = with(density) { rowHeight.roundToPx() }
-    val gridImageUrl = flick.thumbnailUrl512.ifBlank { flick.imageUrl }
+    val gridImageCandidates = remember(
+        flick.thumbnailUrl512,
+        flick.thumbnailUrl1080,
+        flick.thumbnailUrl256,
+        flick.imageUrl
+    ) {
+        listOf(
+            flick.thumbnailUrl512,
+            flick.thumbnailUrl1080,
+            flick.thumbnailUrl256,
+            flick.imageUrl
+        ).map { it.trim() }
+            .filter { it.isNotBlank() }
+            .distinct()
+    }
+    var imageCandidateIndex by remember(flick.id, gridImageCandidates) { mutableIntStateOf(0) }
+    val activeCandidateIndex = imageCandidateIndex.coerceIn(0, (gridImageCandidates.size - 1).coerceAtLeast(0))
+    val gridImageUrl = gridImageCandidates.getOrNull(activeCandidateIndex).orEmpty()
     val thumbRequest = remember(gridImageUrl, flick.timestamp, rowHeightPx) {
         ImageRequest.Builder(context)
             .data(withCacheBust(gridImageUrl, flick.timestamp))
@@ -1835,7 +1871,14 @@ private fun MyPhotoCard(
                 model = thumbRequest,
                 contentDescription = null,
                 modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Crop
+                contentScale = ContentScale.Crop,
+                onError = {
+                    if (imageCandidateIndex < gridImageCandidates.lastIndex) {
+                        imageCandidateIndex += 1
+                    } else {
+                        onImageLoadFailed()
+                    }
+                }
             )
 
             if (isSelectionMode) {

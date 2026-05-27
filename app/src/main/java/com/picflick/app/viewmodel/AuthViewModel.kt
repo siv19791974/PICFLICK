@@ -46,6 +46,7 @@ class AuthViewModel : ViewModel() {
 
     private var profileListener: ListenerRegistration? = null
     private var authStateListener: FirebaseAuth.AuthStateListener? = null
+    private val profilePhotoRecoveryAttempts = mutableSetOf<String>()
 
     /**
      * Optimistically update the local userProfile subscription tier immediately.
@@ -100,6 +101,7 @@ class AuthViewModel : ViewModel() {
                 is Result.Success -> {
                     val profile = enforceDeveloperDisplayName(result.data)
                     userProfile = profile
+                    recoverMissingProfilePhoto(profile)
                     if (profile.displayName != result.data.displayName) {
                         repository.patchUserProfile(
                             uid,
@@ -158,6 +160,7 @@ class AuthViewModel : ViewModel() {
                 is Result.Success -> {
                     val profile = enforceDeveloperDisplayName(result.data)
                     userProfile = profile
+                    recoverMissingProfilePhoto(profile)
                     if (profile.displayName != result.data.displayName) {
                         repository.patchUserProfile(
                             uid,
@@ -208,6 +211,25 @@ class AuthViewModel : ViewModel() {
             displayName = expectedName,
             displayNameLower = expectedName.lowercase()
         )
+    }
+
+    private fun recoverMissingProfilePhoto(profile: UserProfile) {
+        if (profile.uid.isBlank() || profile.photoUrl.isNotBlank()) return
+        if (!profilePhotoRecoveryAttempts.add(profile.uid)) return
+
+        repository.getLatestKnownUserPhotoUrl(profile.uid) { result ->
+            if (result !is Result.Success) return@getLatestKnownUserPhotoUrl
+            val recoveredPhotoUrl = result.data.takeIf { it.isNotBlank() } ?: return@getLatestKnownUserPhotoUrl
+            repository.patchUserProfile(
+                profile.uid,
+                mapOf("photoUrl" to recoveredPhotoUrl)
+            ) { patchResult ->
+                if (patchResult is Result.Success) {
+                    userProfile = (userProfile ?: profile).copy(photoUrl = recoveredPhotoUrl)
+                    Log.d("AuthViewModel", "Recovered missing profile photo for ${profile.uid}")
+                }
+            }
+        }
     }
 
     /**

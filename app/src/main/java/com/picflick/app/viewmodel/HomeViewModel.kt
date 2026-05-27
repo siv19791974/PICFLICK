@@ -38,6 +38,9 @@ class HomeViewModel : ViewModel() {
     /** Flick IDs the current user has reported — filtered from feed */
     var reportedFlickIds: Set<String> = emptySet()
 
+    /** Flick IDs the current user has hidden from Home — filtered from feed */
+    var hiddenHomeFlickIds: Set<String> = emptySet()
+
     /** List of flicks for the main feed */
     var flicks = mutableStateListOf<Flick>()
         private set
@@ -126,7 +129,7 @@ class HomeViewModel : ViewModel() {
                         lastTimestamp = null,
                         lastFlickId = null,
                         pageSize = Constants.Pagination.FLICKS_PER_PAGE,
-                        excludeIds = reportedFlickIds,
+                        excludeIds = reportedFlickIds + hiddenHomeFlickIds,
                         recentDays = Constants.Pagination.HOME_FEED_DAYS
                     )) {
                         is Result.Success -> {
@@ -202,7 +205,7 @@ class HomeViewModel : ViewModel() {
                 lastTimestamp = cursorTimestamp,
                 lastFlickId = cursorId,
                 pageSize = Constants.Pagination.FLICKS_PER_PAGE,
-                excludeIds = existingIds + reportedFlickIds,
+                excludeIds = existingIds + reportedFlickIds + hiddenHomeFlickIds,
                 recentDays = Constants.Pagination.HOME_FEED_DAYS
             )) {
                 is Result.Success -> {
@@ -769,10 +772,12 @@ class HomeViewModel : ViewModel() {
             val serverMatch = if (clientId != null) serverByClientUploadId[clientId] else null
 
             if (serverMatch != null) {
-                val keepLocalDisplayUrl = optimistic.imageUrl.startsWith("content://") || optimistic.imageUrl.startsWith("file://")
                 optimistic.copy(
                     id = if (serverMatch.id.isNotBlank()) serverMatch.id else optimistic.id,
-                    imageUrl = if (keepLocalDisplayUrl) optimistic.imageUrl else if (serverMatch.imageUrl.isNotBlank()) serverMatch.imageUrl else optimistic.imageUrl,
+                    imageUrl = serverMatch.imageUrl.ifBlank { optimistic.imageUrl },
+                    thumbnailUrl256 = serverMatch.thumbnailUrl256.ifBlank { optimistic.thumbnailUrl256 },
+                    thumbnailUrl512 = serverMatch.thumbnailUrl512.ifBlank { optimistic.thumbnailUrl512 },
+                    thumbnailUrl1080 = serverMatch.thumbnailUrl1080.ifBlank { optimistic.thumbnailUrl1080 },
                     description = serverMatch.description,
                     reactions = serverMatch.reactions,
                     commentCount = serverMatch.commentCount,
@@ -781,7 +786,10 @@ class HomeViewModel : ViewModel() {
                     taggedFriends = serverMatch.taggedFriends,
                     imageSizeBytes = serverMatch.imageSizeBytes,
                     privacy = serverMatch.privacy,
-                    sharedGroupId = serverMatch.sharedGroupId
+                    sharedGroupId = serverMatch.sharedGroupId,
+                    storagePath = serverMatch.storagePath,
+                    thumbnailPath512 = serverMatch.thumbnailPath512,
+                    thumbnailPath1080 = serverMatch.thumbnailPath1080
                 )
             } else {
                 optimistic

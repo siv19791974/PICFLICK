@@ -138,6 +138,8 @@ fun FullScreenPhotoViewer(
     friendProfiles: Map<String, UserProfile> = emptyMap(), // Map of userId -> UserProfile for looking up profile pics
     albumGroups: List<FriendGroup> = emptyList(),
     onPhotoMovedToAlbum: (Flick) -> Unit = {},
+    onHideFromHome: (Flick) -> Unit = {},
+    onUnhideFromHome: (Flick) -> Unit = {},
     openCommentPanelInitially: Boolean = false,
 ) {
     val context = LocalContext.current
@@ -292,6 +294,8 @@ fun FullScreenPhotoViewer(
     // Calculate if user can delete/react based on CURRENT flick (updates when swiping)
 val canDeleteCurrent = currentFlick.userId == currentUser.uid
     val canReactCurrent = !canDeleteCurrent
+    val canHideFromHomeCurrent = !canDeleteCurrent && currentFlick.id.isNotBlank()
+    val isCurrentHiddenFromHome = currentFlick.id in currentUser.hiddenHomeFlickIds
     
     // Description states - keyed to id + description so edits on same photo id refresh correctly
     var editCaptionText by remember(currentFlick.id, currentFlick.description) { mutableStateOf(currentFlick.description) }
@@ -1920,38 +1924,83 @@ if (canDeleteCurrent) {
                 if (showMoreMenu) {
                     AddPhotoStyleActionSheet(
                         title = "Photo options",
-                        options = listOf(
-                            ActionSheetOption(
-                                icon = Icons.Default.Flag,
-                                title = "Report Photo",
-                                subtitle = "Report this photo for moderation",
-                                accentColor = Color(0xFFFF6B6B),
-                                onClick = {
-                                    showMoreMenu = false
-                                    showReportDialog = true
-                                }
-                            ),
-                            ActionSheetOption(
-                                icon = Icons.Default.NotificationsOff,
-                                title = "Mute User",
-                                subtitle = "Stop seeing photos from this user",
-                                accentColor = Color(0xFFFFB347),
-                                onClick = {
-                                    showMoreMenu = false
-                                    showMuteUserDialog = true
-                                }
-                            ),
-                            ActionSheetOption(
-                                icon = Icons.Default.Block,
-                                title = "Block User",
-                                subtitle = "Block and report this user",
-                                accentColor = Color.White,
-                                onClick = {
-                                    showMoreMenu = false
-                                    showBlockConfirmation = true
-                                }
+                        options = buildList {
+                            if (canHideFromHomeCurrent) {
+                                add(
+                                    ActionSheetOption(
+                                        icon = if (isCurrentHiddenFromHome) Icons.Default.Visibility else Icons.Default.VisibilityOff,
+                                        title = if (isCurrentHiddenFromHome) "Unhide in Home" else "Hide from Home",
+                                        subtitle = if (isCurrentHiddenFromHome) "Show this photo in your Home feed again" else "Hide only this photo from your Home feed",
+                                        accentColor = Color(0xFF60A5FA),
+                                        onClick = {
+                                            showMoreMenu = false
+                                            if (isCurrentHiddenFromHome) {
+                                                repository.unhideFlickFromHome(currentUser.uid, currentFlick.id) { result ->
+                                                    when (result) {
+                                                        is com.picflick.app.data.Result.Success -> {
+                                                            onUnhideFromHome(currentFlick)
+                                                            showPicFlickToast("Photo unhidden from Home")
+                                                        }
+                                                        is com.picflick.app.data.Result.Error -> showPicFlickToast("Failed to unhide photo")
+                                                        else -> Unit
+                                                    }
+                                                }
+                                            } else {
+                                                deletedFlickIds.add(currentFlick.id)
+                                                onHideFromHome(currentFlick)
+                                                repository.hideFlickFromHome(currentUser.uid, currentFlick.id) { result ->
+                                                    when (result) {
+                                                        is com.picflick.app.data.Result.Success -> showPicFlickToast("Photo hidden from Home")
+                                                        is com.picflick.app.data.Result.Error -> {
+                                                            deletedFlickIds.remove(currentFlick.id)
+                                                            showPicFlickToast("Failed to hide photo")
+                                                        }
+                                                        else -> Unit
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    )
+                                )
+                            }
+
+                            add(
+                                ActionSheetOption(
+                                    icon = Icons.Default.Flag,
+                                    title = "Report Photo",
+                                    subtitle = "Report this photo for moderation",
+                                    accentColor = Color(0xFFFF6B6B),
+                                    onClick = {
+                                        showMoreMenu = false
+                                        showReportDialog = true
+                                    }
+                                )
                             )
-                        ),
+                            add(
+                                ActionSheetOption(
+                                    icon = Icons.Default.NotificationsOff,
+                                    title = "Mute User",
+                                    subtitle = "Stop seeing photos from this user",
+                                    accentColor = Color(0xFFFFB347),
+                                    onClick = {
+                                        showMoreMenu = false
+                                        showMuteUserDialog = true
+                                    }
+                                )
+                            )
+                            add(
+                                ActionSheetOption(
+                                    icon = Icons.Default.Block,
+                                    title = "Block User",
+                                    subtitle = "Block and report this user",
+                                    accentColor = Color.White,
+                                    onClick = {
+                                        showMoreMenu = false
+                                        showBlockConfirmation = true
+                                    }
+                                )
+                            )
+                        },
                         onDismiss = { showMoreMenu = false },
                         cancelTitle = "Cancel",
                         cancelSubtitle = "Close menu",
@@ -2876,17 +2925,19 @@ private fun CompactCommentItem(
                         Box(
                             modifier = Modifier
                                 .padding(top = 20.dp, end = 4.dp)
-                                .background(Color(0xFFFF4081), CircleShape)
-                                .size(16.dp),
+                                .size(16.dp)
+                                .clip(CircleShape)
+                                .background(Color(0xFFFF4081)),
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
                                 text = "${localReactions.size}",
                                 color = Color.White,
                                 fontSize = 10.sp,
+                                lineHeight = 10.sp,
                                 fontWeight = FontWeight.Bold,
                                 textAlign = TextAlign.Center,
-                                modifier = Modifier.wrapContentSize()
+                                modifier = Modifier.fillMaxSize().wrapContentSize(Alignment.Center)
                             )
                         }
                     }
@@ -3108,17 +3159,19 @@ private fun CompactReplyItem(
                 Box(
                     modifier = Modifier
                         .padding(top = 16.dp, end = 2.dp)
-                        .background(Color(0xFFFF4081), CircleShape)
-                        .size(14.dp),
+                        .size(14.dp)
+                        .clip(CircleShape)
+                        .background(Color(0xFFFF4081)),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
                         text = "${localReactions.size}",
                         color = Color.White,
                         fontSize = 9.sp,
+                        lineHeight = 9.sp,
                         fontWeight = FontWeight.Bold,
                         textAlign = TextAlign.Center,
-                        modifier = Modifier.wrapContentSize()
+                        modifier = Modifier.fillMaxSize().wrapContentSize(Alignment.Center)
                     )
                 }
             }

@@ -336,6 +336,68 @@ class FlickRepository private constructor() {
         }
     }
 
+    private suspend fun resolveStoragePathUrl(path: String): String {
+        if (path.isBlank()) return ""
+        return runCatching { storage.reference.child(path).downloadUrl.await().toString() }
+            .getOrDefault("")
+    }
+
+    private fun String.asPersistedDisplayUrlOrBlank(): String {
+        val cleaned = trim()
+        if (cleaned.isBlank()) return ""
+        if (cleaned.equals("null", ignoreCase = true)) return ""
+        if (cleaned.equals("undefined", ignoreCase = true)) return ""
+        // Local picker URIs are only valid for in-memory optimistic rows. If they made it into
+        // Firestore, they cannot survive app updates/restarts and render as blank tiles.
+        if (cleaned.startsWith("content://") || cleaned.startsWith("file://")) return ""
+        return cleaned
+    }
+
+    private suspend fun repairFlickImageUrlsIfNeeded(flick: Flick): Flick? {
+        val existingImageUrl = flick.imageUrl.asPersistedDisplayUrlOrBlank()
+        val existingThumbnail256 = flick.thumbnailUrl256.asPersistedDisplayUrlOrBlank()
+        val existingThumbnail512 = flick.thumbnailUrl512.asPersistedDisplayUrlOrBlank()
+        val existingThumbnail1080 = flick.thumbnailUrl1080.asPersistedDisplayUrlOrBlank()
+
+        val repairedImageUrl = existingImageUrl.ifBlank { resolveStoragePathUrl(flick.storagePath) }
+        val repairedThumbnail512 = existingThumbnail512.ifBlank { resolveStoragePathUrl(flick.thumbnailPath512) }
+        val repairedThumbnail1080 = existingThumbnail1080.ifBlank { resolveStoragePathUrl(flick.thumbnailPath1080) }
+
+        val hasDisplayUrl = listOf(
+            repairedThumbnail512,
+            repairedThumbnail1080,
+            existingThumbnail256,
+            repairedImageUrl
+        ).any { it.isNotBlank() }
+        if (!hasDisplayUrl) return null
+
+        val updates = mutableMapOf<String, Any>()
+        if (flick.imageUrl != repairedImageUrl && repairedImageUrl.isNotBlank()) updates["imageUrl"] = repairedImageUrl
+        if (flick.thumbnailUrl512 != repairedThumbnail512 && repairedThumbnail512.isNotBlank()) updates["thumbnailUrl512"] = repairedThumbnail512
+        if (flick.thumbnailUrl1080 != repairedThumbnail1080 && repairedThumbnail1080.isNotBlank()) updates["thumbnailUrl1080"] = repairedThumbnail1080
+
+        if (updates.isNotEmpty() && flick.id.isNotBlank()) {
+            runCatching {
+                db.collection(Constants.FirebaseCollections.FLICKS)
+                    .document(flick.id)
+                    .update(updates)
+                    .await()
+            }.onFailure { e ->
+                android.util.Log.w("FlickRepository", "Failed to repair image URLs for flick=${flick.id}", e)
+            }
+        }
+
+        return flick.copy(
+            imageUrl = repairedImageUrl,
+            thumbnailUrl512 = repairedThumbnail512,
+            thumbnailUrl1080 = repairedThumbnail1080
+        )
+    }
+
+    private suspend fun repairFlickImageUrls(flicks: List<Flick>): List<Flick> {
+        return flicks.mapNotNull { repairFlickImageUrlsIfNeeded(it) }
+    }
+
     /**
      * Create a new flick and notify friends
      */
@@ -410,7 +472,7 @@ class FlickRepository private constructor() {
                 .get()
                 .await()
             
-            val ownFlicks = ownFlicksSnapshot.toObjects(Flick::class.java)
+            val ownFlicks = repairFlickImageUrls(ownFlicksSnapshot.toObjects(Flick::class.java))
             android.util.Log.d("FlickRepository", "Loaded ${ownFlicks.size} own photos")
 
             // Query friends' photos (NO orderBy to avoid composite index requirement)
@@ -428,7 +490,7 @@ class FlickRepository private constructor() {
                             .get()
                             .await()
 
-                        val batchFlicks = batchSnapshot.toObjects(Flick::class.java)
+                        val batchFlicks = repairFlickImageUrls(batchSnapshot.toObjects(Flick::class.java))
                         android.util.Log.d("FlickRepository", "Loaded ${batchFlicks.size} total friend photos in single batch query")
                         batchFlicks
                     } catch (e: Exception) {
@@ -446,9 +508,10 @@ class FlickRepository private constructor() {
                 .filterValues { it == Long.MAX_VALUE || it > System.currentTimeMillis() }
                 .keys
             val blockedUserIds = userProfile?.blockedUsers ?: emptyList()
-            android.util.Log.d("FlickRepository", "DEBUG: activeMuted=$activeMutedUserIds blocked=$blockedUserIds")
+            val hiddenHomeFlickIds = userProfile?.hiddenHomeFlickIds ?: emptyList()
+            android.util.Log.d("FlickRepository", "DEBUG: activeMuted=$activeMutedUserIds blocked=$blockedUserIds hiddenHome=${hiddenHomeFlickIds.size}")
 
-            // Merge, remove duplicates, filter muted/blocked users, and sort by timestamp DESC (client-side sorting)
+            // Merge, remove duplicates, filter muted/blocked/hidden photos, and sort by timestamp DESC (client-side sorting)
             // Album-targeted photos are intentionally excluded from the general Home feed.
             // They should only appear when the matching album filter is selected.
 
@@ -470,6 +533,11 @@ class FlickRepository private constructor() {
                 flick.userId != userId && (activeMutedUserIds.contains(flick.userId) || blockedUserIds.contains(flick.userId))
             }
             android.util.Log.d("FlickRepository", "After mute/block filter: ${allFlicks.size} photos")
+
+            if (hiddenHomeFlickIds.isNotEmpty()) {
+                allFlicks = allFlicks.filterNot { flick -> flick.userId != userId && flick.id in hiddenHomeFlickIds }
+                android.util.Log.d("FlickRepository", "After hidden-home filter: ${allFlicks.size} photos")
+            }
 
             val albumTargetedFlicks = allFlicks.filter { it.sharedGroupId.isNotBlank() }
             if (albumTargetedFlicks.isNotEmpty()) {
@@ -648,7 +716,8 @@ class FlickRepository private constructor() {
         }
         return db.collection(Constants.FirebaseCollections.FLICKS)
             .whereEqualTo("userId", userId)
-            .limit(CostControlManager.getEffectivePageSize(Constants.Pagination.FLICKS_PER_PAGE).toLong())
+            .orderBy("timestamp", Query.Direction.DESCENDING)
+            .limit(CostControlManager.getEffectivePageSize(Constants.Pagination.USER_PROFILE_FLICKS_LIMIT).toLong())
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
                     onResult(Result.Error(Exception(error.message), "Failed to load user photos"))
@@ -656,13 +725,15 @@ class FlickRepository private constructor() {
                 }
 
                 if (snapshot != null) {
-                    val flicks = snapshot.toObjects(Flick::class.java)
-                        .filter {
-                            !it.autoHiddenByReports && // Hide auto-moderated photos
-                                it.sharedGroupId.isBlank() // Hide album/group photos from profile
-                        }
-                        .sortedByDescending { it.timestamp } // Sort in memory
-                    onResult(Result.Success(flicks))
+                    repositoryScope.launch {
+                        val flicks = repairFlickImageUrls(snapshot.toObjects(Flick::class.java))
+                            .filter {
+                                !it.autoHiddenByReports && // Hide auto-moderated photos
+                                    it.sharedGroupId.isBlank() // Hide album/group photos from profile
+                            }
+                            .sortedByDescending { it.timestamp } // Sort in memory
+                        onResult(Result.Success(flicks))
+                    }
                 }
             }
     }
@@ -1044,6 +1115,28 @@ class FlickRepository private constructor() {
             }
     }
 
+    fun getLatestKnownUserPhotoUrl(userId: String, onResult: (Result<String>) -> Unit) {
+        if (userId.isBlank()) {
+            onResult(Result.Error(Exception("Missing user id"), "Missing user id"))
+            return
+        }
+
+        db.collection(Constants.FirebaseCollections.FLICKS)
+            .whereEqualTo("userId", userId)
+            .limit(200)
+            .get()
+            .addOnSuccessListener { snapshot ->
+                val photoUrl = snapshot.documents
+                    .sortedByDescending { it.getLong("timestamp") ?: 0L }
+                    .asSequence()
+                    .mapNotNull { it.getString("userPhotoUrl")?.takeIf { url -> url.isNotBlank() } }
+                    .firstOrNull()
+                    .orEmpty()
+                onResult(Result.Success(photoUrl))
+            }
+            .addOnFailureListener { e -> onResult(Result.Error(e, "Failed to recover profile photo")) }
+    }
+
     /**
      * Save user profile. Uses merge to avoid overwriting fields not present in the object.
      */
@@ -1051,7 +1144,65 @@ class FlickRepository private constructor() {
         val normalizedProfile = profile.copy(
             displayNameLower = profile.displayName.trim().lowercase(Locale.getDefault())
         )
-        db.collection("users").document(userId).set(normalizedProfile, com.google.firebase.firestore.SetOptions.merge())
+
+        // Never let a full-profile merge clear an existing avatar with the data-class default "".
+        // This protects users during app updates/startup profile syncs where photoUrl may be absent locally.
+        val profileData = mutableMapOf<String, Any?>(
+            "uid" to normalizedProfile.uid,
+            "email" to normalizedProfile.email,
+            "displayName" to normalizedProfile.displayName,
+            "displayNameLower" to normalizedProfile.displayNameLower,
+            "phoneNumber" to normalizedProfile.phoneNumber,
+            "bio" to normalizedProfile.bio,
+            "followers" to normalizedProfile.followers,
+            "following" to normalizedProfile.following,
+            "pendingFollowRequests" to normalizedProfile.pendingFollowRequests,
+            "sentFollowRequests" to normalizedProfile.sentFollowRequests,
+            "blockedUsers" to normalizedProfile.blockedUsers,
+            "mutedUsers" to normalizedProfile.mutedUsers,
+            "hiddenHomeFlickIds" to normalizedProfile.hiddenHomeFlickIds,
+            "fcmToken" to normalizedProfile.fcmToken,
+            "notificationPreferences" to normalizedProfile.notificationPreferences,
+            "totalLikes" to normalizedProfile.totalLikes,
+            "totalViews" to normalizedProfile.totalViews,
+            "subscriptionTier" to normalizedProfile.subscriptionTier,
+            "subscriptionActive" to normalizedProfile.subscriptionActive,
+            "autoRenewing" to normalizedProfile.autoRenewing,
+            "tier" to normalizedProfile.legacyTier,
+            "subscriptionExpiryDate" to normalizedProfile.subscriptionExpiryDate,
+            "storageUsedBytes" to normalizedProfile.storageUsedBytes,
+            "totalPhotos" to normalizedProfile.totalPhotos,
+            "dailyUploadsToday" to normalizedProfile.dailyUploadsToday,
+            "lastUploadResetDate" to normalizedProfile.lastUploadResetDate,
+            "isFounder" to normalizedProfile.isFounder,
+            "defaultPrivacy" to normalizedProfile.defaultPrivacy,
+            "joinedAt" to normalizedProfile.joinedAt,
+            "mythicDrawHistory" to normalizedProfile.mythicDrawHistory,
+            "mythicCrown" to normalizedProfile.mythicCrown,
+            "mythicCrownExpiry" to normalizedProfile.mythicCrownExpiry,
+            "mythicWinnerBanner" to normalizedProfile.mythicWinnerBanner,
+            "mythicWinnerBannerExpiry" to normalizedProfile.mythicWinnerBannerExpiry,
+            "mythicContenderCount" to normalizedProfile.mythicContenderCount,
+            "mythicLastWonMonthKey" to normalizedProfile.mythicLastWonMonthKey,
+            "mythicConsecutiveMonths" to normalizedProfile.mythicConsecutiveMonths,
+            "mythicTier" to normalizedProfile.mythicTier,
+            "mythicTierUpdatedAt" to normalizedProfile.mythicTierUpdatedAt,
+            "mythicUploadBoostAmount" to normalizedProfile.mythicUploadBoostAmount,
+            "mythicUploadBoostExpiry" to normalizedProfile.mythicUploadBoostExpiry,
+            "mythicChampion" to normalizedProfile.mythicChampion,
+            "mythicChampionMonth" to normalizedProfile.mythicChampionMonth,
+            "streakRecoveryAvailable" to normalizedProfile.streakRecoveryAvailable,
+            "streakRecoveryValue" to normalizedProfile.streakRecoveryValue,
+            "streakRecoveryUsedMonth" to normalizedProfile.streakRecoveryUsedMonth,
+            "timezoneOffset" to normalizedProfile.timezoneOffset,
+            "countryCode" to normalizedProfile.countryCode,
+            "schemaVersion" to normalizedProfile.schemaVersion
+        )
+        if (normalizedProfile.photoUrl.isNotBlank()) {
+            profileData["photoUrl"] = normalizedProfile.photoUrl
+        }
+
+        db.collection("users").document(userId).set(profileData, com.google.firebase.firestore.SetOptions.merge())
             .addOnSuccessListener { onResult(Result.Success(Unit)) }
             .addOnFailureListener { e -> onResult(Result.Error(e, "Failed to save profile")) }
     }
@@ -1062,7 +1213,15 @@ class FlickRepository private constructor() {
      * server-managed fields like mythic counters.
      */
     fun patchUserProfile(userId: String, fields: Map<String, Any?>, onResult: (Result<Unit>) -> Unit) {
-        db.collection("users").document(userId).update(fields)
+        val safeFields = fields.filterNot { (key, value) ->
+            key == "photoUrl" && (value as? String).isNullOrBlank()
+        }
+        if (safeFields.isEmpty()) {
+            onResult(Result.Success(Unit))
+            return
+        }
+
+        db.collection("users").document(userId).update(safeFields)
             .addOnSuccessListener { onResult(Result.Success(Unit)) }
             .addOnFailureListener { e -> onResult(Result.Error(e, "Failed to update profile")) }
     }
@@ -1439,6 +1598,36 @@ class FlickRepository private constructor() {
             .update("blockedUsers", FieldValue.arrayRemove(targetUserId))
             .addOnSuccessListener { onResult(Result.Success(Unit)) }
             .addOnFailureListener { e -> onResult(Result.Error(e, "Failed to unblock user")) }
+    }
+
+    /**
+     * Hide one friend's photo from the current user's Home feed only.
+     */
+    fun hideFlickFromHome(currentUserId: String, flickId: String, onResult: (Result<Unit>) -> Unit) {
+        if (currentUserId.isBlank() || flickId.isBlank()) {
+            onResult(Result.Error(IllegalArgumentException("Missing user or photo id"), "Failed to hide photo"))
+            return
+        }
+
+        db.collection("users").document(currentUserId)
+            .update("hiddenHomeFlickIds", FieldValue.arrayUnion(flickId))
+            .addOnSuccessListener { onResult(Result.Success(Unit)) }
+            .addOnFailureListener { e -> onResult(Result.Error(e, "Failed to hide photo")) }
+    }
+
+    /**
+     * Unhide one friend's photo from the current user's Home feed.
+     */
+    fun unhideFlickFromHome(currentUserId: String, flickId: String, onResult: (Result<Unit>) -> Unit) {
+        if (currentUserId.isBlank() || flickId.isBlank()) {
+            onResult(Result.Error(IllegalArgumentException("Missing user or photo id"), "Failed to unhide photo"))
+            return
+        }
+
+        db.collection("users").document(currentUserId)
+            .update("hiddenHomeFlickIds", FieldValue.arrayRemove(flickId))
+            .addOnSuccessListener { onResult(Result.Success(Unit)) }
+            .addOnFailureListener { e -> onResult(Result.Error(e, "Failed to unhide photo")) }
     }
 
     /**
@@ -4194,13 +4383,15 @@ android.util.Log.e("FlickRepository", "Failed to submit feedback", e)
                 .limit(250)
                 .get()
                 .addOnSuccessListener { snapshot ->
-                    val flicks = snapshot.toObjects(Flick::class.java)
-                        .filter {
-                            it.privacy == "public" || it.privacy == "friends"
-                        }
-                        .sortedByDescending { it.timestamp }
-                        .take(Constants.Pagination.FLICKS_PER_PAGE)
-                    onResult(Result.Success(flicks))
+                    repositoryScope.launch {
+                        val flicks = repairFlickImageUrls(snapshot.toObjects(Flick::class.java))
+                            .filter {
+                                it.privacy == "public" || it.privacy == "friends"
+                            }
+                            .sortedByDescending { it.timestamp }
+                            .take(Constants.Pagination.FLICKS_PER_PAGE)
+                        onResult(Result.Success(flicks))
+                    }
                 }
                 .addOnFailureListener { e ->
                     onResult(Result.Error(e, "Failed to get group flicks: ${e.message}"))

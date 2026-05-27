@@ -11,6 +11,7 @@ object Constants {
      */
     object Pagination {
         const val FLICKS_PER_PAGE = 40
+        const val USER_PROFILE_FLICKS_LIMIT = 250
         const val EXPLORE_FLICKS_LIMIT = 100
         const val USERS_PER_PAGE = 100
         const val SUGGESTED_USERS_LIMIT = 20

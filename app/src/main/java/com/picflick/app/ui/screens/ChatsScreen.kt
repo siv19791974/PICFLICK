@@ -1167,7 +1167,7 @@ private fun ChatListItem(
     val unreadAccentColor = Color(0xFF2A7DFF)
     val rowBackground = when {
         isSelected -> Color(0x221565C0)
-        hasUnread && isDarkMode -> Color(0xFF10233F)
+        hasUnread && isDarkMode -> Color.Transparent
         hasUnread -> Color(0xFFEAF4FF)
         else -> Color.Transparent
     }

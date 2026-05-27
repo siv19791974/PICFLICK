@@ -182,10 +182,11 @@ fun HomeScreen(
     // Flying reaction animation state
     var flyingReaction by remember { mutableStateOf<Pair<ReactionType, Int>?>(null) }
 
-    // Load data — include personally-reported photos so they're hidden from this user's feed
-    LaunchedEffect(userProfile.uid) {
+    // Load data — include personally-reported and personally-hidden photos so they're hidden from this user's feed
+    LaunchedEffect(userProfile.uid, userProfile.hiddenHomeFlickIds) {
         val prefs = context.getSharedPreferences("picflick_reports_${userProfile.uid}", Context.MODE_PRIVATE)
         viewModel.reportedFlickIds = prefs.getStringSet("reported_flick_ids", emptySet())?.toSet() ?: emptySet()
+        viewModel.hiddenHomeFlickIds = userProfile.hiddenHomeFlickIds.toSet()
         viewModel.loadFlicks(userProfile.uid)
         viewModel.loadFriendGroups(userProfile.uid)
     }
@@ -417,6 +418,15 @@ fun HomeScreen(
             onPhotoMovedToAlbum = { movedFlick ->
                 viewModel.removeFlickFromFeed(movedFlick.id)
                 if (selectedFlick?.id == movedFlick.id) selectedFlick = null
+            },
+            onHideFromHome = { hiddenFlick ->
+                viewModel.hiddenHomeFlickIds = viewModel.hiddenHomeFlickIds + hiddenFlick.id
+                viewModel.removeFlickFromFeed(hiddenFlick.id)
+                if (selectedFlick?.id == hiddenFlick.id) selectedFlick = null
+            },
+            onUnhideFromHome = { unhiddenFlick ->
+                viewModel.hiddenHomeFlickIds = viewModel.hiddenHomeFlickIds - unhiddenFlick.id
+                viewModel.requestDebouncedFeedRefresh(userProfile.uid, delayMs = 250L)
             },
             onShareToFriend = { flickId, friendId ->
                 val flickToSend = viewModel.flicks.firstOrNull { it.id == flickId } ?: flick
@@ -1944,7 +1954,7 @@ internal fun CreateOrEditGroupDialog(
                 singleLine = true,
                 readOnly = readOnly,
                 textStyle = LocalTextStyle.current.copy(fontWeight = FontWeight.Bold),
-                placeholder = { Text("Album Name", fontWeight = FontWeight.Bold) },
+                placeholder = { Text("Album Name", color = Color.Black, fontWeight = FontWeight.Bold) },
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 12.dp, vertical = 10.dp),
@@ -2768,7 +2778,24 @@ private fun FlickGrid(
                     ?: "flick_${flick.timestamp}"
 
                 val displayName = rememberLiveUserDisplayName(flick.userId, flick.userName)
-                val gridImageUrl = flick.thumbnailUrl512.ifBlank { flick.imageUrl }
+                val gridImageCandidates = remember(
+                    flick.thumbnailUrl512,
+                    flick.thumbnailUrl1080,
+                    flick.thumbnailUrl256,
+                    flick.imageUrl
+                ) {
+                    listOf(
+                        flick.thumbnailUrl512,
+                        flick.thumbnailUrl1080,
+                        flick.thumbnailUrl256,
+                        flick.imageUrl
+                    ).map { it.trim() }
+                        .filter { it.isNotBlank() }
+                        .distinct()
+                }
+                var imageCandidateIndex by remember(stableIdentity, gridImageCandidates) { mutableIntStateOf(0) }
+                val activeCandidateIndex = imageCandidateIndex.coerceIn(0, (gridImageCandidates.size - 1).coerceAtLeast(0))
+                val gridImageUrl = gridImageCandidates.getOrNull(activeCandidateIndex).orEmpty()
                 val cacheBusted = withCacheBust(gridImageUrl, stableIdentity)
                 val imageModel = remember(stableIdentity, cacheBusted) {
                     if (cacheBusted.isNotBlank()) {
@@ -2823,7 +2850,12 @@ private fun FlickGrid(
                             model = bridgedModel,
                             contentDescription = "Photo",
                             contentScale = ContentScale.Crop,
-                            modifier = Modifier.fillMaxSize()
+                            modifier = Modifier.fillMaxSize(),
+                            onError = {
+                                if (imageCandidateIndex < gridImageCandidates.lastIndex) {
+                                    imageCandidateIndex += 1
+                                }
+                            }
                         )
                     }
 

@@ -320,16 +320,22 @@ fun NotificationsScreen(
                                         } else {
                                             if (!notification.isRead) viewModel.markAsRead(notification.id)
                                             when (notification.type) {
+                                                NotificationType.REACTION -> {
+                                                    if (!notification.chatId.isNullOrBlank()) {
+                                                        onChatClick(notification.chatId, notification.senderId, notification.senderName, notification.senderPhotoUrl)
+                                                    } else {
+                                                        val fallbackId = notification.flickId ?: notification.id
+                                                        val isCommentHeart = notification.title.contains("comment", ignoreCase = true) || !notification.commentId.isNullOrBlank()
+                                                        onPhotoClick(fallbackId, notification.flickImageUrl, notification.senderId, isCommentHeart)
+                                                    }
+                                                }
                                                 NotificationType.LIKE,
-                                                NotificationType.REACTION,
                                                 NotificationType.COMMENT,
                                                 NotificationType.COMMENT_REPLY,
                                                 NotificationType.MENTION,
                                                 NotificationType.PHOTO_ADDED -> {
                                                     val fallbackId = notification.flickId ?: notification.id
-                                                    val isCommentHeart = notification.type == NotificationType.REACTION &&
-                                                        (notification.title.contains("comment", ignoreCase = true) || !notification.commentId.isNullOrBlank())
-                                                    val openCommentsFirst = notification.type == NotificationType.COMMENT || notification.type == NotificationType.COMMENT_REPLY || isCommentHeart
+                                                    val openCommentsFirst = notification.type == NotificationType.COMMENT || notification.type == NotificationType.COMMENT_REPLY
                                                     onPhotoClick(fallbackId, notification.flickImageUrl, notification.senderId, openCommentsFirst)
                                                 }
                                                 NotificationType.FOLLOW,
@@ -367,11 +373,15 @@ fun NotificationsScreen(
                                     onDelete = { viewModel.deleteNotification(notification) },
                                     onUserProfileClick = onUserProfileClick,
                                     onPhotoClick = {
-                                        val fallbackId = notification.flickId ?: notification.id
-                                        val isCommentHeart = notification.type == NotificationType.REACTION &&
-                                            (notification.title.contains("comment", ignoreCase = true) || !notification.commentId.isNullOrBlank())
-                                        val openCommentsFirst = notification.type == NotificationType.COMMENT || isCommentHeart
-                                        onPhotoClick(fallbackId, notification.flickImageUrl, notification.senderId, openCommentsFirst)
+                                        if (notification.type == NotificationType.REACTION && !notification.chatId.isNullOrBlank()) {
+                                            onChatClick(notification.chatId, notification.senderId, notification.senderName, notification.senderPhotoUrl)
+                                        } else {
+                                            val fallbackId = notification.flickId ?: notification.id
+                                            val isCommentHeart = notification.type == NotificationType.REACTION &&
+                                                (notification.title.contains("comment", ignoreCase = true) || !notification.commentId.isNullOrBlank())
+                                            val openCommentsFirst = notification.type == NotificationType.COMMENT || isCommentHeart
+                                            onPhotoClick(fallbackId, notification.flickImageUrl, notification.senderId, openCommentsFirst)
+                                        }
                                     },
                                     onAcceptFriendRequest = { senderId ->
                                         viewModel.acceptFollowRequest(userProfile.uid, senderId, notification.id)
@@ -420,16 +430,22 @@ fun NotificationsScreen(
                                         } else {
                                             if (!notification.isRead) viewModel.markAsRead(notification.id)
                                             when (notification.type) {
+                                                NotificationType.REACTION -> {
+                                                    if (!notification.chatId.isNullOrBlank()) {
+                                                        onChatClick(notification.chatId, notification.senderId, notification.senderName, notification.senderPhotoUrl)
+                                                    } else {
+                                                        val fallbackId = notification.flickId ?: notification.id
+                                                        val isCommentHeart = notification.title.contains("comment", ignoreCase = true) || !notification.commentId.isNullOrBlank()
+                                                        onPhotoClick(fallbackId, notification.flickImageUrl, notification.senderId, isCommentHeart)
+                                                    }
+                                                }
                                                 NotificationType.LIKE,
-                                                NotificationType.REACTION,
                                                 NotificationType.COMMENT,
                                                 NotificationType.COMMENT_REPLY,
                                                 NotificationType.MENTION,
                                                 NotificationType.PHOTO_ADDED -> {
                                                     val fallbackId = notification.flickId ?: notification.id
-                                                    val isCommentHeart = notification.type == NotificationType.REACTION &&
-                                                        (notification.title.contains("comment", ignoreCase = true) || !notification.commentId.isNullOrBlank())
-                                                    val openCommentsFirst = notification.type == NotificationType.COMMENT || notification.type == NotificationType.COMMENT_REPLY || isCommentHeart
+                                                    val openCommentsFirst = notification.type == NotificationType.COMMENT || notification.type == NotificationType.COMMENT_REPLY
                                                     onPhotoClick(fallbackId, notification.flickImageUrl, notification.senderId, openCommentsFirst)
                                                 }
                                                 NotificationType.FOLLOW,
@@ -467,11 +483,15 @@ fun NotificationsScreen(
                                     onDelete = { viewModel.deleteNotification(notification) },
                                     onUserProfileClick = onUserProfileClick,
                                     onPhotoClick = {
-                                        val fallbackId = notification.flickId ?: notification.id
-                                        val isCommentHeart = notification.type == NotificationType.REACTION &&
-                                            (notification.title.contains("comment", ignoreCase = true) || !notification.commentId.isNullOrBlank())
-                                        val openCommentsFirst = notification.type == NotificationType.COMMENT || isCommentHeart
-                                        onPhotoClick(fallbackId, notification.flickImageUrl, notification.senderId, openCommentsFirst)
+                                        if (notification.type == NotificationType.REACTION && !notification.chatId.isNullOrBlank()) {
+                                            onChatClick(notification.chatId, notification.senderId, notification.senderName, notification.senderPhotoUrl)
+                                        } else {
+                                            val fallbackId = notification.flickId ?: notification.id
+                                            val isCommentHeart = notification.type == NotificationType.REACTION &&
+                                                (notification.title.contains("comment", ignoreCase = true) || !notification.commentId.isNullOrBlank())
+                                            val openCommentsFirst = notification.type == NotificationType.COMMENT || isCommentHeart
+                                            onPhotoClick(fallbackId, notification.flickImageUrl, notification.senderId, openCommentsFirst)
+                                        }
                                     },
                                     onAcceptFriendRequest = { senderId ->
                                         viewModel.acceptFollowRequest(userProfile.uid, senderId, notification.id)
@@ -664,24 +684,25 @@ private fun NotificationItem(
     val unreadAccentColor = Color(0xFF2A7DFF)
     val rowBackground = when {
         isSelected -> Color.White.copy(alpha = if (isDarkMode) 0.18f else 0.35f)
-        !notification.isRead && isDarkMode -> Color(0xFF10233F)
+        !notification.isRead && isDarkMode -> isDarkModeBackground(true)
         !notification.isRead -> Color(0xFFEAF4FF)
         isDarkMode -> isDarkModeBackground(true)
         else -> isDarkModeBackground(false)
     }
 
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(rowBackground)
-            .combinedClickable(
-                onClick = onClick,
-                onLongClick = onLongClick
-            )
-            .padding(horizontal = 10.dp, vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        if (!notification.isRead) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(rowBackground)
+                .combinedClickable(
+                    onClick = onClick,
+                    onLongClick = onLongClick
+                )
+                .padding(horizontal = 10.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            if (!notification.isRead) {
             Box(
                 modifier = Modifier
                     .width(4.dp)
@@ -886,6 +907,12 @@ private fun NotificationItem(
                 else -> Unit
             }
         }
+    }
+
+        HorizontalDivider(
+            modifier = Modifier.padding(start = 88.dp),
+            color = if (isDarkMode) Color(0xFF222222) else Color(0x22000000)
+        )
     }
 }
 
