@@ -4640,7 +4640,7 @@ android.util.Log.e("FlickRepository", "Failed to submit feedback", e)
             val groupDoc = db.collection("groups").document(groupId).get().await()
             if (!groupDoc.exists()) return false
             val group = groupDoc.toNormalizedFriendGroup() ?: return false
-            group.effectiveAdminIds().contains(userId)
+            group.isAdmin(userId)
         } catch (e: Exception) {
             false
         }
