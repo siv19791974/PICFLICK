@@ -31,6 +31,7 @@ class FlickRepository private constructor() {
 
     /** Active comment/reply listeners for safety-net cleanup */
     private val activeCommentListeners = mutableMapOf<String, ListenerRegistration>()
+    private val attemptedFriendArrayRepairs = mutableSetOf<String>()
 
     private fun com.google.firebase.firestore.DocumentSnapshot.toNormalizedUserProfile(): UserProfile? {
         val parsed = toObject(UserProfile::class.java) ?: return null
@@ -60,6 +61,70 @@ class FlickRepository private constructor() {
         if (updates.isNotEmpty()) {
             db.collection(Constants.FirebaseCollections.USERS).document(profile.uid).update(updates)
         }
+    }
+
+    private fun repairMissingFriendArraysFromInverseLinks(profile: UserProfile) {
+        if (profile.uid.isBlank()) return
+        if (profile.following.isNotEmpty() && profile.followers.isNotEmpty()) return
+        if (!attemptedFriendArrayRepairs.add(profile.uid)) return
+
+        val restoredFollowing = linkedSetOf<String>().apply { addAll(profile.following) }
+        val restoredFollowers = linkedSetOf<String>().apply { addAll(profile.followers) }
+        var completedQueries = 0
+
+        fun finishRepairIfReady() {
+            completedQueries++
+            if (completedQueries < 2) return
+
+            val updates = buildMap<String, Any> {
+                if (profile.following.isEmpty() && restoredFollowing.isNotEmpty()) {
+                    put("following", restoredFollowing.toList())
+                }
+                if (profile.followers.isEmpty() && restoredFollowers.isNotEmpty()) {
+                    put("followers", restoredFollowers.toList())
+                }
+            }
+
+            if (updates.isNotEmpty()) {
+                db.collection(Constants.FirebaseCollections.USERS)
+                    .document(profile.uid)
+                    .update(updates)
+                    .addOnSuccessListener {
+                        android.util.Log.d("FlickRepository", "Repaired missing friend arrays for ${profile.uid}: ${updates.keys}")
+                    }
+                    .addOnFailureListener { error ->
+                        android.util.Log.w("FlickRepository", "Failed to repair missing friend arrays for ${profile.uid}", error)
+                    }
+            }
+        }
+
+        db.collection(Constants.FirebaseCollections.USERS)
+            .whereArrayContains("followers", profile.uid)
+            .get()
+            .addOnSuccessListener { snapshot ->
+                snapshot.toNormalizedUserProfiles()
+                    .filterNot { it.uid == profile.uid }
+                    .forEach { restoredFollowing.add(it.uid) }
+                finishRepairIfReady()
+            }
+            .addOnFailureListener { error ->
+                android.util.Log.w("FlickRepository", "Failed to scan inverse following links for ${profile.uid}", error)
+                finishRepairIfReady()
+            }
+
+        db.collection(Constants.FirebaseCollections.USERS)
+            .whereArrayContains("following", profile.uid)
+            .get()
+            .addOnSuccessListener { snapshot ->
+                snapshot.toNormalizedUserProfiles()
+                    .filterNot { it.uid == profile.uid }
+                    .forEach { restoredFollowers.add(it.uid) }
+                finishRepairIfReady()
+            }
+            .addOnFailureListener { error ->
+                android.util.Log.w("FlickRepository", "Failed to scan inverse follower links for ${profile.uid}", error)
+                finishRepairIfReady()
+            }
     }
 
     private fun com.google.firebase.firestore.DocumentSnapshot.toNormalizedFriendGroup(): FriendGroup? {
@@ -1100,6 +1165,7 @@ class FlickRepository private constructor() {
                 val profile = doc.toNormalizedUserProfile()?.copy(uid = userId)
                 if (profile != null) {
                     repairSearchableProfileFields(doc, profile)
+                    repairMissingFriendArraysFromInverseLinks(profile)
                     _currentUserProfile.value = profile
                     onResult(Result.Success(profile))
                 } else {
@@ -1137,6 +1203,7 @@ class FlickRepository private constructor() {
                         val profile = snapshot.toNormalizedUserProfile()?.copy(uid = userId)
                         if (profile != null) {
                             repairSearchableProfileFields(snapshot, profile)
+                            repairMissingFriendArraysFromInverseLinks(profile)
                             _currentUserProfile.value = profile
                             onResult(Result.Success(profile))
                         } else {
@@ -1155,11 +1222,11 @@ class FlickRepository private constructor() {
 
         db.collection(Constants.FirebaseCollections.FLICKS)
             .whereEqualTo("userId", userId)
+            .orderBy("timestamp", Query.Direction.DESCENDING)
             .limit(200)
             .get()
             .addOnSuccessListener { snapshot ->
                 val photoUrl = snapshot.documents
-                    .sortedByDescending { it.getLong("timestamp") ?: 0L }
                     .asSequence()
                     .mapNotNull { it.getString("userPhotoUrl")?.takeIf { url -> url.isNotBlank() } }
                     .firstOrNull()
@@ -1177,8 +1244,8 @@ class FlickRepository private constructor() {
             displayNameLower = profile.displayName.trim().lowercase(Locale.getDefault())
         )
 
-        // Never let a full-profile merge clear an existing avatar with the data-class default "".
-        // This protects users during app updates/startup profile syncs where photoUrl may be absent locally.
+        // Never let a full-profile merge clear existing avatar/social fields with data-class defaults.
+        // Friendship arrays are relationship state and should only be changed by explicit follow/unfollow/request methods.
         val profileData = mutableMapOf<String, Any?>(
             "uid" to normalizedProfile.uid,
             "email" to normalizedProfile.email,
@@ -1186,10 +1253,6 @@ class FlickRepository private constructor() {
             "displayNameLower" to normalizedProfile.displayNameLower,
             "phoneNumber" to normalizedProfile.phoneNumber,
             "bio" to normalizedProfile.bio,
-            "followers" to normalizedProfile.followers,
-            "following" to normalizedProfile.following,
-            "pendingFollowRequests" to normalizedProfile.pendingFollowRequests,
-            "sentFollowRequests" to normalizedProfile.sentFollowRequests,
             "blockedUsers" to normalizedProfile.blockedUsers,
             "mutedUsers" to normalizedProfile.mutedUsers,
             "hiddenHomeFlickIds" to normalizedProfile.hiddenHomeFlickIds,
@@ -2261,6 +2324,26 @@ class FlickRepository private constructor() {
             } catch (e: Exception) {
                 // Silently fail - don't block photo upload, but log for debugging
                 android.util.Log.e("NotificationDebug", "Failed to create photo notifications: ${e.message}", e)
+            }
+        }
+    }
+
+    fun refreshUserPhotoUrlOnRecentFlicks(userId: String, photoUrl: String) {
+        if (userId.isBlank() || photoUrl.isBlank()) return
+        repositoryScope.launch {
+            try {
+                val snapshot = db.collection(Constants.FirebaseCollections.FLICKS)
+                    .whereEqualTo("userId", userId)
+                    .orderBy("timestamp", Query.Direction.DESCENDING)
+                    .limit(200)
+                    .get()
+                    .await()
+
+                snapshot.documents.forEach { doc ->
+                    doc.reference.update("userPhotoUrl", photoUrl)
+                }
+            } catch (e: Exception) {
+                android.util.Log.w("FlickRepository", "Failed to refresh flick profile photo URLs for $userId", e)
             }
         }
     }
