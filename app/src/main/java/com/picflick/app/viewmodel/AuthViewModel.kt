@@ -47,6 +47,7 @@ class AuthViewModel : ViewModel() {
     private var profileListener: ListenerRegistration? = null
     private var authStateListener: FirebaseAuth.AuthStateListener? = null
     private val profilePhotoRecoveryInFlight = mutableSetOf<String>()
+    private val profileBootstrapInFlight = mutableSetOf<String>()
 
     /**
      * Optimistically update the local userProfile subscription tier immediately.
@@ -82,6 +83,7 @@ class AuthViewModel : ViewModel() {
             }
 
             val uid = user.uid
+            bootstrapCurrentUserProfile(user)
             if (profileListener == null || userProfile?.uid != uid) {
                 startProfileListener(uid)
             }
@@ -115,6 +117,7 @@ class AuthViewModel : ViewModel() {
                     errorMessage = null
                 }
                 is Result.Error -> {
+                    currentUser?.takeIf { it.uid == uid }?.let { bootstrapCurrentUserProfile(it) }
                     errorMessage = result.message
                     isLoading = false
                 }
@@ -175,6 +178,7 @@ class AuthViewModel : ViewModel() {
                     android.util.Log.d("AuthViewModel", "Profile loaded successfully: ${profile.displayName}")
                 }
                 is Result.Error -> {
+                    currentUser?.takeIf { it.uid == uid }?.let { bootstrapCurrentUserProfile(it) }
                     errorMessage = result.message
                     isLoading = false
                     android.util.Log.e("AuthViewModel", "Profile load failed: ${result.message}")
@@ -263,6 +267,17 @@ class AuthViewModel : ViewModel() {
         }
     }
 
+    private fun bootstrapCurrentUserProfile(user: FirebaseUser) {
+        if (!profileBootstrapInFlight.add(user.uid)) return
+
+        saveUserToFirestore(user) { success, message ->
+            profileBootstrapInFlight.remove(user.uid)
+            if (!success && !message.isNullOrBlank()) {
+                Log.w("AuthViewModel", "Profile bootstrap failed for ${user.uid}: $message")
+            }
+        }
+    }
+
     /**
      * Save user to Firestore after successful sign in
      * BUT only if profile doesn't already exist (preserves existing bio, photo, etc.)
@@ -326,9 +341,10 @@ class AuthViewModel : ViewModel() {
                         }
                     }
                     is Result.Error -> {
-                        // Only create a new profile when truly missing; don't overwrite on transient read errors.
+                        // If Auth exists but Firestore profile is missing, create/merge a safe seed doc.
+                        // This also repairs accounts that were created in Firebase Auth but never got users/{uid}.
                         val msg = existingResult.message.lowercase()
-                        if (msg.contains("not found")) {
+                        if (msg.contains("not found") || msg.contains("missing")) {
                             createNewProfile(user, preferredDisplayName, onComplete)
                         } else {
                             errorMessage = existingResult.message
