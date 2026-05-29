@@ -4,6 +4,47 @@ const admin = require('firebase-admin');
 // Initialize Firebase Admin
 admin.initializeApp();
 
+const DEV_UIDS = ['LpSqE40IZGeAGMknTAEzysqp5l33', 'cuj8dU3zNMN9TELEU2qmPR6Np5A2'];
+
+function isPlaceholderDisplayName(name) {
+  const normalized = String(name || '').trim().toLowerCase();
+  return !normalized || normalized === 'picflick user' || normalized === 'unknown user' || normalized === 'user';
+}
+
+function authUserToProfileSeed(userRecord, existingData = {}) {
+  const fallbackName = String(userRecord.displayName || '').trim()
+    || String(userRecord.email || '').split('@')[0]
+    || 'PicFlick User';
+  const existingDisplayName = String(existingData.displayName || '').trim();
+  const displayName = isPlaceholderDisplayName(existingDisplayName) ? fallbackName : existingDisplayName;
+  const creationMillis = Date.parse(userRecord.metadata?.creationTime || '') || Date.now();
+  const seed = {
+    uid: userRecord.uid,
+    email: existingData.email || userRecord.email || '',
+    displayName,
+    displayNameLower: displayName.toLowerCase(),
+    joinedAt: existingData.joinedAt || creationMillis,
+    schemaVersion: existingData.schemaVersion || 2,
+  };
+
+  const existingPhotoUrl = String(existingData.photoUrl || '').trim();
+  const authPhotoUrl = String(userRecord.photoURL || '').trim();
+  if (existingPhotoUrl || authPhotoUrl) {
+    seed.photoUrl = existingPhotoUrl || authPhotoUrl;
+  }
+
+  return seed;
+}
+
+async function ensureFirestoreUserProfile(userRecord) {
+  const userRef = admin.firestore().collection('users').doc(userRecord.uid);
+  const snapshot = await userRef.get();
+  const existingData = snapshot.exists ? (snapshot.data() || {}) : {};
+  const seed = authUserToProfileSeed(userRecord, existingData);
+  await userRef.set(seed, { merge: true });
+  return { created: !snapshot.exists, uid: userRecord.uid, displayName: seed.displayName };
+}
+
 // Emergency runtime kill-switch loaded from Firestore appConfig/functions.
 // Set appConfig/functions.disableTriggers = true to globally disable triggers.
 // Also checks appConfig/featureFlags.panicMode (set from Developer menu).
@@ -56,6 +97,68 @@ async function shouldSkipMythicScheduledPush(triggerName) {
 
   return false;
 }
+
+/**
+ * Server-side safety net: whenever Firebase Auth creates a user, ensure users/{uid} exists.
+ * This protects Google/email signups if the app client profile write fails or is interrupted.
+ */
+exports.createUserProfileOnAuthCreate = functions
+  .runWith({ memory: '256MB', timeoutSeconds: 60 })
+  .auth
+  .user()
+  .onCreate(async (userRecord) => {
+    if (await shouldSkipTrigger('createUserProfileOnAuthCreate')) return null;
+    const result = await ensureFirestoreUserProfile(userRecord);
+    console.log('Ensured Firestore profile for Auth user:', JSON.stringify(result));
+    return null;
+  });
+
+/**
+ * Developer-only callable: backfill Firestore profiles for Firebase Auth users missing users/{uid}.
+ * Useful for repairing signups that happened before createUserProfileOnAuthCreate existed.
+ */
+exports.backfillMissingAuthUserProfiles = functions
+  .runWith({ memory: '512MB', timeoutSeconds: 540 })
+  .https
+  .onCall(async (data, context) => {
+    const callerUid = context.auth?.uid;
+    if (!callerUid) {
+      throw new functions.https.HttpsError('unauthenticated', 'Authentication required');
+    }
+    if (!DEV_UIDS.includes(callerUid)) {
+      throw new functions.https.HttpsError('permission-denied', 'Developer access required');
+    }
+
+    const dryRun = data?.dryRun === true;
+    const maxUsers = Math.min(Math.max(Number(data?.maxUsers || 1000), 1), 1000);
+    let nextPageToken = data?.pageToken || undefined;
+    let scanned = 0;
+    let missing = 0;
+    let repaired = 0;
+    const repairedUsers = [];
+
+    do {
+      const page = await admin.auth().listUsers(Math.min(1000, maxUsers - scanned), nextPageToken);
+      nextPageToken = page.pageToken;
+      for (const userRecord of page.users) {
+        if (scanned >= maxUsers) break;
+        scanned++;
+        const userRef = admin.firestore().collection('users').doc(userRecord.uid);
+        const userDoc = await userRef.get();
+        if (!userDoc.exists) {
+          missing++;
+          const seed = authUserToProfileSeed(userRecord, {});
+          repairedUsers.push({ uid: userRecord.uid, email: seed.email, displayName: seed.displayName });
+          if (!dryRun) {
+            await userRef.set(seed, { merge: true });
+            repaired++;
+          }
+        }
+      }
+    } while (nextPageToken && scanned < maxUsers);
+
+    return { success: true, dryRun, scanned, missing, repaired, nextPageToken: nextPageToken || null, repairedUsers };
+  });
 
 /**
  * Cloud Function: Send push notification when a new notification document is created
