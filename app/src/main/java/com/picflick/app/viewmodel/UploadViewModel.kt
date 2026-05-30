@@ -208,14 +208,13 @@ class UploadViewModel : ViewModel() {
                     return@launch
                 }
 
-                // Verify album upload permission (only owner/admins can add photos)
-                val effectiveSharedGroupId = if (sharedGroupId.isNotBlank() && !flickRepository.canUploadToGroup(userProfile.uid, sharedGroupId)) {
-                    android.util.Log.w("UploadViewModel", "User ${userProfile.uid} is not admin of group $sharedGroupId — uploading to feed instead")
-                    ""
-                } else {
-                    sharedGroupId
+                // Verify album upload permission (only owner/admins can add photos).
+                // Never fall back to Home/feed for album-targeted uploads; that causes a visible Home flash.
+                if (sharedGroupId.isNotBlank() && !flickRepository.canUploadToGroup(userProfile.uid, sharedGroupId)) {
+                    android.util.Log.w("UploadViewModel", "User ${userProfile.uid} cannot upload to group $sharedGroupId — aborting album upload")
+                    uploadError = "Could not add photo to this album. Please reopen the album and try again."
+                    return@launch
                 }
-
                 isUploading = true
                 uploadError = null
                 uploadSuccess = false
@@ -232,7 +231,7 @@ class UploadViewModel : ViewModel() {
                     reactions = emptyMap(),
                     commentCount = 0,
                     privacy = "friends",
-                    sharedGroupId = effectiveSharedGroupId,
+                    sharedGroupId = sharedGroupId,
                     taggedFriends = taggedFriends,
                     clientUploadId = clientUploadId
                 )
@@ -256,7 +255,7 @@ class UploadViewModel : ViewModel() {
                     reactions = emptyMap(),
                     commentCount = 0,
                     privacy = "friends",
-                    sharedGroupId = effectiveSharedGroupId,
+                    sharedGroupId = sharedGroupId,
                     taggedFriends = taggedFriends,
                     imageSizeBytes = uploadResult.uploadedBytes,
                     clientUploadId = clientUploadId,
@@ -282,7 +281,7 @@ class UploadViewModel : ViewModel() {
 
                 onOptimisticRemove?.invoke(optimisticFlickId, true)
                 uploadSuccess = true
-                Analytics.trackPhotoUploaded(source = "single", privacy = if (effectiveSharedGroupId.isBlank()) "friends" else "album")
+                Analytics.trackPhotoUploaded(source = "single", privacy = if (sharedGroupId.isBlank()) "friends" else "album")
 
             } catch (e: Exception) {
                 optimisticFlickId?.let { onOptimisticRemove?.invoke(it, false) }
@@ -345,14 +344,13 @@ class UploadViewModel : ViewModel() {
                 return@launch
             }
 
-            // Verify album upload permission (only owner/admins can add photos)
-            val effectiveSharedGroupId = if (sharedGroupId.isNotBlank() && !flickRepository.canUploadToGroup(userProfile.uid, sharedGroupId)) {
-                android.util.Log.w("UploadViewModel", "User ${userProfile.uid} is not admin of group $sharedGroupId — uploading to feed instead")
-                ""
-            } else {
-                sharedGroupId
+            // Verify album upload permission (only owner/admins can add photos).
+            // Never fall back to Home/feed for album-targeted uploads; that causes a visible Home flash.
+            if (sharedGroupId.isNotBlank() && !flickRepository.canUploadToGroup(userProfile.uid, sharedGroupId)) {
+                android.util.Log.w("UploadViewModel", "User ${userProfile.uid} cannot upload to group $sharedGroupId — aborting album batch upload")
+                uploadError = "Could not add photos to this album. Please reopen the album and try again."
+                return@launch
             }
-
             isUploading = true
             uploadError = null
             uploadSuccess = false
@@ -386,7 +384,7 @@ class UploadViewModel : ViewModel() {
                         reactions = emptyMap(),
                         commentCount = 0,
                         privacy = "friends",
-                        sharedGroupId = effectiveSharedGroupId,
+                        sharedGroupId = sharedGroupId,
                         taggedFriends = emptyList(),
                         clientUploadId = clientUploadId
                     )
@@ -407,7 +405,7 @@ class UploadViewModel : ViewModel() {
                         reactions = emptyMap(),
                         commentCount = 0,
                         privacy = "friends",
-                        sharedGroupId = effectiveSharedGroupId,
+                        sharedGroupId = sharedGroupId,
                         taggedFriends = emptyList(),
                         imageSizeBytes = uploadResult.uploadedBytes,
                         clientUploadId = clientUploadId,
@@ -443,7 +441,7 @@ class UploadViewModel : ViewModel() {
 
             if (successCount > 0) {
                 uploadSuccess = true
-                Analytics.trackPhotoUploaded(source = "batch", privacy = if (effectiveSharedGroupId.isBlank()) "friends" else "album")
+                Analytics.trackPhotoUploaded(source = "batch", privacy = if (sharedGroupId.isBlank()) "friends" else "album")
                 onBatchSuccess?.invoke()
             }
             if (failCount > 0) {

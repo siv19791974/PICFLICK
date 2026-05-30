@@ -7,11 +7,13 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 
 import android.graphics.ColorMatrixColorFilter
 import androidx.compose.animation.*
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -33,6 +35,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.ui.layout.ContentScale
@@ -62,6 +65,7 @@ import com.picflick.app.data.PhotoFilter
 import com.picflick.app.data.UserProfile
 import com.picflick.app.data.getDailyUploadLimit
 import com.picflick.app.data.getImageQuality
+import com.picflick.app.ui.components.TagFriendsSheet
 import com.picflick.app.ui.theme.ThemeManager
 import com.picflick.app.ui.theme.isDarkModeBackground
 import com.picflick.app.ui.theme.PicFlickLightBackground
@@ -820,14 +824,14 @@ fun FilterScreen(
 
     // Friend Picker Dialog
     if (showFriendPicker) {
-        FriendPickerDialog(
+        TagFriendsSheet(
             friends = friends,
-            alreadyTagged = taggedFriends.map { it.uid },
+            initiallyTaggedIds = taggedFriends.map { it.uid },
+            previewBitmap = bitmap,
             onDismiss = { showFriendPicker = false },
-            onFriendSelected = { friend ->
-                if (friend !in taggedFriends) {
-                    taggedFriends = taggedFriends + friend
-                }
+            onSaveTaggedFriendIds = { selectedIds ->
+                taggedFriends = friends.filter { it.uid in selectedIds }
+                showFriendPicker = false
             },
             onNavigateToFindFriends = onNavigateToFindFriends
         )
@@ -1308,145 +1312,6 @@ private fun TaggedFriendChip(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun FriendPickerDialog(
-    friends: List<UserProfile>,
-    alreadyTagged: List<String>,
-    title: String = "Tag Friends",
-    onDismiss: () -> Unit,
-    onFriendSelected: (UserProfile) -> Unit,
-    onNavigateToFindFriends: () -> Unit
-) {
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-        containerColor = Color(0xFF1C1C1E),
-        contentColor = Color.White
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 20.dp)
-        ) {
-                            Text(
-                    text = title,
-                    color = Color.White,
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(bottom = 16.dp)
-                )
-            
-            if (friends.isEmpty()) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 32.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Person,
-                            contentDescription = null,
-                            tint = Color.White.copy(alpha = 0.4f),
-                            modifier = Modifier.size(48.dp)
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            text = "No friends yet",
-                            color = Color.Gray,
-                            fontSize = 14.sp
-                        )
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Button(
-                            onClick = {
-                                onDismiss()
-                                onNavigateToFindFriends()
-                            },
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = Color(0xFF2A4A73),
-                                contentColor = Color.White
-                            )
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.PersonAdd,
-                                contentDescription = null,
-                                modifier = Modifier.size(18.dp)
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(stringResource(R.string.filter_find_friends))
-                        }
-                    }
-                }
-            } else {
-                friends.filter { it.uid !in alreadyTagged }.forEach { friend ->
-                    FriendPickerItem(
-                        friend = friend,
-                        onClick = {
-                            onFriendSelected(friend)
-                            onDismiss()
-                        }
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun FriendPickerItem(
-    friend: UserProfile,
-    onClick: () -> Unit
-) {
-    val liveFriendPhoto = rememberLiveUserPhotoUrl(friend.uid, friend.photoUrl)
-    val tierRingColor = rememberLiveUserTierColor(friend.uid)
-
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        // Profile photo with white border
-        Box(
-            modifier = Modifier
-                .size(48.dp)
-                .clip(CircleShape)
-                .background(Color.Gray.copy(alpha = 0.4f))
-                .border(2.dp, tierRingColor, CircleShape),
-            contentAlignment = Alignment.Center
-        ) {
-            if (liveFriendPhoto.isNotBlank()) {
-                AsyncImage(
-                    model = liveFriendPhoto,
-                    contentDescription = null,
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop
-                )
-            } else {
-                Text(
-                    text = friend.displayName.firstOrNull()?.uppercase() ?: "?",
-                    color = Color.White,
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-        }
-        
-        Spacer(modifier = Modifier.width(16.dp))
-        
-        Text(
-            text = friend.displayName,
-            color = Color.White,
-            fontSize = 16.sp,
-            fontWeight = FontWeight.Medium
-        )
-    }
-}
-
 @Composable
 private fun FilteredImage(
     bitmap: Bitmap,
@@ -1713,3 +1578,4 @@ private suspend fun applyFilterAndSave(
         Uri.fromFile(tempFile)
     }
 }
+

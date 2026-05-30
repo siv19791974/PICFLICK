@@ -426,12 +426,18 @@ fun MainScreen(
             val report = CrashReporter.getPendingCrashReport(appContext)
             if (report != null) {
                 val (message, stackTrace, time) = report
-                val userId = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid ?: "unknown"
-                val userName = authViewModel.userProfile?.displayName ?: "Unknown User"
+                val firebaseUser = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser
+                val userId = firebaseUser?.uid ?: "unknown"
+                val userName = authViewModel.userProfile?.displayName
+                    ?.takeIf { it.isNotBlank() && !it.equals("Unknown User", ignoreCase = true) }
+                    ?: firebaseUser?.displayName?.takeIf { it.isNotBlank() }
+                    ?: firebaseUser?.email?.substringBefore("@")?.takeIf { it.isNotBlank() }
+                    ?: "Unknown User"
+                val userEmail = firebaseUser?.email?.takeIf { it.isNotBlank() } ?: "crash@picflick.app"
                 val result = FlickRepository.getInstance().submitFeedback(
                     userId = userId,
                     userName = userName,
-                    userEmail = "crash@picflick.app",
+                    userEmail = userEmail,
                     subject = "Auto Crash Report",
                     message = "Crash at ${java.util.Date(time)}: $message\n\n$stackTrace",
                     category = "CRASH_REPORT",
@@ -1361,7 +1367,8 @@ fun MainScreen(
                             }
                         }
                     },
-                    unreadMessages = if (profileReady) chatViewModel.unreadCount else 0
+                    unreadMessages = if (profileReady) chatViewModel.unreadCount else 0,
+                    friendRequestCount = if (profileReady) userProfile?.pendingFollowRequests?.size ?: 0 else 0
                 )
             }
         }
@@ -1549,7 +1556,11 @@ fun MainScreen(
 
             if (showBatchAlbumDialog && pendingBatchUris.isNotEmpty() && userProfile != null) {
                 val profile = userProfile
-                val adminGroups = homeViewModel.friendGroups.filter { it.isAdmin(profile.uid) }
+                val adminGroups = homeViewModel.friendGroups
+                    .asSequence()
+                    .filter { group -> group.id.isNotBlank() && !group.isChatGroup && group.isAdmin(profile.uid) }
+                    .distinctBy { it.id }
+                    .toList()
                 AddPhotoStyleActionSheet(
                     title = "Add ${pendingBatchUris.size} photo(s) to",
                     options = buildList {

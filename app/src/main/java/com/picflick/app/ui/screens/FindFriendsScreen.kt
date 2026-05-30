@@ -197,9 +197,11 @@ private fun DiscoverTab(
             )
 
             // All Users Section - Filter out already followed friends
-            val filteredSuggestedUsers = viewModel.suggestedUsers.filter { user ->
-                !userProfile.following.contains(user.uid) && user.uid != userProfile.uid
-            }
+            val filteredSuggestedUsers = viewModel.suggestedUsers
+                .filter { user ->
+                    !userProfile.following.contains(user.uid) && user.uid != userProfile.uid
+                }
+                .distinctBy { it.uid }
 
             // Sort by mutual friends (high -> low), while keeping priority requester pinned first when applicable
             val orderedSuggestedUsers = remember(filteredSuggestedUsers, priorityRequesterId, userProfile.followers, userProfile.following) {
@@ -341,9 +343,10 @@ private fun DiscoverTab(
                 } else if (viewModel.searchResults.isEmpty()) {
                     EmptySearchState()
                 } else {
+                    val uniqueSearchResults = viewModel.searchResults.distinctBy { it.uid }
                     LazyColumn {
                         items(
-                            items = viewModel.searchResults,
+                            items = uniqueSearchResults,
                             key = { it.uid },
                             contentType = { "search_user" }
                         ) { user ->

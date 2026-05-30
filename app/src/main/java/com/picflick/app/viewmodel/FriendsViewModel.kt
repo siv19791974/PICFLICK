@@ -141,8 +141,12 @@ class FriendsViewModel : ViewModel() {
             when (result) {
                 is Result.Success -> {
                     searchResults.clear()
-                    // Filter out current user
-                    searchResults.addAll(result.data.filter { it.uid != currentUserId })
+                    // Filter out current user and guarantee unique lazy-list keys
+                    searchResults.addAll(
+                        result.data
+                            .filter { it.uid != currentUserId }
+                            .distinctBy { it.uid }
+                    )
                 }
                 is Result.Error -> {
                     errorMessage = result.message
@@ -166,7 +170,7 @@ class FriendsViewModel : ViewModel() {
             when (result) {
                 is Result.Success -> {
                     suggestedUsers.clear()
-                    suggestedUsers.addAll(result.data)
+                    suggestedUsers.addAll(result.data.distinctBy { it.uid })
                 }
                 is Result.Error -> {
                     errorMessage = result.message
@@ -188,7 +192,7 @@ class FriendsViewModel : ViewModel() {
             when (result) {
                 is Result.Success -> {
                     suggestedUsers.clear()
-                    suggestedUsers.addAll(result.data)
+                    suggestedUsers.addAll(result.data.distinctBy { it.uid })
                     // Check if we got a full page (100 users)
                     canLoadMore = result.data.size >= 100
                 }

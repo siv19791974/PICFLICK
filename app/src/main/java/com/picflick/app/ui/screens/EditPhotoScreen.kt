@@ -5,11 +5,13 @@ import android.graphics.ColorMatrix
 import androidx.activity.compose.rememberLauncherForActivityResult
 
 import android.graphics.ColorMatrixColorFilter
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -28,6 +30,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.ui.layout.ContentScale
@@ -55,6 +58,7 @@ import com.google.firebase.crashlytics.FirebaseCrashlytics
 import com.google.firebase.firestore.FirebaseFirestore
 import com.picflick.app.data.UserProfile
 import com.picflick.app.data.getImageQuality
+import com.picflick.app.ui.components.TagFriendsSheet
 import com.picflick.app.ui.theme.ThemeManager
 import com.picflick.app.ui.theme.isDarkModeBackground
 import com.picflick.app.ui.theme.PicFlickLightBackground
@@ -582,48 +586,16 @@ fun EditPhotoScreen(
     }
 
     if (showTagDialog) {
-        ModalBottomSheet(
-            onDismissRequest = { showTagDialog = false },
-            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-            containerColor = Color(0xFF1C1C1E),
-            contentColor = Color.White
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 20.dp)
-            ) {
-                Text(
-                    text = "Tag Friends",
-                    color = Color.White,
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(bottom = 16.dp)
-                )
-
-                if (followingUsers.isEmpty()) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 32.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text("No friends available to tag yet.", color = Color.Gray)
-                    }
-                } else {
-                    followingUsers.forEach { friend ->
-                        val isTagged = taggedFriendIds.contains(friend.uid)
-                        EditFriendPickerItem(
-                            friend = friend,
-                            isTagged = isTagged,
-                            onClick = {
-                                taggedFriendIds = if (isTagged) taggedFriendIds - friend.uid else taggedFriendIds + friend.uid
-                            }
-                        )
-                    }
-                }
+        TagFriendsSheet(
+            friends = followingUsers,
+            initiallyTaggedIds = taggedFriendIds,
+            previewBitmap = bitmap,
+            onDismiss = { showTagDialog = false },
+            onSaveTaggedFriendIds = { selectedIds ->
+                taggedFriendIds = selectedIds
+                showTagDialog = false
             }
-        }
+        )
     }
 }
 
@@ -676,67 +648,6 @@ private fun EditTaggedFriendChip(
                     modifier = Modifier.size(14.dp)
                 )
             }
-        }
-    }
-}
-
-@Composable
-private fun EditFriendPickerItem(
-    friend: UserProfile,
-    isTagged: Boolean,
-    onClick: () -> Unit
-) {
-    val liveFriendPhoto = rememberLiveUserPhotoUrl(friend.uid, friend.photoUrl)
-    val tierRingColor = rememberLiveUserTierColor(friend.uid)
-
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(vertical = 10.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Box(
-            modifier = Modifier
-                .size(44.dp)
-                .clip(CircleShape)
-                .border(2.dp, tierRingColor, CircleShape)
-                .background(Color.Gray.copy(alpha = 0.3f)),
-            contentAlignment = Alignment.Center
-        ) {
-            if (liveFriendPhoto.isNotBlank()) {
-                AsyncImage(
-                    model = liveFriendPhoto,
-                    contentDescription = null,
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop
-                )
-            } else {
-                Icon(
-                    imageVector = Icons.Default.Person,
-                    contentDescription = null,
-                    tint = Color.White
-                )
-            }
-        }
-
-        Spacer(modifier = Modifier.width(12.dp))
-
-        Text(
-            text = friend.displayName,
-            color = Color.White,
-            fontSize = 16.sp,
-            modifier = Modifier.weight(1f),
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis
-        )
-
-        if (isTagged) {
-            Icon(
-                imageVector = Icons.Default.Check,
-                contentDescription = null,
-                tint = Color(0xFF2A4A73)
-            )
         }
     }
 }
@@ -1175,3 +1086,4 @@ private suspend fun loadBitmapFromUrl(context: android.content.Context, url: Str
         null
     }
 }
+

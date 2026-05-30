@@ -504,7 +504,34 @@ exports.sendFeedbackPushToDeveloper = functions
       }
 
       const category = (feedback.category || 'GENERAL').toUpperCase();
-      const senderName = feedback.userName || 'Unknown user';
+      const feedbackUserId = String(feedback.userId || '').trim();
+      let senderName = String(feedback.userName || '').trim();
+
+      if (isPlaceholderDisplayName(senderName) && feedbackUserId && feedbackUserId !== 'unknown') {
+        try {
+          const senderDoc = await admin.firestore().collection('users').doc(feedbackUserId).get();
+          const senderData = senderDoc.exists ? (senderDoc.data() || {}) : {};
+          senderName = String(senderData.displayName || '').trim() || senderName;
+        } catch (profileError) {
+          console.warn('Unable to resolve feedback sender profile:', feedbackUserId, profileError.message || profileError);
+        }
+      }
+
+      if (isPlaceholderDisplayName(senderName) && feedbackUserId && feedbackUserId !== 'unknown') {
+        try {
+          const authUser = await admin.auth().getUser(feedbackUserId);
+          senderName = String(authUser.displayName || '').trim()
+            || String(authUser.email || '').split('@')[0]
+            || senderName;
+        } catch (authError) {
+          console.warn('Unable to resolve feedback sender auth user:', feedbackUserId, authError.message || authError);
+        }
+      }
+
+      if (isPlaceholderDisplayName(senderName)) {
+        senderName = String(feedback.userEmail || '').split('@')[0] || 'Unknown user';
+      }
+
       const title = `New Contact Us: ${category}`;
       const body = `${senderName}: ${(feedback.subject || 'No subject').toString().slice(0, 80)}`;
 
@@ -517,9 +544,9 @@ exports.sendFeedbackPushToDeveloper = functions
         data: {
           type: 'SUPPORT_FEEDBACK',
           feedbackId: context.params.feedbackId,
-          senderId: feedback.userId || '',
+          senderId: feedbackUserId,
           senderName,
-          targetScreen: 'settings',
+          targetScreen: 'developer',
           click_action: 'FLUTTER_NOTIFICATION_CLICK',
         },
         android: {

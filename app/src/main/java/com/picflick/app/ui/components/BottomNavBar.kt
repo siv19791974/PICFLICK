@@ -40,6 +40,7 @@ fun BottomNavBar(
     currentRoute: String,
     onNavigate: (String) -> Unit,
     unreadMessages: Int = 0,
+    friendRequestCount: Int = 0,
     activeAlbum: FriendGroup? = null
 ) {
     NavigationBar(
@@ -101,7 +102,7 @@ fun BottomNavBar(
                     badge = {
                         if (unreadMessages > 0) {
                             Badge(
-                                containerColor = Color(0xFF2A4A73),
+                                containerColor = Color.Red,
                                 contentColor = Color.White
                             ) {
                                 Text(
@@ -144,11 +145,27 @@ fun BottomNavBar(
 
         NavigationBarItem(
             icon = {
-                Icon(
-                    imageVector = if (currentRoute == "friends") Icons.Filled.People else Icons.Outlined.People,
-                    contentDescription = "Friends",
-                    tint = if (currentRoute == "friends") Color.White else Color.LightGray
-                )
+                BadgedBox(
+                    badge = {
+                        if (friendRequestCount > 0) {
+                            Badge(
+                                containerColor = Color.Red,
+                                contentColor = Color.White
+                            ) {
+                                Text(
+                                    text = if (friendRequestCount > 99) "99+" else friendRequestCount.toString(),
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+                    }
+                ) {
+                    Icon(
+                        imageVector = if (currentRoute == "friends") Icons.Filled.People else Icons.Outlined.People,
+                        contentDescription = "Friends",
+                        tint = if (currentRoute == "friends") Color.White else Color.LightGray
+                    )
+                }
             },
             label = null,
             alwaysShowLabel = false,

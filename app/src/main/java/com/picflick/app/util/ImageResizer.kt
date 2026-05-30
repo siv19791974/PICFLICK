@@ -3,12 +3,15 @@ package com.picflick.app.util
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.Matrix
 import android.net.Uri
+import androidx.exifinterface.media.ExifInterface
+import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 
 /**
  * Utility for resizing images to create thumbnails.
- * Generates 256px and 512px JPEG thumbnails with configurable quality.
+ * Generates 512px and 1080px JPEG thumbnails with configurable quality.
  */
 object ImageResizer {
 
@@ -18,6 +21,7 @@ object ImageResizer {
 
     /**
      * Resize an image from a Uri to a square-ish max-dimension thumbnail.
+     * Applies EXIF orientation before compressing so portrait photos stay upright.
      *
      * @param context Android context for ContentResolver
      * @param photoUri Source image URI
@@ -32,6 +36,10 @@ object ImageResizer {
         quality: Int = THUMBNAIL_QUALITY
     ): ByteArray? {
         return try {
+            val orientation = context.contentResolver.openInputStream(photoUri)?.use { input ->
+                readExifOrientation(input.readBytes())
+            } ?: ExifInterface.ORIENTATION_NORMAL
+
             val options = BitmapFactory.Options().apply {
                 inJustDecodeBounds = true
             }
@@ -47,13 +55,17 @@ object ImageResizer {
                 BitmapFactory.decodeStream(input, null, options)
             } ?: return null
 
-            val scaledBitmap = scaleBitmap(bitmap, maxDimension)
+            val orientedBitmap = applyExifOrientation(bitmap, orientation)
+            val scaledBitmap = scaleBitmap(orientedBitmap, maxDimension)
             val outputStream = ByteArrayOutputStream()
             scaledBitmap.compress(Bitmap.CompressFormat.JPEG, quality, outputStream)
 
             // Clean up bitmaps
-            if (scaledBitmap != bitmap) {
+            if (scaledBitmap !== orientedBitmap) {
                 scaledBitmap.recycle()
+            }
+            if (orientedBitmap !== bitmap) {
+                orientedBitmap.recycle()
             }
             bitmap.recycle()
 
@@ -67,6 +79,7 @@ object ImageResizer {
     /**
      * Resize a ByteArray image to a thumbnail.
      * Useful when image is already in memory as bytes.
+     * Applies EXIF orientation before compressing so portrait photos stay upright.
      */
     fun resizeBytesToThumbnail(
         imageBytes: ByteArray,
@@ -74,6 +87,7 @@ object ImageResizer {
         quality: Int = THUMBNAIL_QUALITY
     ): ByteArray? {
         return try {
+            val orientation = readExifOrientation(imageBytes)
             val options = BitmapFactory.Options().apply {
                 inJustDecodeBounds = true
             }
@@ -85,12 +99,16 @@ object ImageResizer {
             val bitmap = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.size, options)
                 ?: return null
 
-            val scaledBitmap = scaleBitmap(bitmap, maxDimension)
+            val orientedBitmap = applyExifOrientation(bitmap, orientation)
+            val scaledBitmap = scaleBitmap(orientedBitmap, maxDimension)
             val outputStream = ByteArrayOutputStream()
             scaledBitmap.compress(Bitmap.CompressFormat.JPEG, quality, outputStream)
 
-            if (scaledBitmap != bitmap) {
+            if (scaledBitmap !== orientedBitmap) {
                 scaledBitmap.recycle()
+            }
+            if (orientedBitmap !== bitmap) {
+                orientedBitmap.recycle()
             }
             bitmap.recycle()
 
@@ -99,6 +117,39 @@ object ImageResizer {
             android.util.Log.w("ImageResizer", "Failed to resize bytes to $maxDimension", e)
             null
         }
+    }
+
+    private fun readExifOrientation(imageBytes: ByteArray): Int {
+        return try {
+            ExifInterface(ByteArrayInputStream(imageBytes)).getAttributeInt(
+                ExifInterface.TAG_ORIENTATION,
+                ExifInterface.ORIENTATION_NORMAL
+            )
+        } catch (_: Exception) {
+            ExifInterface.ORIENTATION_NORMAL
+        }
+    }
+
+    private fun applyExifOrientation(bitmap: Bitmap, orientation: Int): Bitmap {
+        val matrix = Matrix()
+        when (orientation) {
+            ExifInterface.ORIENTATION_ROTATE_90 -> matrix.postRotate(90f)
+            ExifInterface.ORIENTATION_ROTATE_180 -> matrix.postRotate(180f)
+            ExifInterface.ORIENTATION_ROTATE_270 -> matrix.postRotate(270f)
+            ExifInterface.ORIENTATION_FLIP_HORIZONTAL -> matrix.preScale(-1f, 1f)
+            ExifInterface.ORIENTATION_FLIP_VERTICAL -> matrix.preScale(1f, -1f)
+            ExifInterface.ORIENTATION_TRANSPOSE -> {
+                matrix.preScale(-1f, 1f)
+                matrix.postRotate(90f)
+            }
+            ExifInterface.ORIENTATION_TRANSVERSE -> {
+                matrix.preScale(-1f, 1f)
+                matrix.postRotate(270f)
+            }
+            else -> return bitmap
+        }
+
+        return Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
     }
 
     private fun calculateInSampleSize(options: BitmapFactory.Options, reqWidth: Int, reqHeight: Int): Int {
