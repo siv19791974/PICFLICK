@@ -68,6 +68,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -87,7 +88,6 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
-import com.google.firebase.firestore.SetOptions
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
@@ -544,58 +544,35 @@ fun MainScreen(
     }
 
     // Track lightweight user presence for online badges.
+    // Use update() only so presence never creates a partial users/{uid} doc before profile bootstrap.
     DisposableEffect(lifecycleOwner, currentUser?.uid) {
         val uid = currentUser?.uid
-        val observer = LifecycleEventObserver { _, event ->
-            if (uid != null && event == Lifecycle.Event.ON_START) {
-                FirebaseFirestore.getInstance()
-                    .collection("users")
-                    .document(uid)
-                    .set(
-                        mapOf(
-                            "isOnline" to true,
-                            "lastSeenAt" to System.currentTimeMillis()
-                        ),
-                        SetOptions.merge()
-                    )
-            } else if (uid != null && event == Lifecycle.Event.ON_STOP) {
-                FirebaseFirestore.getInstance()
-                    .collection("users")
-                    .document(uid)
-                    .set(
-                        mapOf(
-                            "isOnline" to false,
-                            "lastSeenAt" to FieldValue.serverTimestamp()
-                        ),
-                        SetOptions.merge()
-                    )
-            }
-        }
-        lifecycleOwner.lifecycle.addObserver(observer)
-        if (uid != null && lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) {
+        fun updatePresence(isOnline: Boolean) {
+            if (uid == null) return
             FirebaseFirestore.getInstance()
                 .collection("users")
                 .document(uid)
                 .update(
                     mapOf(
-                        "isOnline" to true,
-                        "lastSeenAt" to System.currentTimeMillis()
+                        "isOnline" to isOnline,
+                        "lastSeenAt" to if (isOnline) System.currentTimeMillis() else FieldValue.serverTimestamp()
                     )
                 )
         }
-        onDispose {
-            if (uid != null) {
-                FirebaseFirestore.getInstance()
-                    .collection("users")
-                    .document(uid)
-                    .set(
-                        mapOf(
-                            "isOnline" to false,
-                            "lastSeenAt" to FieldValue.serverTimestamp()
-                        ),
-                        SetOptions.merge()
-                    )
+
+        val observer = LifecycleEventObserver { _, event ->
+            when (event) {
+                Lifecycle.Event.ON_START -> updatePresence(true)
+                Lifecycle.Event.ON_STOP -> updatePresence(false)
+                else -> Unit
             }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        if (lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) {
+            updatePresence(true)
+        }
+        onDispose {
+            updatePresence(false)
             lifecycleOwner.lifecycle.removeObserver(observer)
         }
     }
@@ -842,17 +819,19 @@ fun MainScreen(
         billingViewModel.initialize(context)
     }
 
+    val billingConnected by billingViewModel.isConnected.collectAsState()
+
     // Show in-app payment recovery messages when billing connects
-    LaunchedEffect(billingViewModel.isConnected.value) {
-        if (billingViewModel.isConnected.value && activity != null) {
+    LaunchedEffect(billingConnected) {
+        if (billingConnected && activity != null) {
             billingViewModel.showInAppMessages(activity)
         }
     }
 
     // Re-query purchases whenever app resumes so expired subscriptions are caught immediately
-    DisposableEffect(lifecycleOwner) {
+    DisposableEffect(lifecycleOwner, billingConnected) {
         val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
-            if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME && billingViewModel.isConnected.value) {
+            if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME && billingConnected) {
                 billingViewModel.queryPurchases()
             }
         }
@@ -863,13 +842,13 @@ fun MainScreen(
     // Periodic re-query while app is in foreground — catches subscription expiry
     // without requiring the user to background/foreground the app.
     // Polls faster (10s) when the user is actively watching Plan Options.
-    LaunchedEffect(billingViewModel.isConnected.value, lifecycleOwner.lifecycle.currentState, currentScreen) {
-        if (!billingViewModel.isConnected.value) return@LaunchedEffect
+    LaunchedEffect(billingConnected, lifecycleOwner.lifecycle.currentState, currentScreen) {
+        if (!billingConnected) return@LaunchedEffect
         val isPlanOptionsVisible = currentScreen is Screen.PlanOptions
         val pollingInterval = if (isPlanOptionsVisible) 10_000L else 60_000L
         while (lifecycleOwner.lifecycle.currentState.isAtLeast(androidx.lifecycle.Lifecycle.State.RESUMED)) {
             kotlinx.coroutines.delay(pollingInterval)
-            if (billingViewModel.isConnected.value) {
+            if (billingConnected) {
                 billingViewModel.queryPurchases()
             }
         }

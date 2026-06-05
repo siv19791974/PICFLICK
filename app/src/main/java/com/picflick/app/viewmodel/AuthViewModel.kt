@@ -306,18 +306,22 @@ class AuthViewModel : ViewModel() {
                                 ?.takeIf { it.isNotBlank() }
                         val shouldSeedDisplayName =
                             resolvedPreferredName != null && isPlaceholderDisplayName(existingProfile.displayName)
+                        val shouldSeedEmail = existingProfile.email.isBlank() && !user.email.isNullOrBlank()
                         val shouldSeedPhoto =
                             existingProfile.photoUrl.isBlank() && user.photoUrl != null
                         val shouldSeedPhone =
                             existingProfile.phoneNumber.isBlank() && authPhoneNumber.isNotBlank()
 
                         val profileUpdates = buildMap<String, Any> {
-                            if (shouldSeedDisplayName && resolvedPreferredName != null) {
+                            put("uid", user.uid)
+                            if (shouldSeedEmail) put("email", user.email.orEmpty())
+                            if (shouldSeedDisplayName) {
                                 put("displayName", resolvedPreferredName)
                                 put("displayNameLower", resolvedPreferredName.lowercase())
                             }
                             if (shouldSeedPhoto) put("photoUrl", user.photoUrl.toString())
                             if (shouldSeedPhone) put("phoneNumber", authPhoneNumber)
+                            put("schemaVersion", UserProfile().schemaVersion)
                         }
 
                         if (profileUpdates.isNotEmpty()) {

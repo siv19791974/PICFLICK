@@ -13,6 +13,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
+import java.text.Normalizer
 import java.util.Calendar
 import java.util.Locale
 import java.util.UUID
@@ -48,6 +49,13 @@ class FlickRepository private constructor() {
 
     private fun com.google.firebase.firestore.QuerySnapshot.toNormalizedUserProfiles(): List<UserProfile> =
         documents.mapNotNull { it.toNormalizedUserProfile() }
+
+    private fun normalizeUserSearchText(value: String): String {
+        return Normalizer.normalize(value, Normalizer.Form.NFD)
+            .replace("\\p{Mn}+".toRegex(), "")
+            .lowercase(Locale.getDefault())
+            .trim()
+    }
 
     private fun repairSearchableProfileFields(doc: com.google.firebase.firestore.DocumentSnapshot, profile: UserProfile) {
         val storedUid = doc.getString("uid").orEmpty()
@@ -1260,16 +1268,10 @@ class FlickRepository private constructor() {
             "notificationPreferences" to normalizedProfile.notificationPreferences,
             "totalLikes" to normalizedProfile.totalLikes,
             "totalViews" to normalizedProfile.totalViews,
-            "subscriptionTier" to normalizedProfile.subscriptionTier,
-            "subscriptionActive" to normalizedProfile.subscriptionActive,
-            "autoRenewing" to normalizedProfile.autoRenewing,
-            "tier" to normalizedProfile.legacyTier,
-            "subscriptionExpiryDate" to normalizedProfile.subscriptionExpiryDate,
             "storageUsedBytes" to normalizedProfile.storageUsedBytes,
             "totalPhotos" to normalizedProfile.totalPhotos,
             "dailyUploadsToday" to normalizedProfile.dailyUploadsToday,
             "lastUploadResetDate" to normalizedProfile.lastUploadResetDate,
-            "isFounder" to normalizedProfile.isFounder,
             "defaultPrivacy" to normalizedProfile.defaultPrivacy,
             "joinedAt" to normalizedProfile.joinedAt,
             "mythicDrawHistory" to normalizedProfile.mythicDrawHistory,
@@ -1448,6 +1450,7 @@ class FlickRepository private constructor() {
     fun searchUsers(query: String, currentUserId: String, onResult: (Result<List<UserProfile>>) -> Unit) {
         val searchRaw = query.trim()
         val searchLower = searchRaw.lowercase(Locale.getDefault())
+        val normalizedSearch = normalizeUserSearchText(searchRaw)
         if (searchLower.isBlank()) {
             onResult(Result.Success(emptyList()))
             return
@@ -1455,14 +1458,18 @@ class FlickRepository private constructor() {
 
         val resultMap = linkedMapOf<String, UserProfile>()
 
+        fun UserProfile.matchesSearch(): Boolean {
+            val normalizedName = normalizeUserSearchText(displayName)
+            val normalizedEmail = normalizeUserSearchText(email)
+            val normalizedWords = normalizedName.split("\\s+".toRegex()).filter { it.isNotBlank() }
+            return normalizedName.contains(normalizedSearch) ||
+                normalizedEmail.contains(normalizedSearch) ||
+                normalizedWords.any { it.startsWith(normalizedSearch) }
+        }
+
         fun addFiltered(users: List<UserProfile>) {
             users.forEach { user ->
-                val displayNameLower = user.displayName.lowercase(Locale.getDefault())
-                val emailLower = user.email.lowercase(Locale.getDefault())
-                if (
-                    user.uid != currentUserId &&
-                    (displayNameLower.startsWith(searchLower) || emailLower.startsWith(searchLower))
-                ) {
+                if (user.uid != currentUserId && user.matchesSearch()) {
                     resultMap[user.uid] = user
                 }
             }
@@ -1475,7 +1482,7 @@ class FlickRepository private constructor() {
             searchRaw.replaceFirstChar { ch -> ch.titlecase(Locale.getDefault()) }
         ).distinct()
 
-        var pendingQueries = 2 + fallbackPrefixes.size
+        var pendingQueries = 3 + fallbackPrefixes.size
 
         fun finishIfDone() {
             pendingQueries--
@@ -1483,6 +1490,10 @@ class FlickRepository private constructor() {
                 onResult(
                     Result.Success(
                         resultMap.values
+                            .sortedWith(
+                                compareBy<UserProfile> { !normalizeUserSearchText(it.displayName).startsWith(normalizedSearch) }
+                                    .thenBy { it.displayName.lowercase(Locale.getDefault()) }
+                            )
                             .take(Constants.Pagination.SUGGESTED_USERS_LIMIT)
                     )
                 )
@@ -1508,6 +1519,18 @@ class FlickRepository private constructor() {
             .startAt(searchLower)
             .endAt(searchLower + "\uf8ff")
             .limit(Constants.Pagination.SUGGESTED_USERS_LIMIT.toLong())
+            .get()
+            .addOnSuccessListener { snapshot ->
+                addFiltered(snapshot.toNormalizedUserProfiles())
+                finishIfDone()
+            }
+            .addOnFailureListener {
+                finishIfDone()
+            }
+
+        // Small broad fallback for surname/contains/accent-insensitive matches (e.g. "zoumis" or "elo").
+        db.collection(Constants.FirebaseCollections.USERS)
+            .limit(250)
             .get()
             .addOnSuccessListener { snapshot ->
                 addFiltered(snapshot.toNormalizedUserProfiles())

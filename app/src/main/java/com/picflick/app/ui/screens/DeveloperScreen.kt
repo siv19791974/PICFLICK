@@ -142,6 +142,7 @@ fun DeveloperScreen(
     var mythicThreshold by remember { mutableIntStateOf(10) } // Month 1 default = 10 days
     var mythicLastDraw by remember { mutableStateOf<Map<String, Any>?>(null) }
     var mythicDrawLoading by remember { mutableStateOf(false) }
+    var profileBackfillLoading by remember { mutableStateOf(false) }
 
     val devLogs = remember { mutableStateListOf<String>() }
 
@@ -451,6 +452,37 @@ fun DeveloperScreen(
                 devLogs.add(0, "Manual draw error: ${e.message}")
             } finally {
                 mythicDrawLoading = false
+            }
+        }
+    }
+
+    fun backfillMissingAuthProfiles(dryRun: Boolean) {
+        scope.launch {
+            profileBackfillLoading = true
+            try {
+                val functions = FirebaseFunctions.getInstance()
+                val result = withContext(Dispatchers.IO) {
+                    functions.getHttpsCallable("backfillMissingAuthUserProfiles")
+                        .call(mapOf("dryRun" to dryRun, "maxUsers" to 1000))
+                        .await()
+                }
+                val data = result.getData() as? Map<*, *>
+                val scanned = (data?.get("scanned") as? Number)?.toInt() ?: 0
+                val missing = (data?.get("missing") as? Number)?.toInt() ?: 0
+                val repaired = (data?.get("repaired") as? Number)?.toInt() ?: 0
+                val pageToken = data?.get("nextPageToken") as? String
+                val message = if (dryRun) {
+                    "Profile scan: $missing missing of $scanned auth users"
+                } else {
+                    "Profile repair: $repaired repaired of $missing missing ($scanned scanned)"
+                }
+                Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+                devLogs.add(0, "$message${if (pageToken != null) " — more users available" else ""}")
+            } catch (e: Exception) {
+                Toast.makeText(context, "Backfill error: ${e.message}", Toast.LENGTH_LONG).show()
+                devLogs.add(0, "Profile backfill error: ${e.message}")
+            } finally {
+                profileBackfillLoading = false
             }
         }
     }
@@ -1069,6 +1101,13 @@ fun DeveloperScreen(
             }
 
             DevSectionCard("SAFE MAINTENANCE ACTIONS", isDarkMode) {
+                DevInfo("Profile backfill", if (profileBackfillLoading) "Running…" else "Idle", isDarkMode)
+                DevActionRow(Icons.Default.Sync, "Scan missing Auth profiles") {
+                    if (!profileBackfillLoading) backfillMissingAuthProfiles(dryRun = true)
+                }
+                DevActionRow(Icons.Default.Restore, "Repair missing Auth profiles") {
+                    if (!profileBackfillLoading) backfillMissingAuthProfiles(dryRun = false)
+                }
                 DevActionRow(Icons.Default.DeleteSweep, "Clear app cache") {
                     showClearCacheDialog = true
                 }

@@ -203,19 +203,24 @@ private fun DiscoverTab(
                 }
                 .distinctBy { it.uid }
 
-            // Sort by mutual friends (high -> low), while keeping priority requester pinned first when applicable
+            // Sort by mutual friends first; alphabetize users with mutual friends, then show 0-mutual users newest first.
+            // Keep the notification/request target pinned first when opening from a friend-request push.
             val orderedSuggestedUsers = remember(filteredSuggestedUsers, priorityRequesterId, userProfile.followers, userProfile.following) {
                 filteredSuggestedUsers
-                    .sortedWith(
-                        compareByDescending<UserProfile> { user ->
-                            userProfile.getMutualFriends(user)
-                        }.thenBy { it.displayName.lowercase() }
-                    )
-                    .let { sortedByMutuals ->
+                    .sortedWith { first, second ->
+                        val firstMutuals = userProfile.getMutualFriends(first)
+                        val secondMutuals = userProfile.getMutualFriends(second)
+                        when {
+                            firstMutuals != secondMutuals -> secondMutuals.compareTo(firstMutuals)
+                            firstMutuals == 0 -> second.joinedAt.compareTo(first.joinedAt)
+                            else -> first.displayName.compareTo(second.displayName, ignoreCase = true)
+                        }
+                    }
+                    .let { sortedUsers ->
                         if (priorityRequesterId.isNullOrBlank()) {
-                            sortedByMutuals
+                            sortedUsers
                         } else {
-                            sortedByMutuals.sortedByDescending { it.uid == priorityRequesterId }
+                            sortedUsers.sortedByDescending { it.uid == priorityRequesterId }
                         }
                     }
             }
