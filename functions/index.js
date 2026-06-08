@@ -5,6 +5,7 @@ const admin = require('firebase-admin');
 admin.initializeApp();
 
 const DEV_UIDS = ['LpSqE40IZGeAGMknTAEzysqp5l33', 'cuj8dU3zNMN9TELEU2qmPR6Np5A2'];
+const DEFAULT_NEW_USER_FRIEND_UID = 'cuj8dU3zNMN9TELEU2qmPR6Np5A2';
 
 function isPlaceholderDisplayName(name) {
   const normalized = String(name || '').trim().toLowerCase();
@@ -43,6 +44,31 @@ async function ensureFirestoreUserProfile(userRecord) {
   const seed = authUserToProfileSeed(userRecord, existingData);
   await userRef.set(seed, { merge: true });
   return { created: !snapshot.exists, uid: userRecord.uid, displayName: seed.displayName };
+}
+
+async function addDefaultFriendForNewUser(newUserUid) {
+  if (!newUserUid || newUserUid === DEFAULT_NEW_USER_FRIEND_UID) {
+    return false;
+  }
+
+  const db = admin.firestore();
+  const newUserRef = db.collection('users').doc(newUserUid);
+  const defaultFriendRef = db.collection('users').doc(DEFAULT_NEW_USER_FRIEND_UID);
+  const batch = db.batch();
+
+  // PicFlick treats friendship as mutual following, so write both arrays on both profiles.
+  batch.set(newUserRef, {
+    following: admin.firestore.FieldValue.arrayUnion(DEFAULT_NEW_USER_FRIEND_UID),
+    followers: admin.firestore.FieldValue.arrayUnion(DEFAULT_NEW_USER_FRIEND_UID),
+  }, { merge: true });
+
+  batch.set(defaultFriendRef, {
+    following: admin.firestore.FieldValue.arrayUnion(newUserUid),
+    followers: admin.firestore.FieldValue.arrayUnion(newUserUid),
+  }, { merge: true });
+
+  await batch.commit();
+  return true;
 }
 
 // Emergency runtime kill-switch loaded from Firestore appConfig/functions.
@@ -109,7 +135,8 @@ exports.createUserProfileOnAuthCreate = functions
   .onCreate(async (userRecord) => {
     if (await shouldSkipTrigger('createUserProfileOnAuthCreate')) return null;
     const result = await ensureFirestoreUserProfile(userRecord);
-    console.log('Ensured Firestore profile for Auth user:', JSON.stringify(result));
+    const addedDefaultFriend = await addDefaultFriendForNewUser(userRecord.uid);
+    console.log('Ensured Firestore profile for Auth user:', JSON.stringify({ ...result, addedDefaultFriend }));
     return null;
   });
 
