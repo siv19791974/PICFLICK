@@ -823,7 +823,11 @@ class HomeViewModel : ViewModel() {
             seenIds.add(idKey)
             if (clientKey != null) seenClientUploadIds.add(clientKey)
             true
-        }
+        }.sortedWith(
+            compareByDescending<Flick> { it.timestamp }
+                .thenByDescending { it.id }
+                .thenByDescending { it.clientUploadId }
+        )
     }
 
     internal suspend fun <T> runUploadWithRetry(
