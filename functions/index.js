@@ -214,7 +214,19 @@ exports.sendPushNotification = functions
     }
     
     // ONLY send push for IMPORTANT notification types
-    const IMPORTANT_TYPES = ['FRIEND_REQUEST', 'GROUP_INVITE', 'GROUP_CHAT_ADDED', 'MESSAGE', 'FOLLOW_ACCEPTED', 'MENTION', 'COMMENT'];
+    const IMPORTANT_TYPES = [
+      'FRIEND_REQUEST',
+      'GROUP_INVITE',
+      'GROUP_CHAT_ADDED',
+      'MESSAGE',
+      'FOLLOW_ACCEPTED',
+      'MENTION',
+      'COMMENT',
+      'PHOTO_ADDED',
+      'REACTION',
+      'COMMENT_LIKE',
+      'LIKE',
+    ];
 
     if (!IMPORTANT_TYPES.includes(notification.type)) {
       console.log('Skipping push - type not important enough:', notification.type,
@@ -306,6 +318,7 @@ exports.sendPushNotification = functions
         } else if (
           type === 'MENTION' ||
           type === 'COMMENT' ||
+          type === 'COMMENT_LIKE' ||
           type === 'LIKE' ||
           type === 'REACTION' ||
           type === 'PHOTO_ADDED'
